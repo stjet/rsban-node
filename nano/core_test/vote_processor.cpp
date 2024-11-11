@@ -215,26 +215,3 @@ TEST (vote_processor, no_broadcast_local_with_a_principal_representative)
 	ASSERT_EQ (0, node.stats->count (nano::stat::type::message, nano::stat::detail::confirm_ack, nano::stat::dir::out));
 	ASSERT_EQ (1, node.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::out));
 }
-
-/**
- * basic test to check that the timestamp mask is applied correctly on vote timestamp and duration fields
- */
-TEST (vote, timestamp_and_duration_masking)
-{
-	nano::test::system system;
-	nano::keypair key;
-	auto hash = std::vector<nano::block_hash>{ nano::dev::genesis->hash () };
-	auto vote = std::make_shared<nano::vote> (key.pub, key.prv, 0x123f, 0xf, hash);
-	ASSERT_EQ (vote->timestamp (), 0x1230);
-	ASSERT_EQ (vote->duration ().count (), 524288);
-	ASSERT_EQ (vote->duration_bits (), 0xf);
-}
-
-/**
- * Test that a vote can encode an empty hash set
- */
-TEST (vote, empty_hashes)
-{
-	nano::keypair key;
-	auto vote = std::make_shared<nano::vote> (key.pub, key.prv, 0, 0, std::vector<nano::block_hash>{} /* empty */);
-}

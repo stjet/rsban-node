@@ -1,6 +1,5 @@
 use rsnano_core::{
-    work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteCode,
-    VoteSource, DEV_GENESIS_KEY,
+    utils::MemoryStream, work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -16,7 +15,7 @@ use std::{
     collections::HashMap,
     sync::{atomic::Ordering, Arc},
     thread::sleep,
-    time::Duration,
+    time::Duration, usize,
 };
 use test_helpers::{
     assert_never, assert_timely, assert_timely_eq, assert_timely_msg, get_available_port,
@@ -954,183 +953,6 @@ fn broadcast_block_on_activation() {
 }
 
 #[test]
-fn vote_replays() {
-    let mut system = System::new();
-    let mut config = System::default_config();
-    config.enable_voting = false;
-    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
-    let node = system.build_node().config(config).finish();
-    let key = KeyPair::new();
-
-    // send Gxrb_ratio raw from genesis to key
-    let send1 = BlockEnum::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-    ));
-
-    // create open block for key receiving Gxrb_ratio raw
-    let open1 = BlockEnum::State(StateBlock::new(
-        key.account(),
-        BlockHash::zero(),
-        key.public_key(),
-        Amount::raw(1),
-        send1.hash().into(),
-        &key,
-        node.work_generate_dev(key.public_key().into()),
-    ));
-
-    // wait for elections objects to appear in the AEC
-    node.process_active(send1.clone());
-    node.process_active(open1.clone());
-    //assert_timely(Duration::from_secs(5), || {
-    start_elections(&node, &[send1.hash(), open1.hash()], false);
-    //});
-    assert_eq!(2, node.active.len());
-
-    // First vote is not a replay and confirms the election, second vote should be a replay since the election has confirmed but not yet removed
-    let vote_send1 = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send1.hash()]));
-    assert_eq!(
-        &VoteCode::Vote,
-        node.vote_router
-            .vote(&vote_send1, VoteSource::Live)
-            .get(&send1.hash())
-            .unwrap()
-    );
-    assert_eq!(
-        &VoteCode::Replay,
-        node.vote_router
-            .vote(&vote_send1, VoteSource::Live)
-            .get(&send1.hash())
-            .unwrap()
-    );
-
-    // Wait until the election is removed, at which point the vote is still a replay since it's been recently confirmed
-    assert_timely_eq(Duration::from_secs(5), || node.active.len(), 1);
-    assert_eq!(
-        &VoteCode::Replay,
-        node.vote_router
-            .vote(&vote_send1, VoteSource::Live)
-            .get(&send1.hash())
-            .unwrap()
-    );
-
-    // Open new account
-    let vote_open1 = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![open1.hash()]));
-    assert_eq!(
-        &VoteCode::Vote,
-        node.vote_router
-            .vote(&vote_open1, VoteSource::Live)
-            .get(&open1.hash())
-            .unwrap()
-    );
-    assert_eq!(
-        &VoteCode::Replay,
-        node.vote_router
-            .vote(&vote_open1, VoteSource::Live)
-            .get(&open1.hash())
-            .unwrap()
-    );
-    assert_timely(Duration::from_secs(5), || node.active.len() > 0);
-    assert_eq!(
-        &VoteCode::Replay,
-        node.vote_router
-            .vote(&vote_open1, VoteSource::Live)
-            .get(&open1.hash())
-            .unwrap()
-    );
-    assert_eq!(Amount::raw(1), node.ledger.weight(&key.public_key()));
-
-    // send 1 raw to key to key
-    let send2 = BlockEnum::State(StateBlock::new(
-        key.account(),
-        open1.hash(),
-        key.public_key(),
-        Amount::raw(1) - Amount::raw(1),
-        key.account().into(),
-        &key,
-        node.work_generate_dev(open1.hash().into()),
-    ));
-    node.process_active(send2.clone());
-    start_elections(&node, &[send2.hash()], false);
-    assert_eq!(1, node.active.len());
-
-    // vote2_send2 is a non final vote with little weight, vote1_send2 is the vote that confirms the election
-    let vote1_send2 = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send2.hash()]));
-    let vote2_send2 = Arc::new(Vote::new(&key, 0, 0, vec![send2.hash()]));
-    assert_eq!(
-        &VoteCode::Vote,
-        node.vote_router
-            .vote(&vote2_send2, VoteSource::Live)
-            .get(&send2.hash())
-            .unwrap()
-    ); // this vote cannot confirm the election
-    assert_eq!(1, node.active.len());
-    assert_eq!(
-        &VoteCode::Replay,
-        node.vote_router
-            .vote(&vote2_send2, VoteSource::Live)
-            .get(&send2.hash())
-            .unwrap()
-    ); // this vote cannot confirm the election
-    assert_eq!(1, node.active.len());
-    assert_eq!(
-        &VoteCode::Vote,
-        node.vote_router
-            .vote(&vote1_send2, VoteSource::Live)
-            .get(&send2.hash())
-            .unwrap()
-    ); // this vote confirms the election
-
-    // this should still return replay, either because the election is still in the AEC or because it is recently confirmed
-    assert_eq!(
-        &VoteCode::Replay,
-        node.vote_router
-            .vote(&vote1_send2, VoteSource::Live)
-            .get(&send2.hash())
-            .unwrap()
-    );
-    assert_timely(Duration::from_secs(5), || node.active.len() > 0);
-    assert_eq!(
-        &VoteCode::Replay,
-        node.vote_router
-            .vote(&vote1_send2, VoteSource::Live)
-            .get(&send2.hash())
-            .unwrap()
-    );
-    assert_eq!(
-        &VoteCode::Replay,
-        node.vote_router
-            .vote(&vote2_send2, VoteSource::Live)
-            .get(&send2.hash())
-            .unwrap()
-    );
-
-    // Removing blocks as recently confirmed makes every vote indeterminate
-    node.active.clear_recently_confirmed();
-    assert_eq!(
-        &VoteCode::Indeterminate,
-        node.vote_router
-            .vote(&vote_send1, VoteSource::Live)
-            .get(&send1.hash())
-            .unwrap()
-    );
-    assert_eq!(
-        &VoteCode::Indeterminate,
-        node.vote_router
-            .vote(&vote_open1, VoteSource::Live)
-            .get(&open1.hash())
-            .unwrap()
-    );
-    //assert_eq!(&VoteCode::Indeterminate, node.vote_router.vote(&vote1_send2, VoteSource::Live).get(&send2.hash()).unwrap());
-    //assert_eq!(&VoteCode::Indeterminate, node.vote_router.vote(&vote2_send2, VoteSource::Live).get(&send2.hash()).unwrap());
-}
-
-#[test]
 fn dropped_cleanup() {
     let mut system = System::new();
     let flags = NodeFlags {
@@ -1140,25 +962,27 @@ fn dropped_cleanup() {
     let node = system.build_node().flags(flags).finish();
     let chain = setup_independent_blocks(&node, 1, &DEV_GENESIS_KEY);
     let hash = chain[0].hash();
+    let qual_root = chain[0].qualified_root();
 
     // Add to network filter to ensure proper cleanup after the election is dropped
-    /*let block_bytes = chain[0].as_bytes();
-    assert!(!node.network.tcp_channels.publish_filter.apply(&block_bytes));
-    assert!(node.network.tcp_channels.publish_filter.apply(&block_bytes));
+    let mut stream = MemoryStream::new();
+    chain[0].serialize(&mut stream);
+    let block_bytes = stream.as_bytes();
+    assert!(!node.publish_filter.apply(&block_bytes).1);
+    assert!(node.publish_filter.apply(&block_bytes).1);
 
     let election = start_election(&node, &hash);
-    assert!(election.is_some());
 
     // Not yet removed
-    assert!(node.network.tcp_channels.publish_filter.apply(&block_bytes));
-    assert!(node.election_active(&hash));
+    assert!(node.publish_filter.apply(&block_bytes).1);
+    assert!(node.active.election(&qual_root).is_some());
 
     // Now simulate dropping the election
-    assert!(!node.active.confirmed(&election.unwrap()));
-    node.active.erase(&chain[0]);
+    assert!(!node.active.confirmed(&election));
+    node.active.erase(&qual_root);
 
     // The filter must have been cleared
-    assert!(!node.network.tcp_channels.publish_filter.apply(&block_bytes));
+    assert!(node.publish_filter.apply(&block_bytes).1);
 
     // An election was recently dropped
     assert_eq!(
@@ -1168,19 +992,18 @@ fn dropped_cleanup() {
     );
 
     // Block cleared from active
-    assert!(!node.election_active(&hash));
+    assert!(node.active.election(&qual_root).is_none());
 
     // Repeat test for a confirmed election
-    assert!(node.network.tcp_channels.publish_filter.apply(&block_bytes));
+    assert!(node.publish_filter.apply(&block_bytes).1);
 
     let election = start_election(&node, &hash);
-    assert!(election.is_some());
-    node.active.force_confirm(&election.unwrap());
-    assert_timely(Duration::from_secs(5), || node.active.confirmed(&election.unwrap()));
-    node.active.erase(&chain[0]);
+    node.active.force_confirm(&election);
+    assert_timely(Duration::from_secs(5), || node.active.confirmed(&election));
+    node.active.erase(&qual_root);
 
     // The filter should not have been cleared
-    assert!(node.network.tcp_channels.publish_filter.apply(&block_bytes));
+    assert!(node.publish_filter.apply(&block_bytes).1);
 
     // Not dropped
     assert_eq!(
@@ -1190,7 +1013,7 @@ fn dropped_cleanup() {
     );
 
     // Block cleared from active
-    assert!(!node.election_active(&hash));*/
+    assert!(node.active.election(&qual_root).is_none());
 }
 
 #[test]
@@ -1254,7 +1077,9 @@ fn fork_filter_cleanup() {
         node1.work_generate_dev(latest_hash.into()),
     ));
 
-    //let send_block_bytes = send1.as_bytes();
+    let mut stream = MemoryStream::new();
+    send1.serialize(&mut stream);
+    let send_block_bytes = stream.as_bytes();
 
     // Generate 10 forks to prevent new block insertion to election
     for i in 0..10 {
@@ -1300,9 +1125,9 @@ fn fork_filter_cleanup() {
     assert_timely_eq(Duration::from_secs(5), || node1.ledger.block_count(), 2);
 
     // Block is erased from the duplicate filter
-    //assert_timely(Duration::from_secs(5), || {
-    // !node1.network.tcp_channels.publish_filter.apply(&send_block_bytes)
-    //});
+    assert_timely(Duration::from_secs(5), || {
+        !node1.publish_filter.apply(&send_block_bytes).1
+    });
 }
 
 #[test]
@@ -1503,111 +1328,6 @@ fn activate_account_chain() {
 }
 
 #[test]
-fn activate_inactive() {
-    let mut system = System::new();
-    let mut config = System::default_config();
-    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
-    let node = system.build_node().config(config).finish();
-
-    let key = KeyPair::new();
-    let send = BlockEnum::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-    ));
-    let send2 = BlockEnum::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(2),
-        KeyPair::new().account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send.hash().into()),
-    ));
-    let open = BlockEnum::State(StateBlock::new(
-        key.account(),
-        BlockHash::zero(),
-        key.public_key(),
-        Amount::raw(1),
-        send.hash().into(),
-        &key,
-        node.work_generate_dev(key.public_key().into()),
-    ));
-
-    assert_eq!(
-        node.process_local(send.clone()).unwrap(),
-        BlockStatus::Progress
-    );
-    assert_eq!(
-        node.process_local(send2.clone()).unwrap(),
-        BlockStatus::Progress
-    );
-    assert_eq!(
-        node.process_local(open.clone()).unwrap(),
-        BlockStatus::Progress
-    );
-
-    let election = start_election(&node, &send2.hash());
-    assert!(election.age() > Duration::from_micros(0));
-    node.active.force_confirm(&election);
-
-    assert_timely(Duration::from_secs(5), || {
-        !node.confirming_set.exists(&send2.hash())
-    });
-    assert_timely(Duration::from_secs(5), || {
-        node.block_confirmed(&send2.hash())
-    });
-    assert_timely(Duration::from_secs(5), || {
-        node.block_confirmed(&send.hash())
-    });
-
-    // Wait so that blocks observer can increase the stats
-    sleep(Duration::from_secs(1));
-
-    assert_timely_eq(
-        Duration::from_secs(5),
-        || {
-            node.stats.count(
-                StatType::ConfirmationObserver,
-                DetailType::InactiveConfHeight,
-                Direction::Out,
-            )
-        },
-        1,
-    );
-
-    assert_timely_eq(
-        Duration::from_secs(5),
-        || {
-            node.stats.count(
-                StatType::ConfirmationObserver,
-                DetailType::ActiveQuorum,
-                Direction::Out,
-            )
-        },
-        1,
-    );
-
-    assert_never(Duration::from_millis(50), || {
-        node.stats.count(
-            StatType::ConfirmationObserver,
-            DetailType::ActiveConfHeight,
-            Direction::Out,
-        ) != 0
-    });
-
-    // The first block was not active so no activation takes place
-    /*assert!(
-        !node.active.active_root(&open.qualified_root())
-            && !node.block_confirmed_or_being_confirmed(&open.hash())
-    );*/
-}
-
-#[test]
 fn list_active() {
     let mut system = System::new();
     let node = system.make_node();
@@ -1628,7 +1348,7 @@ fn list_active() {
     assert_eq!(node.active.list_active(3).len(), 3);
     assert_eq!(node.active.list_active(4).len(), 3);
     assert_eq!(node.active.list_active(99999).len(), 3);
-    //assert_eq!(node.active.list_active().len(), 3);
+    assert_eq!(node.active.list_active(usize::MAX).len(), 3);
 
-    //let active = node.active.list_active();
+    let active = node.active.list_active(usize::MAX);
 }

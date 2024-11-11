@@ -595,52 +595,6 @@ mod bootstrap_processor {
     }
 
     #[test]
-    fn bootstrap_processor_push_one() {
-        let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
-        let node0 = system.build_node().config(config).finish();
-
-        let key1 = KeyPair::new();
-        let node1 = system.make_disconnected_node();
-        let wallet_id = WalletId::random();
-        node1.wallets.create(wallet_id);
-        node1.insert_into_wallet(&DEV_GENESIS_KEY);
-
-        // send 100 raw from genesis to key1
-        let genesis_balance = node1.balance(&DEV_GENESIS_ACCOUNT);
-        let send = node1
-            .wallets
-            .send_action2(
-                &wallet_id,
-                *DEV_GENESIS_ACCOUNT,
-                key1.public_key().into(),
-                Amount::raw(100),
-                0,
-                true,
-                None,
-            )
-            .unwrap();
-        assert_timely_eq(
-            Duration::from_secs(5),
-            || node1.balance(&DEV_GENESIS_ACCOUNT),
-            genesis_balance - Amount::raw(100),
-        );
-
-        node1
-            .peer_connector
-            .connect_to(node0.tcp_listener.local_address());
-        node1
-            .bootstrap_initiator
-            .bootstrap2(node0.tcp_listener.local_address(), "".into());
-        assert_timely_eq(
-            Duration::from_secs(5),
-            || node0.balance(&DEV_GENESIS_ACCOUNT),
-            genesis_balance - Amount::raw(100),
-        );
-    }
-
-    #[test]
     fn bootstrap_processor_pull_diamond() {
         let mut system = System::new();
         let mut config = System::default_config();

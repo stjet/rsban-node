@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
-use num_traits::FromPrimitive;
-
 use crate::{validate_message, Account, BlockEnum, Link, PublicKey};
+use num_traits::FromPrimitive;
+use std::collections::HashMap;
 
 /**
  * Tag for which epoch an entry belongs to
@@ -115,5 +113,69 @@ impl TryFrom<u8> for Epoch {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         FromPrimitive::from_u8(value).ok_or_else(|| anyhow!("invalid epoch value"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_sequential() {
+        assert!(Epochs::is_sequential(Epoch::Epoch0, Epoch::Epoch1));
+        assert!(Epochs::is_sequential(Epoch::Epoch1, Epoch::Epoch2));
+
+        assert_eq!(Epochs::is_sequential(Epoch::Epoch0, Epoch::Epoch2), false);
+        assert_eq!(Epochs::is_sequential(Epoch::Epoch0, Epoch::Invalid), false);
+        assert_eq!(
+            Epochs::is_sequential(Epoch::Unspecified, Epoch::Epoch1),
+            false
+        );
+        assert_eq!(Epochs::is_sequential(Epoch::Epoch1, Epoch::Epoch0), false);
+        assert_eq!(Epochs::is_sequential(Epoch::Epoch2, Epoch::Epoch0), false);
+        assert_eq!(Epochs::is_sequential(Epoch::Epoch2, Epoch::Epoch2), false);
+    }
+
+    #[test]
+    fn epoch_link_empty() {
+        let epochs = Epochs::new();
+        let link = Link::from(42);
+        assert_eq!(epochs.is_epoch_link(&link), false);
+        assert_eq!(epochs.signer(Epoch::Epoch1), None);
+        assert_eq!(epochs.epoch(&link), None);
+        assert_eq!(epochs.link(Epoch::Epoch1), None);
+    }
+
+    #[test]
+    fn epoch_link_for_epoch1() {
+        let mut epochs = Epochs::new();
+        let link1 = Link::from(42);
+        let link2 = Link::from(43);
+        let epoch_key = PublicKey::from(100);
+
+        epochs.add(Epoch::Epoch1, epoch_key, link1);
+
+        assert_eq!(epochs.is_epoch_link(&link1), true);
+        assert_eq!(epochs.is_epoch_link(&link2), false);
+        assert_eq!(epochs.signer(Epoch::Epoch1), Some(&epoch_key));
+        assert_eq!(epochs.link(Epoch::Epoch1), Some(&link1));
+        assert_eq!(epochs.epoch(&link1), Some(Epoch::Epoch1));
+    }
+
+    #[test]
+    fn epoch_link_for_epoch2() {
+        let mut epochs = Epochs::new();
+        let link1 = Link::from(42);
+        let link2 = Link::from(43);
+        let epoch_key1 = PublicKey::from(100);
+        let epoch_key2 = PublicKey::from(200);
+
+        epochs.add(Epoch::Epoch1, epoch_key1, link1);
+        epochs.add(Epoch::Epoch2, epoch_key2, link2);
+
+        assert_eq!(epochs.is_epoch_link(&link2), true);
+        assert_eq!(epochs.signer(Epoch::Epoch2), Some(&epoch_key2));
+        assert_eq!(epochs.link(Epoch::Epoch2), Some(&link2));
+        assert_eq!(epochs.epoch(&link2), Some(Epoch::Epoch2));
     }
 }

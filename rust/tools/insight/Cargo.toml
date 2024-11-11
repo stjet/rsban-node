@@ -11,6 +11,7 @@ rsnano_messages = { path = "../../messages" }
 rsnano_network = { path = "../../network" }
 rsnano_store_lmdb = { path = "../../store_lmdb" }
 rsnano_node = { path = "../../node" }
+rsnano_daemon = { path = "../../daemon" }
 rsnano_ledger = { path = "../../ledger" }
 rsnano_nullable_clock = { path = "../../nullables/clock" }
 tokio = { version = "1", features = ["rt-multi-thread"] }

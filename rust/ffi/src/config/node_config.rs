@@ -15,11 +15,14 @@ use crate::{
     WebsocketConfigDto,
 };
 use num::FromPrimitive;
-use rsnano_core::{utils::get_cpu_count, Amount, Networks, PublicKey};
+use rsnano_core::{
+    utils::{get_cpu_count, Peer},
+    Amount, Networks, PublicKey,
+};
 use rsnano_node::{
     block_processing::LocalBlockBroadcasterConfig,
     cementation::ConfirmingSetConfig,
-    config::{MonitorConfig, NetworkConstants, NodeConfig, Peer},
+    config::{MonitorConfig, NetworkConstants, NodeConfig},
     consensus::PriorityBucketConfig,
     transport::{MessageProcessorConfig, TcpConfig},
     IpcConfig, NetworkParams,

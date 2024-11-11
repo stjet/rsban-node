@@ -1,7 +1,7 @@
-use std::str::FromStr;
-
-use crate::config::{NodeConfig, Peer};
+use crate::config::NodeConfig;
+use rsnano_core::utils::Peer;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Deserialize, Serialize)]
 pub struct ExperimentalToml {

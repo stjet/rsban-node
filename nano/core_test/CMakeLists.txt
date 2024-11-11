@@ -6,7 +6,6 @@ add_executable(
   backlog.cpp
   block.cpp
   block_store.cpp
-  blockprocessor.cpp
   bootstrap.cpp
   bootstrap_ascending.cpp
   cli.cpp
@@ -16,27 +15,16 @@ add_executable(
   distributed_work.cpp
   election.cpp
   election_scheduler.cpp
-  epochs.cpp
   frontiers_confirmation.cpp
   ledger.cpp
   ledger_confirm.cpp
-  locks.cpp
-  logging.cpp
-  memory_pool.cpp
   network.cpp
   node.cpp
-  object_stream.cpp
   optimistic_scheduler.cpp
-  peer_container.cpp
-  signal_manager.cpp
-  socket.cpp
   system.cpp
   telemetry.cpp
-  toml.cpp
-  timer.cpp
   uint256_union.cpp
   unchecked_map.cpp
-  utility.cpp
   vote_processor.cpp
   voting.cpp
   wallet.cpp

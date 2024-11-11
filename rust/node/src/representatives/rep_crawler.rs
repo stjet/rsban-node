@@ -8,7 +8,7 @@ use crate::{
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, NULL_ENDPOINT},
+    utils::{ContainerInfo, ContainerInfoComponent, Peer, NULL_ENDPOINT},
     Account, BlockHash, Root, Vote,
 };
 use rsnano_ledger::Ledger;
@@ -18,6 +18,7 @@ use rsnano_network::{
     PeerConnector, TrafficType,
 };
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
+use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{
     collections::HashMap,
     mem::size_of,
@@ -45,6 +46,7 @@ pub struct RepCrawler {
     thread: Mutex<Option<JoinHandle<()>>>,
     steady_clock: Arc<SteadyClock>,
     message_publisher: Arc<Mutex<MessagePublisher>>,
+    keepalive_listener: OutputListenerMt<Peer>,
 }
 
 impl RepCrawler {
@@ -79,6 +81,7 @@ impl RepCrawler {
             peer_connector,
             steady_clock,
             message_publisher: Arc::new(Mutex::new(message_publisher)),
+            keepalive_listener: OutputListenerMt::new(),
             rep_crawler_impl: Mutex::new(RepCrawlerImpl {
                 is_dev_network,
                 queries: OrderedQueries::new(),
@@ -400,7 +403,13 @@ impl RepCrawler {
         }
     }
 
+    pub fn track_keepalives(&self) -> Arc<OutputTrackerMt<Peer>> {
+        self.keepalive_listener.track()
+    }
+
     pub fn keepalive_or_connect(&self, address: String, port: u16) {
+        self.keepalive_listener
+            .emit(Peer::new(address.clone(), port));
         let peer_connector = self.peer_connector.clone();
         let network_info = self.network_info.clone();
         let publisher = self.message_publisher.clone();

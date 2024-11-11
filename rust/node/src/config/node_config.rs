@@ -15,12 +15,11 @@ use crate::{
 use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::{get_cpu_count, get_env_or_default_string, is_sanitizer_build},
+    utils::{get_env_or_default_string, is_sanitizer_build, Peer},
     Account, Amount, PublicKey, GXRB_RATIO, XRB_RATIO,
 };
 use rsnano_store_lmdb::LmdbConfig;
-use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
-use std::{cmp::max, fmt, net::Ipv6Addr, str::FromStr, time::Duration};
+use std::{cmp::max, net::Ipv6Addr, time::Duration};
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive)]
@@ -114,45 +113,6 @@ pub struct NodeConfig {
     pub local_block_broadcaster: LocalBlockBroadcasterConfig,
     pub confirming_set: ConfirmingSetConfig,
     pub monitor: MonitorConfig,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Peer {
-    pub address: String,
-    pub port: u16,
-}
-
-impl fmt::Display for Peer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.address, self.port)
-    }
-}
-
-impl Peer {
-    pub fn new(address: impl Into<String>, port: u16) -> Self {
-        Self {
-            address: address.into(),
-            port,
-        }
-    }
-}
-
-impl FromStr for Peer {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.split(':').collect();
-        if parts.len() != 2 {
-            return Err("Invalid format".into());
-        }
-
-        let address = parts[0].to_string();
-        let port = parts[1]
-            .parse::<u16>()
-            .map_err(|_| "Invalid port".to_string())?;
-
-        Ok(Peer { address, port })
-    }
 }
 
 static DEFAULT_LIVE_PEER_NETWORK: Lazy<String> =
@@ -407,61 +367,6 @@ impl Default for MonitorConfig {
         Self {
             enabled: true,
             interval: Duration::from_secs(60),
-        }
-    }
-}
-
-impl Serialize for Peer {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl<'de> Deserialize<'de> for Peer {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        s.parse().map_err(D::Error::custom)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json;
-
-    #[test]
-    fn test_peer_serialize() {
-        let peer = Peer::new("192.168.1.1", 7075);
-        let serialized = serde_json::to_string(&peer).unwrap();
-        assert_eq!(serialized, "\"192.168.1.1:7075\"");
-    }
-
-    #[test]
-    fn test_peer_deserialize() {
-        let serialized = "\"192.168.1.1:7075\"";
-        let peer: Peer = serde_json::from_str(serialized).unwrap();
-        assert_eq!(peer, Peer::new("192.168.1.1", 7075));
-    }
-
-    #[test]
-    fn test_peer_invalid_deserialize() {
-        let invalid_inputs = vec![
-            "\"invalid\"",
-            "\"192.168.1.1\"",
-            "\"192.168.1.1:\"",
-            "\"192.168.1.1:abc\"",
-            "\"192.168.1.1:65536\"",
-        ];
-
-        for input in invalid_inputs {
-            let result: Result<Peer, _> = serde_json::from_str(input);
-            assert!(result.is_err(), "Expected error for input: {}", input);
         }
     }
 }

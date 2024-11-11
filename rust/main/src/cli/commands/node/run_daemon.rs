@@ -1,23 +1,13 @@
-use crate::cli::get_path;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
-use rsnano_core::utils::get_cpu_count;
+use rsnano_core::{utils::get_cpu_count, Networks};
 use rsnano_node::{
-    config::{
-        get_node_toml_config_path, get_rpc_toml_config_path, DaemonConfig, DaemonToml,
-        NetworkConstants, NodeFlags,
-    },
-    NetworkParams, NodeBuilder, NodeExt,
+    config::{DaemonConfig, NodeFlags},
+    working_path_for, NodeBuilder, NodeExt,
 };
-use rsnano_rpc_server::{run_rpc_server, RpcServerConfig, RpcServerToml};
-use std::{
-    fs::read_to_string,
-    net::{IpAddr, SocketAddr},
-    str::FromStr,
-    sync::Arc,
-};
+use rsnano_rpc_server::{run_rpc_server, RpcServerConfig};
+use std::{path::PathBuf, str::FromStr, sync::Arc};
 use tokio::net::TcpListener;
-use toml::from_str;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
@@ -116,33 +106,17 @@ impl RunDaemonArgs {
     pub(crate) async fn run_daemon(&self) -> Result<()> {
         init_tracing();
 
-        let path = get_path(&self.data_path, &self.network);
-        let network = NetworkConstants::active_network();
-        let network_params = NetworkParams::new(network);
+        let network = self.get_network()?;
+        let data_path = self.get_data_path(network)?;
         let parallelism = get_cpu_count();
-        let node_toml_config_path = get_node_toml_config_path(&path);
+        let daemon_config = DaemonConfig::load_from_data_path(network, parallelism, &data_path)?;
+        let rpc_config = RpcServerConfig::load_from_data_path(network, parallelism, &data_path)?;
 
-        let mut daemon_config = DaemonConfig::new(&network_params, parallelism);
-        if node_toml_config_path.exists() {
-            let daemon_toml_str = read_to_string(node_toml_config_path)?;
-            let daemon_toml: DaemonToml = from_str(&daemon_toml_str)?;
-            daemon_config.merge_toml(&daemon_toml);
-        }
-
-        let rpc_toml_config_path = get_rpc_toml_config_path(&path);
-
-        let mut rpc_server_config = RpcServerConfig::default_for(network, parallelism);
-        if rpc_toml_config_path.exists() {
-            let rpc_server_toml_str = read_to_string(rpc_toml_config_path)?;
-            let rpc_server_toml: RpcServerToml = from_str(&rpc_server_toml_str)?;
-            rpc_server_config.merge_toml(&rpc_server_toml);
-        }
-
-        let mut builder = NodeBuilder::new(network);
-        if let Some(path) = &self.data_path {
-            builder = builder.data_path(path);
-        }
-        let node = builder.flags(self.get_flags()).finish().unwrap();
+        let node = NodeBuilder::new(network)
+            .data_path(data_path)
+            .flags(self.get_flags())
+            .finish()
+            .unwrap();
 
         let node = Arc::new(node);
         node.start();
@@ -150,15 +124,12 @@ impl RunDaemonArgs {
         let (tx_stop, rx_stop) = tokio::sync::oneshot::channel();
 
         if daemon_config.rpc_enable {
-            let ip_addr = IpAddr::from_str(&rpc_server_config.address)?;
-            let socket_addr = SocketAddr::new(ip_addr, rpc_server_config.port);
-            let enable_control = rpc_server_config.enable_control;
-
+            let socket_addr = rpc_config.listening_addr()?;
             let listener = TcpListener::bind(socket_addr).await?;
             run_rpc_server(
                 node.clone(),
                 listener,
-                enable_control,
+                rpc_config.enable_control,
                 tx_stop,
                 shutdown_signal(rx_stop),
             )
@@ -169,6 +140,27 @@ impl RunDaemonArgs {
 
         node.stop();
         Ok(())
+    }
+
+    pub fn specified_data_path(&self) -> Option<PathBuf> {
+        self.data_path
+            .as_ref()
+            .map(|p| PathBuf::from_str(p).unwrap())
+    }
+
+    pub fn get_network(&self) -> anyhow::Result<Networks> {
+        self.network
+            .as_ref()
+            .map(|s| Networks::from_str(s).map_err(|e| anyhow!(e)))
+            .transpose()
+            .map(|n| n.unwrap_or(Networks::NanoLiveNetwork))
+    }
+
+    pub fn get_data_path(&self, network: Networks) -> anyhow::Result<PathBuf> {
+        self.specified_data_path()
+            .map(|p| Some(p))
+            .unwrap_or_else(|| working_path_for(network))
+            .ok_or_else(|| anyhow!("invalid network"))
     }
 
     pub(crate) fn get_flags(&self) -> NodeFlags {

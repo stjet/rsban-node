@@ -165,8 +165,7 @@ static DEFAULT_TEST_PEER_NETWORK: Lazy<String> =
     Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering-test.nano.org"));
 
 impl NodeConfig {
-    pub fn default_for(network: Networks) -> Self {
-        let parallelism = get_cpu_count();
+    pub fn default_for(network: Networks, parallelism: usize) -> Self {
         let net_params = NetworkParams::new(network);
         Self::new(
             Some(net_params.network.default_node_port),

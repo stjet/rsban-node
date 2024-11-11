@@ -1,6 +1,12 @@
 use rsnano_core::Networks;
-use rsnano_node::config::NetworkConstants;
-use std::net::Ipv6Addr;
+use rsnano_node::config::{get_rpc_toml_config_path, read_toml_file, NetworkConstants};
+use std::{
+    net::{AddrParseError, IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
+    path::Path,
+    str::FromStr,
+};
+
+use crate::RpcServerToml;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct RpcServerConfig {
@@ -42,6 +48,25 @@ impl RpcServerConfig {
 
     pub fn default_for(network: Networks, parallelism: usize) -> Self {
         Self::new(&NetworkConstants::for_network(network), parallelism)
+    }
+
+    pub fn load_from_data_path(
+        network: Networks,
+        parallelism: usize,
+        data_path: impl AsRef<Path>,
+    ) -> anyhow::Result<Self> {
+        let file_path = get_rpc_toml_config_path(data_path.as_ref());
+        let mut result = Self::default_for(network, parallelism);
+        if file_path.exists() {
+            let toml: RpcServerToml = read_toml_file(file_path)?;
+            result.merge_toml(&toml);
+        }
+        Ok(result)
+    }
+
+    pub fn listening_addr(&self) -> Result<SocketAddr, AddrParseError> {
+        let ip_addr = IpAddr::from_str(&self.address)?;
+        Ok(SocketAddr::new(ip_addr, self.port))
     }
 }
 

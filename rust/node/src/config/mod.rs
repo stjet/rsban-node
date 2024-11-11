@@ -17,6 +17,7 @@ pub use node_flags::*;
 pub use node_rpc_config::*;
 pub use opencl_config::*;
 pub use rsnano_core::Networks;
+use serde::de::DeserializeOwned;
 use std::path::{Path, PathBuf};
 pub use toml::DaemonToml;
 
@@ -54,4 +55,9 @@ pub struct GlobalConfig {
     pub node_config: NodeConfig,
     pub flags: NodeFlags,
     pub network_params: NetworkParams,
+}
+
+pub fn read_toml_file<T: DeserializeOwned>(path: impl AsRef<Path>) -> anyhow::Result<T> {
+    let toml_str = std::fs::read_to_string(path)?;
+    ::toml::from_str(&toml_str).map_err(|e| e.into())
 }

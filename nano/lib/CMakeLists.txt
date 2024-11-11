@@ -65,8 +65,6 @@ add_library(
   rpcconfig.cpp
   rsnanoutils.hpp
   rsnanoutils.cpp
-  signal_manager.hpp
-  signal_manager.cpp
   stacktrace.hpp
   stacktrace.cpp
   stats.hpp

@@ -117,3 +117,24 @@ impl TryFrom<u8> for Epoch {
         FromPrimitive::from_u8(value).ok_or_else(|| anyhow!("invalid epoch value"))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_sequential() {
+        assert!(Epochs::is_sequential(Epoch::Epoch0, Epoch::Epoch1));
+        assert!(Epochs::is_sequential(Epoch::Epoch1, Epoch::Epoch2));
+
+        assert_eq!(Epochs::is_sequential(Epoch::Epoch0, Epoch::Epoch2), false);
+        assert_eq!(Epochs::is_sequential(Epoch::Epoch0, Epoch::Invalid), false);
+        assert_eq!(
+            Epochs::is_sequential(Epoch::Unspecified, Epoch::Epoch1),
+            false
+        );
+        assert_eq!(Epochs::is_sequential(Epoch::Epoch1, Epoch::Epoch0), false);
+        assert_eq!(Epochs::is_sequential(Epoch::Epoch2, Epoch::Epoch0), false);
+        assert_eq!(Epochs::is_sequential(Epoch::Epoch2, Epoch::Epoch2), false);
+    }
+}

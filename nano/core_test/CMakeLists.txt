@@ -18,7 +18,6 @@ add_executable(
   frontiers_confirmation.cpp
   ledger.cpp
   ledger_confirm.cpp
-  memory_pool.cpp
   network.cpp
   node.cpp
   object_stream.cpp

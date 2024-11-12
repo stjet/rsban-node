@@ -11,8 +11,10 @@ use tracing_subscriber::EnvFilter;
     .args(&["data_path", "network"]))]
 pub(crate) struct RunDaemonArgs {
     /// Uses the supplied path as the data directory
+    #[arg(long, group = "input")]
     data_path: Option<String>,
     /// Uses the supplied network (live, test, beta or dev)
+    #[arg(long, group = "input")]
     network: Option<String>,
     /// Pass node configuration values
     /// This takes precedence over any values in the configuration file

@@ -157,10 +157,6 @@ fn empty_hashes() {
     let key = KeyPair::new();
     let vote = Arc::new(Vote::new(&key, Vote::TIMESTAMP_MIN, 0, vec![]));
 
-    // In Rust, we don't need to explicitly test the creation of the vote object
-    // as it would fail to compile if there were any issues.
-    // However, we can add some assertions to verify the vote's properties:
-
     assert_eq!(vote.voting_account, key.public_key());
     assert_eq!(vote.timestamp, Vote::TIMESTAMP_MIN);
     assert_eq!(vote.hashes.len(), 0);

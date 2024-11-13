@@ -21,35 +21,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (network, send_valid_confirm_ack)
-{
-	nano::node_flags node_flags;
-	nano::test::system system (2, node_flags);
-	auto & node1 (*system.nodes[0]);
-	auto & node2 (*system.nodes[1]);
-	auto wallet_id1 = node1.wallets.first_wallet_id ();
-	auto wallet_id2 = node2.wallets.first_wallet_id ();
-	nano::keypair key2;
-	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
-	(void)node2.wallets.insert_adhoc (wallet_id2, key2.prv);
-	nano::block_hash latest1 (node1.latest (nano::dev::genesis_key.pub));
-	nano::block_builder builder;
-	auto block2 = builder
-				  .send ()
-				  .previous (latest1)
-				  .destination (key2.pub)
-				  .balance (50)
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (*system.work.generate (latest1))
-				  .build ();
-	nano::block_hash latest2 (node2.latest (nano::dev::genesis_key.pub));
-	node1.process_active (std::make_shared<nano::send_block> (*block2));
-	// Keep polling until latest block changes
-	ASSERT_TIMELY (10s, node2.latest (nano::dev::genesis_key.pub) != latest2);
-	// Make sure the balance has decreased after processing the block.
-	ASSERT_EQ (50, node2.balance (nano::dev::genesis_key.pub));
-}
-
 TEST (network, send_valid_publish)
 {
 	nano::node_flags node_flags;

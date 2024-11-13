@@ -217,3 +217,29 @@ fn multi_keepalive() {
             > 0
     });
 }
+
+#[test]
+fn send_valid_confirm_ack() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let key2 = KeyPair::new();
+    node1.insert_into_wallet(&DEV_GENESIS_KEY);
+    node2.insert_into_wallet(&key2);
+    let block2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::raw(50),
+        key2.public_key().as_account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    node1.process_active(block2);
+    // Keep polling until latest block changes
+    assert_timely(Duration::from_secs(10), || {
+        node2.latest(&DEV_GENESIS_ACCOUNT) != *DEV_GENESIS_HASH
+    });
+    // Make sure the balance has decreased after processing the block.
+    assert_eq!(node2.balance(&DEV_GENESIS_ACCOUNT), Amount::raw(50));
+}

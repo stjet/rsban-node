@@ -13,10 +13,10 @@ impl RpcCommandHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::command_handler::{test_rpc_command, test_rpc_command_with_node};
+    use crate::command_handler::{test_rpc_command_requires_control, test_rpc_command_with_node};
     use rsnano_core::utils::Peer;
     use rsnano_node::Node;
-    use rsnano_rpc_messages::{RpcCommand, RpcError};
+    use rsnano_rpc_messages::RpcCommand;
     use std::sync::Arc;
 
     #[tokio::test]
@@ -35,7 +35,6 @@ mod tests {
 
     #[tokio::test]
     async fn keepalive_fails_without_rpc_control_enabled() {
-        let result: RpcError = test_rpc_command(RpcCommand::keepalive("foobar.com", 123));
-        assert_eq!(result.error, "RPC control is disabled");
+        test_rpc_command_requires_control(RpcCommand::keepalive("foobar.com", 123));
     }
 }

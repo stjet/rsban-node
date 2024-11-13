@@ -252,6 +252,16 @@ fn requires_control(command: &RpcCommand) -> bool {
 use serde::de::DeserializeOwned;
 
 #[cfg(test)]
+pub fn test_rpc_command_requires_control(cmd: RpcCommand) {
+    let node = Arc::new(Node::new_null());
+    let (tx_stop, _rx_stop) = tokio::sync::oneshot::channel();
+    let cmd_handler = RpcCommandHandler::new(node, false, tx_stop);
+    let result = cmd_handler.handle(cmd);
+    let error: RpcError = serde_json::from_value(result).unwrap();
+    assert_eq!(error.error, "RPC control is disabled");
+}
+
+#[cfg(test)]
 pub fn test_rpc_command<T>(cmd: RpcCommand) -> T
 where
     T: DeserializeOwned,

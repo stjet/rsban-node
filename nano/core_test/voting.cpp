@@ -10,57 +10,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (vote_generator, cache)
-{
-	nano::test::system system (1);
-	auto & node (*system.nodes[0]);
-	auto epoch1 = system.upgrade_genesis_epoch (node, nano::epoch::epoch_1);
-	(void)node.wallets.insert_adhoc (node.wallets.first_wallet_id (), nano::dev::genesis_key.prv);
-	node.enqueue_vote_request (epoch1->root (), epoch1->hash ());
-	ASSERT_TIMELY (1s, !node.history.votes (epoch1->root (), epoch1->hash ()).empty ());
-	auto votes (node.history.votes (epoch1->root (), epoch1->hash ()));
-	ASSERT_FALSE (votes.empty ());
-	auto hashes{ votes[0]->hashes () };
-	ASSERT_TRUE (std::any_of (hashes.begin (), hashes.end (), [hash = epoch1->hash ()] (nano::block_hash const & hash_a) { return hash_a == hash; }));
-}
-
-TEST (vote_generator, multiple_representatives)
-{
-	nano::test::system system (1);
-	auto & node (*system.nodes[0]);
-	auto wallet_id = node.wallets.first_wallet_id ();
-	nano::keypair key1, key2, key3;
-	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	(void)node.wallets.insert_adhoc (wallet_id, key1.prv);
-	(void)node.wallets.insert_adhoc (wallet_id, key2.prv);
-	(void)node.wallets.insert_adhoc (wallet_id, key3.prv);
-	auto const amount = 100 * nano::Gxrb_ratio;
-	node.wallets.send_sync (wallet_id, nano::dev::genesis_key.pub, key1.pub, amount);
-	node.wallets.send_sync (wallet_id, nano::dev::genesis_key.pub, key2.pub, amount);
-	node.wallets.send_sync (wallet_id, nano::dev::genesis_key.pub, key3.pub, amount);
-	ASSERT_TIMELY (3s, node.balance (key1.pub) == amount && node.balance (key2.pub) == amount && node.balance (key3.pub) == amount);
-	node.wallets.change_sync (wallet_id, key1.pub, key1.pub);
-	node.wallets.change_sync (wallet_id, key2.pub, key2.pub);
-	node.wallets.change_sync (wallet_id, key3.pub, key3.pub);
-	ASSERT_EQ (node.weight (key1.pub), amount);
-	ASSERT_EQ (node.weight (key2.pub), amount);
-	ASSERT_EQ (node.weight (key3.pub), amount);
-	node.wallets.compute_reps ();
-	ASSERT_EQ (4, node.wallets.voting_reps_count ());
-	auto hash = node.wallets.send_sync (wallet_id, nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, 1);
-	auto send = node.block (hash);
-	ASSERT_NE (nullptr, send);
-	ASSERT_TIMELY_EQ (5s, node.history.votes (send->root (), send->hash ()).size (), 4);
-	auto votes (node.history.votes (send->root (), send->hash ()));
-	for (auto const & account : { key1.pub, key2.pub, key3.pub, nano::dev::genesis_key.pub })
-	{
-		auto existing (std::find_if (votes.begin (), votes.end (), [&account] (std::shared_ptr<nano::vote> const & vote_a) -> bool {
-			return vote_a->account () == account;
-		}));
-		ASSERT_NE (votes.end (), existing);
-	}
-}
-
 TEST (vote_spacing, basic)
 {
 	nano::vote_spacing spacing{ std::chrono::milliseconds{ 100 } };

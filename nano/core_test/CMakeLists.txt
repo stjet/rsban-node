@@ -14,7 +14,6 @@ add_executable(
   frontiers_confirmation.cpp
   ledger.cpp
   ledger_confirm.cpp
-  network.cpp
   node.cpp
   optimistic_scheduler.cpp
   system.cpp

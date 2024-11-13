@@ -5,6 +5,7 @@ use rsnano_network::{ChannelMode, DropPolicy, TrafficType};
 use rsnano_node::{
     bootstrap::BootstrapInitiatorExt,
     stats::{DetailType, Direction, StatType},
+    wallets::WalletsExt,
 };
 use std::{ops::Deref, sync::Arc, time::Duration};
 use test_helpers::{
@@ -311,5 +312,41 @@ fn send_with_receive() {
     assert_timely(Duration::from_secs(10), || {
         node1.balance(&key2.public_key().as_account()) == node1.config.receive_minimum
             && node2.balance(&key2.public_key().as_account()) == node1.config.receive_minimum
+    });
+}
+
+#[test]
+fn receive_weight_change() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let key2 = KeyPair::new();
+    node1.insert_into_wallet(&DEV_GENESIS_KEY);
+    node2.insert_into_wallet(&key2);
+    node2
+        .wallets
+        .set_representative(node2.wallets.wallet_ids()[0], key2.public_key(), false)
+        .unwrap();
+    node1
+        .wallets
+        .send_action2(
+            &node1.wallets.wallet_ids()[0],
+            *DEV_GENESIS_ACCOUNT,
+            key2.public_key().as_account(),
+            node1.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_timely(Duration::from_secs(10), || {
+        node1
+            .ledger
+            .weight_exact(&node1.ledger.read_txn(), key2.public_key())
+            == node1.config.receive_minimum
+            && node2
+                .ledger
+                .weight_exact(&node2.ledger.read_txn(), key2.public_key())
+                == node1.config.receive_minimum
     });
 }

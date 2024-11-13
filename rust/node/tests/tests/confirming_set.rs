@@ -202,3 +202,110 @@ fn confirmed_history() {
     assert_eq!(node.ledger.cemented_count(), 3);
     assert_eq!(node.active.vote_applier.election_winner_details_len(), 0);
 }
+
+#[test]
+fn dependent_election() {
+    let mut system = System::new();
+    let flags = NodeFlags {
+        force_use_write_queue: true,
+        ..Default::default()
+    };
+    let config = NodeConfig {
+        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+        ..System::default_config()
+    };
+    let node = system.build_node().flags(flags).config(config).finish();
+    let latest = node.latest(&DEV_GENESIS_ACCOUNT);
+
+    let key1 = KeyPair::new();
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        latest,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(1000),
+        key1.account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(latest.into()),
+    ));
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(2000),
+        key1.account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(send.hash().into()),
+    ));
+
+    let send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send1.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(3000),
+        key1.account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(send1.hash().into()),
+    ));
+
+    node.process_multi(&[send.clone(), send1.clone(), send2.clone()]);
+
+    // This election should be confirmed as active_conf_height
+    start_election(&node, &send1.hash());
+    // Start an election and confirm it
+    let election = start_election(&node, &send2.hash());
+    node.active.force_confirm(&election);
+
+    // Wait for blocks to be confirmed in ledger, callbacks will happen after
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats.count(
+                StatType::ConfirmationHeight,
+                DetailType::BlocksConfirmed,
+                Direction::In,
+            )
+        },
+        3,
+    );
+    // Once the item added to the confirming set no longer exists, callbacks have completed
+    assert_timely(Duration::from_secs(5), || {
+        !node.confirming_set.exists(&send2.hash())
+    });
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats.count(
+                StatType::ConfirmationObserver,
+                DetailType::ActiveQuorum,
+                Direction::Out,
+            )
+        },
+        1,
+    );
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats.count(
+                StatType::ConfirmationObserver,
+                DetailType::ActiveConfHeight,
+                Direction::Out,
+            )
+        },
+        1,
+    );
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats.count(
+                StatType::ConfirmationObserver,
+                DetailType::InactiveConfHeight,
+                Direction::Out,
+            )
+        },
+        1,
+    );
+    assert_eq!(node.ledger.cemented_count(), 4);
+    assert_eq!(node.active.vote_applier.election_winner_details_len(), 0);
+}

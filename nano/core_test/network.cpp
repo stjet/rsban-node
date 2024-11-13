@@ -21,29 +21,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (network, multi_keepalive)
-{
-	nano::test::system system (1);
-	auto node0 = system.nodes[0];
-	ASSERT_EQ (0, node0->network->size ());
-	auto node1 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.work));
-	ASSERT_FALSE (node1->init_error ());
-	node1->start ();
-	system.nodes.push_back (node1);
-	ASSERT_EQ (0, node1->network->size ());
-	ASSERT_EQ (0, node0->network->size ());
-	node1->connect (node0->network->endpoint ());
-	ASSERT_TIMELY (10s, node0->network->size () == 1 && node0->stats->count (nano::stat::type::message, nano::stat::detail::keepalive) >= 1);
-	auto node2 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.work));
-	ASSERT_FALSE (node2->init_error ());
-	node2->start ();
-	system.nodes.push_back (node2);
-	node2->connect (node0->network->endpoint ());
-	// ASSERT_TIMELY (10s, node1->network->size () == 2 && node0->network->size () == 2 && node2->network->size () == 2 && node0->stats->count (nano::stat::type::message, nano::stat::detail::keepalive) >= 2);
-	std::this_thread::sleep_for (10s);
-	std::cout << "node0: " << node0->network->size () << ", node1: " << node1->network->size () << ", node2: " << node2->network->size () << std::endl;
-}
-
 TEST (network, send_valid_confirm_ack)
 {
 	nano::node_flags node_flags;

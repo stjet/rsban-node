@@ -5,7 +5,8 @@ use rsnano_network::{ChannelMode, DropPolicy, TrafficType};
 use rsnano_node::stats::{DetailType, Direction, StatType};
 use std::{ops::Deref, sync::Arc, time::Duration};
 use test_helpers::{
-    assert_timely_eq, assert_timely_msg, establish_tcp, make_fake_channel, start_election, System,
+    assert_timely, assert_timely_eq, assert_timely_msg, establish_tcp, make_fake_channel,
+    start_election, System,
 };
 
 #[test]
@@ -202,4 +203,17 @@ fn receivable_processor_confirm_sufficient_pos() {
     node1.inbound_message_queue.put(con1, channel.info.clone());
 
     assert_timely_eq(Duration::from_secs(5), || election.vote_count(), 2);
+}
+
+#[test]
+fn multi_keepalive() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let _node2 = system.make_node();
+    assert_timely(Duration::from_secs(10), || {
+        node1
+            .stats
+            .count(StatType::Message, DetailType::Keepalive, Direction::In)
+            > 0
+    });
 }

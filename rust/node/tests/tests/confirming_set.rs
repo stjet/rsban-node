@@ -1,11 +1,11 @@
 use rsnano_core::{Amount, BlockEnum, KeyPair, StateBlock, DEV_GENESIS_KEY};
-use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
-    consensus::ActiveElectionsExt,
+    consensus::{ActiveElectionsExt, Election, ElectionBehavior, ElectionStatus},
     stats::{DetailType, Direction, StatType},
 };
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_always_eq, assert_timely, assert_timely_eq, start_election, System};
 
 #[test]
@@ -307,5 +307,40 @@ fn dependent_election() {
         1,
     );
     assert_eq!(node.ledger.cemented_count(), 4);
+    assert_eq!(node.active.vote_applier.election_winner_details_len(), 0);
+}
+
+#[test]
+fn election_winner_details_clearing_node_process_confirmed() {
+    // Make sure election_winner_details is also cleared if the block never enters the confirmation height processor from node::process_confirmed
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let send = Arc::new(BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(1000),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    )));
+    // Add to election_winner_details. Use an unrealistic iteration so that it should fall into the else case and do a cleanup
+    node.active.vote_applier.add_election_winner_details(
+        send.hash(),
+        Arc::new(Election::new(
+            1,
+            send.clone(),
+            ElectionBehavior::Manual,
+            Box::new(|_| {}),
+            Box::new(|_| {}),
+        )),
+    );
+
+    let mut election = ElectionStatus::default();
+    election.winner = Some(send);
+
+    node.active.process_confirmed(election, 1000000);
+
     assert_eq!(node.active.vote_applier.election_winner_details_len(), 0);
 }

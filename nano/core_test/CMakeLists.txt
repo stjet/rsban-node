@@ -7,7 +7,6 @@ add_executable(
   bootstrap.cpp
   bootstrap_ascending.cpp
   cli.cpp
-  confirming_set.cpp
   conflicts.cpp
   difficulty.cpp
   distributed_work.cpp

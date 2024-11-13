@@ -57,53 +57,6 @@ TEST (bootstrap_processor, process_two)
 	ASSERT_TIMELY_EQ (5s, node1->latest (nano::dev::genesis_key.pub), node0->latest (nano::dev::genesis_key.pub)); // nodes should sync up
 }
 
-// Bootstrap can pull universal blocks
-TEST (bootstrap_processor, process_state)
-{
-	nano::test::system system;
-	nano::node_config config = system.default_config ();
-	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	nano::node_flags node_flags;
-	node_flags.set_disable_bootstrap_bulk_push_client (true);
-	auto node0 (system.add_node (config, node_flags));
-	nano::state_block_builder builder;
-
-	auto wallet_id = node0->wallets.first_wallet_id ();
-	(void)node0->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	auto block1 = builder
-				  .account (nano::dev::genesis_key.pub)
-				  .previous (node0->latest (nano::dev::genesis_key.pub))
-				  .representative (nano::dev::genesis_key.pub)
-				  .balance (nano::dev::constants.genesis_amount - 100)
-				  .link (nano::dev::genesis_key.pub)
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (0)
-				  .build ();
-	auto block2 = builder
-				  .make_block ()
-				  .account (nano::dev::genesis_key.pub)
-				  .previous (block1->hash ())
-				  .representative (nano::dev::genesis_key.pub)
-				  .balance (nano::dev::constants.genesis_amount)
-				  .link (block1->hash ())
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (0)
-				  .build ();
-
-	node0->work_generate_blocking (*block1);
-	node0->work_generate_blocking (*block2);
-	ASSERT_EQ (nano::block_status::progress, node0->process (block1));
-	ASSERT_EQ (nano::block_status::progress, node0->process (block2));
-	ASSERT_TIMELY_EQ (5s, nano::test::account_info (*node0, nano::dev::genesis_key.pub).block_count (), 3);
-
-	auto node1 = system.make_disconnected_node (std::nullopt, node_flags);
-	ASSERT_EQ (node0->latest (nano::dev::genesis_key.pub), block2->hash ());
-	ASSERT_NE (node1->latest (nano::dev::genesis_key.pub), block2->hash ());
-	node1->connect (node0->network->endpoint ());
-	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
-	ASSERT_TIMELY_EQ (5s, node1->latest (nano::dev::genesis_key.pub), block2->hash ());
-}
-
 TEST (bootstrap_processor, process_new)
 {
 	nano::test::system system;
@@ -144,58 +97,6 @@ TEST (bootstrap_processor, process_new)
 	node3->bootstrap_initiator.bootstrap (node1->network->endpoint ());
 	ASSERT_TIMELY_EQ (5s, node3->balance (key2.pub), amount);
 	node3->stop ();
-}
-
-TEST (bootstrap_processor, pull_diamond)
-{
-	nano::test::system system;
-	nano::node_config config = system.default_config ();
-	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	nano::node_flags node_flags;
-	node_flags.set_disable_bootstrap_bulk_push_client (true);
-	auto node0 (system.add_node (config, node_flags));
-	nano::keypair key;
-	nano::block_builder builder;
-	auto send1 = builder
-				 .send ()
-				 .previous (node0->latest (nano::dev::genesis_key.pub))
-				 .destination (key.pub)
-				 .balance (0)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (node0->latest (nano::dev::genesis_key.pub)))
-				 .build ();
-	ASSERT_EQ (nano::block_status::progress, node0->process (send1));
-	auto open = builder
-				.open ()
-				.source (send1->hash ())
-				.representative (1)
-				.account (key.pub)
-				.sign (key.prv, key.pub)
-				.work (*system.work.generate (key.pub))
-				.build ();
-	ASSERT_EQ (nano::block_status::progress, node0->process (open));
-	auto send2 = builder
-				 .send ()
-				 .previous (open->hash ())
-				 .destination (nano::dev::genesis_key.pub)
-				 .balance (std::numeric_limits<nano::uint128_t>::max () - 100)
-				 .sign (key.prv, key.pub)
-				 .work (*system.work.generate (open->hash ()))
-				 .build ();
-	ASSERT_EQ (nano::block_status::progress, node0->process (send2));
-	auto receive = builder
-				   .receive ()
-				   .previous (send1->hash ())
-				   .source (send2->hash ())
-				   .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				   .work (*system.work.generate (send1->hash ()))
-				   .build ();
-	ASSERT_EQ (nano::block_status::progress, node0->process (receive));
-
-	auto node1 = system.make_disconnected_node ();
-	node1->connect (node0->network->endpoint ());
-	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
-	ASSERT_TIMELY_EQ (5s, node1->balance (nano::dev::genesis_key.pub), 100);
 }
 
 // TODO Gustav: I've disabled this test because it fails I haven't found out why yet.

@@ -798,7 +798,6 @@ mod bootstrap_processor {
             || node3.balance(&key2.public_key().into()),
             amount,
         );
-        node3.stop();
     }
 
     #[test]
@@ -876,6 +875,7 @@ mod bootstrap_processor {
         );
     }
 
+    // Bootstrap can pull one basic block
     #[test]
     fn bootstrap_processor_process_one() {
         let mut system = System::new();

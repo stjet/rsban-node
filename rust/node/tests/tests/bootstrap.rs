@@ -186,13 +186,7 @@ mod bootstrap_processor {
 
         // Start lazy bootstrap with last block in sender chain
         config.peering_port = Some(get_available_port());
-        let node2 = system
-            .build_node()
-            .config(config)
-            .flags(flags)
-            .disconnected()
-            .finish();
-        establish_tcp(&node2, &node1);
+        let node2 = system.build_node().config(config).flags(flags).finish();
         node2
             .bootstrap_initiator
             .bootstrap_lazy(send2.hash().into(), true, "".to_string());

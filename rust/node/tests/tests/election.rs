@@ -320,11 +320,6 @@ fn quorum_minimum_flip_success() {
         ..System::default_config()
     };
     let node1 = system.build_node().config(config).finish();
-    let wallet_id = node1.wallets.wallet_ids()[0];
-    node1
-        .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
-        .unwrap();
 
     let key1 = KeyPair::new();
     let send1 = BlockEnum::State(StateBlock::new(

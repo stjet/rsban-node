@@ -116,64 +116,6 @@ TEST (active_elections, vote_replays)
 }
 }
 
-// Tests that blocks are correctly cleared from the duplicate filter for unconfirmed elections
-TEST (active_elections, dropped_cleanup)
-{
-	nano::test::system system;
-	nano::node_flags flags;
-	flags.set_disable_request_loop (true);
-	auto & node (*system.add_node (flags));
-	auto chain = nano::test::setup_chain (system, node, 1, nano::dev::genesis_key, false);
-	auto hash = chain[0]->hash ();
-
-	// Add to network filter to ensure proper cleanup after the election is dropped
-	std::vector<uint8_t> block_bytes;
-	{
-		nano::vectorstream stream (block_bytes);
-		chain[0]->serialize (stream);
-	}
-	ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
-	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
-
-	auto election = nano::test::start_election (system, node, hash);
-	ASSERT_NE (nullptr, election);
-
-	// Not yet removed
-	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
-	ASSERT_TRUE (node.election_active (hash));
-
-	// Now simulate dropping the election
-	ASSERT_FALSE (node.active.confirmed (*election));
-	node.active.erase (*chain[0]);
-
-	// The filter must have been cleared
-	ASSERT_FALSE (node.network->tcp_channels->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
-
-	// An election was recently dropped
-	ASSERT_EQ (1, node.stats->count (nano::stat::type::active_elections_dropped, nano::stat::detail::manual));
-
-	// Block cleared from active
-	ASSERT_FALSE (node.election_active (hash));
-
-	// Repeat test for a confirmed election
-	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
-
-	election = nano::test::start_election (system, node, hash);
-	ASSERT_NE (nullptr, election);
-	node.active.force_confirm (*election);
-	ASSERT_TIMELY (5s, node.active.confirmed (*election));
-	node.active.erase (*chain[0]);
-
-	// The filter should not have been cleared
-	ASSERT_TRUE (node.network->tcp_channels->publish_filter->apply (block_bytes.data (), block_bytes.size ()));
-
-	// Not dropped
-	ASSERT_EQ (1, node.stats->count (nano::stat::type::active_elections_dropped, nano::stat::detail::manual));
-
-	// Block cleared from active
-	ASSERT_FALSE (node.election_active (hash));
-}
-
 /*
  * What this test is doing:
  * Create 20 representatives with minimum principal weight each

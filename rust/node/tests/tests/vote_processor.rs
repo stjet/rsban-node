@@ -152,6 +152,9 @@ fn overflow() {
     assert!(start_time.elapsed() < Duration::from_secs(10));
 }
 
+/**
+ * Test that a vote can encode an empty hash set
+ */
 #[test]
 fn empty_hashes() {
     let key = KeyPair::new();

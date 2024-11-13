@@ -954,6 +954,7 @@ fn broadcast_block_on_activation() {
     assert_timely(Duration::from_secs(5), || node2.block_exists(&send1.hash()));
 }
 
+// Tests that blocks are correctly cleared from the duplicate filter for unconfirmed elections
 #[test]
 fn dropped_cleanup() {
     let mut system = System::new();

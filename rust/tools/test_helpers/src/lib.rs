@@ -2,9 +2,7 @@ use rsnano_core::{
     work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, Epoch, KeyPair, Networks,
     StateBlock, StateBlockBuilder, WalletId, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{
-    BlockStatus, Ledger, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
-};
+use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},

@@ -3,6 +3,7 @@ mod backlog;
 mod bootstrap;
 mod bootstrap_server;
 mod confirmation_solicitor;
+mod confirming_set;
 mod election;
 mod election_scheduler;
 mod network;

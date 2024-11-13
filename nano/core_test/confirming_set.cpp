@@ -12,53 +12,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (confirmation_callback, observer_callbacks)
-{
-	nano::test::system system;
-	nano::node_flags node_flags;
-	nano::node_config node_config = system.default_config ();
-	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	auto node = system.add_node (node_config, node_flags);
-
-	auto wallet_id = node->wallets.first_wallet_id ();
-	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	nano::block_hash latest (node->latest (nano::dev::genesis_key.pub));
-
-	nano::keypair key1;
-	nano::block_builder builder;
-	auto send = builder
-				.send ()
-				.previous (latest)
-				.destination (key1.pub)
-				.balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				.work (*system.work.generate (latest))
-				.build ();
-	auto send1 = builder
-				 .send ()
-				 .previous (send->hash ())
-				 .destination (key1.pub)
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio * 2)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (send->hash ()))
-				 .build ();
-
-	{
-		auto transaction = node->store.tx_begin_write ();
-		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, send));
-		ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, send1));
-	}
-
-	node->confirming_set.add (send1->hash ());
-
-	// Callback is performed for all blocks that are confirmed
-	ASSERT_TIMELY_EQ (5s, 2, node->stats->count (nano::stat::type::confirmation_observer, nano::stat::dir::out));
-
-	ASSERT_EQ (2, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (3, node->ledger.cemented_count ());
-	ASSERT_EQ (0, node->active.election_winner_details_size ());
-}
-
 // The callback and confirmation history should only be updated after confirmation height is set (and not just after voting)
 TEST (confirmation_callback, confirmed_history)
 {

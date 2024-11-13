@@ -1335,16 +1335,17 @@ fn unlock_search() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
-    let send_result = node.wallets.send_action2(
-        &wallet_id,
-        *DEV_GENESIS_ACCOUNT,
-        key2.account(),
-        node.config.receive_minimum,
-        0,
-        true,
-        None,
-    );
-    assert!(send_result.is_ok());
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
 
     assert_timely_msg(
         Duration::from_secs(10),
@@ -1357,7 +1358,9 @@ fn unlock_search() {
     node.wallets
         .insert_adhoc2(&wallet_id, &key2.private_key(), true)
         .unwrap();
-    //node.wallets.set_password(&wallet_id, &KeyPair::new().private_key()).unwrap();
+    //node.wallets
+    //    .set_password(&wallet_id, &KeyPair::new().private_key())
+    //    .unwrap();
     node.wallets.enter_password(wallet_id, "").unwrap();
 
     assert_timely_msg(
@@ -1539,17 +1542,17 @@ fn search_receivable() {
     node.wallets
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
-    let send_result = node.wallets.send_action2(
-        &wallet_id,
-        *DEV_GENESIS_ACCOUNT,
-        key2.account(),
-        node.config.receive_minimum,
-        0,
-        true,
-        None,
-    );
-
-    assert!(send_result.is_ok());
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
 
     node.wallets
         .insert_adhoc2(&wallet_id, &key2.private_key(), true)
@@ -1618,41 +1621,44 @@ fn search_receivable_multiple() {
     node.wallets
         .insert_adhoc2(&wallet_id, &key3.private_key(), true)
         .unwrap();
-    let send_result1 = node.wallets.send_action2(
-        &wallet_id,
-        *DEV_GENESIS_ACCOUNT,
-        key3.account(),
-        node.config.receive_minimum,
-        0,
-        true,
-        None,
-    );
-    assert!(send_result1.is_ok());
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key3.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
     assert_timely_msg(
         Duration::from_secs(10),
         || !node.balance(&key3.account()).is_zero(),
         "key3 balance is still zero",
     );
-    let send_result2 = node.wallets.send_action2(
-        &wallet_id,
-        *DEV_GENESIS_ACCOUNT,
-        key2.account(),
-        node.config.receive_minimum,
-        0,
-        true,
-        None,
-    );
-    assert!(send_result2.is_ok());
-    let send_result3 = node.wallets.send_action2(
-        &wallet_id,
-        key3.account(),
-        key2.account(),
-        node.config.receive_minimum,
-        0,
-        true,
-        None,
-    );
-    assert!(send_result3.is_ok());
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            key3.account(),
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
     node.wallets
         .insert_adhoc2(&wallet_id, &key2.private_key(), true)
         .unwrap();

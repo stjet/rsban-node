@@ -162,6 +162,9 @@ fn empty_hashes() {
     assert_eq!(vote.hashes.len(), 0);
 }
 
+/**
+ * basic test to check that the timestamp mask is applied correctly on vote timestamp and duration fields
+ */
 #[test]
 fn timestamp_and_duration_masking() {
     let key = KeyPair::new();

@@ -1129,6 +1129,12 @@ fn fork_filter_cleanup() {
         node2.active.election(&send1.qualified_root()).is_some()
     });
 
+    // TODO: questions: why doesn't node2 pick up "fork" from node1? because it connected to node1 after node1
+    //                  already process_active()d the fork? shouldn't it broadcast it anyway, even later?
+    //
+    //                  how about node1 picking up "send1" from node2? we know it does because we assert at
+    //                  the end that it is within node1's AEC, but why node1.block_count doesn't increase?
+    //
     assert_timely_eq(Duration::from_secs(5), || node2.ledger.block_count(), 2);
     assert_timely_eq(Duration::from_secs(5), || node1.ledger.block_count(), 2);
 
@@ -1138,6 +1144,7 @@ fn fork_filter_cleanup() {
     });
 }
 
+// Ensures votes are tallied on election::publish even if no vote is inserted through inactive_votes_cache
 #[test]
 fn conflicting_block_vote_existing_election() {
     let mut system = System::new();

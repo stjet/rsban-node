@@ -127,44 +127,28 @@ mod bucket {
 mod election_scheduler {
     use rsnano_core::{Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-    use rsnano_node::{
-        config::{FrontiersConfirmationMode, NodeConfig},
-        wallets::WalletsExt,
-    };
     use std::time::Duration;
     use test_helpers::{assert_timely, System};
 
     #[test]
     fn activate_one_timely() {
         let mut system = System::new();
-        let config = NodeConfig {
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
-        };
-        let node = system.build_node().config(config).finish();
-        let wallet_id = node.wallets.wallet_ids()[0];
-        node.wallets
-            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
-            .unwrap();
+        let node = system.make_node();
 
-        // Create a send block
-        let send1 = BlockEnum::State(StateBlock::new(
+        let mut send1 = BlockEnum::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
-            node.balance(&*DEV_GENESIS_ACCOUNT) - Amount::raw(1_000_000_000_000_000_000_000_000),
+            node.balance(&*DEV_GENESIS_ACCOUNT) - Amount::nano(1000),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
             node.work_generate_dev((*DEV_GENESIS_HASH).into()),
         ));
 
-        // Process the block
-        node.process_active(send1.clone());
-        assert_timely(Duration::from_secs(5), || {
-            node.block(&send1.hash()).is_some()
-        });
+        node.ledger
+            .process(&mut node.ledger.rw_txn(), &mut send1)
+            .unwrap();
 
-        // Activate the account
         node.election_schedulers
             .priority
             .activate(&node.store.tx_begin_read(), &*DEV_GENESIS_ACCOUNT);

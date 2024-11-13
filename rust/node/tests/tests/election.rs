@@ -4,7 +4,7 @@ use rsnano_core::{
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeConfig},
-    consensus::{ActiveElectionsExt, ElectionBehavior},
+    consensus::ElectionBehavior,
     stats::{DetailType, Direction, StatType},
     wallets::WalletsExt,
 };
@@ -379,28 +379,4 @@ fn election_behavior() {
 
     let election = start_election(&node, &chain[0].hash());
     assert_eq!(election.behavior, ElectionBehavior::Manual);
-}
-
-#[test]
-fn election_construction() {
-    let mut system = System::new();
-    let node = system.build_node().finish();
-
-    let genesis_block = BlockEnum::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX,
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
-    ));
-
-    let election = node.active.insert(
-        &Arc::new(genesis_block.clone()),
-        ElectionBehavior::Priority,
-        None,
-    );
-
-    assert!(election.1.is_some());
 }

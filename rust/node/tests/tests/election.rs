@@ -166,6 +166,7 @@ fn continuous_voting() {
     });
 }
 
+// checks that block cannot be confirmed if there is no enough votes to reach quorum
 #[test]
 fn quorum_minimum_confirm_fail() {
     let mut system = System::new();
@@ -210,6 +211,7 @@ fn quorum_minimum_confirm_fail() {
     assert_eq!(node1.active.confirmed(&election), false);
 }
 
+// This test ensures blocks can be confirmed precisely at the quorum minimum
 #[test]
 fn quorum_minimum_confirm_success() {
     let mut system = System::new();
@@ -259,11 +261,6 @@ fn quorum_minimum_flip_fail() {
         ..System::default_config()
     };
     let node1 = system.build_node().config(config).finish();
-    let wallet_id = node1.wallets.wallet_ids()[0];
-    node1
-        .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
-        .unwrap();
 
     let key1 = KeyPair::new();
     let send1 = BlockEnum::State(StateBlock::new(

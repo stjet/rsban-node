@@ -1,8 +1,10 @@
 use rsnano_core::{
-    work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteSource,
-    DEV_GENESIS_KEY,
+    utils::MemoryStream, work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair,
+    StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{
+    BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
+};
 use rsnano_network::ChannelId;
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeFlags},
@@ -15,10 +17,12 @@ use std::{
     sync::{atomic::Ordering, Arc},
     thread::sleep,
     time::Duration,
+    usize,
 };
 use test_helpers::{
     assert_never, assert_timely, assert_timely_eq, assert_timely_msg, get_available_port,
-    setup_independent_blocks, start_election, System,
+    process_open_block, process_send_block, setup_independent_blocks, start_election,
+    start_elections, System,
 };
 
 /// What this test is doing:
@@ -948,4 +952,419 @@ fn broadcast_block_on_activation() {
         node1.active.active_root(&send1.qualified_root())
     });
     assert_timely(Duration::from_secs(5), || node2.block_exists(&send1.hash()));
+}
+
+// Tests that blocks are correctly cleared from the duplicate filter for unconfirmed elections
+#[test]
+fn dropped_cleanup() {
+    let mut system = System::new();
+    let flags = NodeFlags {
+        disable_request_loop: true,
+        ..Default::default()
+    };
+    let node = system.build_node().flags(flags).finish();
+    let chain = setup_independent_blocks(&node, 1, &DEV_GENESIS_KEY);
+    let hash = chain[0].hash();
+    let qual_root = chain[0].qualified_root();
+
+    // Add to network filter to ensure proper cleanup after the election is dropped
+    let mut stream = MemoryStream::new();
+    chain[0].serialize(&mut stream);
+    let block_bytes = stream.as_bytes();
+    assert!(!node.publish_filter.apply(&block_bytes).1);
+    assert!(node.publish_filter.apply(&block_bytes).1);
+
+    let election = start_election(&node, &hash);
+
+    // Not yet removed
+    assert!(node.publish_filter.apply(&block_bytes).1);
+    assert!(node.active.election(&qual_root).is_some());
+
+    // Now simulate dropping the election
+    assert!(!node.active.confirmed(&election));
+    node.active.erase(&qual_root);
+
+    // The filter must have been cleared
+    assert!(node.publish_filter.apply(&block_bytes).1);
+
+    // An election was recently dropped
+    assert_eq!(
+        1,
+        node.stats.count(
+            StatType::ActiveElectionsDropped,
+            DetailType::Manual,
+            Direction::In
+        )
+    );
+
+    // Block cleared from active
+    assert!(node.active.election(&qual_root).is_none());
+
+    // Repeat test for a confirmed election
+    assert!(node.publish_filter.apply(&block_bytes).1);
+
+    let election = start_election(&node, &hash);
+    node.active.force_confirm(&election);
+    assert_timely(Duration::from_secs(5), || node.active.confirmed(&election));
+    node.active.erase(&qual_root);
+
+    // The filter should not have been cleared
+    assert!(node.publish_filter.apply(&block_bytes).1);
+
+    // Not dropped
+    assert_eq!(
+        1,
+        node.stats.count(
+            StatType::ActiveElectionsDropped,
+            DetailType::Manual,
+            Direction::In
+        )
+    );
+
+    // Block cleared from active
+    assert!(node.active.election(&qual_root).is_none());
+}
+
+#[test]
+fn confirmation_consistency() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let node = system.build_node().config(config).finish();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    for i in 0..10 {
+        let block = node
+            .wallets
+            .send_action2(
+                &wallet_id,
+                *DEV_GENESIS_ACCOUNT,
+                Account::from(0),
+                node.config.receive_minimum,
+                0,
+                true,
+                None,
+            )
+            .unwrap();
+
+        assert_timely(Duration::from_secs(5), || {
+            node.block_confirmed(&block.hash())
+        });
+
+        assert_timely(Duration::from_secs(1), || {
+            let recently_confirmed_size = node.active.recently_confirmed_count();
+            let latest_recently_confirmed_root = node.active.latest_recently_confirmed();
+            let recently_cemented_size = node.active.recently_cemented_list();
+
+            recently_confirmed_size == i + 1
+                && latest_recently_confirmed_root == Some((block.qualified_root(), block.hash()))
+                && recently_cemented_size.len() == i + 1
+        });
+    }
+}
+
+#[test]
+fn fork_filter_cleanup() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let node1 = system.build_node().config(config.clone()).finish();
+
+    let key = KeyPair::new();
+    let latest_hash = *DEV_GENESIS_HASH;
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        latest_hash,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(1),
+        key.account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(latest_hash.into()),
+    ));
+
+    let mut stream = MemoryStream::new();
+    send1.serialize(&mut stream);
+    let send_block_bytes = stream.as_bytes();
+
+    // Generate 10 forks to prevent new block insertion to election
+    for i in 0..10 {
+        let fork = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            latest_hash,
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - Amount::raw(1 + i),
+            key.account().into(),
+            &DEV_GENESIS_KEY,
+            node1.work_generate_dev(latest_hash.into()),
+        ));
+
+        node1.process_active(fork.clone());
+        assert_timely(Duration::from_secs(5), || {
+            node1.active.election(&fork.qualified_root()).is_some()
+        });
+    }
+
+    // All forks were merged into the same election
+    assert_timely(Duration::from_secs(5), || {
+        node1.active.election(&send1.qualified_root()).is_some()
+    });
+    let election = node1.active.election(&send1.qualified_root()).unwrap();
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || election.mutex.lock().unwrap().last_blocks.len(),
+        10,
+    );
+    assert_eq!(1, node1.active.len());
+
+    // Instantiate a new node
+    config.peering_port = Some(get_available_port());
+    let node2 = system.build_node().config(config).finish();
+
+    // Process the first initial block on node2
+    node2.process_active(send1.clone());
+    assert_timely(Duration::from_secs(5), || {
+        node2.active.election(&send1.qualified_root()).is_some()
+    });
+
+    // TODO: questions: why doesn't node2 pick up "fork" from node1? because it connected to node1 after node1
+    //                  already process_active()d the fork? shouldn't it broadcast it anyway, even later?
+    //
+    //                  how about node1 picking up "send1" from node2? we know it does because we assert at
+    //                  the end that it is within node1's AEC, but why node1.block_count doesn't increase?
+    //
+    assert_timely_eq(Duration::from_secs(5), || node2.ledger.block_count(), 2);
+    assert_timely_eq(Duration::from_secs(5), || node1.ledger.block_count(), 2);
+
+    // Block is erased from the duplicate filter
+    assert_timely(Duration::from_secs(5), || {
+        !node1.publish_filter.apply(&send_block_bytes).1
+    });
+}
+
+// Ensures votes are tallied on election::publish even if no vote is inserted through inactive_votes_cache
+#[test]
+fn conflicting_block_vote_existing_election() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let flags = NodeFlags {
+        disable_request_loop: true,
+        ..Default::default()
+    };
+    let node = system.build_node().config(config).flags(flags).finish();
+    let key = KeyPair::new();
+
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(100),
+        key.account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let fork = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(200),
+        key.account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let vote_fork = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![fork.hash()]));
+
+    assert_eq!(
+        node.process_local(send.clone()).unwrap(),
+        BlockStatus::Progress
+    );
+    assert_timely_eq(Duration::from_secs(5), || node.active.len(), 1);
+
+    // Vote for conflicting block, but the block does not yet exist in the ledger
+    node.vote_processor_queue
+        .vote(vote_fork, ChannelId::from(111), VoteSource::Live);
+
+    // Block now gets processed
+    assert_eq!(node.process_local(fork.clone()).unwrap(), BlockStatus::Fork);
+
+    // Election must be confirmed
+    assert_timely(Duration::from_secs(5), || {
+        node.active.election(&fork.qualified_root()).is_some()
+    });
+    let election = node.active.election(&fork.qualified_root()).unwrap();
+    assert_timely(Duration::from_secs(3), || node.active.confirmed(&election));
+}
+
+#[test]
+fn activate_account_chain() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let node = system.build_node().config(config).finish();
+
+    let key = KeyPair::new();
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(1),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    let send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(2),
+        key.account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(send.hash().into()),
+    ));
+    let send3 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send2.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(3),
+        key.account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(send2.hash().into()),
+    ));
+    let open = BlockEnum::State(StateBlock::new(
+        key.account(),
+        BlockHash::zero(),
+        key.public_key(),
+        Amount::raw(1),
+        send2.hash().into(),
+        &key,
+        node.work_generate_dev(key.public_key().into()),
+    ));
+    let receive = BlockEnum::State(StateBlock::new(
+        key.account(),
+        open.hash(),
+        key.public_key(),
+        Amount::raw(2),
+        send3.hash().into(),
+        &key,
+        node.work_generate_dev(open.hash().into()),
+    ));
+
+    assert_eq!(
+        node.process_local(send.clone()).unwrap(),
+        BlockStatus::Progress
+    );
+    assert_eq!(
+        node.process_local(send2.clone()).unwrap(),
+        BlockStatus::Progress
+    );
+    assert_eq!(
+        node.process_local(send3.clone()).unwrap(),
+        BlockStatus::Progress
+    );
+    assert_eq!(
+        node.process_local(open.clone()).unwrap(),
+        BlockStatus::Progress
+    );
+    assert_eq!(
+        node.process_local(receive.clone()).unwrap(),
+        BlockStatus::Progress
+    );
+
+    let election1 = start_election(&node, &send.hash());
+    assert_eq!(1, node.active.len());
+    assert!(election1
+        .mutex
+        .lock()
+        .unwrap()
+        .last_blocks
+        .contains_key(&send.hash()));
+    node.active.force_confirm(&election1);
+    assert_timely(Duration::from_secs(3), || {
+        node.block_confirmed(&send.hash())
+    });
+
+    // On cementing, the next election is started
+    assert_timely(Duration::from_secs(3), || {
+        node.active.active_root(&send2.qualified_root())
+    });
+    let election3 = node.active.election(&send2.qualified_root()).unwrap();
+    assert!(election3
+        .mutex
+        .lock()
+        .unwrap()
+        .last_blocks
+        .contains_key(&send2.hash()));
+    node.active.force_confirm(&election3);
+    assert_timely(Duration::from_secs(3), || {
+        node.block_confirmed(&send2.hash())
+    });
+
+    // On cementing, the next election is started
+    assert_timely(Duration::from_secs(3), || {
+        node.active.active_root(&open.qualified_root())
+    }); // Destination account activated
+    assert_timely(Duration::from_secs(3), || {
+        node.active.active_root(&send3.qualified_root())
+    }); // Block successor activated
+    let election4 = node.active.election(&send3.qualified_root()).unwrap();
+    assert!(election4
+        .mutex
+        .lock()
+        .unwrap()
+        .last_blocks
+        .contains_key(&send3.hash()));
+    let election5 = node.active.election(&open.qualified_root()).unwrap();
+    assert!(election5
+        .mutex
+        .lock()
+        .unwrap()
+        .last_blocks
+        .contains_key(&open.hash()));
+    node.active.force_confirm(&election5);
+    assert_timely(Duration::from_secs(3), || {
+        node.block_confirmed(&open.hash())
+    });
+
+    // Until send3 is also confirmed, the receive block should not activate
+    sleep(Duration::from_millis(200));
+    assert!(!node.active.active_root(&receive.qualified_root()));
+    node.active.force_confirm(&election4);
+    assert_timely(Duration::from_secs(3), || {
+        node.block_confirmed(&send3.hash())
+    });
+    assert_timely(Duration::from_secs(3), || {
+        node.active.active_root(&receive.qualified_root())
+    }); // Destination account activated
+}
+
+#[test]
+fn list_active() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let key = KeyPair::new();
+
+    let send = process_send_block(node.clone(), *DEV_GENESIS_ACCOUNT, Amount::raw(1));
+
+    let send2 = process_send_block(node.clone(), key.account(), Amount::raw(1));
+
+    let open = process_open_block(node.clone(), key);
+
+    start_elections(&node, &[send.hash(), send2.hash(), open.hash()], false);
+    assert_timely_eq(Duration::from_secs(5), || node.active.len(), 3);
+
+    assert_eq!(node.active.list_active(1).len(), 1);
+    assert_eq!(node.active.list_active(2).len(), 2);
+    assert_eq!(node.active.list_active(3).len(), 3);
+    assert_eq!(node.active.list_active(4).len(), 3);
+    assert_eq!(node.active.list_active(99999).len(), 3);
+    assert_eq!(node.active.list_active(usize::MAX).len(), 3);
+
+    node.active.list_active(usize::MAX);
 }

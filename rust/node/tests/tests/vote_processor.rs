@@ -151,3 +151,30 @@ fn overflow() {
     // check that it did not timeout
     assert!(start_time.elapsed() < Duration::from_secs(10));
 }
+
+/**
+ * Test that a vote can encode an empty hash set
+ */
+#[test]
+fn empty_hashes() {
+    let key = KeyPair::new();
+    let vote = Arc::new(Vote::new(&key, Vote::TIMESTAMP_MIN, 0, vec![]));
+
+    assert_eq!(vote.voting_account, key.public_key());
+    assert_eq!(vote.timestamp, Vote::TIMESTAMP_MIN);
+    assert_eq!(vote.hashes.len(), 0);
+}
+
+/**
+ * basic test to check that the timestamp mask is applied correctly on vote timestamp and duration fields
+ */
+#[test]
+fn timestamp_and_duration_masking() {
+    let key = KeyPair::new();
+    let hash = vec![*DEV_GENESIS_HASH];
+    let vote = Arc::new(Vote::new(&key, 0x123f, 0xf, hash));
+
+    assert_eq!(vote.timestamp(), 0x1230);
+    assert_eq!(vote.duration().as_millis(), 524288);
+    assert_eq!(vote.duration_bits(), 0xf);
+}

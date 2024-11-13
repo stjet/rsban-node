@@ -18,46 +18,6 @@ TEST (election_scheduler, construction)
 	nano::test::system system{ 1 };
 }
 
-TEST (election_scheduler, activate_one_timely)
-{
-	nano::test::system system;
-	auto & node = *system.add_node ();
-
-	nano::state_block_builder builder;
-	auto send1 = builder.make_block ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (nano::dev::genesis_key.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::dev::genesis->hash ()))
-				 .build ();
-	node.ledger.process (*node.store.tx_begin_write (), send1);
-	node.scheduler.priority.activate (*node.store.tx_begin_read (), nano::dev::genesis_key.pub);
-	ASSERT_TIMELY (5s, node.active.election (send1->qualified_root ()));
-}
-
-TEST (election_scheduler, activate_one_flush)
-{
-	nano::test::system system;
-	auto & node = *system.add_node ();
-
-	nano::state_block_builder builder;
-	auto send1 = builder.make_block ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (nano::dev::genesis_key.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::dev::genesis->hash ()))
-				 .build ();
-	node.ledger.process (*node.store.tx_begin_write (), send1);
-	node.scheduler.priority.activate (*node.store.tx_begin_read (), nano::dev::genesis_key.pub);
-	ASSERT_TIMELY (5s, node.active.election (send1->qualified_root ()));
-}
-
 /**
  * Tests that the election scheduler and the active transactions container (AEC)
  * work in sync with regards to the node configuration value "active_elections_size".

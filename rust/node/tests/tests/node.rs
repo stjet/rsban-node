@@ -1,22 +1,2056 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, BlockEnum, BlockHash, Epoch,
-    KeyPair, Link, PublicKey, SendBlock, Signature, StateBlock, Vote, VoteSource,
-    VoteWithWeightInfo, DEV_GENESIS_KEY,
+    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder,
+    BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
+    PublicKey, Root, SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo,
+    WalletId, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO,
 };
-use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{
+    BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
+};
 use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_network::{ChannelId, DropPolicy, TrafficType};
 use rsnano_node::{
+    bootstrap::BootstrapInitiatorExt,
     config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, VoteApplierExt},
     stats::{DetailType, Direction, StatType},
     wallets::WalletsExt,
 };
-use std::{sync::Arc, thread::sleep, time::Duration};
+use std::{
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+    thread::sleep,
+    time::Duration,
+};
 use test_helpers::{
     activate_hashes, assert_always_eq, assert_never, assert_timely, assert_timely_eq,
-    assert_timely_msg, make_fake_channel, start_election, start_elections, System,
+    assert_timely_msg, establish_tcp, get_available_port, make_fake_channel, start_election,
+    start_elections, System,
 };
+
+#[test]
+fn pruning_depth_max_depth() {
+    let mut system = System::new();
+
+    let mut node_config = System::default_config();
+    node_config.enable_voting = false; // Pruning and voting are incompatible in this test
+    node_config.max_pruning_depth = 1; // Pruning with max depth 1
+
+    let mut node_flags = NodeFlags::default();
+    node_flags.enable_pruning = true;
+
+    let node1 = system
+        .build_node()
+        .config(node_config)
+        .flags(node_flags)
+        .finish();
+    let key1 = KeyPair::new();
+
+    // Create the first send block
+    let latest_hash = *DEV_GENESIS_HASH;
+    let send1 = LegacySendBlockBuilder::new()
+        .previous(latest_hash)
+        .destination(key1.account())
+        .balance(Amount::MAX - Amount::raw(1 * *GXRB_RATIO))
+        .sign(DEV_GENESIS_KEY.clone())
+        .work(node1.work_generate_dev(latest_hash.into()))
+        .build();
+
+    // Process the first send block
+    node1.process_active(send1.clone().into());
+
+    // Create the second send block
+    let latest_hash = send1.hash();
+    let send2 = LegacySendBlockBuilder::new()
+        .previous(latest_hash)
+        .destination(key1.account())
+        .balance(Amount::raw(0))
+        .sign(DEV_GENESIS_KEY.clone())
+        .work(node1.work_generate_dev(latest_hash.into()))
+        .build();
+
+    // Process the second send block
+    node1.process_active(send2.clone().into());
+
+    // Confirm both blocks
+    node1.confirm(send1.hash().clone());
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send1.hash())
+    });
+
+    node1.confirm(send2.hash().clone());
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send2.hash())
+    });
+
+    // Perform pruning
+    node1.ledger_pruning(1, true);
+
+    // Check the pruning result
+    assert_eq!(node1.ledger.pruned_count(), 1);
+    assert_eq!(node1.ledger.block_count(), 3);
+
+    let tx = node1.ledger.read_txn();
+
+    // Ensure that the genesis block, send1, and send2 either exist or are pruned
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &*DEV_GENESIS_HASH));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &send1.hash()));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &send2.hash()));
+}
+
+// Test that a node configured with `enable_pruning` and `max_pruning_age = 1s` will automatically
+// prune old confirmed blocks without explicitly saying `node.ledger_pruning` in the unit test
+#[test]
+fn pruning_automatic() {
+    let mut system = System::new();
+
+    let mut node_config = System::default_config();
+    node_config.enable_voting = false; // Pruning and voting are incompatible
+    node_config.max_pruning_age_s = 1;
+
+    let mut node_flags = NodeFlags::default();
+    node_flags.enable_pruning = true;
+
+    let node1 = system
+        .build_node()
+        .config(node_config)
+        .flags(node_flags)
+        .finish();
+    let key1 = KeyPair::new();
+
+    let latest_hash = *DEV_GENESIS_HASH;
+    let send1 = LegacySendBlockBuilder::new()
+        .previous(latest_hash)
+        .destination(key1.account())
+        .balance(Amount::MAX - Amount::raw(1 * *GXRB_RATIO))
+        .sign(DEV_GENESIS_KEY.clone())
+        .work(node1.work_generate_dev(latest_hash.into()))
+        .build();
+
+    node1.process_active(send1.clone().into());
+
+    let latest_hash = send1.hash();
+    let send2 = LegacySendBlockBuilder::new()
+        .previous(latest_hash)
+        .destination(key1.account())
+        .balance(Amount::raw(0))
+        .sign(DEV_GENESIS_KEY.clone())
+        .work(node1.work_generate_dev(latest_hash.into()))
+        .build();
+
+    node1.process_active(send2.clone().into());
+
+    assert_timely(Duration::from_secs(5), || {
+        node1.block(&send2.hash()).is_some()
+    });
+
+    node1.confirm(send1.hash().clone());
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send1.hash())
+    });
+
+    node1.confirm(send2.hash().clone());
+    assert_timely(Duration::from_secs(5), || {
+        node1.block_confirmed(&send2.hash())
+    });
+
+    assert_eq!(node1.ledger.block_count(), 3);
+
+    assert_timely_eq(Duration::from_secs(5), || node1.ledger.pruned_count(), 1);
+
+    assert_eq!(node1.ledger.pruned_count(), 1);
+    assert_eq!(node1.ledger.block_count(), 3);
+
+    let tx = node1.ledger.read_txn();
+
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &*DEV_GENESIS_HASH));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &send1.hash()));
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&tx, &send2.hash()));
+}
+
+#[test]
+fn deferred_dependent_elections() {
+    let mut system = System::new();
+
+    let mut node_config_1 = System::default_config();
+    node_config_1.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut node_config_2 = System::default_config();
+    node_config_2.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+
+    let mut node_flags = NodeFlags::default();
+    node_flags.disable_request_loop = true;
+    let node1 = system
+        .build_node()
+        .config(node_config_1)
+        .flags(node_flags.clone())
+        .finish();
+    let node2 = system
+        .build_node()
+        .config(node_config_2)
+        .flags(node_flags)
+        .finish();
+
+    let key = KeyPair::new();
+
+    let send1 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(*DEV_GENESIS_HASH)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .link(key.account())
+        .balance(Amount::MAX - Amount::raw(1))
+        .sign(&DEV_GENESIS_KEY)
+        .work(node1.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .build();
+
+    let open = BlockBuilder::state()
+        .account(key.public_key())
+        .previous(BlockHash::zero())
+        .representative(key.public_key())
+        .link(send1.hash())
+        .balance(Amount::raw(1))
+        .sign(&key)
+        .work(node1.work_generate_dev(key.public_key().into()))
+        .build();
+
+    let send1_state_block = match &send1 {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
+
+    let send2 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .from(&send1_state_block)
+        .previous(send1.hash())
+        .balance(send1.balance() - Amount::raw(1))
+        .link(key.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node1.work_generate_dev(send1.hash().into()))
+        .build();
+
+    let open_state_block = match &open {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
+
+    let receive = BlockBuilder::state()
+        .account(key.account())
+        .from(&open_state_block)
+        .previous(open.hash())
+        .link(send2.hash())
+        .balance(Amount::raw(2))
+        .sign(&key)
+        .work(node1.work_generate_dev(open.hash().into()))
+        .build();
+
+    let receive_state_block = match &receive {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
+
+    let fork = BlockBuilder::state()
+        .account(key.account())
+        .from(&receive_state_block)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .sign(&key)
+        .build();
+
+    node1.process_local(send1.clone().into()).unwrap();
+    let election_send1 = start_election(&node1, &send1.hash());
+
+    node1.process_local(open.clone().into()).unwrap();
+    node1.process_local(send2.clone().into()).unwrap();
+
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.block(&open.hash()).is_some()
+    });
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.block(&send2.hash()).is_some()
+    });
+
+    assert_never(std::time::Duration::from_millis(500), || {
+        node1.active.election(&open.qualified_root()).is_some()
+            || node1.active.election(&send2.qualified_root()).is_some()
+    });
+
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node2.block(&open.hash()).is_some()
+    });
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node2.block(&send2.hash()).is_some()
+    });
+
+    node1.process_local(open.clone().into()).unwrap();
+
+    assert_never(std::time::Duration::from_millis(500), || {
+        node1.active.election(&open.qualified_root()).is_some()
+    });
+
+    start_election(&node1, &open.hash());
+    node1.active.erase(&open.qualified_root());
+    assert!(node1.active.election(&open.qualified_root()).is_none());
+
+    node1.process_local(open.clone().into()).unwrap();
+
+    assert_never(std::time::Duration::from_millis(500), || {
+        node1.active.election(&open.qualified_root()).is_some()
+    });
+
+    node1.active.erase(&open.qualified_root());
+    node1.active.erase(&send2.qualified_root());
+    assert!(!node1.active.election(&open.qualified_root()).is_some());
+    assert!(!node1.active.election(&send2.qualified_root()).is_some());
+
+    node1.active.force_confirm(&election_send1);
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.block_confirmed(&send1.hash())
+    });
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.active.election(&open.qualified_root()).is_some()
+    });
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.active.election(&send2.qualified_root()).is_some()
+    });
+
+    let election_open = node1.active.election(&open.qualified_root());
+    assert!(election_open.is_some());
+
+    let election_send2 = node1.active.election(&send2.qualified_root()).unwrap();
+
+    node1.process_local(receive.clone().into()).unwrap();
+    assert!(node1.active.election(&receive.qualified_root()).is_none());
+
+    node1.active.force_confirm(election_open.as_ref().unwrap());
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.block_confirmed(&open.hash())
+    });
+    assert!(!node1
+        .ledger
+        .dependents_confirmed(&node1.store.tx_begin_read(), &receive));
+
+    assert_never(std::time::Duration::from_millis(500), || {
+        node1.active.election(&receive.qualified_root()).is_some()
+    });
+
+    node1
+        .ledger
+        .rollback(&mut node1.store.tx_begin_write(), &receive.hash())
+        .unwrap();
+    assert!(node1.block(&receive.hash()).is_none());
+
+    node1.process_local(receive.clone().into()).unwrap();
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.block(&receive.hash()).is_some()
+    });
+
+    assert_never(std::time::Duration::from_millis(500), || {
+        node1.active.election(&receive.qualified_root()).is_some()
+    });
+
+    assert_eq!(
+        BlockStatus::Fork,
+        node1.process_local(fork.clone().into()).unwrap()
+    );
+
+    node1.process_local(fork.clone().into()).unwrap();
+    assert_never(std::time::Duration::from_millis(500), || {
+        node1.active.election(&receive.qualified_root()).is_some()
+    });
+
+    node1.active.force_confirm(&election_send2);
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.block_confirmed(&send2.hash())
+    });
+    assert_timely(std::time::Duration::from_secs(5), || {
+        node1.active.election(&receive.qualified_root()).is_some()
+    });
+}
+
+#[test]
+fn rollback_gap_source() {
+    let mut system = System::new();
+    let mut node_config = System::default_config();
+    node_config.peering_port = Some(get_available_port());
+    let node = system.build_node().config(node_config).finish();
+
+    let key = KeyPair::new();
+
+    let send1 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(*DEV_GENESIS_HASH)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .link(key.account())
+        .balance(Amount::MAX - Amount::raw(1))
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .build();
+
+    let fork1a = BlockBuilder::state()
+        .account(key.public_key())
+        .previous(BlockHash::zero())
+        .representative(key.public_key())
+        .link(send1.hash())
+        .balance(Amount::raw(1))
+        .sign(&key)
+        .work(node.work_generate_dev(key.public_key().into()))
+        .build();
+
+    let send1_state_block = match &send1 {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
+
+    let send2 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .from(&send1_state_block)
+        .previous(send1.hash())
+        .balance(send1.balance() - Amount::raw(1))
+        .link(key.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(send1.hash().into()))
+        .build();
+
+    let fork1a_state_block = match &fork1a {
+        BlockEnum::State(state_block) => state_block,
+        _ => panic!("Expected a StateBlock"),
+    };
+
+    let fork1b = BlockBuilder::state()
+        .account(key.account())
+        .from(&fork1a_state_block)
+        .link(send2.hash())
+        .sign(&key)
+        .build();
+
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(send1.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(fork1a.clone()).unwrap()
+    );
+
+    let fork1_b_arc = Arc::new(fork1b.clone());
+
+    assert!(node.block(&send2.hash()).is_none());
+    node.block_processor.force(fork1_b_arc.clone());
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.block(&fork1a.hash()).is_none(),
+        true,
+    );
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats
+                .count(StatType::Rollback, DetailType::Open, Direction::In)
+        },
+        1,
+    );
+
+    assert!(node.block(&fork1b.hash()).is_none());
+
+    node.process_active(fork1a.clone());
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.block(&fork1a.hash()).is_some(),
+        true,
+    );
+
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(send2.clone()).unwrap()
+    );
+    node.block_processor.force(fork1_b_arc.clone());
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats
+                .count(StatType::Rollback, DetailType::Open, Direction::In)
+        },
+        2,
+    );
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.block(&fork1b.hash()).is_some(),
+        true,
+    );
+
+    assert!(node.block(&fork1a.hash()).is_none());
+}
+
+#[test]
+fn vote_by_hash_bundle() {
+    // Initialize the test system with one node
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+
+    // Prepare a vector to hold the blocks
+    let mut blocks = Vec::new();
+
+    // Create the first block in the chain
+    let block = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(*DEV_GENESIS_HASH)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .balance(Amount::MAX - Amount::raw(1))
+        .link(*DEV_GENESIS_ACCOUNT)
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .build();
+
+    blocks.push(block.clone());
+    assert_eq!(BlockStatus::Progress, node.process_local(block).unwrap());
+
+    // Create a chain of blocks
+    for i in 2..10 {
+        let prev_block = match blocks.last().unwrap() {
+            BlockEnum::State(state_block) => state_block,
+            _ => panic!("Expected a StateBlock"),
+        };
+        let hash: BlockHash = prev_block.hash();
+        let block = BlockBuilder::state()
+            .from(prev_block)
+            .previous(hash)
+            .balance(Amount::MAX - Amount::raw(i))
+            .sign(&DEV_GENESIS_KEY)
+            .work(node.work_generate_dev(hash.into()))
+            .build();
+        blocks.push(block.clone());
+        assert_eq!(BlockStatus::Progress, node.process_local(block).unwrap());
+    }
+
+    // Confirm the last block to confirm the entire chain
+    node.ledger
+        .confirm(&mut node.ledger.rw_txn(), blocks.last().unwrap().hash());
+
+    // Insert the genesis key and a new key into the wallet
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    let key1 = KeyPair::new();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key1.private_key(), true)
+        .unwrap();
+
+    // Set up an observer to track the maximum number of hashes in a vote
+    let max_hashes = Arc::new(AtomicUsize::new(0));
+    let max_hashes_clone = Arc::clone(&max_hashes);
+
+    node.vote_router.add_vote_processed_observer(Box::new(
+        move |vote: &Arc<Vote>, _vote_source, _vote_code| {
+            let hashes_size = vote.hashes.len();
+            let current_max = max_hashes_clone.load(Ordering::Relaxed);
+            if hashes_size > current_max {
+                max_hashes_clone.store(hashes_size, Ordering::Relaxed);
+            }
+        },
+    ));
+
+    // Enqueue vote requests for all the blocks
+    for block in &blocks {
+        node.vote_generators
+            .generate_non_final_vote(&block.root(), &block.hash());
+    }
+
+    // Verify that bundling occurs
+    assert_timely(Duration::from_secs(20), || {
+        max_hashes.load(Ordering::Relaxed) >= 3
+    });
+}
+
+#[test]
+fn confirm_quorum() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    // Put greater than node.delta() in pending so quorum can't be reached
+    let new_balance = node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1);
+    let send1 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(*DEV_GENESIS_HASH)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .balance(new_balance)
+        .link(*DEV_GENESIS_ACCOUNT)
+        .sign(&*DEV_GENESIS_KEY)
+        .work(node1.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .build();
+
+    assert_eq!(
+        BlockStatus::Progress,
+        node1.process_local(send1.clone()).unwrap()
+    );
+
+    node1
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_ACCOUNT,
+            new_balance,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(2),
+        || node1.active.election(&send1.qualified_root()).is_some(),
+        "Election not found",
+    );
+
+    let election = node1.active.election(&send1.qualified_root()).unwrap();
+    assert!(!node1.active.confirmed(&election));
+    assert_eq!(1, election.mutex.lock().unwrap().last_votes.len());
+    assert_eq!(Amount::zero(), node1.balance(&DEV_GENESIS_ACCOUNT));
+}
+
+#[test]
+fn bootstrap_connection_scaling() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    assert_eq!(
+        34,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(5000, 1)
+    );
+    assert_eq!(
+        4,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(0, 1)
+    );
+    assert_eq!(
+        64,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(50000, 1)
+    );
+    assert_eq!(
+        64,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(10000000000, 1)
+    );
+    assert_eq!(
+        32,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(5000, 0)
+    );
+    assert_eq!(
+        1,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(0, 0)
+    );
+    assert_eq!(
+        64,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(50000, 0)
+    );
+    assert_eq!(
+        64,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(10000000000, 0)
+    );
+    assert_eq!(
+        36,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(5000, 2)
+    );
+    assert_eq!(
+        8,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(0, 2)
+    );
+    assert_eq!(
+        64,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(50000, 2)
+    );
+    assert_eq!(
+        64,
+        node.bootstrap_initiator
+            .connections
+            .target_connections(10000000000, 2)
+    );
+}
+
+#[test]
+fn send_callback() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+
+    let send_result = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None,
+    );
+
+    assert!(send_result.is_ok());
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node.balance(&key2.account()).is_zero(),
+        "balance is not zero",
+    );
+
+    assert_eq!(
+        Amount::MAX - node.config.receive_minimum,
+        node.balance(&DEV_GENESIS_ACCOUNT)
+    );
+}
+
+// Test that nodes can disable representative voting
+#[test]
+fn no_voting() {
+    let mut system = System::new();
+    let node0 = system.make_node();
+    let mut config = System::default_config();
+    config.enable_voting = false;
+    let node1 = system.build_node().config(config).finish();
+
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+
+    // Node1 has a rep
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    let key1 = KeyPair::new();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &key1.private_key(), true)
+        .unwrap();
+    // Broadcast a confirm so others should know this is a rep node
+    node1
+        .wallets
+        .send_action2(
+            &wallet_id1,
+            *DEV_GENESIS_ACCOUNT,
+            key1.account(),
+            Amount::raw(*MXRB_RATIO),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    assert_timely_eq(Duration::from_secs(10), || node0.active.len(), 0);
+    assert_eq!(
+        node0
+            .stats
+            .count(StatType::Message, DetailType::ConfirmAck, Direction::In),
+        0
+    );
+}
+
+#[test]
+fn bootstrap_confirm_frontiers() {
+    // create 2 separate systems, the 2 systems do not interact with each other automatically
+    let mut system0 = System::new();
+    let mut system1 = System::new();
+    let node0 = system0.make_node();
+    let node1 = system1.make_node();
+    let wallet_id0 = node0.wallets.wallet_ids()[0];
+
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    let key0 = KeyPair::new();
+
+    // create block to send 500 raw from genesis to key0 and save into node0 ledger without immediately triggering an election
+    let send0 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key0.account(),
+        &(Amount::MAX - Amount::raw(500)),
+        &DEV_GENESIS_KEY.private_key(),
+        node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    assert_eq!(
+        BlockStatus::Progress,
+        node0.process_local(send0.clone()).unwrap()
+    );
+
+    // each system only has one node, so there should be no bootstrapping going on
+    assert!(!node0.bootstrap_initiator.in_progress());
+    assert!(!node1.bootstrap_initiator.in_progress());
+    assert!(node1.active.len() == 0);
+
+    // create a bootstrap connection from node1 to node0
+    // this also has the side effect of adding node0 to node1's list of peers, which will trigger realtime connections too
+    establish_tcp(&node1, &node0);
+    node1
+        .bootstrap_initiator
+        .bootstrap2(node0.tcp_listener.local_address(), "".into());
+
+    // Wait until the block is confirmed on node1
+    let start_time = std::time::Instant::now();
+    let timeout = Duration::from_secs(10);
+    loop {
+        {
+            let tx = node1.store.tx_begin_read();
+            if node1.ledger.confirmed().block_exists(&tx, &send0.hash()) {
+                break;
+            }
+        }
+        assert!(
+            start_time.elapsed() < timeout,
+            "Timeout waiting for block confirmation"
+        );
+        std::thread::sleep(Duration::from_millis(1));
+    }
+}
+
+#[test]
+fn bootstrap_fork_open() {
+    let mut system = System::new();
+    let mut node_config = System::default_config();
+    let node0 = system.build_node().config(node_config.clone()).finish();
+    let wallet_id0 = node0.wallets.wallet_ids()[0];
+    node_config.peering_port = Some(get_available_port());
+    let node1 = system.build_node().config(node_config).finish();
+    let key0 = KeyPair::new();
+
+    let send0 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key0.account(),
+        &(Amount::MAX - Amount::raw(500)),
+        &DEV_GENESIS_KEY.private_key(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
+    ));
+
+    let open0 = BlockEnum::LegacyOpen(OpenBlock::new(
+        send0.hash(),
+        PublicKey::from_bytes([1; 32]),
+        key0.account(),
+        &key0.private_key(),
+        system.work.generate_dev2(key0.public_key().into()).unwrap(),
+    ));
+
+    let open1 = BlockEnum::LegacyOpen(OpenBlock::new(
+        send0.hash(),
+        PublicKey::from_bytes([2; 32]),
+        key0.account(),
+        &key0.private_key(),
+        system.work.generate_dev2(key0.public_key().into()).unwrap(),
+    ));
+
+    // Both know about send0
+    assert_eq!(
+        BlockStatus::Progress,
+        node0.process_local(send0.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node1.process_local(send0.clone()).unwrap()
+    );
+
+    // Confirm send0 to allow starting and voting on the following blocks
+    for node in [&node0, &node1] {
+        start_election(&node, &node.latest(&*DEV_GENESIS_ACCOUNT));
+        assert_timely_msg(
+            Duration::from_secs(1),
+            || node.active.election(&send0.qualified_root()).is_some(),
+            "Election for send0 not found",
+        );
+        let election = node.active.election(&send0.qualified_root()).unwrap();
+        node.active.force_confirm(&election);
+        assert_timely_msg(
+            Duration::from_secs(2),
+            || node.active.len() == 0,
+            "Active elections not empty",
+        );
+    }
+
+    assert_timely_msg(
+        Duration::from_secs(3),
+        || node0.block_confirmed(&send0.hash()),
+        "send0 not confirmed on node0",
+    );
+
+    // They disagree about open0/open1
+    assert_eq!(
+        BlockStatus::Progress,
+        node0.process_local(open0.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node1.process_local(open1.clone()).unwrap()
+    );
+
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    assert!(!node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&node1.ledger.read_txn(), &open0.hash()));
+    assert!(!node1.bootstrap_initiator.in_progress());
+
+    node1
+        .bootstrap_initiator
+        .bootstrap2(node0.tcp_listener.local_address(), "".into());
+
+    assert_timely_msg(
+        Duration::from_secs(1),
+        || node1.active.len() == 0,
+        "Active elections not empty on node1",
+    );
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node1.block_exists(&open1.hash()) && node1.block_exists(&open0.hash()),
+        "Incorrect blocks exist on node1",
+    );
+}
+
+#[test]
+fn rep_self_vote() {
+    let mut system = System::new();
+    let mut node_config = System::default_config();
+    node_config.online_weight_minimum = Amount::MAX;
+    node_config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let node0 = system.build_node().config(node_config).finish();
+    let wallet_id = node0.wallets.wallet_ids()[0];
+    let rep_big = KeyPair::new();
+
+    let fund_big = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &rep_big.account(),
+        &Amount::raw(0xb000_0000_0000_0000_0000_0000_0000_0000),
+        &DEV_GENESIS_KEY.private_key(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
+    ));
+
+    let open_big = BlockEnum::LegacyOpen(OpenBlock::new(
+        fund_big.hash(),
+        rep_big.public_key(),
+        rep_big.account(),
+        &rep_big.private_key(),
+        system
+            .work
+            .generate_dev2(rep_big.public_key().into())
+            .unwrap(),
+    ));
+
+    assert_eq!(
+        BlockStatus::Progress,
+        node0.process_local(fund_big.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node0.process_local(open_big.clone()).unwrap()
+    );
+
+    // Confirm both blocks, allowing voting on the upcoming block
+    start_election(&node0, &open_big.hash());
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node0.active.election(&open_big.qualified_root()).is_some(),
+        "Election for open_big not found",
+    );
+    let election = node0.active.election(&open_big.qualified_root()).unwrap();
+    node0.active.force_confirm(&election);
+
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id, &rep_big.private_key(), true)
+        .unwrap();
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    assert_eq!(node0.wallets.voting_reps_count(), 2);
+
+    let block0 = BlockEnum::LegacySend(SendBlock::new(
+        &fund_big.hash(),
+        &rep_big.account(),
+        &Amount::raw(0x6000_0000_0000_0000_0000_0000_0000_0000),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(fund_big.hash().into()).unwrap(),
+    ));
+
+    assert_eq!(
+        BlockStatus::Progress,
+        node0.process_local(block0.clone()).unwrap()
+    );
+
+    let election1 = start_election(&node0, &block0.hash());
+
+    // Wait until representatives are activated & make vote
+    assert_timely_eq(Duration::from_secs(1), || election1.vote_count(), 3);
+
+    let rep_votes = election1.mutex.lock().unwrap().last_votes.clone();
+    assert!(rep_votes.contains_key(&DEV_GENESIS_KEY.public_key()));
+    assert!(rep_votes.contains_key(&rep_big.public_key()));
+}
+
+#[test]
+fn fork_bootstrap_flip() {
+    let mut system = System::new();
+    let mut config0 = System::default_config();
+    config0.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut node_flags = NodeFlags::default();
+    node_flags.disable_bootstrap_bulk_push_client = true;
+    node_flags.disable_lazy_bootstrap = true;
+
+    let node1 = system
+        .build_node()
+        .config(config0)
+        .flags(node_flags.clone())
+        .finish();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    let mut config1 = System::default_config();
+    config1.peering_port = Some(get_available_port());
+    let node2 = system.make_disconnected_node();
+    //let node2 = system.build_disconnected_node(config1, node_flags);
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    let latest = node1.latest(&DEV_GENESIS_ACCOUNT);
+    let key1 = KeyPair::new();
+    let send1 = BlockEnum::LegacySend(SendBlock::new(
+        &latest,
+        &key1.account(),
+        &(Amount::MAX - Amount::raw(1_000_000)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(latest.into()).unwrap(),
+    ));
+
+    let key2 = KeyPair::new();
+    let send2 = BlockEnum::LegacySend(SendBlock::new(
+        &latest,
+        &key2.account(),
+        &(Amount::MAX - Amount::raw(1_000_000)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(latest.into()).unwrap(),
+    ));
+
+    // Insert but don't rebroadcast, simulating settled blocks
+    assert_eq!(
+        BlockStatus::Progress,
+        node1.process_local(send1.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node2.process_local(send2.clone()).unwrap()
+    );
+
+    node1.confirm(send1.hash());
+    assert_timely_msg(
+        Duration::from_secs(1),
+        || node1.block_exists(&send1.hash()),
+        "send1 not found on node1",
+    );
+    assert_timely_msg(
+        Duration::from_secs(1),
+        || node2.block_exists(&send2.hash()),
+        "send2 not found on node2",
+    );
+
+    // Additionally add new peer to confirm & replace bootstrap block
+    //node2.network.merge_peer(node1.network.endpoint());
+    establish_tcp(&node2, &node1);
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node2.block_exists(&send1.hash()),
+        "send1 not found on node2 after bootstrap",
+    );
+}
+
+#[test]
+fn fork_multi_flip() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let flags = NodeFlags::default();
+    let node1 = system
+        .build_node()
+        .config(config.clone())
+        .flags(flags.clone())
+        .finish();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    config.peering_port = Some(get_available_port());
+    let node2 = system.build_node().config(config).flags(flags).finish();
+
+    let key1 = KeyPair::new();
+    let send1 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key1.account(),
+        &(Amount::MAX - Amount::raw(100)),
+        &DEV_GENESIS_KEY.private_key(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
+    ));
+
+    let key2 = KeyPair::new();
+    let send2 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key2.account(),
+        &(Amount::MAX - Amount::raw(100)),
+        &DEV_GENESIS_KEY.private_key(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
+    ));
+
+    let send3 = BlockEnum::LegacySend(SendBlock::new(
+        &send2.hash(),
+        &key2.account(),
+        &(Amount::MAX - Amount::raw(100)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(send2.hash().into()).unwrap(),
+    ));
+
+    assert_eq!(
+        BlockStatus::Progress,
+        node1.process_local(send1.clone()).unwrap()
+    );
+    // Node2 has two blocks that will be rolled back by node1's vote
+    assert_eq!(
+        BlockStatus::Progress,
+        node2.process_local(send2.clone()).unwrap()
+    );
+    assert_eq!(
+        BlockStatus::Progress,
+        node2.process_local(send3.clone()).unwrap()
+    );
+
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap(); // Insert voting key into node1
+
+    let election = start_election(&node2, &send2.hash());
+
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || {
+            election
+                .mutex
+                .lock()
+                .unwrap()
+                .last_blocks
+                .contains_key(&send1.hash())
+        },
+        "election doesn't contain send1",
+    );
+
+    node1.confirm(send1.hash());
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || {
+            node2
+                .ledger
+                .any()
+                .block_exists_or_pruned(&node2.ledger.read_txn(), &send1.hash())
+        },
+        "send1 not found on node2",
+    );
+    assert!(!node2
+        .ledger
+        .any()
+        .block_exists(&node2.ledger.read_txn(), &send2.hash()));
+    assert!(!node2
+        .ledger
+        .any()
+        .block_exists_or_pruned(&node2.ledger.read_txn(), &send3.hash()));
+
+    let winner = election.winner_hash().unwrap();
+    assert_eq!(send1.hash(), winner);
+    assert_eq!(
+        Amount::MAX - Amount::raw(100),
+        *election
+            .mutex
+            .lock()
+            .unwrap()
+            .last_tally
+            .get(&send1.hash())
+            .unwrap()
+    );
+}
+
+// In test case there used to be a race condition, it was worked around in:.
+// https://github.com/nanocurrency/nano-node/pull/4091
+// The election and the processing of block send2 happen in parallel.
+// Usually the election happens first and the send2 block is added to the election.
+// However, if the send2 block is processed before the election is started then
+// there is a race somewhere and the election might not notice the send2 block.
+// The test case can be made to pass by ensuring the election is started before the send2 is processed.
+// However, is this a problem with the test case or this is a problem with the node handling of forks?
+#[test]
+fn fork_publish_inactive() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+
+    let send1 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key1.account(),
+        &(Amount::MAX - Amount::raw(100)),
+        &DEV_GENESIS_KEY.private_key(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
+    ));
+
+    let send2 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key2.account(),
+        &(Amount::MAX - Amount::raw(100)),
+        &DEV_GENESIS_KEY.private_key(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
+    ));
+
+    node.process_active(send1.clone());
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node.block_exists(&send1.hash()),
+        "send1 not found",
+    );
+
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node.active.election(&send1.qualified_root()).is_some(),
+        "election not found",
+    );
+
+    let election = node.active.election(&send1.qualified_root()).unwrap();
+
+    assert_eq!(
+        node.process_local(send2.clone()).unwrap(),
+        BlockStatus::Fork
+    );
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || election.mutex.lock().unwrap().last_blocks.len(),
+        2,
+    );
+
+    let find_block = |hash: BlockHash| {
+        election
+            .mutex
+            .lock()
+            .unwrap()
+            .last_blocks
+            .contains_key(&hash)
+    };
+
+    assert!(find_block(send1.hash()));
+    assert!(find_block(send2.hash()));
+
+    assert_eq!(election.winner_hash().unwrap(), send1.hash());
+    assert_ne!(election.winner_hash().unwrap(), send2.hash());
+}
+
+#[test]
+fn unlock_search() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    let balance = node.balance(&DEV_GENESIS_ACCOUNT);
+
+    node.wallets.rekey(&wallet_id, "").unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node.balance(&DEV_GENESIS_ACCOUNT) != balance,
+        "balance not updated",
+    );
+
+    assert_timely_eq(Duration::from_secs(10), || node.active.len(), 0);
+
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+    //node.wallets
+    //    .set_password(&wallet_id, &KeyPair::new().private_key())
+    //    .unwrap();
+    node.wallets.enter_password(wallet_id, "").unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node.balance(&key2.account()).is_zero(),
+        "balance is still zero",
+    );
+}
+
+#[test]
+fn search_receivable_confirmed() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let node = system.build_node().config(config).finish();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    let send1 = node
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_timely(Duration::from_secs(5), || {
+        node.blocks_confirmed(&[send1.clone()])
+    });
+
+    let send2 = node
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_timely(Duration::from_secs(5), || {
+        node.blocks_confirmed(&[send2.clone()])
+    });
+
+    node.wallets
+        .remove_key(&wallet_id, &*DEV_GENESIS_PUB_KEY)
+        .unwrap();
+
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+
+    node.wallets.search_receivable_wallet(wallet_id).unwrap();
+
+    assert_timely(Duration::from_secs(5), || {
+        !node.active.election(&send1.qualified_root()).is_some()
+    });
+
+    assert_timely(Duration::from_secs(5), || {
+        !node.active.election(&send2.qualified_root()).is_some()
+    });
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node.balance(&key2.account()),
+        node.config.receive_minimum * 2,
+    );
+}
+
+#[test]
+fn search_receivable_pruned() {
+    let mut system = System::new();
+    let mut config1 = System::default_config();
+    config1.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let node1 = system.build_node().config(config1).finish();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+
+    let mut config2 = System::default_config();
+    config2.enable_voting = false; // Remove after allowing pruned voting
+    let mut flags = NodeFlags::default();
+    flags.enable_pruning = true;
+    let node2 = system.build_node().config(config2).flags(flags).finish();
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+
+    let key2 = KeyPair::new();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    let send1 = node1
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node2.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    let send2 = node1
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node2.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    // Confirmation
+    assert_timely(Duration::from_secs(10), || {
+        node1.active.len() == 0 && node2.active.len() == 0
+    });
+    assert_timely(Duration::from_secs(5), || {
+        node1
+            .ledger
+            .confirmed()
+            .block_exists(&node1.ledger.read_txn(), &send2.hash())
+    });
+    assert_timely_eq(Duration::from_secs(5), || node2.ledger.cemented_count(), 3);
+
+    node1
+        .wallets
+        .remove_key(&wallet_id, &*DEV_GENESIS_PUB_KEY)
+        .unwrap();
+
+    // Pruning
+    {
+        let mut transaction = node2.store.tx_begin_write();
+        assert_eq!(
+            1,
+            node2
+                .ledger
+                .pruning_action(&mut transaction, &send1.hash(), 1)
+        );
+    }
+    assert_eq!(1, node2.ledger.pruned_count());
+    assert!(node2
+        .ledger
+        .any()
+        .block_exists_or_pruned(&node2.ledger.read_txn(), &send1.hash())); // true for pruned
+
+    // Receive pruned block
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .unwrap();
+
+    node2.wallets.search_receivable_wallet(wallet_id2).unwrap();
+    assert_timely_eq(
+        Duration::from_secs(10),
+        || node2.balance(&key2.account()),
+        node2.config.receive_minimum * 2,
+    );
+}
+
+#[test]
+fn search_receivable() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+
+    node.wallets.search_receivable_wallet(wallet_id).unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node.balance(&key2.account()).is_zero(),
+        "balance is still zero",
+    );
+}
+
+#[test]
+fn search_receivable_same() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    let send_result1 = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None,
+    );
+    assert!(send_result1.is_ok());
+    let send_result2 = node.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node.config.receive_minimum,
+        0,
+        true,
+        None,
+    );
+    assert!(send_result2.is_ok());
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+    node.wallets.search_receivable_wallet(wallet_id).unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node.balance(&key2.account()) == node.config.receive_minimum * 2,
+        "balance is not equal to twice the receive minimum",
+    );
+}
+
+#[test]
+fn search_receivable_multiple() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    let key3 = KeyPair::new();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key3.private_key(), true)
+        .unwrap();
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key3.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node.balance(&key3.account()).is_zero(),
+        "key3 balance is still zero",
+    );
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            key3.account(),
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+    node.wallets.search_receivable_wallet(wallet_id).unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node.balance(&key2.account()) == node.config.receive_minimum * 2,
+        "key2 balance is not equal to twice the receive minimum",
+    );
+}
+
+#[test]
+fn auto_bootstrap_age() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut node_flags = NodeFlags::default();
+    node_flags.disable_bootstrap_bulk_push_client = true;
+    node_flags.disable_lazy_bootstrap = true;
+    node_flags.bootstrap_interval = 1;
+
+    let node0 = system
+        .build_node()
+        .config(config.clone())
+        .flags(node_flags.clone())
+        .finish();
+    let _node1 = system.make_node();
+
+    // Wait for at least 3 bootstrap attempts with frontiers age
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || {
+            node0.stats.count(
+                StatType::Bootstrap,
+                DetailType::InitiateLegacyAge,
+                Direction::Out,
+            ) >= 3
+        },
+        "not enough bootstrap attempts with frontiers age",
+    );
+
+    // Check that there are more attempts with frontiers age than without
+    assert!(
+        node0.stats.count(
+            StatType::Bootstrap,
+            DetailType::InitiateLegacyAge,
+            Direction::Out
+        ) >= node0
+            .stats
+            .count(StatType::Bootstrap, DetailType::Initiate, Direction::Out),
+        "unexpected ratio of bootstrap attempts"
+    );
+}
+
+#[test]
+fn auto_bootstrap_reverse() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut node_flags = NodeFlags::default();
+    node_flags.disable_bootstrap_bulk_push_client = true;
+    node_flags.disable_lazy_bootstrap = true;
+
+    let node0 = system
+        .build_node()
+        .config(config.clone())
+        .flags(node_flags.clone())
+        .finish();
+    let wallet_id = node0.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+
+    let node1 = system.make_node();
+
+    let send_result = node0.wallets.send_action2(
+        &wallet_id,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        node0.config.receive_minimum,
+        0,
+        true,
+        None,
+    );
+    assert!(send_result.is_ok());
+
+    establish_tcp(&node0, &node1);
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node1.balance(&key2.account()) == node0.config.receive_minimum,
+        "balance not synced",
+    );
+}
+
+#[test]
+fn quick_confirm() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    let key = KeyPair::new();
+    let previous = node1.latest(&DEV_GENESIS_ACCOUNT);
+    let genesis_start_balance = node1.balance(&DEV_GENESIS_ACCOUNT);
+
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &key.private_key(), true)
+        .unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    let send = BlockEnum::LegacySend(SendBlock::new(
+        &previous,
+        &key.account(),
+        &(node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(previous.into()).unwrap(),
+    ));
+
+    node1.process_active(send.clone());
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node1.balance(&key.account()).is_zero(),
+        "balance is still zero",
+    );
+
+    assert_eq!(
+        node1.balance(&DEV_GENESIS_ACCOUNT),
+        node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1)
+    );
+
+    assert_eq!(
+        node1.balance(&key.account()),
+        genesis_start_balance - (node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1))
+    );
+}
+
+#[test]
+fn send_out_of_order() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let key2 = KeyPair::new();
+
+    let send1 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key2.account(),
+        &(Amount::MAX - node1.config.receive_minimum),
+        &DEV_GENESIS_KEY.private_key(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
+    ));
+
+    let send2 = BlockEnum::LegacySend(SendBlock::new(
+        &send1.hash(),
+        &key2.account(),
+        &(Amount::MAX - node1.config.receive_minimum * 2),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(send1.hash().into()).unwrap(),
+    ));
+
+    let send3 = BlockEnum::LegacySend(SendBlock::new(
+        &send2.hash(),
+        &key2.account(),
+        &(Amount::MAX - node1.config.receive_minimum * 3),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(send2.hash().into()).unwrap(),
+    ));
+
+    node1.process_active(send3.clone());
+    node1.process_active(send2.clone());
+    node1.process_active(send1.clone());
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || {
+            system.nodes.iter().all(|node| {
+                node.balance(&DEV_GENESIS_ACCOUNT) == Amount::MAX - node1.config.receive_minimum * 3
+            })
+        },
+        "balance is incorrect on at least one node",
+    );
+}
+
+#[test]
+fn send_single_observing_peer() {
+    let mut system = System::new();
+    let key2 = KeyPair::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .unwrap();
+
+    node1
+        .wallets
+        .send_action2(
+            &wallet_id1,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node1.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    assert_eq!(
+        Amount::MAX - node1.config.receive_minimum,
+        node1.balance(&DEV_GENESIS_ACCOUNT)
+    );
+
+    assert!(node1.balance(&key2.account()).is_zero());
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || {
+            system
+                .nodes
+                .iter()
+                .all(|node| !node.balance(&key2.account()).is_zero())
+        },
+        "balance is still zero on at least one node",
+    );
+}
+
+#[test]
+fn send_single() {
+    let mut system = System::new();
+    let key2 = KeyPair::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .unwrap();
+
+    node1
+        .wallets
+        .send_action2(
+            &wallet_id1,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node1.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    assert_eq!(
+        Amount::MAX - node1.config.receive_minimum,
+        node1.balance(&DEV_GENESIS_ACCOUNT)
+    );
+
+    assert!(node1.balance(&key2.account()).is_zero());
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node1.balance(&key2.account()).is_zero(),
+        "balance is still zero",
+    );
+}
+
+#[test]
+fn send_self() {
+    let mut system = System::new();
+    let key2 = KeyPair::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node.balance(&key2.account()).is_zero(),
+        "balance is still zero",
+    );
+
+    assert_eq!(
+        Amount::MAX - node.config.receive_minimum,
+        node.balance(&DEV_GENESIS_ACCOUNT)
+    );
+}
+
+#[test]
+fn balance() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    let wallet_id = node.wallets.wallet_ids()[0];
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    let balance = node.balance(&DEV_GENESIS_KEY.account());
+
+    assert_eq!(Amount::MAX, balance);
+}
+
+#[test]
+fn work_generate() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let root = Root::from(1);
+    let version = WorkVersion::Work1;
+
+    // Test with higher difficulty
+    {
+        let difficulty =
+            DifficultyV1::from_multiplier(1.5, node.network_params.work.threshold_base(version));
+        let work = node
+            .distributed_work
+            .make_blocking(version, root, difficulty, None);
+        assert!(work.is_some());
+        let work = work.unwrap();
+        assert!(node.network_params.work.difficulty(version, &root, work) >= difficulty);
+    }
+
+    // Test with lower difficulty
+    {
+        let difficulty = DifficultyV1::from_multiplier(
+            0.5,
+            node.network_params.work.threshold_base(WorkVersion::Work1),
+        );
+        let mut work;
+        loop {
+            work = node
+                .distributed_work
+                .make_blocking(version, root, difficulty, None);
+            if let Some(work_value) = work {
+                if node
+                    .network_params
+                    .work
+                    .difficulty(version, &root, work_value)
+                    < node.network_params.work.threshold_base(version)
+                {
+                    break;
+                }
+            }
+        }
+        let work = work.unwrap();
+        assert!(node.network_params.work.difficulty(version, &root, work) >= difficulty);
+        assert!(
+            node.network_params.work.difficulty(version, &root, work)
+                < node.network_params.work.threshold_base(version)
+        );
+    }
+}
 
 #[test]
 fn local_block_broadcast() {

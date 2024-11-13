@@ -123,3 +123,70 @@ mod bucket {
         assert_eq!(blocks[1], block0);
     }
 }
+
+mod election_scheduler {
+    use rsnano_core::{Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
+    use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+    use std::time::Duration;
+    use test_helpers::{assert_timely, System};
+
+    #[test]
+    fn activate_one_timely() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        let mut send1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_PUB_KEY,
+            node.balance(&*DEV_GENESIS_ACCOUNT) - Amount::nano(1000),
+            (*DEV_GENESIS_ACCOUNT).into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+
+        node.ledger
+            .process(&mut node.ledger.rw_txn(), &mut send1)
+            .unwrap();
+
+        node.election_schedulers
+            .priority
+            .activate(&node.store.tx_begin_read(), &*DEV_GENESIS_ACCOUNT);
+
+        assert_timely(Duration::from_secs(5), || {
+            node.active.election(&send1.qualified_root()).is_some()
+        });
+    }
+
+    #[test]
+    fn activate_one_flush() {
+        let mut system = System::new();
+        let node = system.make_node();
+
+        // Create a send block
+        let mut send1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_PUB_KEY,
+            node.balance(&*DEV_GENESIS_ACCOUNT) - Amount::nano(1000),
+            (*DEV_GENESIS_ACCOUNT).into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+
+        // Process the block
+        node.ledger
+            .process(&mut node.store.tx_begin_write(), &mut send1)
+            .unwrap();
+
+        // Activate the account
+        node.election_schedulers
+            .priority
+            .activate(&node.store.tx_begin_read(), &*DEV_GENESIS_ACCOUNT);
+
+        // Assert that the election is created within 5 seconds
+        assert_timely(Duration::from_secs(5), || {
+            node.active.election(&send1.qualified_root()).is_some()
+        });
+    }
+}

@@ -1,8 +1,10 @@
 use rsnano_core::{
-    work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, KeyPair, Networks, StateBlock,
-    WalletId, DEV_GENESIS_KEY,
+    work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, Epoch, KeyPair, Networks,
+    StateBlock, StateBlockBuilder, WalletId, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{
+    BlockStatus, Ledger, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
+};
 use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
@@ -30,7 +32,7 @@ pub struct System {
     runtime: Arc<AsyncRuntime>,
     network_params: NetworkParams,
     pub work: Arc<WorkPoolImpl>,
-    nodes: Vec<Arc<Node>>,
+    pub nodes: Vec<Arc<Node>>,
 }
 
 impl System {
@@ -593,4 +595,97 @@ pub fn process_block_local(node: Arc<Node>, account: Account, amount: Amount) ->
     node.process_local(send.clone()).unwrap();
 
     send
+}
+
+pub fn process_send_block(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
+    let transaction = node.ledger.read_txn();
+
+    let previous = node
+        .ledger
+        .any()
+        .account_head(&transaction, &*DEV_GENESIS_ACCOUNT)
+        .unwrap_or(*DEV_GENESIS_HASH);
+
+    let balance = node
+        .ledger
+        .any()
+        .account_balance(&transaction, &*DEV_GENESIS_ACCOUNT)
+        .unwrap_or(Amount::MAX);
+
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        previous,
+        *DEV_GENESIS_PUB_KEY,
+        balance - amount,
+        account.into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(previous.into()),
+    ));
+
+    node.process(send.clone()).unwrap();
+
+    send
+}
+
+pub fn process_open_block(node: Arc<Node>, keys: KeyPair) -> BlockEnum {
+    let transaction = node.ledger.read_txn();
+    let account = keys.account();
+
+    let (key, info) = node
+        .ledger
+        .any()
+        .account_receivable_upper_bound(&transaction, account, BlockHash::zero())
+        .next()
+        .unwrap();
+
+    let open = BlockEnum::State(StateBlock::new(
+        account,
+        BlockHash::zero(),
+        keys.public_key(),
+        info.amount,
+        key.send_block_hash.into(),
+        &keys,
+        node.work_generate_dev(account.into()),
+    ));
+
+    node.process(open.clone()).unwrap();
+
+    open
+}
+
+pub fn upgrade_epoch(
+    node: Arc<Node>,
+    //pool: &mut WorkPoolImpl,
+    epoch: Epoch,
+) -> BlockEnum {
+    let transaction = node.ledger.read_txn();
+    let account = *DEV_GENESIS_ACCOUNT;
+    let latest = node
+        .ledger
+        .any()
+        .account_head(&transaction, &account)
+        .unwrap();
+    let balance = node
+        .ledger
+        .any()
+        .account_balance(&transaction, &account)
+        .unwrap_or(Amount::zero());
+
+    let builder = StateBlockBuilder::new();
+    let epoch_block = builder
+        .account(account)
+        .previous(latest)
+        .balance(balance)
+        .link(node.ledger.epoch_link(epoch).unwrap())
+        .representative(*DEV_GENESIS_PUB_KEY)
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .build();
+
+    assert_eq!(
+        BlockStatus::Progress,
+        node.process_local(epoch_block.clone()).unwrap()
+    );
+
+    epoch_block
 }

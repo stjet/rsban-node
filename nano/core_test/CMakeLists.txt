@@ -13,7 +13,6 @@ add_executable(
   conflicts.cpp
   difficulty.cpp
   distributed_work.cpp
-  election.cpp
   election_scheduler.cpp
   frontiers_confirmation.cpp
   ledger.cpp

@@ -90,7 +90,6 @@ mod bootstrap_processor {
         // Start wallet lazy bootstrap
         config.peering_port = Some(get_available_port());
         let node1 = system.build_node().config(config).flags(flags).finish();
-        establish_tcp(&node1, &node0);
         let wallet_id = WalletId::random();
         node1.wallets.create(wallet_id);
         node1

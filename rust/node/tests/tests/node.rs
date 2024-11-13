@@ -1188,7 +1188,7 @@ fn fork_multi_flip() {
         BlockStatus::Progress,
         node2.process_local(send3.clone()).unwrap()
     );
-    
+
     node1
         .wallets
         .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
@@ -1220,8 +1220,14 @@ fn fork_multi_flip() {
         },
         "send1 not found on node2",
     );
-    assert!(!node2.ledger.any().block_exists(&node2.ledger.read_txn(), &send2.hash()));
-    assert!(!node2.ledger.any().block_exists_or_pruned(&node2.ledger.read_txn(), &send3.hash()));
+    assert!(!node2
+        .ledger
+        .any()
+        .block_exists(&node2.ledger.read_txn(), &send2.hash()));
+    assert!(!node2
+        .ledger
+        .any()
+        .block_exists_or_pruned(&node2.ledger.read_txn(), &send3.hash()));
 
     let winner = election.winner_hash().unwrap();
     assert_eq!(send1.hash(), winner);
@@ -1674,10 +1680,7 @@ fn auto_bootstrap_age() {
         .config(config.clone())
         .flags(node_flags.clone())
         .finish();
-    let node1 = system.make_node();
-    //node1.start().unwrap();
-
-    establish_tcp(&node1, &node0);
+    let _node1 = system.make_node();
 
     // Wait for at least 3 bootstrap attempts with frontiers age
     assert_timely_msg(
@@ -1852,7 +1855,6 @@ fn send_single_observing_peer() {
     let key2 = KeyPair::new();
     let node1 = system.make_node();
     let node2 = system.make_node();
-    let _node3 = system.make_node(); // Observing peer
     let wallet_id1 = node1.wallets.wallet_ids()[0];
     let wallet_id2 = node2.wallets.wallet_ids()[0];
 
@@ -1865,17 +1867,18 @@ fn send_single_observing_peer() {
         .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
         .unwrap();
 
-    let result = node1.wallets.send_action2(
-        &wallet_id1,
-        *DEV_GENESIS_ACCOUNT,
-        key2.account(),
-        node1.config.receive_minimum,
-        0,
-        true,
-        None,
-    );
-
-    assert!(result.is_ok());
+    node1
+        .wallets
+        .send_action2(
+            &wallet_id1,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node1.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
 
     assert_eq!(
         Amount::MAX - node1.config.receive_minimum,
@@ -1914,17 +1917,18 @@ fn send_single() {
         .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
         .unwrap();
 
-    let result = node1.wallets.send_action2(
-        &wallet_id1,
-        *DEV_GENESIS_ACCOUNT,
-        key2.account(),
-        node1.config.receive_minimum,
-        0,
-        true,
-        None,
-    );
-
-    assert!(result.is_ok());
+    node1
+        .wallets
+        .send_action2(
+            &wallet_id1,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node1.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
 
     assert_eq!(
         Amount::MAX - node1.config.receive_minimum,
@@ -1953,17 +1957,17 @@ fn send_self() {
         .insert_adhoc2(&wallet_id, &key2.private_key(), true)
         .unwrap();
 
-    let result = node.wallets.send_action2(
-        &wallet_id,
-        *DEV_GENESIS_ACCOUNT,
-        key2.account(),
-        node.config.receive_minimum,
-        0,
-        true,
-        None,
-    );
-
-    assert!(result.is_ok());
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
 
     assert_timely_msg(
         Duration::from_secs(10),
@@ -1981,9 +1985,8 @@ fn send_self() {
 fn balance() {
     let mut system = System::new();
     let node = system.make_node();
-    let wallet_id = WalletId::random();
-    node.wallets.create(wallet_id);
 
+    let wallet_id = node.wallets.wallet_ids()[0];
     node.wallets
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
@@ -1997,7 +2000,7 @@ fn balance() {
 fn work_generate() {
     let mut system = System::new();
     let node = system.make_node();
-    let root = Root::from_bytes([1u8; 32]);
+    let root = Root::from(1);
     let version = WorkVersion::Work1;
 
     // Test with higher difficulty

@@ -153,7 +153,6 @@ mod election_scheduler {
             .priority
             .activate(&node.store.tx_begin_read(), &*DEV_GENESIS_ACCOUNT);
 
-        // Assert that the election is created within 5 seconds
         assert_timely(Duration::from_secs(5), || {
             node.active.election(&send1.qualified_root()).is_some()
         });
@@ -169,7 +168,7 @@ mod election_scheduler {
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
-            node.balance(&*DEV_GENESIS_ACCOUNT) - Amount::raw(1_000_000_000_000_000_000_000_000),
+            node.balance(&*DEV_GENESIS_ACCOUNT) - Amount::nano(1000),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
             node.work_generate_dev((*DEV_GENESIS_HASH).into()),

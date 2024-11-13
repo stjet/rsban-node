@@ -3,8 +3,6 @@ add_executable(
   entry.cpp
   fakes/websocket_client.hpp
   active_elections.cpp
-  backlog.cpp
-  block.cpp
   block_store.cpp
   bootstrap.cpp
   bootstrap_ascending.cpp

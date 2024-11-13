@@ -267,13 +267,7 @@ mod bootstrap_processor {
 
         // Start lazy bootstrap with last block in chain known
         config.peering_port = Some(get_available_port());
-        let node2 = system
-            .build_node()
-            .config(config)
-            .flags(flags)
-            .disconnected()
-            .finish();
-        establish_tcp(&node2, &node1);
+        let node2 = system.build_node().config(config).flags(flags).finish();
         node2
             .bootstrap_initiator
             .bootstrap_lazy(send2.hash().into(), true, "".to_string());
@@ -383,13 +377,7 @@ mod bootstrap_processor {
 
         // Start lazy bootstrap with last block in chain known
         config.peering_port = Some(get_available_port());
-        let node2 = system
-            .build_node()
-            .config(config)
-            .flags(flags)
-            .disconnected()
-            .finish();
-        establish_tcp(&node2, &node1);
+        let node2 = system.build_node().config(config).flags(flags).finish();
         node2
             .bootstrap_initiator
             .bootstrap_lazy(receive.hash().into(), true, "".to_string());
@@ -408,12 +396,10 @@ mod bootstrap_processor {
             ),
             0
         );
-
-        node2.stop();
     }
 
     #[test]
-    fn bootstrap_processor_lazy_pruning() {
+    fn bootstrap_processor_lazy_hash_pruning() {
         let mut system = System::new();
         let mut config = System::default_config();
         config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;

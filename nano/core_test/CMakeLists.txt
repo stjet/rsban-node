@@ -22,7 +22,6 @@ add_executable(
   optimistic_scheduler.cpp
   system.cpp
   telemetry.cpp
-  uint256_union.cpp
   unchecked_map.cpp
   vote_processor.cpp
   voting.cpp

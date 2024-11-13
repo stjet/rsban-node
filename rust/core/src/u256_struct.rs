@@ -202,6 +202,8 @@ impl<'de> Visitor<'de> for U256Visitor {
 
 #[cfg(test)]
 mod tests {
+    use primitive_types::U256;
+
     u256_struct!(U256Test);
 
     #[test]
@@ -209,6 +211,30 @@ mod tests {
         let x = U256Test::zero();
         assert_eq!(x.0, [0; 32]);
         assert!(x.is_zero());
+    }
+
+    #[test]
+    fn decode_hex() {
+        // Happy path
+        assert_eq!(U256Test::decode_hex("0").unwrap(), U256Test::zero());
+        assert_eq!(U256Test::decode_hex("1").unwrap(), U256Test::from(1));
+        assert_eq!(U256Test::decode_hex("01").unwrap(), U256Test::from(1));
+        assert_eq!(U256Test::decode_hex("A").unwrap(), U256Test::from(0xa));
+        assert_eq!(
+            U256Test::decode_hex(
+                "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            )
+            .unwrap(),
+            U256Test::from(U256::MAX)
+        );
+
+        // Errors
+        assert!(U256Test::decode_hex("!").is_err());
+        assert!(U256Test::decode_hex("-1").is_err());
+        assert!(U256Test::decode_hex(
+            "affffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        )
+        .is_err());
     }
 
     #[test]
@@ -225,5 +251,11 @@ mod tests {
             U256Test::from_bytes([0xff; 32]).encode_hex(),
             "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
         );
+    }
+
+    #[test]
+    fn big_endian() {
+        let value = U256Test::from(1);
+        assert_eq!(value.as_bytes()[31], 1);
     }
 }

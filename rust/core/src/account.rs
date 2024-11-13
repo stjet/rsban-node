@@ -334,6 +334,18 @@ mod tests {
     }
 
     #[test]
+    fn decode_xrb_variant() {
+        assert_eq!(
+            Account::decode_account(
+                "xrb_3szoyggo7d3koqwqjgyhftkirykzqhgwoqnpdjc4i47fotgyyts1j8ab3mti"
+            )
+            .unwrap(),
+            Account::decode_hex("E7F5F39D52AC32ADF978BBCF6EA50C7A5FBBDDCADE965C542808ADAE9DEF6B20")
+                .unwrap()
+        );
+    }
+
+    #[test]
     fn decode_less_than_64_chars() {
         let account = Account::decode_hex("AA").unwrap();
         assert_eq!(
@@ -343,6 +355,18 @@ mod tests {
                 0, 0, 0, 0xAA
             ]
         )
+    }
+
+    #[test]
+    fn decode_invalid_checksum() {
+        assert_eq!(
+            Account::decode_account(
+                "nano_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtd1"
+            )
+            .unwrap_err()
+            .to_string(),
+            "invalid checksum"
+        );
     }
 
     #[test]

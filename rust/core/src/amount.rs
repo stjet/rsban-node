@@ -269,6 +269,28 @@ mod tests {
     }
 
     #[test]
+    fn decode_dec_happy_path() {
+        assert_eq!(Amount::decode_dec("0").unwrap(), Amount::zero());
+        assert_eq!(Amount::decode_dec("01").unwrap(), Amount::raw(1));
+        let amount = Amount::decode_dec("1230000000000000000000000000000").unwrap();
+        assert_eq!(amount, Amount::raw(1230000000000000000000000000000));
+        let amount = Amount::decode_dec("340282366920938463463374607431768211455").unwrap();
+        assert_eq!(amount, Amount::MAX);
+    }
+
+    #[test]
+    fn decode_dec_failures() {
+        let err = Amount::decode_dec("-1").unwrap_err();
+        assert_eq!(err.to_string(), "invalid digit found in string");
+        assert_eq!(
+            Amount::decode_dec("").unwrap_err().to_string(),
+            "cannot parse integer from empty string"
+        );
+        let err = Amount::decode_dec("340282366920938463463374607431768211456").unwrap_err();
+        assert_eq!(err.to_string(), "number too large to fit in target type");
+    }
+
+    #[test]
     fn format_balance() {
         assert_eq!("0", Amount::raw(0).format_balance(2));
         assert_eq!(

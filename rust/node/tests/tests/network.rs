@@ -2,7 +2,10 @@ use rsnano_core::{Account, Amount, BlockEnum, KeyPair, StateBlock, Vote, DEV_GEN
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{ConfirmAck, Keepalive, Message, Publish};
 use rsnano_network::{ChannelMode, DropPolicy, TrafficType};
-use rsnano_node::stats::{DetailType, Direction, StatType};
+use rsnano_node::{
+    bootstrap::BootstrapInitiatorExt,
+    stats::{DetailType, Direction, StatType},
+};
 use std::{ops::Deref, sync::Arc, time::Duration};
 use test_helpers::{
     assert_timely, assert_timely_eq, assert_timely_msg, establish_tcp, make_fake_channel,
@@ -241,5 +244,40 @@ fn send_valid_confirm_ack() {
         node2.latest(&DEV_GENESIS_ACCOUNT) != *DEV_GENESIS_HASH
     });
     // Make sure the balance has decreased after processing the block.
+    assert_eq!(node2.balance(&DEV_GENESIS_ACCOUNT), Amount::raw(50));
+}
+
+#[test]
+fn send_valid_publish() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    node1.bootstrap_initiator.stop();
+    node2.bootstrap_initiator.stop();
+    node1.insert_into_wallet(&DEV_GENESIS_KEY);
+    let key2 = KeyPair::new();
+    node2.insert_into_wallet(&key2);
+    let block2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::raw(50),
+        key2.public_key().as_account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+    let hash2 = block2.hash();
+    let latest2 = node2.latest(&DEV_GENESIS_ACCOUNT);
+    node2.process_active(block2);
+    assert_timely(Duration::from_secs(10), || {
+        node1
+            .stats
+            .count(StatType::Message, DetailType::Publish, Direction::In)
+            > 0
+    });
+    assert_ne!(hash2, latest2);
+    assert_timely(Duration::from_secs(10), || {
+        node2.latest(&DEV_GENESIS_ACCOUNT) != latest2
+    });
     assert_eq!(node2.balance(&DEV_GENESIS_ACCOUNT), Amount::raw(50));
 }

@@ -21,38 +21,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (network, send_valid_publish)
-{
-	nano::node_flags node_flags;
-	nano::test::system system (2, node_flags);
-	auto & node1 (*system.nodes[0]);
-	auto & node2 (*system.nodes[1]);
-	auto wallet_id1 = node1.wallets.first_wallet_id ();
-	auto wallet_id2 = node2.wallets.first_wallet_id ();
-	node1.bootstrap_initiator.stop ();
-	node2.bootstrap_initiator.stop ();
-	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
-	nano::keypair key2;
-	(void)node2.wallets.insert_adhoc (wallet_id2, key2.prv);
-	nano::block_hash latest1 (node1.latest (nano::dev::genesis_key.pub));
-	nano::block_builder builder;
-	auto block2 = builder
-				  .send ()
-				  .previous (latest1)
-				  .destination (key2.pub)
-				  .balance (50)
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (*system.work.generate (latest1))
-				  .build ();
-	auto hash2 (block2->hash ());
-	nano::block_hash latest2 (node2.latest (nano::dev::genesis_key.pub));
-	node2.process_active (std::make_shared<nano::send_block> (*block2));
-	ASSERT_TIMELY (10s, node1.stats->count (nano::stat::type::message, nano::stat::detail::publish, nano::stat::dir::in) != 0);
-	ASSERT_NE (hash2, latest2);
-	ASSERT_TIMELY (10s, node2.latest (nano::dev::genesis_key.pub) != latest2);
-	ASSERT_EQ (50, node2.balance (nano::dev::genesis_key.pub));
-}
-
 TEST (receivable_processor, send_with_receive)
 {
 	nano::node_flags node_flags;

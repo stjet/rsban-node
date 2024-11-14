@@ -16,42 +16,6 @@ using namespace std::chrono_literals;
 /**
  * Tests that bootstrap_ascending will return multiple new blocks in-order
  */
-TEST (bootstrap_ascending, account_inductive)
-{
-	nano::node_flags flags;
-	nano::test::system system{ 1, flags };
-	auto & node0 = *system.nodes[0];
-	nano::state_block_builder builder;
-	auto send1 = builder.make_block ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .link (0)
-				 .balance (nano::dev::constants.genesis_amount - 1)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::dev::genesis->hash ()))
-				 .build ();
-	auto send2 = builder.make_block ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (send1->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .link (0)
-				 .balance (nano::dev::constants.genesis_amount - 2)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (send1->hash ()))
-				 .build ();
-	//	std::cerr << "Genesis: " << nano::dev::genesis->hash ().to_string () << std::endl;
-	//	std::cerr << "Send1: " << send1->hash ().to_string () << std::endl;
-	//	std::cerr << "Send2: " << send2->hash ().to_string () << std::endl;
-	ASSERT_EQ (nano::block_status::progress, node0.process (send1));
-	ASSERT_EQ (nano::block_status::progress, node0.process (send2));
-	auto & node1 = *system.add_node (flags);
-	ASSERT_TIMELY (50s, node1.block (send2->hash ()) != nullptr);
-}
-
-/**
- * Tests that bootstrap_ascending will return multiple new blocks in-order
- */
 TEST (bootstrap_ascending, trace_base)
 {
 	nano::node_flags flags;

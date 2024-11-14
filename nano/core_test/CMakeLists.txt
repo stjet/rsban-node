@@ -1,7 +1,6 @@
 add_executable(
   core_test
   entry.cpp
-  fakes/websocket_client.hpp
   active_elections.cpp
   block_store.cpp
   bootstrap.cpp

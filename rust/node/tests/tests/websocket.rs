@@ -1,11 +1,11 @@
 use core::panic;
 use futures_util::{SinkExt, StreamExt};
-use rsnano_core::{Amount, BlockEnum, KeyPair, Networks, SendBlock, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, BlockEnum, KeyPair, Networks, SendBlock, StateBlock, Vote, VoteCode, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{Message, Publish};
 use rsnano_node::{
     config::{NetworkConstants, NodeConfig},
-    websocket::{BlockConfirmed, OutgoingMessageEnvelope, Topic, WebsocketConfig},
+    websocket::{vote_received, BlockConfirmed, OutgoingMessageEnvelope, Topic, VoteReceived, WebsocketConfig},
     Node,
 };
 use std::{
@@ -540,8 +540,6 @@ fn vote(){
         ws_stream.next().await.unwrap().unwrap();
 
 	    // Quick-confirm a block
-        
-        // Confirm a block
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
         let key = KeyPair::new();
         let previous = *DEV_GENESIS_HASH;
@@ -562,6 +560,41 @@ fn vote(){
 
         let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
         assert_eq!(response_json.topic, Some(Topic::Vote));
+    });
+}
+
+#[test]
+// Tests vote subscription options - vote type
+fn vote_options_type(){
+    let mut system = System::new();
+    let node1 = create_node_with_websocket(&mut system);
+    node1.runtime.block_on(async {
+        let mut ws_stream = connect_websocket(&node1).await;
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "vote", "ack": true, "options": {"include_replays": true, "include_indeterminate": false} }"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+
+	    // Custom made votes for simplicity
+        let vote = Vote::new(&DEV_GENESIS_KEY, 0, 0, vec![*DEV_GENESIS_HASH]);
+
+        let node_l = node1.clone();
+        spawn_blocking(move ||{
+            node_l.websocket.as_ref().unwrap().broadcast(&vote_received(&vote, VoteCode::Replay));
+        }).await.unwrap();
+
+
+        let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
+            panic!("not a text message");
+        };
+
+        let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
+        let message: VoteReceived  = serde_json::from_value(response_json.message.unwrap()).unwrap();
+        assert_eq!(message.vote_type, "replay");
     });
 
 }

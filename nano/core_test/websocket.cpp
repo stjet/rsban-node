@@ -22,47 +22,6 @@
 
 using namespace std::chrono_literals;
 
-// Tests vote subscription options - vote type
-TEST (websocket, vote_options_type)
-{
-	nano::test::system system;
-	nano::node_config config = system.default_config ();
-	config.websocket_config.enabled = true;
-	config.websocket_config.port = system.get_available_port ();
-	auto node1 (system.add_node (config));
-
-	std::atomic<bool> ack_ready{ false };
-	auto task = ([&ack_ready, config, &node1] () {
-		fake_websocket_client client (node1->websocket.server->listening_port ());
-		client.send_message (R"json({"action": "subscribe", "topic": "vote", "ack": true, "options": {"include_replays": true, "include_indeterminate": false}})json");
-		client.await_ack ();
-		ack_ready = true;
-		EXPECT_EQ (1, node1->websocket.server->subscriber_count (nano::websocket::topic::vote));
-		return client.get_response ();
-	});
-	auto future = std::async (std::launch::async, task);
-
-	ASSERT_TIMELY (5s, ack_ready);
-
-	// Custom made votes for simplicity
-	auto vote = nano::test::make_vote (nano::dev::genesis_key, { nano::dev::genesis }, 0, 0);
-	nano::websocket::message_builder builder;
-	auto msg (builder.vote_received (vote, nano::vote_code::replay));
-	node1->websocket.server->broadcast (msg);
-
-	ASSERT_TIMELY_EQ (5s, future.wait_for (0s), std::future_status::ready);
-
-	auto response = future.get ();
-	ASSERT_TRUE (response);
-	boost::property_tree::ptree event;
-	std::stringstream stream;
-	stream << response;
-	boost::property_tree::read_json (stream, event);
-	auto message_contents = event.get_child ("message");
-	ASSERT_EQ (1, message_contents.count ("type"));
-	ASSERT_EQ ("replay", message_contents.get<std::string> ("type"));
-}
-
 // Tests vote subscription options - list of representatives
 TEST (websocket, vote_options_representatives)
 {

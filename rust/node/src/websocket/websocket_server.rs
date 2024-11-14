@@ -7,7 +7,7 @@ use crate::{
 };
 use rsnano_core::{Account, Amount, BlockHash, BlockType, Vote, VoteCode, VoteWithWeightInfo};
 use rsnano_messages::TelemetryData;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     net::{IpAddr, SocketAddr, SocketAddrV6},
     sync::Arc,
@@ -209,14 +209,14 @@ pub fn vote_received(vote: &Vote, code: VoteCode) -> OutgoingMessageEnvelope {
     )
 }
 
-#[derive(Serialize)]
-struct VoteReceived {
-    account: String,
-    signature: String,
-    sequence: String,
-    timestamp: String,
-    duration: String,
-    blocks: Vec<String>,
+#[derive(Serialize, Deserialize)]
+pub struct VoteReceived {
+    pub account: String,
+    pub signature: String,
+    pub sequence: String,
+    pub timestamp: String,
+    pub duration: String,
+    pub blocks: Vec<String>,
     #[serde(rename = "type")]
-    vote_type: String,
+    pub vote_type: String,
 }

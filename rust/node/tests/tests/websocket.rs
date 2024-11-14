@@ -5,7 +5,7 @@ use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{Message, Publish};
 use rsnano_node::{
     config::{NetworkConstants, NodeConfig},
-    websocket::{OutgoingMessageEnvelope, Topic, WebsocketConfig},
+    websocket::{BlockConfirmed, OutgoingMessageEnvelope, Topic, WebsocketConfig},
     Node,
 };
 use std::{
@@ -246,6 +246,103 @@ fn confirmation() {
         ));
         node1.process_active(send);
 
+        timeout(Duration::from_secs(1), ws_stream.next())
+            .await
+            .unwrap_err();
+    });
+}
+
+// Tests the filtering options of block confirmations
+#[test]
+fn confirmation_options() {
+    let mut system = System::new();
+    let node1 = create_node_with_websocket(&mut system);
+    node1.runtime.block_on(async {
+        let mut ws_stream = connect_websocket(&node1).await;
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "confirmation", "ack": true, "options": {"confirmation_type": "active_quorum", "accounts": ["xrb_invalid"]}}"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+        
+        // Confirm a state block for an in-wallet account
+        node1.insert_into_wallet(&DEV_GENESIS_KEY);
+        let key = KeyPair::new();
+        let mut balance = Amount::MAX;
+        let send_amount = node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1);
+        let mut previous = node1.latest(&DEV_GENESIS_ACCOUNT);
+        balance = balance - send_amount;
+        let send = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            previous,
+            *DEV_GENESIS_PUB_KEY,
+            balance,
+            key.public_key().as_account().into(),
+            &DEV_GENESIS_KEY,
+            node1.work_generate_dev(previous.into()),
+        ));
+        previous = send.hash();
+        node1.process_active(send);
+
+        timeout(Duration::from_secs(1), ws_stream.next())
+            .await
+            .unwrap_err();
+
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "confirmation", "ack": true, "options": {"confirmation_type": "active_quorum", "all_local_accounts": true, "include_election_info": true}}"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+
+        // Quick-confirm another block
+        balance = balance - send_amount;
+        let send = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            previous,
+            *DEV_GENESIS_PUB_KEY,
+            balance,
+            key.public_key().as_account().into(),
+            &DEV_GENESIS_KEY,
+            node1.work_generate_dev(previous.into()),
+        ));
+        previous = send.hash();
+        node1.process_active(send);
+
+        let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
+            panic!("not a text message");
+        };
+
+        let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
+        assert_eq!(response_json.topic, Some(Topic::Confirmation));
+        let message: BlockConfirmed  = serde_json::from_value(response_json.message.unwrap()).unwrap();
+        let election_info = message.election_info.unwrap();
+        assert!(election_info.blocks.parse::<i32>().unwrap() >= 1);
+		// Make sure tally and time are non-zero.
+        assert_ne!(election_info.tally, "0");
+        assert_ne!(election_info.time, "0");
+        assert!(election_info.votes.is_none());
+
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "confirmation", "ack": true, "options":{"confirmation_type": "active_quorum", "all_local_accounts": true} }"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+        
+        // Confirm a legacy block
+        // When filtering options are enabled, legacy blocks are always filtered
+        balance = balance - send_amount;
+        let send = BlockEnum::LegacySend(SendBlock::new(&previous, &key.public_key().as_account(), &balance, &DEV_GENESIS_KEY.private_key(), 
+                node1.work_generate_dev(previous.into())));
+        node1.process_active(send);
         timeout(Duration::from_secs(1), ws_stream.next())
             .await
             .unwrap_err();

@@ -7,7 +7,7 @@ use rsnano_core::{
     utils::{PropertyTree, SerdePropertyTree},
     Account, Amount, BlockEnum, BlockSideband, VoteWithWeightInfo,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
     borrow::Cow,
@@ -312,10 +312,10 @@ fn block_confirmed_message(
     )
 }
 
-#[derive(Serialize)]
-struct JsonSideband {
-    height: String,
-    local_timestamp: String,
+#[derive(Serialize, Deserialize)]
+pub struct JsonSideband {
+    pub height: String,
+    pub local_timestamp: String,
 }
 
 impl From<&BlockSideband> for JsonSideband {
@@ -327,32 +327,32 @@ impl From<&BlockSideband> for JsonSideband {
     }
 }
 
-#[derive(Serialize)]
-struct BlockConfirmed {
-    account: String,
-    amount: String,
-    hash: String,
-    confirmation_type: String,
+#[derive(Serialize, Deserialize)]
+pub struct BlockConfirmed {
+    pub account: String,
+    pub amount: String,
+    pub hash: String,
+    pub confirmation_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    election_info: Option<ElectionInfo>,
+    pub election_info: Option<ElectionInfo>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    block: Option<Value>,
+    pub block: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    sideband: Option<JsonSideband>,
+    pub sideband: Option<JsonSideband>,
 }
 
-#[derive(Serialize)]
-struct ElectionInfo {
-    duration: String,
-    time: String,
-    tally: String,
+#[derive(Serialize, Deserialize)]
+pub struct ElectionInfo {
+    pub duration: String,
+    pub time: String,
+    pub tally: String,
     #[serde(rename = "final")]
-    final_tally: String,
-    blocks: String,
-    voters: String,
-    request_count: String,
+    pub final_tally: String,
+    pub blocks: String,
+    pub voters: String,
+    pub request_count: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    votes: Option<Vec<JsonVoteSummary>>,
+    pub votes: Option<Vec<JsonVoteSummary>>,
 }
 
 impl From<&ElectionStatus> for ElectionInfo {
@@ -375,12 +375,12 @@ impl From<&ElectionStatus> for ElectionInfo {
     }
 }
 
-#[derive(Serialize)]
-struct JsonVoteSummary {
-    representative: String,
-    timestamp: String,
-    hash: String,
-    weight: String,
+#[derive(Serialize, Deserialize)]
+pub struct JsonVoteSummary {
+    pub representative: String,
+    pub timestamp: String,
+    pub hash: String,
+    pub weight: String,
 }
 
 impl From<&VoteWithWeightInfo> for JsonVoteSummary {

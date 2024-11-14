@@ -7,7 +7,6 @@ add_executable(
   conflicts.cpp
   difficulty.cpp
   election_scheduler.cpp
-  frontiers_confirmation.cpp
   ledger.cpp
   ledger_confirm.cpp
   node.cpp

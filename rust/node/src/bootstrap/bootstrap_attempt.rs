@@ -8,7 +8,7 @@ use anyhow::Result;
 use rsnano_core::{encode_hex, utils::PropertyTree, Account, BlockEnum};
 use rsnano_ledger::Ledger;
 use rsnano_network::ChannelId;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
@@ -130,9 +130,9 @@ impl BootstrapAttempt {
         OutgoingMessageEnvelope::new(
             Topic::Bootstrap,
             BootstrapStarted {
-                reason: "started",
-                id: &self.id,
-                mode: self.mode.as_str(),
+                reason: "started".to_owned(),
+                id: self.id.clone(),
+                mode: self.mode.as_str().to_owned(),
             },
         )
     }
@@ -141,9 +141,9 @@ impl BootstrapAttempt {
         OutgoingMessageEnvelope::new(
             Topic::Bootstrap,
             BootstrapExited {
-                reason: "exited",
-                id: &self.id,
-                mode: self.mode.as_str(),
+                reason: "exited".to_owned(),
+                id: self.id.clone(),
+                mode: self.mode.as_str().to_owned(),
                 total_blocks: self.total_blocks.load(Ordering::SeqCst).to_string(),
                 duration: self.duration().as_secs().to_string(),
             },
@@ -238,18 +238,18 @@ impl Drop for BootstrapAttempt {
     }
 }
 
-#[derive(Serialize)]
-pub struct BootstrapStarted<'a> {
-    pub reason: &'a str,
-    pub id: &'a str,
-    pub mode: &'a str,
+#[derive(Serialize, Deserialize)]
+pub struct BootstrapStarted {
+    pub reason: String,
+    pub id: String,
+    pub mode: String,
 }
 
-#[derive(Serialize)]
-pub struct BootstrapExited<'a> {
-    pub reason: &'a str,
-    pub id: &'a str,
-    pub mode: &'a str,
+#[derive(Serialize, Deserialize)]
+pub struct BootstrapExited {
+    pub reason: String,
+    pub id: String,
+    pub mode: String,
     pub total_blocks: String,
     pub duration: String,
 }

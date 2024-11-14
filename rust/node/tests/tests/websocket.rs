@@ -85,7 +85,7 @@ fn stopped_election() {
         let mut ws_stream = connect_websocket(&node1).await;
         ws_stream
             .send(tungstenite::Message::Text(
-                r#"{"action": "subscribe", "topic": "stopped_election", "ack": true}"#.to_string(),
+           r#"{"action": "subscribe", "topic": "stopped_election", "ack": true}"#.to_string(),
             ))
             .await
             .unwrap();
@@ -348,6 +348,60 @@ fn confirmation_options() {
             .unwrap_err();
     });
 }
+
+#[test]
+fn confirmation_options_votes(){
+    let mut system = System::new();
+    let node1 = create_node_with_websocket(&mut system);
+    node1.runtime.block_on(async {
+        let mut ws_stream = connect_websocket(&node1).await;
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "confirmation", "ack": true, "options":{"confirmation_type": "active_quorum", "include_election_info_with_votes": true, "include_block": false} }"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+        
+        // Confirm a state block for an in-wallet account
+        node1.insert_into_wallet(&DEV_GENESIS_KEY);
+        let key = KeyPair::new();
+        let balance = Amount::MAX;
+        let send_amount = node1.config.online_weight_minimum + Amount::raw(1);
+        let mut previous = *DEV_GENESIS_HASH;
+        let balance = balance - send_amount;
+        let send = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            previous,
+            *DEV_GENESIS_PUB_KEY,
+            balance,
+            key.public_key().as_account().into(),
+            &DEV_GENESIS_KEY,
+            node1.work_generate_dev(previous.into()),
+        ));
+        let send_hash = send.hash();
+        node1.process_active(send);
+
+        let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
+            panic!("not a text message");
+        };
+
+        let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
+        assert_eq!(response_json.topic, Some(Topic::Confirmation));
+
+        let message: BlockConfirmed  = serde_json::from_value(response_json.message.unwrap()).unwrap();
+        let election_info = message.election_info.unwrap();
+        let votes = election_info.votes.unwrap();
+        assert_eq!(votes.len(), 1);
+        let vote = &votes[0];
+        assert_eq!(vote.representative, DEV_GENESIS_ACCOUNT.encode_account());
+        assert_ne!(vote.timestamp, "0");
+        assert_eq!(vote.hash, send_hash.to_string());
+        assert_eq!(vote.weight, node1.balance(&DEV_GENESIS_ACCOUNT).to_string_dec());
+    });
+}
+
 
 fn create_node_with_websocket(system: &mut System) -> Arc<Node> {
     let websocket_port = get_available_port();

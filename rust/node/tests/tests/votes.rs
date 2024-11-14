@@ -510,7 +510,6 @@ fn vote_spacing_rapid() {
     node.vote_generators
         .generate_non_final_vote(&(*DEV_GENESIS_HASH).into(), &send2.hash().into());
 
-    // todo: this fails
     assert_timely(Duration::from_secs(3), || {
         node.stats.count(
             StatType::VoteGenerator,

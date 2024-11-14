@@ -1,5 +1,6 @@
+use core::panic;
 use futures_util::{SinkExt, StreamExt};
-use rsnano_core::{Amount, BlockEnum, KeyPair, Networks, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, BlockEnum, KeyPair, Networks, SendBlock, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{Message, Publish};
 use rsnano_node::{
@@ -7,7 +8,13 @@ use rsnano_node::{
     websocket::{OutgoingMessageEnvelope, Topic, WebsocketConfig},
     Node,
 };
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 use test_helpers::{assert_timely, get_available_port, make_fake_channel, System};
 use tokio::{net::TcpStream, task::spawn_blocking, time::timeout};
 use tokio_tungstenite::{connect_async, tungstenite, MaybeTlsStream, WebSocketStream};
@@ -174,6 +181,74 @@ fn subscription_edge() {
         //await ack
         ws_stream.next().await.unwrap().unwrap();
         assert_eq!(websocket.subscriber_count(Topic::Confirmation), 0);
+    });
+}
+
+#[test]
+// Subscribes to block confirmations, confirms a block and then awaits websocket notification
+fn confirmation() {
+    let mut system = System::new();
+    let node1 = create_node_with_websocket(&mut system);
+    node1.runtime.block_on(async {
+        let mut ws_stream = connect_websocket(&node1).await;
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "confirmation", "ack": true}"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+
+        node1.insert_into_wallet(&DEV_GENESIS_KEY);
+        let key = KeyPair::new();
+        let mut balance = Amount::MAX;
+        let send_amount = node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1);
+        // Quick-confirm a block, legacy blocks should work without filtering
+        let mut previous = node1.latest(&DEV_GENESIS_ACCOUNT);
+        balance = balance - send_amount;
+        let send = BlockEnum::LegacySend(SendBlock::new(
+            &previous,
+            &key.public_key().as_account(),
+            &balance,
+            &DEV_GENESIS_KEY.private_key(),
+            node1.work_generate_dev(previous.into()),
+        ));
+        previous = send.hash();
+        node1.process_active(send);
+
+        let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
+            panic!("not a text message");
+        };
+
+        let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
+        assert_eq!(response_json.topic, Some(Topic::Confirmation));
+
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "unsubscribe", "topic": "confirmation", "ack": true}"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+
+        // Quick confirm a state block
+        balance = balance - send_amount;
+        let send = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            previous,
+            *DEV_GENESIS_PUB_KEY,
+            balance,
+            key.public_key().as_account().into(),
+            &DEV_GENESIS_KEY,
+            node1.work_generate_dev(previous.into()),
+        ));
+        node1.process_active(send);
+
+        timeout(Duration::from_secs(1), ws_stream.next())
+            .await
+            .unwrap_err();
     });
 }
 

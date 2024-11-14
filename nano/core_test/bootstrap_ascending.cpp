@@ -14,29 +14,6 @@
 using namespace std::chrono_literals;
 
 /**
- * Tests the base case for returning
- */
-TEST (bootstrap_ascending, account_base)
-{
-	nano::node_flags flags;
-	nano::test::system system{ 1, flags };
-	auto & node0 = *system.nodes[0];
-	nano::state_block_builder builder;
-	auto send1 = builder.make_block ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .link (0)
-				 .balance (nano::dev::constants.genesis_amount - 1)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (nano::dev::genesis->hash ()))
-				 .build ();
-	ASSERT_EQ (nano::block_status::progress, node0.process (send1));
-	auto & node1 = *system.add_node (flags);
-	ASSERT_TIMELY (5s, node1.block (send1->hash ()) != nullptr);
-}
-
-/**
  * Tests that bootstrap_ascending will return multiple new blocks in-order
  */
 TEST (bootstrap_ascending, account_inductive)

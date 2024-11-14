@@ -5,7 +5,6 @@ add_executable(
   block_store.cpp
   bootstrap.cpp
   bootstrap_ascending.cpp
-  cli.cpp
   conflicts.cpp
   difficulty.cpp
   distributed_work.cpp

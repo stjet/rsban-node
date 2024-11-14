@@ -16,16 +16,6 @@ pub(crate) struct RunDaemonArgs {
     /// Uses the supplied network (live, test, beta or dev)
     #[arg(long, group = "input")]
     network: Option<String>,
-    /// Pass node configuration values
-    /// This takes precedence over any values in the configuration file
-    /// This option can be repeated multiple times
-    #[arg(long, verbatim_doc_comment)]
-    config_overrides: Option<Vec<String>>,
-    /// Pass RPC configuration values
-    /// This takes precedence over any values in the configuration file
-    /// This option can be repeated multiple times.
-    #[arg(long, verbatim_doc_comment)]
-    rpc_config_overrides: Option<Vec<String>>,
     /// Disables activate_successors in active_elections
     #[arg(long)]
     disable_activate_successors: bool,
@@ -126,12 +116,6 @@ impl RunDaemonArgs {
 
     pub(crate) fn get_flags(&self) -> NodeFlags {
         let mut flags = NodeFlags::new();
-        if let Some(config_overrides) = &self.config_overrides {
-            flags.config_overrides = config_overrides.clone();
-        }
-        if let Some(rpc_config_overrides) = &self.rpc_config_overrides {
-            flags.rpc_config_overrides = rpc_config_overrides.clone();
-        }
         flags.disable_activate_successors = self.disable_activate_successors;
         flags.disable_backup = self.disable_backup;
         flags.disable_lazy_bootstrap = self.disable_lazy_bootstrap;

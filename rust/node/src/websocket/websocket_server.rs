@@ -142,28 +142,28 @@ fn telemetry_received(data: &TelemetryData, endpoint: SocketAddrV6) -> OutgoingM
     )
 }
 
-#[derive(Serialize)]
-struct TelemetryReceived {
-    block_count: String,
-    cemented_count: String,
-    unchecked_count: String,
-    account_count: String,
-    bandwidth_cap: String,
-    peer_count: String,
-    protocol_version: String,
-    uptime: String,
-    genesis_block: String,
-    major_version: String,
-    minor_version: String,
-    patch_version: String,
-    pre_release_version: String,
-    maker: String,
-    timestamp: String,
-    active_difficulty: String,
-    node_id: String,
-    signature: String,
-    address: String,
-    port: String,
+#[derive(Serialize, Deserialize)]
+pub struct TelemetryReceived {
+    pub block_count: String,
+    pub cemented_count: String,
+    pub unchecked_count: String,
+    pub account_count: String,
+    pub bandwidth_cap: String,
+    pub peer_count: String,
+    pub protocol_version: String,
+    pub uptime: String,
+    pub genesis_block: String,
+    pub major_version: String,
+    pub minor_version: String,
+    pub patch_version: String,
+    pub pre_release_version: String,
+    pub maker: String,
+    pub timestamp: String,
+    pub active_difficulty: String,
+    pub node_id: String,
+    pub signature: String,
+    pub address: String,
+    pub port: String,
 }
 
 fn started_election(hash: &BlockHash) -> OutgoingMessageEnvelope {

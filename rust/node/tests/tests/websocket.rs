@@ -2,9 +2,9 @@ use core::panic;
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::{Account, Amount, BlockEnum, KeyPair, Networks, SendBlock, StateBlock, Vote, VoteCode, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-use rsnano_messages::{Message, Publish};
+use rsnano_messages::{Message, Publish, TelemetryData};
 use rsnano_node::{
-    bootstrap::{BootstrapInitiatorExt, BootstrapStarted}, config::{NetworkConstants, NodeConfig}, websocket::{vote_received, BlockConfirmed, OutgoingMessageEnvelope, Topic, VoteReceived, WebsocketConfig}, Node
+    bootstrap::{BootstrapInitiatorExt, BootstrapStarted}, config::{NetworkConstants, NodeConfig}, websocket::{vote_received, BlockConfirmed, OutgoingMessageEnvelope, TelemetryReceived, Topic, VoteReceived, WebsocketConfig}, Node
 };
 use std::{
     sync::Arc,
@@ -732,7 +732,40 @@ fn ws_keepalive(){
         //await ack
         ws_stream.next().await.unwrap().unwrap();
     });
+}
 
+#[test]
+// Tests sending telemetry
+fn telemetry(){
+    let mut system = System::new();
+    let node1 = create_node_with_websocket(&mut system);
+    let node2 = create_node_with_websocket(&mut system);
+    node1.runtime.block_on(async {
+        let mut ws_stream = connect_websocket(&node1).await;
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "telemetry", "ack": true}"#.to_string()
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+
+        // Check the telemetry notification message
+        let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
+            panic!("not a text message");
+        };
+        let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
+        assert_eq!(response_json.topic, Some(Topic::Telemetry));
+
+        // Check the bootstrap notification message
+        let message: TelemetryReceived = serde_json::from_value(response_json.message.unwrap()).unwrap();
+        assert_eq!(message.address, node2.tcp_listener.local_address().ip().to_string());
+        assert_eq!(message.port, node2.tcp_listener.local_address().port().to_string());
+        
+	    // Other node should have no subscribers
+        assert_eq!(node2.websocket.as_ref().unwrap().subscriber_count(Topic::Telemetry), 0);
+    });
 }
 
 fn create_node_with_websocket(system: &mut System) -> Arc<Node> {

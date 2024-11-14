@@ -5,33 +5,23 @@ use rsnano_messages::{Message, Publish};
 use rsnano_node::{
     config::{NetworkConstants, NodeConfig},
     websocket::{OutgoingMessageEnvelope, Topic, WebsocketConfig},
+    Node,
 };
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely, get_available_port, make_fake_channel, System};
-use tokio::{task::spawn_blocking, time::timeout};
+use tokio::{net::TcpStream, task::spawn_blocking, time::timeout};
+use tokio_tungstenite::{connect_async, tungstenite, MaybeTlsStream, WebSocketStream};
 
 /// Tests getting notification of a started election
 #[test]
 fn started_election() {
     let mut system = System::new();
-    let websocket_port = get_available_port();
-    let config = NodeConfig {
-        websocket_config: WebsocketConfig {
-            enabled: true,
-            port: websocket_port,
-            ..WebsocketConfig::new(&NetworkConstants::default_for(Networks::NanoDevNetwork))
-        },
-        ..System::default_config()
-    };
-    let node1 = system.build_node().config(config).finish();
+    let node1 = create_node_with_websocket(&mut system);
     let channel1 = make_fake_channel(&node1);
     node1.runtime.block_on(async {
-        let (mut ws_stream, _) =
-            tokio_tungstenite::connect_async(format!("ws://[::1]:{}", websocket_port))
-                .await
-                .expect("Failed to connect");
+        let mut ws_stream = connect_websocket(&node1).await;
         ws_stream
-            .send(tokio_tungstenite::tungstenite::Message::Text(
+            .send(tungstenite::Message::Text(
                 r#"{"action": "subscribe", "topic": "started_election", "ack": true}"#.to_string(),
             ))
             .await
@@ -82,24 +72,12 @@ fn started_election() {
 #[test]
 fn stopped_election() {
     let mut system = System::new();
-    let websocket_port = get_available_port();
-    let config = NodeConfig {
-        websocket_config: WebsocketConfig {
-            enabled: true,
-            port: websocket_port,
-            ..WebsocketConfig::new(&NetworkConstants::default_for(Networks::NanoDevNetwork))
-        },
-        ..System::default_config()
-    };
-    let node1 = system.build_node().config(config).finish();
+    let node1 = create_node_with_websocket(&mut system);
     let channel1 = make_fake_channel(&node1);
     node1.runtime.block_on(async {
-        let (mut ws_stream, _) =
-            tokio_tungstenite::connect_async(format!("ws://[::1]:{}", websocket_port))
-                .await
-                .expect("Failed to connect");
+        let mut ws_stream = connect_websocket(&node1).await;
         ws_stream
-            .send(tokio_tungstenite::tungstenite::Message::Text(
+            .send(tungstenite::Message::Text(
                 r#"{"action": "subscribe", "topic": "stopped_election", "ack": true}"#.to_string(),
             ))
             .await
@@ -148,4 +126,74 @@ fn stopped_election() {
             serde_json::from_str(response.to_text().unwrap()).unwrap();
         assert_eq!(response_msg.topic, Some(Topic::StoppedElection));
     });
+}
+
+#[test]
+// Tests clients subscribing multiple times or unsubscribing without a subscription
+fn subscription_edge() {
+    let mut system = System::new();
+    let node1 = create_node_with_websocket(&mut system);
+    let websocket = node1.websocket.as_ref().unwrap();
+    assert_eq!(websocket.subscriber_count(Topic::Confirmation), 0);
+
+    node1.runtime.block_on(async {
+        let mut ws_stream = connect_websocket(&node1).await;
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "confirmation", "ack": true}"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+        assert_eq!(websocket.subscriber_count(Topic::Confirmation), 1);
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "confirmation", "ack": true}"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+        assert_eq!(websocket.subscriber_count(Topic::Confirmation), 1);
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "unsubscribe", "topic": "confirmation", "ack": true}"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+        assert_eq!(websocket.subscriber_count(Topic::Confirmation), 0);
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "unsubscribe", "topic": "confirmation", "ack": true}"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+        assert_eq!(websocket.subscriber_count(Topic::Confirmation), 0);
+    });
+}
+
+fn create_node_with_websocket(system: &mut System) -> Arc<Node> {
+    let websocket_port = get_available_port();
+    let config = NodeConfig {
+        websocket_config: WebsocketConfig {
+            enabled: true,
+            port: websocket_port,
+            ..WebsocketConfig::new(&NetworkConstants::default_for(Networks::NanoDevNetwork))
+        },
+        ..System::default_config()
+    };
+    let node = system.build_node().config(config).finish();
+    node
+}
+
+async fn connect_websocket(node: &Node) -> WebSocketStream<MaybeTlsStream<TcpStream>> {
+    let (ws_stream, _) = connect_async(format!("ws://[::1]:{}", node.config.websocket_config.port))
+        .await
+        .expect("Failed to connect");
+    ws_stream
 }

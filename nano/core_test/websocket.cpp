@@ -22,37 +22,6 @@
 
 using namespace std::chrono_literals;
 
-// Tests clients subscribing multiple times or unsubscribing without a subscription
-TEST (websocket, subscription_edge)
-{
-	nano::test::system system;
-	nano::node_config config = system.default_config ();
-	config.websocket_config.enabled = true;
-	config.websocket_config.port = system.get_available_port ();
-	auto node1 (system.add_node (config));
-
-	ASSERT_EQ (0, node1->websocket.server->subscriber_count (nano::websocket::topic::confirmation));
-
-	auto task = ([config, &node1] () {
-		fake_websocket_client client (node1->websocket.server->listening_port ());
-		client.send_message (R"json({"action": "subscribe", "topic": "confirmation", "ack": true})json");
-		client.await_ack ();
-		EXPECT_EQ (1, node1->websocket.server->subscriber_count (nano::websocket::topic::confirmation));
-		client.send_message (R"json({"action": "subscribe", "topic": "confirmation", "ack": true})json");
-		client.await_ack ();
-		EXPECT_EQ (1, node1->websocket.server->subscriber_count (nano::websocket::topic::confirmation));
-		client.send_message (R"json({"action": "unsubscribe", "topic": "confirmation", "ack": true})json");
-		client.await_ack ();
-		EXPECT_EQ (0, node1->websocket.server->subscriber_count (nano::websocket::topic::confirmation));
-		client.send_message (R"json({"action": "unsubscribe", "topic": "confirmation", "ack": true})json");
-		client.await_ack ();
-		EXPECT_EQ (0, node1->websocket.server->subscriber_count (nano::websocket::topic::confirmation));
-	});
-	auto future = std::async (std::launch::async, task);
-
-	ASSERT_TIMELY_EQ (5s, future.wait_for (0s), std::future_status::ready);
-}
-
 // Subscribes to block confirmations, confirms a block and then awaits websocket notification
 TEST (websocket, confirmation)
 {

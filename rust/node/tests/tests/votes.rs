@@ -1,9 +1,14 @@
 use rsnano_core::{
-    Amount, BlockEnum, Epoch, KeyPair, Signature, StateBlock, Vote, VoteCode, VoteSource, WalletId,
-    DEV_GENESIS_KEY, GXRB_RATIO,
+    Amount, BlockEnum, BlockHash, Epoch, KeyPair, Root, Signature, StateBlock, Vote, VoteCode,
+    VoteSource, WalletId, DEV_GENESIS_KEY, GXRB_RATIO,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-use rsnano_node::wallets::WalletsExt;
+use rsnano_node::{
+    config::FrontiersConfirmationMode,
+    consensus::VoteSpacing,
+    stats::{DetailType, Direction, StatType},
+    wallets::WalletsExt,
+};
 use std::{
     sync::Arc,
     time::{Duration, SystemTime},
@@ -316,4 +321,216 @@ fn vote_generator_multiple_representatives() {
         let existing = votes.iter().find(|vote| vote.voting_account == *account);
         assert!(existing.is_some());
     }
+}
+
+#[test]
+fn vote_spacing_basic() {
+    let mut spacing = VoteSpacing::new(Duration::from_millis(100));
+    let root1 = Root::from(1);
+    let root2 = Root::from(2);
+    let hash3 = BlockHash::from(3);
+    let hash4 = BlockHash::from(4);
+    let hash5 = BlockHash::from(5);
+
+    assert_eq!(0, spacing.len());
+    assert!(spacing.votable(&root1, &hash3));
+    spacing.flag(&root1, &hash3);
+    assert_eq!(1, spacing.len());
+    assert!(spacing.votable(&root1, &hash3));
+    assert!(!spacing.votable(&root1, &hash4));
+    spacing.flag(&root2, &hash5);
+    assert_eq!(2, spacing.len());
+}
+
+#[test]
+fn vote_spacing_prune() {
+    let prune_duration = Duration::from_millis(100);
+    let mut spacing = VoteSpacing::new(prune_duration);
+    let root1 = Root::from(1);
+    let root2 = Root::from(2);
+    let hash3 = BlockHash::from(3);
+    let hash4 = BlockHash::from(4);
+
+    spacing.flag(&root1, &hash3);
+    assert_eq!(1, spacing.len());
+
+    std::thread::sleep(prune_duration);
+    spacing.flag(&root2, &hash4);
+    assert_eq!(1, spacing.len());
+}
+
+#[test]
+fn vote_spacing_vote_generator() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled; // Disable frontiers confirmation
+    let node = system.build_node().config(config).finish();
+
+    let wallet_id = WalletId::random();
+    node.wallets.create(wallet_id);
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    let mut send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let mut send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO) - Amount::raw(1),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    node.ledger
+        .process(&mut node.store.tx_begin_write(), &mut send1)
+        .unwrap();
+    assert!(
+        node.stats.count(
+            StatType::VoteGenerator,
+            DetailType::GeneratorBroadcasts,
+            Direction::In
+        ) == 0
+    );
+    node.vote_generators
+        .generate_non_final_vote(&(*DEV_GENESIS_HASH).into(), &send1.hash().into());
+
+    assert_timely(Duration::from_secs(3), || {
+        node.stats.count(
+            StatType::VoteGenerator,
+            DetailType::GeneratorBroadcasts,
+            Direction::In,
+        ) == 1
+    });
+
+    node.ledger
+        .rollback(&mut node.store.tx_begin_write(), &send1.hash())
+        .unwrap();
+    node.ledger
+        .process(&mut node.store.tx_begin_write(), &mut send2)
+        .unwrap();
+    node.vote_generators
+        .generate_non_final_vote(&(*DEV_GENESIS_HASH).into(), &send2.hash().into());
+
+    assert_timely(Duration::from_secs(3), || {
+        node.stats.count(
+            StatType::VoteGenerator,
+            DetailType::GeneratorSpacing,
+            Direction::In,
+        ) == 1
+    });
+
+    assert_eq!(
+        1,
+        node.stats.count(
+            StatType::VoteGenerator,
+            DetailType::GeneratorBroadcasts,
+            Direction::In
+        )
+    );
+    std::thread::sleep(Duration::from_millis(
+        node.config.vote_generator_delay_ms as u64,
+    ));
+
+    node.vote_generators
+        .generate_non_final_vote(&(*DEV_GENESIS_HASH).into(), &send2.hash().into());
+
+    assert_timely(Duration::from_secs(3), || {
+        node.stats.count(
+            StatType::VoteGenerator,
+            DetailType::GeneratorBroadcasts,
+            Direction::In,
+        ) == 2
+    });
+}
+
+#[test]
+fn vote_spacing_rapid() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled; // Disable frontiers confirmation
+    let node = system.build_node().config(config).finish();
+
+    let wallet_id = WalletId::random();
+    node.wallets.create(wallet_id);
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    let mut send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    let mut send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO) - Amount::raw(1),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+    ));
+
+    node.ledger
+        .process(&mut node.store.tx_begin_write(), &mut send1)
+        .unwrap();
+    node.vote_generators
+        .generate_non_final_vote(&(*DEV_GENESIS_HASH).into(), &send1.hash().into());
+
+    assert_timely(Duration::from_secs(3), || {
+        node.stats.count(
+            StatType::VoteGenerator,
+            DetailType::GeneratorBroadcasts,
+            Direction::In,
+        ) == 1
+    });
+
+    node.ledger
+        .rollback(&mut node.ledger.rw_txn(), &send1.hash())
+        .unwrap();
+    node.ledger
+        .process(&mut node.ledger.rw_txn(), &mut send2)
+        .unwrap();
+    node.vote_generators
+        .generate_non_final_vote(&(*DEV_GENESIS_HASH).into(), &send2.hash().into());
+
+    // todo: this fails
+    assert_timely(Duration::from_secs(3), || {
+        node.stats.count(
+            StatType::VoteGenerator,
+            DetailType::GeneratorSpacing,
+            Direction::In,
+        ) == 1
+    });
+
+    std::thread::sleep(Duration::from_millis(
+        node.config.vote_generator_delay_ms as u64,
+    ));
+
+    node.vote_generators
+        .generate_non_final_vote(&(*DEV_GENESIS_HASH).into(), &send2.hash().into());
+
+    assert_timely(Duration::from_secs(3), || {
+        node.stats.count(
+            StatType::VoteGenerator,
+            DetailType::GeneratorBroadcasts,
+            Direction::In,
+        ) == 2
+    });
 }

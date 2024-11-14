@@ -599,6 +599,78 @@ fn vote_options_type(){
 
 }
 
+#[test]
+// Tests vote subscription options - list of representatives
+fn vote_options_representatives(){
+
+    let mut system = System::new();
+    let node1 = create_node_with_websocket(&mut system);
+    node1.runtime.block_on(async {
+        let mut ws_stream = connect_websocket(&node1).await;
+        ws_stream
+            .send(tungstenite::Message::Text(
+                format!(r#"{{"action": "subscribe", "topic": "vote", "ack": true, "options": {{"representatives": ["{}"]}} }}"#, DEV_GENESIS_ACCOUNT.encode_account()),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+        
+        node1.insert_into_wallet(&DEV_GENESIS_KEY);
+	    // Quick-confirm a block
+        let key = KeyPair::new();
+        let mut previous = *DEV_GENESIS_HASH;
+        let send_amount = node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1);
+        let send = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            previous,
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - send_amount,
+            key.public_key().as_account().into(),
+            &DEV_GENESIS_KEY,
+            node1.work_generate_dev(previous.into()),
+        ));
+        previous = send.hash();
+        node1.process_active(send);
+
+
+        let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
+            panic!("not a text message");
+        };
+
+        let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
+        assert_eq!(response_json.topic, Some(Topic::Vote));
+
+		// A list of invalid representatives is the same as no filter
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "vote", "ack": true, "options": {"representatives": ["xrb_invalid"]} }"#.to_string()
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+        
+        let send = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            previous,
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - send_amount * 2,
+            key.public_key().as_account().into(),
+            &DEV_GENESIS_KEY,
+            node1.work_generate_dev(previous.into()),
+        ));
+        node1.process_active(send);
+
+        let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
+            panic!("not a text message");
+        };
+
+        let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
+        assert_eq!(response_json.topic, Some(Topic::Vote));
+    });
+}
+
 fn create_node_with_websocket(system: &mut System) -> Arc<Node> {
     let websocket_port = get_available_port();
     let config = NodeConfig {

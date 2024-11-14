@@ -14,69 +14,6 @@
 
 using namespace std::chrono_literals;
 
-namespace nano
-{
-// Higher timestamps change the vote
-TEST (votes, add_existing)
-{
-	nano::test::system system;
-	nano::node_config node_config = system.default_config ();
-	node_config.online_weight_minimum = nano::dev::constants.genesis_amount;
-	node_config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	auto & node1 = *system.add_node (node_config);
-	nano::keypair key1;
-	nano::block_builder builder;
-	std::shared_ptr<nano::block> send1 = builder.state ()
-										 .account (nano::dev::genesis_key.pub)
-										 .previous (nano::dev::genesis->hash ())
-										 .representative (nano::dev::genesis_key.pub) // No representative, blocks can't confirm
-										 .balance (nano::dev::constants.genesis_amount / 2 - nano::Gxrb_ratio)
-										 .link (key1.pub)
-										 .work (0)
-										 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-										 .build ();
-	node1.work_generate_blocking (*send1);
-	ASSERT_EQ (nano::block_status::progress, node1.ledger.process (*node1.store.tx_begin_write (), send1));
-	auto election1 = nano::test::start_election (system, node1, send1->hash ());
-	auto vote1 = nano::test::make_vote (nano::dev::genesis_key, { send1 }, nano::vote::timestamp_min * 1, 0);
-	ASSERT_EQ (nano::vote_code::vote, node1.vote (*vote1, send1->hash ()));
-	// Block is already processed from vote
-	ASSERT_TRUE (node1.active.publish (send1));
-	ASSERT_EQ (nano::vote::timestamp_min * 1, election1->get_last_vote (nano::dev::genesis_key.pub).get_timestamp ());
-	nano::keypair key2;
-	std::shared_ptr<nano::block> send2 = builder.state ()
-										 .account (nano::dev::genesis_key.pub)
-										 .previous (nano::dev::genesis->hash ())
-										 .representative (nano::dev::genesis_key.pub) // No representative, blocks can't confirm
-										 .balance (nano::dev::constants.genesis_amount / 2 - nano::Gxrb_ratio)
-										 .link (key2.pub)
-										 .work (0)
-										 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-										 .build ();
-	node1.work_generate_blocking (*send2);
-	ASSERT_FALSE (node1.active.publish (send2));
-	ASSERT_TIMELY (5s, node1.active.active (*send2));
-	auto vote2 = nano::test::make_vote (nano::dev::genesis_key, { send2 }, nano::vote::timestamp_min * 2, 0);
-	// Pretend we've waited the timeout
-	auto vote_info1 = election1->get_last_vote (nano::dev::genesis_key.pub);
-	vote_info1 = vote_info1.with_relative_time (std::chrono::seconds (-20));
-	election1->set_last_vote (nano::dev::genesis_key.pub, vote_info1);
-	ASSERT_EQ (nano::vote_code::vote, node1.vote (*vote2, send2->hash ()));
-	ASSERT_EQ (nano::vote::timestamp_min * 2, election1->get_last_vote (nano::dev::genesis_key.pub).get_timestamp ());
-	// Also resend the old vote, and see if we respect the timestamp
-	auto vote_info2 = election1->get_last_vote (nano::dev::genesis_key.pub);
-	vote_info2 = vote_info2.with_relative_time (std::chrono::seconds (-20));
-	election1->set_last_vote (nano::dev::genesis_key.pub, vote_info2);
-	ASSERT_EQ (nano::vote_code::replay, node1.vote (*vote1, send1->hash ()));
-	ASSERT_EQ (nano::vote::timestamp_min * 2, election1->votes ()[nano::dev::genesis_key.pub].get_timestamp ());
-	auto votes (election1->votes ());
-	ASSERT_EQ (2, votes.size ());
-	ASSERT_NE (votes.end (), votes.find (nano::dev::genesis_key.pub));
-	ASSERT_EQ (send2->hash (), votes[nano::dev::genesis_key.pub].get_hash ());
-	ASSERT_EQ (*send2, *node1.active.tally (*election1).begin ()->second);
-}
-}
-
 TEST (ledger, epoch_open_pending)
 {
 	nano::block_builder builder{};

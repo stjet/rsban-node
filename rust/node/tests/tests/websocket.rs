@@ -369,7 +369,7 @@ fn confirmation_options_votes(){
         let key = KeyPair::new();
         let balance = Amount::MAX;
         let send_amount = node1.config.online_weight_minimum + Amount::raw(1);
-        let mut previous = *DEV_GENESIS_HASH;
+        let previous = *DEV_GENESIS_HASH;
         let balance = balance - send_amount;
         let send = BlockEnum::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
@@ -399,6 +399,55 @@ fn confirmation_options_votes(){
         assert_ne!(vote.timestamp, "0");
         assert_eq!(vote.hash, send_hash.to_string());
         assert_eq!(vote.weight, node1.balance(&DEV_GENESIS_ACCOUNT).to_string_dec());
+    });
+}
+
+#[test]
+fn confirmation_options_sideband(){
+    let mut system = System::new();
+    let node1 = create_node_with_websocket(&mut system);
+    node1.runtime.block_on(async {
+        let mut ws_stream = connect_websocket(&node1).await;
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "confirmation", "ack": true, "options":{"confirmation_type": "active_quorum", "include_block": false, "include_sideband_info": true} }"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+
+	    // Confirm a state block for an in-wallet account
+        node1.insert_into_wallet(&DEV_GENESIS_KEY);
+
+        let key = KeyPair::new();
+        let balance = Amount::MAX;
+        let send_amount = node1.config.online_weight_minimum + Amount::raw(1);
+        let previous = *DEV_GENESIS_HASH;
+        let balance = balance - send_amount;
+        let send = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            previous,
+            *DEV_GENESIS_PUB_KEY,
+            balance,
+            key.public_key().as_account().into(),
+            &DEV_GENESIS_KEY,
+            node1.work_generate_dev(previous.into()),
+        ));
+        node1.process_active(send);
+
+        let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
+            panic!("not a text message");
+        };
+
+        let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
+        assert_eq!(response_json.topic, Some(Topic::Confirmation));
+
+        let message: BlockConfirmed  = serde_json::from_value(response_json.message.unwrap()).unwrap();
+        let sideband = message.sideband.unwrap();
+		// Make sure height and local_timestamp are non-zero.
+        assert_ne!(sideband.height, "0");
+        assert_ne!(sideband.local_timestamp, "0");
     });
 }
 

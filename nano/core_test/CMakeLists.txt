@@ -20,7 +20,6 @@ add_executable(
   telemetry.cpp
   unchecked_map.cpp
   vote_processor.cpp
-  voting.cpp
   wallet.cpp
   wallets.cpp)
 

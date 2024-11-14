@@ -2,19 +2,16 @@ add_executable(
   core_test
   entry.cpp
   active_elections.cpp
-  block_store.cpp
   bootstrap.cpp
   bootstrap_ascending.cpp
   conflicts.cpp
   difficulty.cpp
-  distributed_work.cpp
   election_scheduler.cpp
   frontiers_confirmation.cpp
   ledger.cpp
   ledger_confirm.cpp
   node.cpp
   optimistic_scheduler.cpp
-  system.cpp
   telemetry.cpp
   unchecked_map.cpp
   vote_processor.cpp

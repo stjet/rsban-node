@@ -714,6 +714,24 @@ fn bootstrap(){
 	    // Wait for bootstrap finish
         assert_timely(Duration::from_secs(5), ||!node1.bootstrap_initiator.in_progress());
     });
+}
+
+#[test]
+// Tests sending keepalive
+fn ws_keepalive(){
+    let mut system = System::new();
+    let node1 = create_node_with_websocket(&mut system);
+    node1.runtime.block_on(async {
+        let mut ws_stream = connect_websocket(&node1).await;
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "ping"}"#.to_string()
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+    });
 
 }
 

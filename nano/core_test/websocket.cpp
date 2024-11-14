@@ -22,25 +22,6 @@
 
 using namespace std::chrono_literals;
 
-// Tests sending keepalive
-TEST (websocket, ws_keepalive)
-{
-	nano::test::system system;
-	nano::node_config config = system.default_config ();
-	config.websocket_config.enabled = true;
-	config.websocket_config.port = system.get_available_port ();
-	auto node1 (system.add_node (config));
-
-	auto task = ([&node1] () {
-		fake_websocket_client client (node1->websocket.server->listening_port ());
-		client.send_message (R"json({"action": "ping"})json");
-		client.await_ack ();
-	});
-	auto future = std::async (std::launch::async, task);
-
-	ASSERT_TIMELY_EQ (5s, future.wait_for (0s), std::future_status::ready);
-}
-
 // Tests sending telemetry
 TEST (websocket, telemetry)
 {

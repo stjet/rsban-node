@@ -9,10 +9,7 @@ use rsnano_node::{
     Node,
 };
 use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
+    sync::Arc,
     time::Duration,
 };
 use test_helpers::{assert_timely, get_available_port, make_fake_channel, System};
@@ -451,6 +448,80 @@ fn confirmation_options_sideband(){
     });
 }
 
+#[test]
+// Tests updating options of block confirmations
+fn confirmation_options_update(){
+    let mut system = System::new();
+    let node1 = create_node_with_websocket(&mut system);
+    node1.runtime.block_on(async {
+        let mut ws_stream = connect_websocket(&node1).await;
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "confirmation", "ack": true, "options":{} }"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+        
+		// Now update filter with an account and wait for a response
+        ws_stream
+            .send(tungstenite::Message::Text(
+                format!(r#"{{"action": "update", "topic": "confirmation", "ack": true, "options":{{"accounts_add": ["{}"]}} }}"#, DEV_GENESIS_ACCOUNT.encode_account()),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+        
+        // Confirm a block
+        node1.insert_into_wallet(&DEV_GENESIS_KEY);
+        let key = KeyPair::new();
+        let previous = *DEV_GENESIS_HASH;
+        let send = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            previous,
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - Amount::nano(1000),
+            key.public_key().as_account().into(),
+            &DEV_GENESIS_KEY,
+            node1.work_generate_dev(previous.into()),
+        ));
+        let previous = send.hash();
+        node1.process_active(send);
+
+        assert_eq!(node1.websocket.as_ref().unwrap().subscriber_count(Topic::Confirmation), 1);
+
+        // receive confirmation event
+        ws_stream.next().await.unwrap().unwrap();
+
+		// Update the filter again, removing the account
+        ws_stream
+            .send(tungstenite::Message::Text(
+                format!(r#"{{"action": "update", "topic": "confirmation", "ack": true, "options":{{"accounts_del": ["{}"]}} }}"#, DEV_GENESIS_ACCOUNT.encode_account()),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+
+	    // Confirm another block
+        let send2 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            previous,
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - Amount::nano(2000),
+            key.public_key().as_account().into(),
+            &DEV_GENESIS_KEY,
+            node1.work_generate_dev(previous.into()),
+        ));
+        node1.process_active(send2);
+        
+        timeout(Duration::from_secs(1), ws_stream.next())
+            .await
+            .unwrap_err();
+    });
+}
 
 fn create_node_with_websocket(system: &mut System) -> Arc<Node> {
     let websocket_port = get_available_port();

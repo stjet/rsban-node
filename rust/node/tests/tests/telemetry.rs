@@ -4,7 +4,7 @@ use rsnano_node::{
     stats::{DetailType, Direction, StatType},
     NodeExt,
 };
-use std::{thread::sleep, time::Duration};
+use std::{net::SocketAddrV6, thread::sleep, time::Duration};
 use test_helpers::{assert_always_eq, assert_never, assert_timely, make_fake_channel, System};
 
 #[test]
@@ -202,4 +202,46 @@ fn mismatched_node_id() {
         },
         0,
     );
+}
+
+#[test]
+fn no_peers() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let responses = node.telemetry.get_all_telemetries();
+    assert_eq!(responses.len(), 0);
+}
+
+#[test]
+fn invalid_endpoint() {
+    let mut system = System::new();
+    let node_client = system.make_node();
+    let _node_server = system.make_node();
+    node_client.telemetry.trigger();
+
+    // Give some time for nodes to exchange telemetry
+    sleep(Duration::from_secs(1));
+
+    let endpoint: SocketAddrV6 = "[::ffff:240.0.0.0]:12345".parse().unwrap();
+    assert!(node_client.telemetry.get_telemetry(&endpoint).is_none());
+}
+
+#[test]
+fn ongoing_broadcasts() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+
+    assert_timely(Duration::from_secs(5), || {
+        node1
+            .stats
+            .count(StatType::Telemetry, DetailType::Process, Direction::In)
+            >= 3
+    });
+    assert_timely(Duration::from_secs(5), || {
+        node2
+            .stats
+            .count(StatType::Telemetry, DetailType::Process, Direction::In)
+            >= 3
+    });
 }

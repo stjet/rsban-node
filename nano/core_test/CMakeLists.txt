@@ -12,7 +12,6 @@ add_executable(
   ledger_confirm.cpp
   node.cpp
   optimistic_scheduler.cpp
-  telemetry.cpp
   unchecked_map.cpp
   vote_processor.cpp
   wallet.cpp

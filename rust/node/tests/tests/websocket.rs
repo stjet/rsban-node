@@ -1,6 +1,6 @@
 use core::panic;
 use futures_util::{SinkExt, StreamExt};
-use rsnano_core::{Account, Amount, BlockEnum, KeyPair, Networks, SendBlock, StateBlock, Vote, VoteCode, DEV_GENESIS_KEY};
+use rsnano_core::{Account, Amount, BlockEnum, JsonBlock, KeyPair, Networks, SendBlock, StateBlock, Vote, VoteCode, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{Message, Publish, TelemetryData};
 use rsnano_node::{
@@ -766,6 +766,48 @@ fn telemetry(){
 	    // Other node should have no subscribers
         assert_eq!(node2.websocket.as_ref().unwrap().subscriber_count(Topic::Telemetry), 0);
     });
+}
+
+#[test]
+fn new_unconfirmed_block(){
+    let mut system = System::new();
+    let node1 = create_node_with_websocket(&mut system);
+    node1.runtime.block_on(async {
+        let mut ws_stream = connect_websocket(&node1).await;
+        ws_stream
+            .send(tungstenite::Message::Text(
+                r#"{"action": "subscribe", "topic": "new_unconfirmed_block", "ack": true}"#.to_string(),
+            ))
+            .await
+            .unwrap();
+        //await ack
+        ws_stream.next().await.unwrap().unwrap();
+
+	    // Process a new block
+        let send = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - Amount::raw(1),
+            (*DEV_GENESIS_ACCOUNT).into(),
+            &DEV_GENESIS_KEY,
+            node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        ));
+        node1.process_local(send).unwrap();
+
+        let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
+            panic!("not a text message");
+        };
+
+        let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
+        assert_eq!(response_json.topic, Some(Topic::NewUnconfirmedBlock));
+        
+	    // Check the response
+        let msg = response_json.message.unwrap();
+        let block: JsonBlock = serde_json::from_value(msg).unwrap();
+        let JsonBlock::State(_state) = block else {panic!("not a state block")};
+    });
+
 }
 
 fn create_node_with_websocket(system: &mut System) -> Arc<Node> {

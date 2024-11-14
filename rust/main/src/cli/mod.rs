@@ -4,8 +4,9 @@ use commands::{
     config::ConfigCommand, ledger::LedgerCommand, node::NodeCommand, utils::UtilsCommand,
     wallets::WalletsCommand,
 };
-use rsnano_core::Networks;
+use rsnano_core::{KeyPairFactory, Networks};
 use rsnano_node::{config::NetworkConstants, working_path};
+use rsnano_nullable_console::Console;
 use std::{path::PathBuf, str::FromStr};
 
 mod commands;
@@ -17,10 +18,10 @@ pub(crate) struct Cli {
 }
 
 impl Cli {
-    pub(crate) async fn run(&self) -> Result<()> {
+    pub(crate) async fn run(&self, infra: &mut CliInfrastructure) -> Result<()> {
         match &self.command {
             Some(Commands::Wallets(command)) => command.run().await?,
-            Some(Commands::Utils(command)) => command.run()?,
+            Some(Commands::Utils(command)) => command.run(infra)?,
             Some(Commands::Node(command)) => command.run().await?,
             Some(Commands::Ledger(command)) => command.run()?,
             Some(Commands::Config(command)) => command.run()?,
@@ -53,4 +54,19 @@ pub(crate) fn get_path(path_str: &Option<String>, network_str: &Option<String>) 
         NetworkConstants::set_active_network(network);
     }
     working_path().unwrap()
+}
+
+#[derive(Default)]
+pub(crate) struct CliInfrastructure {
+    pub key_factory: KeyPairFactory,
+    pub console: Console,
+}
+
+impl CliInfrastructure {
+    pub fn new_null() -> Self {
+        Self {
+            key_factory: KeyPairFactory::new_null(),
+            console: Console::new_null(),
+        }
+    }
 }

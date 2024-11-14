@@ -1,13 +1,13 @@
 use anyhow::Result;
 use clap::Parser;
-use cli::Cli;
+use cli::{Cli, CliInfrastructure};
 
 mod cli;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    cli.run().await?;
-
+    let mut infra = CliInfrastructure::default();
+    cli.run(&mut infra).await?;
     Ok(())
 }

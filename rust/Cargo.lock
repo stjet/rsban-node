@@ -3869,6 +3869,7 @@ dependencies = [
  "rsnano_ledger",
  "rsnano_messages",
  "rsnano_node",
+ "rsnano_nullable_console",
  "rsnano_rpc_server",
  "rsnano_store_lmdb",
  "tokio",
@@ -3880,6 +3881,13 @@ dependencies = [
 [[package]]
 name = "rsnano_nullable_clock"
 version = "0.1.0"
+
+[[package]]
+name = "rsnano_nullable_console"
+version = "0.1.0"
+dependencies = [
+ "rsnano_output_tracker",
+]
 
 [[package]]
 name = "rsnano_nullable_fs"

@@ -23,5 +23,5 @@ members = [
     "tools/test_helpers", 
 	"tools/signature-checker", 
 	"tools/insight"
-	, "daemon"]
+	, "daemon", "nullables/console"]
 resolver = "2"

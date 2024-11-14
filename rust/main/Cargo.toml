@@ -16,6 +16,7 @@ rsnano_node = { path = "../node" }
 rsnano_ledger = { path = "../ledger" }
 rsnano_rpc_server = { path = "../rpc_server" }
 rsnano_daemon = { path = "../daemon" }
+rsnano_nullable_console = { path = "../nullables/console" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
 clap = { version = "4", features = ["derive"] }

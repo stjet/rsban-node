@@ -125,10 +125,14 @@ mod bucket {
 }
 
 mod election_scheduler {
-    use rsnano_core::{Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
+    use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-    use std::time::Duration;
-    use test_helpers::{assert_timely, System};
+    use rsnano_node::{
+        config::{FrontiersConfirmationMode, NodeConfig},
+        consensus::ActiveElectionsExt,
+    };
+    use std::{sync::Arc, time::Duration};
+    use test_helpers::{assert_timely, assert_timely_eq, System};
 
     #[test]
     fn activate_one_timely() {
@@ -188,5 +192,135 @@ mod election_scheduler {
         assert_timely(Duration::from_secs(5), || {
             node.active.election(&send1.qualified_root()).is_some()
         });
+    }
+
+    #[test]
+    /**
+     * Tests that the election scheduler and the active transactions container (AEC)
+     * work in sync with regards to the node configuration value "active_elections_size".
+     *
+     * The test sets up two forcefully cemented blocks -- a send on the genesis account and a receive on a second account.
+     * It then creates two other blocks, each a successor to one of the previous two,
+     * and processes them locally (without the node starting elections for them, but just saving them to disk).
+     *
+     * Elections for these latter two (B1 and B2) are started by the test code manually via `election_scheduler::activate`.
+     * The test expects E1 to start right off and take its seat into the AEC.
+     * E2 is expected not to start though (because the AEC is full), so B2 should be awaiting in the scheduler's queue.
+     *
+     * As soon as the test code manually confirms E1 (and thus evicts it out of the AEC),
+     * it is expected that E2 begins and the scheduler's queue becomes empty again.
+     */
+    fn no_vacancy() {
+        let mut system = System::new();
+        let node = system
+            .build_node()
+            .config(NodeConfig {
+                frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+                active_elections: rsnano_node::consensus::ActiveElectionsConfig {
+                    size: 1,
+                    ..Default::default()
+                },
+                ..System::default_config()
+            })
+            .finish();
+
+        let key = KeyPair::new();
+
+        // Activating accounts depends on confirmed dependencies. First, prepare 2 accounts
+        let send = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_HASH,
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - Amount::nano(1000),
+            (&key).into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev(*DEV_GENESIS_HASH),
+        ));
+        node.process(send.clone()).unwrap();
+        node.active.process_confirmed(
+            rsnano_node::consensus::ElectionStatus {
+                winner: Some(Arc::new(send.clone())),
+                ..Default::default()
+            },
+            0,
+        );
+
+        let receive = BlockEnum::State(StateBlock::new(
+            key.account(),
+            BlockHash::zero(),
+            key.public_key(),
+            Amount::nano(1000),
+            send.hash().into(),
+            &key,
+            node.work_generate_dev(&key),
+        ));
+        node.process(receive.clone()).unwrap();
+        node.active.process_confirmed(
+            rsnano_node::consensus::ElectionStatus {
+                winner: Some(Arc::new(receive.clone())),
+                ..Default::default()
+            },
+            0,
+        );
+
+        assert_timely(Duration::from_secs(5), || {
+            node.block_confirmed(&send.hash()) && node.block_confirmed(&receive.hash())
+        });
+
+        // Second, process two eligible transactions
+        let block1 = BlockEnum::State(StateBlock::new(
+            *DEV_GENESIS_ACCOUNT,
+            send.hash(),
+            *DEV_GENESIS_PUB_KEY,
+            Amount::MAX - Amount::nano(2000),
+            (*DEV_GENESIS_ACCOUNT).into(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev(send.hash()),
+        ));
+        node.process(block1.clone()).unwrap();
+
+        // There is vacancy so it should be inserted
+        node.election_schedulers
+            .priority
+            .activate(&node.ledger.read_txn(), &DEV_GENESIS_ACCOUNT);
+        let mut election = None;
+        assert_timely(Duration::from_secs(5), || {
+            match node.active.election(&block1.qualified_root()) {
+                Some(el) => {
+                    election = Some(el);
+                    true
+                }
+                None => false,
+            }
+        });
+
+        let block2 = BlockEnum::State(StateBlock::new(
+            key.account(),
+            receive.hash(),
+            key.public_key(),
+            Amount::zero(),
+            (&key).into(),
+            &key,
+            node.work_generate_dev(receive.hash()),
+        ));
+        node.process(block2.clone()).unwrap();
+
+        // There is no vacancy so it should stay queued
+        node.election_schedulers
+            .priority
+            .activate(&node.ledger.read_txn(), &key.account());
+        assert_timely_eq(
+            Duration::from_secs(5),
+            || node.election_schedulers.priority.len(),
+            1,
+        );
+        assert!(node.active.election(&block2.qualified_root()).is_none());
+
+        // Election confirmed, next in queue should begin
+        node.active.force_confirm(&election.unwrap());
+        assert_timely(Duration::from_secs(5), || {
+            node.active.election(&block2.qualified_root()).is_some()
+        });
+        assert!(node.election_schedulers.priority.is_empty());
     }
 }

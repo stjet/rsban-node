@@ -2,7 +2,6 @@ add_executable(
   core_test
   entry.cpp
   difficulty.cpp
-  election_scheduler.cpp
   ledger.cpp
   node.cpp
   optimistic_scheduler.cpp

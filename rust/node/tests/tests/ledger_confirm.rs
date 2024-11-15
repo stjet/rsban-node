@@ -431,3 +431,105 @@ fn send_receive_between_2_accounts() {
     );
     assert_eq!(node.ledger.cemented_count(), 11);
 }
+
+#[test]
+fn send_receive_self() {
+    let mut system = System::new();
+    let cfg = NodeConfig {
+        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+        ..System::default_config()
+    };
+    let node = system.build_node().config(cfg).finish();
+    let latest = node.latest(&DEV_GENESIS_ACCOUNT);
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        latest,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(2),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(latest.into()),
+    ));
+    let receive1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send1.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX,
+        send1.hash().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(send1.hash().into()),
+    ));
+    let send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        receive1.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(2),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(receive1.hash().into()),
+    ));
+    let send3 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send2.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(3),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(send2.hash().into()),
+    ));
+    let receive2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send3.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(1),
+        send2.hash().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(send3.hash().into()),
+    ));
+    let receive3 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        receive2.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX,
+        send3.hash().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(receive2.hash().into()),
+    ));
+
+    // Send to another account to prevent automatic receiving on the genesis account
+    let key1 = KeyPair::new();
+    let send4 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        receive3.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        node.online_reps.lock().unwrap().quorum_delta(),
+        key1.public_key().as_account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(receive3.hash().into()),
+    ));
+
+    node.process_multi(&[
+        send1.clone(),
+        receive1.clone(),
+        send2.clone(),
+        send3.clone(),
+        receive2.clone(),
+        receive3.clone(),
+        send4.clone(),
+    ]);
+
+    let mut tx = node.ledger.rw_txn();
+    let confirmed = node.ledger.confirm(&mut tx, receive3.hash());
+    assert_eq!(confirmed.len(), 6);
+    assert!(node.ledger.confirmed().block_exists(&tx, &receive3.hash()));
+    assert_eq!(
+        node.ledger
+            .any()
+            .get_account(&tx, &DEV_GENESIS_ACCOUNT)
+            .unwrap()
+            .block_count,
+        8
+    );
+    assert_eq!(node.ledger.cemented_count(), 7);
+}

@@ -1,13 +1,13 @@
 use rsnano_core::{
     utils::MemoryStream, work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair,
-    StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
+    StateBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
 };
 use rsnano_network::ChannelId;
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeFlags},
+    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, ElectionBehavior},
     stats::{DetailType, Direction, StatType},
     wallets::WalletsExt,
@@ -1367,4 +1367,193 @@ fn list_active() {
     assert_eq!(node.active.list_active(usize::MAX).len(), 3);
 
     node.active.list_active(usize::MAX);
+}
+
+#[test]
+fn vote_replays() {
+    let mut system = System::new();
+    let node = system
+        .build_node()
+        .config(NodeConfig {
+            enable_voting: false,
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .finish();
+    let key = KeyPair::new();
+
+    // send Gxrb_ratio raw from genesis to key
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(1000),
+        (&key).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+
+    // create open block for key receing Gxrb_ratio raw
+    let open1 = BlockEnum::State(StateBlock::new(
+        key.public_key().as_account(),
+        BlockHash::zero(),
+        key.public_key(),
+        Amount::nano(1000),
+        send1.hash().into(),
+        &key,
+        node.work_generate_dev(&key),
+    ));
+
+    // wait for elections objects to appear in the AEC
+    node.process_active(send1.clone());
+    node.process_active(open1.clone());
+    start_elections(&node, &[send1.hash(), open1.hash()], false);
+    assert_eq!(node.active.len(), 2);
+
+    // First vote is not a replay and confirms the election, second vote should be a replay since the election has confirmed but not yet removed
+    let vote_send1 = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send1.hash()]));
+    assert_eq!(
+        node.vote_router
+            .vote(&vote_send1, VoteSource::Live)
+            .get(&send1.hash())
+            .unwrap(),
+        &VoteCode::Vote
+    );
+    assert_eq!(
+        node.vote_router
+            .vote(&vote_send1, VoteSource::Live)
+            .get(&send1.hash())
+            .unwrap(),
+        &VoteCode::Replay
+    );
+
+    // Wait until the election is removed, at which point the vote is still a replay since it's been recently confirmed
+    assert_timely_eq(Duration::from_secs(5), || node.active.len(), 1);
+    assert_eq!(
+        node.vote_router
+            .vote(&vote_send1, VoteSource::Live)
+            .get(&send1.hash())
+            .unwrap(),
+        &VoteCode::Replay
+    );
+
+    // Open new account
+    let vote_open1 = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![open1.hash()]));
+    assert_eq!(
+        node.vote_router
+            .vote(&vote_open1, VoteSource::Live)
+            .get(&open1.hash())
+            .unwrap(),
+        &VoteCode::Vote
+    );
+    assert_eq!(
+        node.vote_router
+            .vote(&vote_open1, VoteSource::Live)
+            .get(&open1.hash())
+            .unwrap(),
+        &VoteCode::Replay
+    );
+
+    assert_timely_eq(Duration::from_secs(5), || node.active.len(), 0);
+
+    assert_eq!(
+        node.vote_router
+            .vote(&vote_open1, VoteSource::Live)
+            .get(&open1.hash())
+            .unwrap(),
+        &VoteCode::Replay
+    );
+    assert_eq!(node.ledger.weight(&key.public_key()), Amount::nano(1000));
+
+    // send 1 raw to key to key
+    let send2 = BlockEnum::State(StateBlock::new(
+        key.public_key().as_account(),
+        open1.hash(),
+        key.public_key(),
+        Amount::nano(999),
+        (&key).into(),
+        &key,
+        node.work_generate_dev(open1.hash()),
+    ));
+    node.process_active(send2.clone());
+    start_elections(&node, &[send2.hash()], false);
+    assert_eq!(node.active.len(), 1);
+
+    // vote2_send2 is a non final vote with little weight, vote1_send2 is the vote that confirms the election
+    let vote1_send2 = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send2.hash()]));
+    let vote2_send2 = Arc::new(Vote::new(&DEV_GENESIS_KEY, 0, 0, vec![send2.hash()]));
+
+    // this vote cannot confirm the election
+    assert_eq!(
+        node.vote_router
+            .vote(&vote2_send2, VoteSource::Live)
+            .get(&send2.hash())
+            .unwrap(),
+        &VoteCode::Vote
+    );
+    assert_eq!(node.active.len(), 1);
+
+    // this vote confirms the election
+    assert_eq!(
+        node.vote_router
+            .vote(&vote1_send2, VoteSource::Live)
+            .get(&send2.hash())
+            .unwrap(),
+        &VoteCode::Vote
+    );
+
+    // this should still return replay, either because the election is still in the AEC or because it is recently confirmed
+    assert_eq!(
+        node.vote_router
+            .vote(&vote1_send2, VoteSource::Live)
+            .get(&send2.hash())
+            .unwrap(),
+        &VoteCode::Replay
+    );
+    assert_timely_eq(Duration::from_secs(5), || node.active.len(), 0);
+    assert_eq!(
+        node.vote_router
+            .vote(&vote1_send2, VoteSource::Live)
+            .get(&send2.hash())
+            .unwrap(),
+        &VoteCode::Replay
+    );
+    assert_eq!(
+        node.vote_router
+            .vote(&vote2_send2, VoteSource::Live)
+            .get(&send2.hash())
+            .unwrap(),
+        &VoteCode::Replay
+    );
+
+    // Removing blocks as recently confirmed makes every vote indeterminate
+    node.active.clear_recently_confirmed();
+    assert_eq!(
+        node.vote_router
+            .vote(&vote_send1, VoteSource::Live)
+            .get(&send1.hash())
+            .unwrap(),
+        &VoteCode::Indeterminate
+    );
+    assert_eq!(
+        node.vote_router
+            .vote(&vote_open1, VoteSource::Live)
+            .get(&open1.hash())
+            .unwrap(),
+        &VoteCode::Indeterminate
+    );
+    assert_eq!(
+        node.vote_router
+            .vote(&vote1_send2, VoteSource::Live)
+            .get(&send2.hash())
+            .unwrap(),
+        &VoteCode::Indeterminate
+    );
+    assert_eq!(
+        node.vote_router
+            .vote(&vote2_send2, VoteSource::Live)
+            .get(&send2.hash())
+            .unwrap(),
+        &VoteCode::Indeterminate
+    );
 }

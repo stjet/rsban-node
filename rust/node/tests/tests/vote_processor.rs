@@ -1,8 +1,11 @@
-use rsnano_core::{KeyPair, Signature, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY};
+use rsnano_core::{
+    utils::milliseconds_since_epoch, Amount, BlockEnum, KeyPair, Signature, StateBlock, Vote,
+    VoteCode, VoteSource, DEV_GENESIS_KEY,
+};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeFlags},
+    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
     consensus::RepTier,
     stats::{DetailType, Direction, StatType},
     wallets::WalletsExt,
@@ -270,4 +273,83 @@ fn weights() {
     assert_eq!(node0.rep_tiers.tier(&key1.public_key()), RepTier::Tier1);
     assert_eq!(node0.rep_tiers.tier(&key2.public_key()), RepTier::Tier2);
     assert_eq!(node0.rep_tiers.tier(&DEV_GENESIS_PUB_KEY), RepTier::Tier3);
+}
+
+// Issue that tracks last changes on this test: https://github.com/nanocurrency/nano-node/issues/3485
+// Reopen in case the nondeterministic failure appears again.
+// Checks local votes (a vote with a key that is in the node's wallet) are not re-broadcast when received.
+// Nodes should not relay their own votes
+#[test]
+fn no_broadcast_local() {
+    let mut system = System::new();
+    let flags = NodeFlags {
+        disable_request_loop: true,
+        ..Default::default()
+    };
+    let node = system
+        .build_node()
+        .config(NodeConfig {
+            representative_vote_weight_minimum: Amount::zero(),
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .flags(flags.clone())
+        .finish();
+
+    let _node2 = system
+        .build_node()
+        .config(NodeConfig {
+            representative_vote_weight_minimum: Amount::zero(),
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .flags(flags)
+        .finish();
+
+    // Reduce the weight of genesis to 2x default min voting weight
+    let key = KeyPair::new();
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        node.config.vote_minimum * 2,
+        (&key).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    node.process_local(send.clone()).unwrap();
+    assert_timely(Duration::from_secs(10), || node.active.len() > 0);
+    assert_eq!(
+        node.ledger.weight(&DEV_GENESIS_PUB_KEY),
+        node.config.vote_minimum * 2
+    );
+    // Insert account in wallet. Votes on node are not enabled.
+    node.insert_into_wallet(&DEV_GENESIS_KEY);
+    // Ensure that the node knows the genesis key in its wallet.
+    node.wallets.compute_reps();
+    // Genesis balance remaining after `send' is less than the half_rep threshold
+    // Process a vote with a key that is in the local wallet.
+    let vote = Arc::new(Vote::new(
+        &DEV_GENESIS_KEY,
+        milliseconds_since_epoch(),
+        Vote::DURATION_MAX,
+        vec![send.hash()],
+    ));
+    node.vote_router.vote(&vote, VoteSource::Live);
+    // Make sure the vote was processed.
+    let election = node.active.election(&send.qualified_root()).unwrap();
+    let votes = election.mutex.lock().unwrap().last_votes.clone();
+    let existing = votes.get(&DEV_GENESIS_PUB_KEY).unwrap();
+    assert_eq!(existing.timestamp, vote.timestamp());
+    // Ensure the vote, from a local representative, was not broadcast on processing - it should be flooded on vote generation instead.
+    assert_eq!(
+        node.stats
+            .count(StatType::Message, DetailType::ConfirmAck, Direction::Out),
+        0
+    );
+    assert_eq!(
+        node.stats
+            .count(StatType::Message, DetailType::Publish, Direction::Out),
+        1
+    );
 }

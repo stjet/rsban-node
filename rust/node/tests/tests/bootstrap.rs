@@ -1,5 +1,5 @@
 use rsnano_core::{
-    Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, UncheckedKey, WalletId,
+    Account, Amount, BlockEnum, BlockHash, KeyPair, Link, StateBlock, UncheckedKey, WalletId,
     DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
@@ -2689,6 +2689,111 @@ fn push_one() {
         || node0.balance(&DEV_GENESIS_ACCOUNT),
         Amount::MAX - Amount::raw(100),
     );
+}
+
+#[test]
+fn lazy_max_pull_count() {
+    let mut system = System::new();
+    let node0 = system
+        .build_node()
+        .config(NodeConfig {
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .flags(NodeFlags {
+            disable_bootstrap_bulk_push_client: true,
+            ..Default::default()
+        })
+        .finish();
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+
+    // Generating test chain
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(1000),
+        (&key1).into(),
+        &DEV_GENESIS_KEY,
+        node0.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    let receive1 = BlockEnum::State(StateBlock::new(
+        key1.public_key().as_account(),
+        BlockHash::zero(),
+        key1.public_key(),
+        Amount::raw(1000),
+        send1.hash().into(),
+        &key1,
+        node0.work_generate_dev(&key1),
+    ));
+    let send2 = BlockEnum::State(StateBlock::new(
+        key1.public_key().as_account(),
+        receive1.hash(),
+        key1.public_key(),
+        Amount::zero(),
+        (&key2).into(),
+        &key1,
+        node0.work_generate_dev(receive1.hash()),
+    ));
+    let receive2 = BlockEnum::State(StateBlock::new(
+        key2.public_key().as_account(),
+        BlockHash::zero(),
+        key2.public_key(),
+        Amount::raw(1000),
+        send2.hash().into(),
+        &key2,
+        node0.work_generate_dev(&key2),
+    ));
+    let change1 = BlockEnum::State(StateBlock::new(
+        key2.public_key().as_account(),
+        receive2.hash(),
+        key1.public_key(),
+        Amount::raw(1000),
+        Link::zero(),
+        &key2,
+        node0.work_generate_dev(receive2.hash()),
+    ));
+    let change2 = BlockEnum::State(StateBlock::new(
+        key2.public_key().as_account(),
+        change1.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::raw(1000),
+        Link::zero(),
+        &key2,
+        node0.work_generate_dev(change1.hash()),
+    ));
+    let change3 = BlockEnum::State(StateBlock::new(
+        key2.public_key().as_account(),
+        change2.hash(),
+        key2.public_key(),
+        Amount::raw(1000),
+        Link::zero(),
+        &key2,
+        node0.work_generate_dev(change2.hash()),
+    ));
+
+    // Processing test chain
+    node0.process_multi(&[
+        send1,
+        receive1,
+        send2,
+        receive2,
+        change1,
+        change2,
+        change3.clone(),
+    ]);
+
+    // Start lazy bootstrap with last block in chain known
+    let node1 = system.make_node();
+    node1
+        .bootstrap_initiator
+        .bootstrap_lazy(change3.hash().into(), false, "".to_string());
+
+    // Check processed blocks
+    assert_timely(Duration::from_secs(10), || {
+        node1.block_exists(&change3.hash())
+    });
 }
 
 fn create_response_server(node: &Node) -> Arc<ResponseServer> {

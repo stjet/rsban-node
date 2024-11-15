@@ -30,7 +30,7 @@ fn one() {
         Amount::MAX - Amount::nano(1000),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let request = vec![(send1.hash(), send1.root())];
@@ -173,7 +173,7 @@ fn one_update() {
         Amount::MAX - Amount::nano(1000),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     node.process(send1.clone()).unwrap();
     node.confirm(send1.hash());
@@ -185,7 +185,7 @@ fn one_update() {
         Amount::MAX - Amount::nano(2000),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash().into()),
+        node.work_generate_dev(send1.hash()),
     ));
     node.process(send2.clone()).unwrap();
     node.confirm(send2.hash());
@@ -197,7 +197,7 @@ fn one_update() {
         Amount::nano(1000),
         send1.hash().into(),
         &key1,
-        node.work_generate_dev(key1.public_key().into()),
+        node.work_generate_dev(&key1),
     ));
     node.process(receive1.clone()).unwrap();
     node.confirm(receive1.hash());
@@ -317,7 +317,7 @@ fn two() {
         Amount::MAX - Amount::raw(1),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     node.process(send1.clone()).unwrap();
     node.confirm(send1.hash());
@@ -329,7 +329,7 @@ fn two() {
         Amount::MAX - Amount::raw(2),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash().into()),
+        node.work_generate_dev(send1.hash()),
     ));
     node.process(send2.clone()).unwrap();
     node.confirm(send2.hash());
@@ -341,7 +341,7 @@ fn two() {
         Amount::raw(1),
         send1.hash().into(),
         &key1,
-        node.work_generate_dev(key1.public_key().into()),
+        node.work_generate_dev(&key1),
     ));
     node.process(receive1.clone()).unwrap();
     node.confirm(receive1.hash());
@@ -477,7 +477,7 @@ fn split() {
             Amount::MAX - Amount::raw(i as u128 + 1),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev(previous.into()),
+            node.work_generate_dev(previous),
         ));
         previous = block.hash();
         node.process(block.clone()).unwrap();
@@ -567,7 +567,7 @@ fn channel_max_queue() {
         Amount::MAX - Amount::nano(1000),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     node.process(send1.clone()).unwrap();
 
@@ -601,7 +601,7 @@ fn cannot_vote() {
         Amount::MAX - Amount::raw(1),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let send2 = BlockEnum::State(StateBlock::new(
@@ -611,7 +611,7 @@ fn cannot_vote() {
         Amount::MAX - Amount::raw(2),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash().into()),
+        node.work_generate_dev(send1.hash()),
     ));
     node.process(send1.clone()).unwrap();
     node.process(send2.clone()).unwrap();

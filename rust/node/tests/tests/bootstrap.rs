@@ -56,7 +56,7 @@ mod bootstrap_processor {
             .balance(Amount::raw(Amount::MAX.number() - *GXRB_RATIO))
             .link(key1.account())
             .sign(&DEV_GENESIS_KEY)
-            .work(node0.work_generate_dev((*DEV_GENESIS_HASH).into()))
+            .work(node0.work_generate_dev(*DEV_GENESIS_HASH))
             .build();
 
         let receive1 = BlockBuilder::state()
@@ -66,7 +66,7 @@ mod bootstrap_processor {
             .balance(*GXRB_RATIO)
             .link(send1.hash())
             .sign(&key1)
-            .work(node0.work_generate_dev(key1.public_key().into()))
+            .work(node0.work_generate_dev(&key1))
             .build();
 
         let send2 = BlockBuilder::state()
@@ -76,7 +76,7 @@ mod bootstrap_processor {
             .balance(Amount::zero())
             .link(key2.account())
             .sign(&key1)
-            .work(node0.work_generate_dev(receive1.hash().into()))
+            .work(node0.work_generate_dev(receive1.hash()))
             .build();
 
         // Processing test chain
@@ -130,7 +130,7 @@ mod bootstrap_processor {
             .balance(Amount::raw(Amount::MAX.number() - *GXRB_RATIO))
             .link(key1.account())
             .sign(&DEV_GENESIS_KEY)
-            .work(node1.work_generate_dev((*DEV_GENESIS_HASH).into()))
+            .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
             .build();
 
         assert_eq!(
@@ -146,7 +146,7 @@ mod bootstrap_processor {
             .balance(Amount::raw(Amount::MAX.number() - 2 * *GXRB_RATIO))
             .link(key2.account())
             .sign(&DEV_GENESIS_KEY)
-            .work(node1.work_generate_dev(send1.hash().into()))
+            .work(node1.work_generate_dev(send1.hash()))
             .build();
 
         assert_eq!(
@@ -160,7 +160,7 @@ mod bootstrap_processor {
             .representative(key1.public_key())
             .account(key1.account())
             .sign(&key1)
-            .work(node1.work_generate_dev(key1.public_key().into()))
+            .work(node1.work_generate_dev(&key1))
             .build();
 
         assert_eq!(
@@ -176,7 +176,7 @@ mod bootstrap_processor {
             .balance(Amount::raw(*GXRB_RATIO))
             .link(send2.hash())
             .sign(&key2)
-            .work(node1.work_generate_dev(key2.public_key().into()))
+            .work(node1.work_generate_dev(&key2))
             .build();
 
         assert_eq!(
@@ -229,7 +229,7 @@ mod bootstrap_processor {
             .balance(Amount::raw(Amount::MAX.number() - *GXRB_RATIO))
             .link(key.account())
             .sign(&DEV_GENESIS_KEY)
-            .work(node1.work_generate_dev((*DEV_GENESIS_HASH).into()))
+            .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
             .build();
 
         assert_eq!(
@@ -242,7 +242,7 @@ mod bootstrap_processor {
             .representative(key.public_key())
             .account(key.account())
             .sign(&key)
-            .work(node1.work_generate_dev(key.public_key().into()))
+            .work(node1.work_generate_dev(&key))
             .build();
 
         assert_eq!(
@@ -257,7 +257,7 @@ mod bootstrap_processor {
             .balance(Amount::zero())
             .link(key2.account())
             .sign(&key)
-            .work(node1.work_generate_dev(open.hash().into()))
+            .work(node1.work_generate_dev(open.hash()))
             .build();
 
         assert_eq!(
@@ -319,7 +319,7 @@ mod bootstrap_processor {
             .balance(Amount::raw(Amount::MAX.number() - *GXRB_RATIO))
             .link(key.account())
             .sign(&DEV_GENESIS_KEY)
-            .work(node1.work_generate_dev((*DEV_GENESIS_HASH).into()))
+            .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
             .build();
 
         assert_eq!(
@@ -334,7 +334,7 @@ mod bootstrap_processor {
             .balance(Amount::raw(Amount::MAX.number() - 2 * *GXRB_RATIO))
             .link(key.account())
             .sign(&DEV_GENESIS_KEY)
-            .work(node1.work_generate_dev(send1.hash().into()))
+            .work(node1.work_generate_dev(send1.hash()))
             .build();
         assert_eq!(
             node1.process_local(send2.clone()).unwrap(),
@@ -346,7 +346,7 @@ mod bootstrap_processor {
             .representative(key.public_key())
             .account(key.account())
             .sign(&key)
-            .work(node1.work_generate_dev(key.public_key().into()))
+            .work(node1.work_generate_dev(&key))
             .build();
 
         assert_eq!(
@@ -361,7 +361,7 @@ mod bootstrap_processor {
             .balance(Amount::raw(2 * *GXRB_RATIO))
             .link(send2.hash())
             .sign(&key)
-            .work(node1.work_generate_dev(open.hash().into()))
+            .work(node1.work_generate_dev(open.hash()))
             .build();
 
         assert_eq!(
@@ -426,7 +426,7 @@ mod bootstrap_processor {
             Amount::raw(Amount::MAX.number() - *GXRB_RATIO),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
-            node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node0.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
         // receive send1
@@ -437,7 +437,7 @@ mod bootstrap_processor {
             Amount::MAX,
             send1.hash().into(),
             &DEV_GENESIS_KEY,
-            node0.work_generate_dev(send1.hash().into()),
+            node0.work_generate_dev(send1.hash()),
         ));
 
         // change rep of genesis account to be key1
@@ -448,7 +448,7 @@ mod bootstrap_processor {
             Amount::MAX,
             BlockHash::zero().into(),
             &DEV_GENESIS_KEY,
-            node0.work_generate_dev(receive1.hash().into()),
+            node0.work_generate_dev(receive1.hash()),
         ));
 
         // change rep of genesis account to be key2
@@ -459,7 +459,7 @@ mod bootstrap_processor {
             Amount::MAX,
             BlockHash::zero().into(),
             &DEV_GENESIS_KEY,
-            node0.work_generate_dev(change1.hash().into()),
+            node0.work_generate_dev(change1.hash()),
         ));
 
         // send Gxrb_ratio from genesis to key1 and genesis rep back to genesis account
@@ -470,7 +470,7 @@ mod bootstrap_processor {
             Amount::raw(Amount::MAX.number() - *GXRB_RATIO),
             key1.account().into(),
             &DEV_GENESIS_KEY,
-            node0.work_generate_dev(change2.hash().into()),
+            node0.work_generate_dev(change2.hash()),
         ));
 
         // receive send2 and rep of key1 to be itself
@@ -481,7 +481,7 @@ mod bootstrap_processor {
             Amount::raw(*GXRB_RATIO),
             send2.hash().into(),
             &key1,
-            node0.work_generate_dev(key1.public_key().into()),
+            node0.work_generate_dev(key1.public_key()),
         ));
 
         // send Gxrb_ratio raw, all available balance, from key1 to key2
@@ -492,7 +492,7 @@ mod bootstrap_processor {
             Amount::zero(),
             key2.account().into(),
             &key1,
-            node0.work_generate_dev(receive2.hash().into()),
+            node0.work_generate_dev(receive2.hash()),
         ));
 
         // receive send3 on key2, set rep of key2 to be itself
@@ -503,7 +503,7 @@ mod bootstrap_processor {
             Amount::raw(*GXRB_RATIO),
             send3.hash().into(),
             &key2,
-            node0.work_generate_dev(key2.public_key().into()),
+            node0.work_generate_dev(&key2),
         ));
 
         let blocks = vec![
@@ -589,7 +589,7 @@ mod bootstrap_processor {
             .destination(key.account())
             .balance(Amount::zero())
             .sign((*DEV_GENESIS_KEY).clone())
-            .work(node0.work_generate_dev(node0.latest(&DEV_GENESIS_ACCOUNT).into()))
+            .work(node0.work_generate_dev(node0.latest(&DEV_GENESIS_ACCOUNT)))
             .build();
 
         assert_eq!(
@@ -602,7 +602,7 @@ mod bootstrap_processor {
             .representative(PublicKey::zero())
             .account(key.account())
             .sign(&key)
-            .work(node0.work_generate_dev(key.public_key().into()))
+            .work(node0.work_generate_dev(&key))
             .build();
 
         assert_eq!(
@@ -615,7 +615,7 @@ mod bootstrap_processor {
             .destination(*DEV_GENESIS_ACCOUNT)
             .balance(Amount::MAX - Amount::raw(100))
             .sign(key)
-            .work(node0.work_generate_dev(open.hash().into()))
+            .work(node0.work_generate_dev(open.hash()))
             .build();
 
         assert_eq!(
@@ -627,7 +627,7 @@ mod bootstrap_processor {
             .previous(send1.hash())
             .source(send2.hash())
             .sign(&DEV_GENESIS_KEY)
-            .work(node0.work_generate_dev(send1.hash().into()))
+            .work(node0.work_generate_dev(send1.hash()))
             .build();
 
         assert_eq!(
@@ -672,7 +672,7 @@ mod bootstrap_processor {
             Amount::MAX - Amount::raw(100),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
-            node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node0.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
         let block2 = BlockEnum::State(StateBlock::new(
@@ -682,7 +682,7 @@ mod bootstrap_processor {
             Amount::MAX,
             block1.hash().into(),
             &DEV_GENESIS_KEY,
-            node0.work_generate_dev(block1.hash().into()),
+            node0.work_generate_dev(block1.hash()),
         ));
 
         assert_eq!(
@@ -956,7 +956,7 @@ mod bootstrap_processor {
             Amount::MAX - Amount::nano(1000),
             key1.account().into(),
             &DEV_GENESIS_KEY,
-            node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node0.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
         let receive1 = BlockEnum::State(StateBlock::new(
@@ -966,7 +966,7 @@ mod bootstrap_processor {
             Amount::nano(1000),
             send1.hash().into(),
             &key1,
-            node0.work_generate_dev(key1.public_key().into()),
+            node0.work_generate_dev(&key1),
         ));
 
         let send2 = BlockEnum::State(StateBlock::new(
@@ -976,7 +976,7 @@ mod bootstrap_processor {
             Amount::zero(),
             key2.account().into(),
             &key1,
-            node0.work_generate_dev(receive1.hash().into()),
+            node0.work_generate_dev(receive1.hash()),
         ));
 
         let receive2 = BlockEnum::State(StateBlock::new(
@@ -986,7 +986,7 @@ mod bootstrap_processor {
             Amount::nano(1000),
             send2.hash().into(),
             &key2,
-            node0.work_generate_dev(key2.public_key().into()),
+            node0.work_generate_dev(&key2),
         ));
 
         // Processing test chain
@@ -1046,7 +1046,7 @@ mod bootstrap_processor {
             Amount::MAX - Amount::nano(1000),
             key1.account().into(),
             &DEV_GENESIS_KEY,
-            node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node0.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
         let receive1 = BlockEnum::State(StateBlock::new(
@@ -1056,7 +1056,7 @@ mod bootstrap_processor {
             Amount::nano(1000),
             send1.hash().into(),
             &key1,
-            node0.work_generate_dev(key1.public_key().into()),
+            node0.work_generate_dev(&key1),
         ));
 
         let send2 = BlockEnum::State(StateBlock::new(
@@ -1066,7 +1066,7 @@ mod bootstrap_processor {
             Amount::zero(),
             key2.account().into(),
             &key1,
-            node0.work_generate_dev(receive1.hash().into()),
+            node0.work_generate_dev(receive1.hash()),
         ));
 
         let receive2 = BlockEnum::State(StateBlock::new(
@@ -1076,7 +1076,7 @@ mod bootstrap_processor {
             Amount::nano(1000),
             send2.hash().into(),
             &key2,
-            node0.work_generate_dev(key2.public_key().into()),
+            node0.work_generate_dev(&key2),
         ));
 
         // Processing test chain
@@ -1150,7 +1150,7 @@ mod bootstrap_processor {
             Amount::MAX - Amount::nano(1000),
             key1.account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
         // send from genesis to key2
@@ -1161,7 +1161,7 @@ mod bootstrap_processor {
             Amount::MAX - Amount::nano(2000),
             key2.account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(send1.hash().into()),
+            node1.work_generate_dev(send1.hash()),
         ));
 
         // open account key1
@@ -1172,7 +1172,7 @@ mod bootstrap_processor {
             Amount::nano(1000),
             send1.hash().into(),
             &key1,
-            node1.work_generate_dev(key1.public_key().into()),
+            node1.work_generate_dev(&key1),
         ));
 
         //  open account key2
@@ -1183,7 +1183,7 @@ mod bootstrap_processor {
             Amount::nano(1000),
             send2.hash().into(),
             &key2,
-            node1.work_generate_dev(key2.public_key().into()),
+            node1.work_generate_dev(&key2),
         ));
 
         // add the blocks without starting elections because elections publish blocks
@@ -1279,7 +1279,7 @@ mod bootstrap_processor {
             Amount::MAX - Amount::nano(1000),
             key1.account().into(),
             &DEV_GENESIS_KEY,
-            node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node0.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
         // Start lazy bootstrap with last block in chain known
@@ -1324,7 +1324,7 @@ mod bootstrap_processor {
             Amount::MAX - Amount::nano(1000),
             key1.account().into(),
             &DEV_GENESIS_KEY,
-            node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node0.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
         let receive1 = BlockEnum::State(StateBlock::new(
@@ -1334,7 +1334,7 @@ mod bootstrap_processor {
             Amount::nano(1000),
             send1.hash().into(),
             &key1,
-            node0.work_generate_dev(key1.public_key().into()),
+            node0.work_generate_dev(&key1),
         ));
 
         let send2 = BlockEnum::State(StateBlock::new(
@@ -1344,7 +1344,7 @@ mod bootstrap_processor {
             Amount::zero(),
             key2.account().into(),
             &key1,
-            node0.work_generate_dev(receive1.hash().into()),
+            node0.work_generate_dev(receive1.hash()),
         ));
 
         let receive2 = BlockEnum::State(StateBlock::new(
@@ -1354,7 +1354,7 @@ mod bootstrap_processor {
             Amount::nano(1000),
             send2.hash().into(),
             &key2,
-            node0.work_generate_dev(key2.public_key().into()),
+            node0.work_generate_dev(&key2),
         ));
 
         // Processing test chain
@@ -1428,7 +1428,7 @@ mod bootstrap_processor {
             Amount::MAX - Amount::nano(1000),
             key1.account().into(),
             &DEV_GENESIS_KEY,
-            node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node0.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
         let receive1 = BlockEnum::State(StateBlock::new(
@@ -1438,7 +1438,7 @@ mod bootstrap_processor {
             Amount::nano(1000),
             send1.hash().into(),
             &key1,
-            node0.work_generate_dev(key1.public_key().into()),
+            node0.work_generate_dev(&key1),
         ));
 
         let send2 = BlockEnum::State(StateBlock::new(
@@ -1448,7 +1448,7 @@ mod bootstrap_processor {
             Amount::zero(),
             key2.account().into(),
             &key1,
-            node0.work_generate_dev(receive1.hash().into()),
+            node0.work_generate_dev(receive1.hash()),
         ));
 
         let receive2 = BlockEnum::State(StateBlock::new(
@@ -1458,7 +1458,7 @@ mod bootstrap_processor {
             Amount::nano(1000),
             send2.hash().into(),
             &key2,
-            node0.work_generate_dev(key2.public_key().into()),
+            node0.work_generate_dev(&key2),
         ));
 
         // Processing test chain
@@ -1519,7 +1519,7 @@ mod bootstrap_processor {
             Amount::zero(),
             key.account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node1.process(send1.clone()).unwrap();
 
@@ -1531,7 +1531,7 @@ mod bootstrap_processor {
             Amount::MAX,
             send1.hash().into(),
             &key,
-            node1.work_generate_dev(key.public_key().into()),
+            node1.work_generate_dev(&key),
         ));
         node1.process(open.clone()).unwrap();
 
@@ -1543,7 +1543,7 @@ mod bootstrap_processor {
             Amount::MAX - Amount::raw(100),
             (*DEV_GENESIS_ACCOUNT).into(),
             &key,
-            node1.work_generate_dev(open.hash().into()),
+            node1.work_generate_dev(open.hash()),
         ));
         node1.process(send2.clone()).unwrap();
 
@@ -1555,7 +1555,7 @@ mod bootstrap_processor {
             Amount::raw(100),
             send2.hash().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(send1.hash().into()),
+            node1.work_generate_dev(send1.hash()),
         ));
         node1.process(receive.clone()).unwrap();
 
@@ -1679,7 +1679,7 @@ mod bulk_pull {
             Amount::raw(100),
             latest.into(),
             &key2,
-            node.work_generate_dev(key2.public_key().into()),
+            node.work_generate_dev(&key2),
         ));
         node.process(open).unwrap();
         let bulk_pull = BulkPull {
@@ -1735,7 +1735,7 @@ mod bulk_pull {
             Amount::MAX - Amount::raw(100),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node.process(block1.clone()).unwrap();
 
@@ -1764,7 +1764,7 @@ mod bulk_pull {
             Amount::MAX - Amount::raw(100),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node.process(block1.clone()).unwrap();
 
@@ -1795,7 +1795,7 @@ mod bulk_pull {
             Amount::MAX - Amount::raw(100),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node.process(block1.clone()).unwrap();
 
@@ -1857,7 +1857,7 @@ mod bulk_pull {
             Amount::raw(1),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node.process(send1.clone()).unwrap();
 
@@ -1868,7 +1868,7 @@ mod bulk_pull {
             Amount::MAX,
             send1.hash().into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((send1.hash()).into()),
+            node.work_generate_dev(send1.hash()),
         ));
         node.process(receive1.clone()).unwrap();
 
@@ -1961,7 +1961,7 @@ mod frontier_req {
             Amount::MAX - Amount::nano(1000),
             key1.account().into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node.process(send1.clone()).unwrap();
 
@@ -1972,7 +1972,7 @@ mod frontier_req {
             Amount::nano(1000),
             send1.hash().into(),
             &key1,
-            node.work_generate_dev(key1.public_key().into()),
+            node.work_generate_dev(&key1),
         ));
         node.process(receive1.clone()).unwrap();
 
@@ -2051,7 +2051,7 @@ mod frontier_req {
             Amount::MAX - Amount::nano(1000),
             key_before_genesis.account().into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node.process(send1.clone()).unwrap();
 
@@ -2062,7 +2062,7 @@ mod frontier_req {
             Amount::MAX - Amount::nano(2000),
             key_after_genesis.account().into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev(send1.hash().into()),
+            node.work_generate_dev(send1.hash()),
         ));
         node.process(send2.clone()).unwrap();
 
@@ -2073,7 +2073,7 @@ mod frontier_req {
             Amount::nano(1000),
             send1.hash().into(),
             &key_before_genesis,
-            node.work_generate_dev(key_before_genesis.public_key().into()),
+            node.work_generate_dev(&key_before_genesis),
         ));
         node.process(receive1.clone()).unwrap();
 
@@ -2084,7 +2084,7 @@ mod frontier_req {
             Amount::nano(1000),
             send2.hash().into(),
             &key_after_genesis,
-            node.work_generate_dev(key_after_genesis.public_key().into()),
+            node.work_generate_dev(&key_after_genesis),
         ));
         node.process(receive2.clone()).unwrap();
 

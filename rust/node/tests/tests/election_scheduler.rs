@@ -142,7 +142,7 @@ mod election_scheduler {
             node.balance(&*DEV_GENESIS_ACCOUNT) - Amount::nano(1000),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
         node.ledger
@@ -171,7 +171,7 @@ mod election_scheduler {
             node.balance(&*DEV_GENESIS_ACCOUNT) - Amount::nano(1000),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
         // Process the block

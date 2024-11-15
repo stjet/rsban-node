@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount, BlockEnum, KeyPair, StateBlock, Vote, DEV_GENESIS_KEY};
+use rsnano_core::{Account, Amount, BlockEnum, KeyPair, Root, StateBlock, Vote, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{ConfirmAck, Keepalive, Message, Publish};
 use rsnano_network::{ChannelMode, DropPolicy, TrafficType};
@@ -125,7 +125,7 @@ fn send_discarded_publish() {
         Amount::MAX,
         4.into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev(2.into()),
+        node1.work_generate_dev(Root::from(2)),
     ));
 
     node1.message_publisher.lock().unwrap().flood(
@@ -161,7 +161,7 @@ fn receivable_processor_confirm_insufficient_pos() {
         Amount::MAX - Amount::raw(1),
         Account::zero().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node1.process(send1.clone()).unwrap();
@@ -191,7 +191,7 @@ fn receivable_processor_confirm_sufficient_pos() {
         Amount::MAX - Amount::raw(1),
         Account::zero().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node1.process(send1.clone()).unwrap();
@@ -237,7 +237,7 @@ fn send_valid_confirm_ack() {
         Amount::raw(50),
         key2.public_key().as_account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     node1.process_active(block2);
     // Keep polling until latest block changes
@@ -265,7 +265,7 @@ fn send_valid_publish() {
         Amount::raw(50),
         key2.public_key().as_account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let hash2 = block2.hash();
     let latest2 = node2.latest(&DEV_GENESIS_ACCOUNT);
@@ -297,7 +297,7 @@ fn send_with_receive() {
         Amount::MAX - node1.config.receive_minimum,
         key2.public_key().as_account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node1.process_active(block1.clone());

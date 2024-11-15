@@ -28,7 +28,7 @@ mod votes {
             &key1.public_key().as_account(),
             &(Amount::MAX - Amount::raw(100)),
             &DEV_GENESIS_KEY.private_key(),
-            node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node1.process(send1.clone()).unwrap();
         node1
@@ -111,7 +111,7 @@ mod votes {
             Amount::MAX / 2 - Amount::nano(1000),
             key1.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node1.process(send1.clone()).unwrap();
         let election1 = start_election(&node1, &send1.hash());
@@ -143,7 +143,7 @@ mod votes {
             Amount::MAX / 2 - Amount::nano(1000),
             key2.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         assert_eq!(node1.active.publish_block(&send2.clone().into()), false);
         assert_timely(Duration::from_secs(5), || node1.active.active(&send2));

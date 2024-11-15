@@ -2,7 +2,7 @@ use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder,
     BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
     PublicKey, Root, SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo,
-    WalletId, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO,
+    WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -55,7 +55,7 @@ fn pruning_depth_max_depth() {
         .destination(key1.account())
         .balance(Amount::MAX - Amount::raw(1 * *GXRB_RATIO))
         .sign(DEV_GENESIS_KEY.clone())
-        .work(node1.work_generate_dev(latest_hash.into()))
+        .work(node1.work_generate_dev(latest_hash))
         .build();
 
     // Process the first send block
@@ -68,7 +68,7 @@ fn pruning_depth_max_depth() {
         .destination(key1.account())
         .balance(Amount::raw(0))
         .sign(DEV_GENESIS_KEY.clone())
-        .work(node1.work_generate_dev(latest_hash.into()))
+        .work(node1.work_generate_dev(latest_hash))
         .build();
 
     // Process the second send block
@@ -135,7 +135,7 @@ fn pruning_automatic() {
         .destination(key1.account())
         .balance(Amount::MAX - Amount::raw(1 * *GXRB_RATIO))
         .sign(DEV_GENESIS_KEY.clone())
-        .work(node1.work_generate_dev(latest_hash.into()))
+        .work(node1.work_generate_dev(latest_hash))
         .build();
 
     node1.process_active(send1.clone().into());
@@ -146,7 +146,7 @@ fn pruning_automatic() {
         .destination(key1.account())
         .balance(Amount::raw(0))
         .sign(DEV_GENESIS_KEY.clone())
-        .work(node1.work_generate_dev(latest_hash.into()))
+        .work(node1.work_generate_dev(latest_hash))
         .build();
 
     node1.process_active(send2.clone().into());
@@ -219,7 +219,7 @@ fn deferred_dependent_elections() {
         .link(key.account())
         .balance(Amount::MAX - Amount::raw(1))
         .sign(&DEV_GENESIS_KEY)
-        .work(node1.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 
     let open = BlockBuilder::state()
@@ -229,7 +229,7 @@ fn deferred_dependent_elections() {
         .link(send1.hash())
         .balance(Amount::raw(1))
         .sign(&key)
-        .work(node1.work_generate_dev(key.public_key().into()))
+        .work(node1.work_generate_dev(&key))
         .build();
 
     let send1_state_block = match &send1 {
@@ -244,7 +244,7 @@ fn deferred_dependent_elections() {
         .balance(send1.balance() - Amount::raw(1))
         .link(key.account())
         .sign(&DEV_GENESIS_KEY)
-        .work(node1.work_generate_dev(send1.hash().into()))
+        .work(node1.work_generate_dev(send1.hash()))
         .build();
 
     let open_state_block = match &open {
@@ -259,7 +259,7 @@ fn deferred_dependent_elections() {
         .link(send2.hash())
         .balance(Amount::raw(2))
         .sign(&key)
-        .work(node1.work_generate_dev(open.hash().into()))
+        .work(node1.work_generate_dev(open.hash()))
         .build();
 
     let receive_state_block = match &receive {
@@ -401,7 +401,7 @@ fn rollback_gap_source() {
         .link(key.account())
         .balance(Amount::MAX - Amount::raw(1))
         .sign(&DEV_GENESIS_KEY)
-        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .work(node.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 
     let fork1a = BlockBuilder::state()
@@ -411,7 +411,7 @@ fn rollback_gap_source() {
         .link(send1.hash())
         .balance(Amount::raw(1))
         .sign(&key)
-        .work(node.work_generate_dev(key.public_key().into()))
+        .work(node.work_generate_dev(&key))
         .build();
 
     let send1_state_block = match &send1 {
@@ -426,7 +426,7 @@ fn rollback_gap_source() {
         .balance(send1.balance() - Amount::raw(1))
         .link(key.account())
         .sign(&DEV_GENESIS_KEY)
-        .work(node.work_generate_dev(send1.hash().into()))
+        .work(node.work_generate_dev(send1.hash()))
         .build();
 
     let fork1a_state_block = match &fork1a {
@@ -521,7 +521,7 @@ fn vote_by_hash_bundle() {
         .balance(Amount::MAX - Amount::raw(1))
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&DEV_GENESIS_KEY)
-        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .work(node.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 
     blocks.push(block.clone());
@@ -539,7 +539,7 @@ fn vote_by_hash_bundle() {
             .previous(hash)
             .balance(Amount::MAX - Amount::raw(i))
             .sign(&DEV_GENESIS_KEY)
-            .work(node.work_generate_dev(hash.into()))
+            .work(node.work_generate_dev(hash))
             .build();
         blocks.push(block.clone());
         assert_eq!(BlockStatus::Progress, node.process_local(block).unwrap());
@@ -603,7 +603,7 @@ fn confirm_quorum() {
         .balance(new_balance)
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&*DEV_GENESIS_KEY)
-        .work(node1.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 
     assert_eq!(
@@ -818,7 +818,7 @@ fn bootstrap_confirm_frontiers() {
         &key0.account(),
         &(Amount::MAX - Amount::raw(500)),
         &DEV_GENESIS_KEY.private_key(),
-        node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node0.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     assert_eq!(
@@ -2199,7 +2199,7 @@ fn fork_no_vote_quorum() {
         (Amount::MAX / 4) - (node1.config.receive_minimum * 2),
         Account::from(key1).into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev(block.hash().into()),
+        node1.work_generate_dev(block.hash()),
     ));
 
     node1.process(send1.clone()).unwrap();
@@ -2218,7 +2218,7 @@ fn fork_no_vote_quorum() {
         (Amount::MAX / 4) - (node1.config.receive_minimum * 2),
         Account::from(key2).into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev(block.hash().into()),
+        node1.work_generate_dev(block.hash()),
     ));
     let vote = Vote::new(&KeyPair::new(), 0, 0, vec![send2.hash()]);
     let confirm = Message::ConfirmAck(ConfirmAck::new_with_own_vote(vote));
@@ -2267,7 +2267,7 @@ fn fork_open() {
         Amount::zero(),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let channel = make_fake_channel(&node);
@@ -2300,7 +2300,7 @@ fn fork_open() {
         Amount::MAX,
         send1.hash().into(),
         &key1,
-        node.work_generate_dev(key1.public_key().into()),
+        node.work_generate_dev(&key1),
     ));
     node.inbound_message_queue.put(
         Message::Publish(Publish::new_forward(open1.clone())),
@@ -2317,7 +2317,7 @@ fn fork_open() {
         Amount::MAX,
         send1.hash().into(),
         &key1,
-        node.work_generate_dev(key1.public_key().into()),
+        node.work_generate_dev(&key1),
     ));
     node.inbound_message_queue.put(
         Message::Publish(Publish::new_forward(open2.clone())),
@@ -2404,7 +2404,7 @@ fn online_reps_election() {
         Amount::MAX - Amount::nano(1000),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node.process_active(send1.clone());
@@ -2453,7 +2453,7 @@ fn vote_republish() {
         Amount::MAX - Amount::nano(1000),
         key2.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let send2 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -2462,7 +2462,7 @@ fn vote_republish() {
         Amount::MAX - Amount::nano(2000),
         key2.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     // process send1 first, this will make sure send1 goes into the ledger and an election is started
@@ -2557,7 +2557,7 @@ fn vote_by_hash_republish() {
         Amount::MAX - Amount::nano(1000),
         key2.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let send2 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -2566,7 +2566,7 @@ fn vote_by_hash_republish() {
         Amount::MAX - Amount::nano(2000),
         key2.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     // give block send1 to node1 and check that an election for send1 starts on both nodes
@@ -2625,7 +2625,7 @@ fn fork_election_invalid_block_signature() {
         Amount::MAX - Amount::nano(1000),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let send2 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -2634,7 +2634,7 @@ fn fork_election_invalid_block_signature() {
         Amount::MAX - Amount::nano(2000),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let mut send3 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -2643,7 +2643,7 @@ fn fork_election_invalid_block_signature() {
         Amount::MAX - Amount::nano(2000),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     send3.set_block_signature(&Signature::new()); // Invalid signature
 
@@ -2699,7 +2699,7 @@ fn confirm_back() {
         Amount::MAX - Amount::raw(1),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let open = BlockEnum::State(StateBlock::new(
         key.account(),
@@ -2708,7 +2708,7 @@ fn confirm_back() {
         Amount::raw(1),
         send1.hash().into(),
         &key,
-        node.work_generate_dev(key.public_key().into()),
+        node.work_generate_dev(&key),
     ));
     let send2 = BlockEnum::State(StateBlock::new(
         key.account(),
@@ -2717,7 +2717,7 @@ fn confirm_back() {
         Amount::zero(),
         (*DEV_GENESIS_ACCOUNT).into(),
         &key,
-        node.work_generate_dev(open.hash().into()),
+        node.work_generate_dev(open.hash()),
     ));
 
     node.process_active(send1.clone());
@@ -2757,7 +2757,7 @@ fn rollback_vote_self() {
         Amount::MAX - Amount::MAX / 2,
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let open = BlockEnum::State(StateBlock::new(
@@ -2767,7 +2767,7 @@ fn rollback_vote_self() {
         Amount::MAX / 2,
         send1.hash().into(),
         &key,
-        node.work_generate_dev(key.public_key().into()),
+        node.work_generate_dev(&key),
     ));
 
     // send 1 raw
@@ -2778,7 +2778,7 @@ fn rollback_vote_self() {
         open.balance() - Amount::raw(1),
         (*DEV_GENESIS_ACCOUNT).into(),
         &key,
-        node.work_generate_dev(open.hash().into()),
+        node.work_generate_dev(open.hash()),
     ));
 
     // fork of send2 block
@@ -2789,7 +2789,7 @@ fn rollback_vote_self() {
         open.balance() - Amount::raw(2),
         (*DEV_GENESIS_ACCOUNT).into(),
         &key,
-        node.work_generate_dev(open.hash().into()),
+        node.work_generate_dev(open.hash()),
     ));
 
     // Process and mark the first 2 blocks as confirmed to allow voting

@@ -355,7 +355,7 @@ pub fn setup_chain(node: &Node, count: usize, target: &KeyPair, confirm: bool) -
             balance,
             throwaway.account().into(),
             &target,
-            node.work_generate_dev(latest.into()),
+            node.work_generate_dev(latest),
         ));
         latest = send.hash();
         blocks.push(send);
@@ -397,7 +397,7 @@ pub fn setup_chains(
             balance,
             key.account().into(),
             source,
-            node.work_generate_dev(latest.into()),
+            node.work_generate_dev(latest),
         ));
 
         let open = BlockEnum::State(StateBlock::new(
@@ -407,7 +407,7 @@ pub fn setup_chains(
             amount_sent,
             send.hash().into(),
             &key,
-            node.work_generate_dev(key.public_key().into()),
+            node.work_generate_dev(&key),
         ));
 
         latest = send.hash();
@@ -446,7 +446,7 @@ pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> 
             balance,
             key.public_key().as_account().into(),
             source,
-            node.work_generate_dev(latest.into()),
+            node.work_generate_dev(latest),
         ));
 
         latest = send.hash();
@@ -458,7 +458,7 @@ pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> 
             Amount::raw(1),
             send.hash().into(),
             &key,
-            node.work_generate_dev(key.public_key().into()),
+            node.work_generate_dev(&key),
         ));
 
         node.process_multi(&[send.clone(), open.clone()]);
@@ -552,7 +552,7 @@ pub fn send_block_to(node: Arc<Node>, account: Account, amount: Amount) -> Block
         balance - amount,
         account.into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(previous.into()),
+        node.work_generate_dev(previous),
     ));
 
     node.process_active(send.clone());
@@ -587,7 +587,7 @@ pub fn process_block_local(node: Arc<Node>, account: Account, amount: Amount) ->
         balance - amount,
         account.into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(previous.into()),
+        node.work_generate_dev(previous),
     ));
 
     node.process_local(send.clone()).unwrap();
@@ -617,7 +617,7 @@ pub fn process_send_block(node: Arc<Node>, account: Account, amount: Amount) -> 
         balance - amount,
         account.into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(previous.into()),
+        node.work_generate_dev(previous),
     ));
 
     node.process(send.clone()).unwrap();
@@ -643,7 +643,7 @@ pub fn process_open_block(node: Arc<Node>, keys: KeyPair) -> BlockEnum {
         info.amount,
         key.send_block_hash.into(),
         &keys,
-        node.work_generate_dev(account.into()),
+        node.work_generate_dev(account),
     ));
 
     node.process(open.clone()).unwrap();
@@ -677,7 +677,7 @@ pub fn upgrade_epoch(
         .link(node.ledger.epoch_link(epoch).unwrap())
         .representative(*DEV_GENESIS_PUB_KEY)
         .sign(&DEV_GENESIS_KEY)
-        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .work(node.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 
     assert_eq!(
@@ -708,7 +708,7 @@ pub fn setup_new_account(
         balance - amount,
         dest_account.into(),
         source,
-        node.work_generate_dev(latest.into()),
+        node.work_generate_dev(latest),
     ));
 
     let open = BlockEnum::State(StateBlock::new(
@@ -718,7 +718,7 @@ pub fn setup_new_account(
         amount,
         send.hash().into(),
         dest,
-        node.work_generate_dev(dest_account.into()),
+        node.work_generate_dev(dest_account),
     ));
 
     node.process(send.clone()).unwrap();

@@ -40,7 +40,7 @@ fn quorum_minimum_update_weight_before_quorum_checks() {
         amount,
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     node1.process_active(send1.clone());
     assert_timely(Duration::from_secs(5), || {
@@ -54,7 +54,7 @@ fn quorum_minimum_update_weight_before_quorum_checks() {
         Amount::MAX - amount,
         send1.hash().into(),
         &key1,
-        node1.work_generate_dev(key1.public_key().into()),
+        node1.work_generate_dev(&key1),
     ));
     node1.process(open1.clone()).unwrap();
 
@@ -66,7 +66,7 @@ fn quorum_minimum_update_weight_before_quorum_checks() {
         Amount::raw(3),
         key2.account().into(),
         &key1,
-        node1.work_generate_dev(open1.hash().into()),
+        node1.work_generate_dev(open1.hash()),
     ));
     node1.process(send2.clone()).unwrap();
     assert_timely_eq(Duration::from_secs(5), || node1.ledger.block_count(), 4);
@@ -136,7 +136,7 @@ fn continuous_voting() {
         node1.balance(&*DEV_GENESIS_ACCOUNT) / 10 * 1,
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node1.process(send1.clone()).unwrap();
@@ -151,7 +151,7 @@ fn continuous_voting() {
         node1.balance(&*DEV_GENESIS_ACCOUNT) - Amount::raw(1),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev(send1.hash().into()),
+        node1.work_generate_dev(send1.hash()),
     ));
 
     node1.process(send2.clone()).unwrap();
@@ -190,7 +190,7 @@ fn quorum_minimum_confirm_fail() {
         node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node1.process_active(send1.clone());
@@ -235,7 +235,7 @@ fn quorum_minimum_confirm_success() {
         node1.online_reps.lock().unwrap().quorum_delta(), // Only minimum quorum remains
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node1.process_active(send1.clone());
@@ -270,7 +270,7 @@ fn quorum_minimum_flip_fail() {
         node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let key2 = KeyPair::new();
@@ -281,7 +281,7 @@ fn quorum_minimum_flip_fail() {
         node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1),
         key2.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     // Process send1 and wait until its election appears
@@ -329,7 +329,7 @@ fn quorum_minimum_flip_success() {
         node1.online_reps.lock().unwrap().quorum_delta(),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let key2 = KeyPair::new();
@@ -340,7 +340,7 @@ fn quorum_minimum_flip_success() {
         node1.online_reps.lock().unwrap().quorum_delta(),
         key2.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     // Process send1 and wait until its election appears

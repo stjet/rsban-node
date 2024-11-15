@@ -95,7 +95,7 @@ fn rep_weight() {
         Amount::MAX - amount_not_pr,
         keypair1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let block2 = BlockEnum::State(StateBlock::new(
         keypair1.account(),
@@ -104,7 +104,7 @@ fn rep_weight() {
         amount_not_pr,
         block1.hash().into(),
         &keypair1,
-        node.work_generate_dev(keypair1.public_key().into()),
+        node.work_generate_dev(&keypair1),
     ));
     let block3 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -113,7 +113,7 @@ fn rep_weight() {
         Amount::MAX - amount_not_pr - amount_pr,
         keypair2.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(block1.hash().into()),
+        node.work_generate_dev(block1.hash()),
     ));
     let block4 = BlockEnum::State(StateBlock::new(
         keypair2.account(),
@@ -122,7 +122,7 @@ fn rep_weight() {
         amount_pr,
         block3.hash().into(),
         &keypair2,
-        node.work_generate_dev(keypair2.public_key().into()),
+        node.work_generate_dev(&keypair2),
     ));
     let blocks = [block1, block2, block3, block4];
     node.process_multi(&blocks);

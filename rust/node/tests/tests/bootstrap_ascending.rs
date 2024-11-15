@@ -18,7 +18,7 @@ fn account_base() {
         Amount::MAX - Amount::raw(1),
         0.into(),
         &DEV_GENESIS_KEY,
-        node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node0.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     node0.process(send1.clone()).unwrap();
     let node1 = system.make_node();
@@ -39,7 +39,7 @@ fn account_inductive() {
         Amount::MAX - Amount::raw(1),
         0.into(),
         &DEV_GENESIS_KEY,
-        node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node0.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let send2 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -48,7 +48,7 @@ fn account_inductive() {
         Amount::MAX - Amount::raw(2),
         0.into(),
         &DEV_GENESIS_KEY,
-        node0.work_generate_dev(send1.hash().into()),
+        node0.work_generate_dev(send1.hash()),
     ));
     node0.process(send1).unwrap();
     node0.process(send2.clone()).unwrap();
@@ -74,7 +74,7 @@ fn trace_base() {
         Amount::MAX - Amount::raw(1),
         key.public_key().as_account().into(),
         &DEV_GENESIS_KEY,
-        node0.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node0.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let receive1 = BlockEnum::State(StateBlock::new(
         key.public_key().as_account(),
@@ -83,7 +83,7 @@ fn trace_base() {
         Amount::raw(1),
         send1.hash().into(),
         &key,
-        node0.work_generate_dev(key.public_key().as_account().into()),
+        node0.work_generate_dev(&key),
     ));
     node0.process(send1).unwrap();
     node0.process(receive1.clone()).unwrap();

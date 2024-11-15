@@ -27,7 +27,7 @@ fn observer_callbacks() {
         Amount::MAX - Amount::nano(1000),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(latest.into()),
+        node.work_generate_dev(latest),
     ));
 
     let send1 = BlockEnum::State(StateBlock::new(
@@ -37,7 +37,7 @@ fn observer_callbacks() {
         Amount::MAX - Amount::nano(2000),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send.hash().into()),
+        node.work_generate_dev(send.hash()),
     ));
 
     node.process_multi(&[send.clone(), send1.clone()]);
@@ -90,7 +90,7 @@ fn confirmed_history() {
         Amount::MAX - Amount::nano(1000),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(latest.into()),
+        node.work_generate_dev(latest),
     ));
 
     let send1 = BlockEnum::State(StateBlock::new(
@@ -100,7 +100,7 @@ fn confirmed_history() {
         Amount::MAX - Amount::nano(2000),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send.hash().into()),
+        node.work_generate_dev(send.hash()),
     ));
 
     node.process_multi(&[send.clone(), send1.clone()]);
@@ -225,7 +225,7 @@ fn dependent_election() {
         Amount::MAX - Amount::nano(1000),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(latest.into()),
+        node.work_generate_dev(latest),
     ));
 
     let send1 = BlockEnum::State(StateBlock::new(
@@ -235,7 +235,7 @@ fn dependent_election() {
         Amount::MAX - Amount::nano(2000),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send.hash().into()),
+        node.work_generate_dev(send.hash()),
     ));
 
     let send2 = BlockEnum::State(StateBlock::new(
@@ -245,7 +245,7 @@ fn dependent_election() {
         Amount::MAX - Amount::nano(3000),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash().into()),
+        node.work_generate_dev(send1.hash()),
     ));
 
     node.process_multi(&[send.clone(), send1.clone(), send2.clone()]);
@@ -323,7 +323,7 @@ fn election_winner_details_clearing_node_process_confirmed() {
         Amount::MAX - Amount::nano(1000),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     )));
     // Add to election_winner_details. Use an unrealistic iteration so that it should fall into the else case and do a cleanup
     node.active.vote_applier.add_election_winner_details(

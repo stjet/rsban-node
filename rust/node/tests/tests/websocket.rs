@@ -2,7 +2,7 @@ use core::panic;
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::{Account, Amount, BlockEnum, JsonBlock, KeyPair, Networks, SendBlock, StateBlock, Vote, VoteCode, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-use rsnano_messages::{Message, Publish, TelemetryData};
+use rsnano_messages::{Message, Publish, };
 use rsnano_node::{
     bootstrap::{BootstrapInitiatorExt, BootstrapStarted}, config::{NetworkConstants, NodeConfig}, websocket::{vote_received, BlockConfirmed, OutgoingMessageEnvelope, TelemetryReceived, Topic, VoteReceived, WebsocketConfig}, Node
 };
@@ -50,7 +50,7 @@ fn started_election() {
             Amount::zero(),
             key1.account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         let publish1 = Message::Publish(Publish::new_forward(send1.clone()));
         node1
@@ -106,7 +106,7 @@ fn stopped_election() {
             Amount::zero(),
             key1.account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         let publish1 = Message::Publish(Publish::new_forward(send1.clone()));
         node1
@@ -207,7 +207,7 @@ fn confirmation() {
             &key.public_key().as_account(),
             &balance,
             &DEV_GENESIS_KEY.private_key(),
-            node1.work_generate_dev(previous.into()),
+            node1.work_generate_dev(previous),
         ));
         previous = send.hash();
         node1.process_active(send);
@@ -237,7 +237,7 @@ fn confirmation() {
             balance,
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous.into()),
+            node1.work_generate_dev(previous),
         ));
         node1.process_active(send);
 
@@ -277,7 +277,7 @@ fn confirmation_options() {
             balance,
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous.into()),
+            node1.work_generate_dev(previous),
         ));
         previous = send.hash();
         node1.process_active(send);
@@ -304,7 +304,7 @@ fn confirmation_options() {
             balance,
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous.into()),
+            node1.work_generate_dev(previous),
         ));
         previous = send.hash();
         node1.process_active(send);
@@ -336,7 +336,7 @@ fn confirmation_options() {
         // When filtering options are enabled, legacy blocks are always filtered
         balance = balance - send_amount;
         let send = BlockEnum::LegacySend(SendBlock::new(&previous, &key.public_key().as_account(), &balance, &DEV_GENESIS_KEY.private_key(), 
-                node1.work_generate_dev(previous.into())));
+                node1.work_generate_dev(previous)));
         node1.process_active(send);
         timeout(Duration::from_secs(1), ws_stream.next())
             .await
@@ -373,7 +373,7 @@ fn confirmation_options_votes(){
             balance,
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous.into()),
+            node1.work_generate_dev(previous),
         ));
         let send_hash = send.hash();
         node1.process_active(send);
@@ -427,7 +427,7 @@ fn confirmation_options_sideband(){
             balance,
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous.into()),
+            node1.work_generate_dev(previous),
         ));
         node1.process_active(send);
 
@@ -483,7 +483,7 @@ fn confirmation_options_update(){
             Amount::MAX - Amount::nano(1000),
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous.into()),
+            node1.work_generate_dev(previous),
         ));
         let previous = send.hash();
         node1.process_active(send);
@@ -511,7 +511,7 @@ fn confirmation_options_update(){
             Amount::MAX - Amount::nano(2000),
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous.into()),
+            node1.work_generate_dev(previous),
         ));
         node1.process_active(send2);
         
@@ -548,7 +548,7 @@ fn vote(){
             Amount::MAX - Amount::nano(1000),
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous.into()),
+            node1.work_generate_dev(previous),
         ));
         node1.process_active(send);
 
@@ -626,7 +626,7 @@ fn vote_options_representatives(){
             Amount::MAX - send_amount,
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous.into()),
+            node1.work_generate_dev(previous),
         ));
         previous = send.hash();
         node1.process_active(send);
@@ -656,7 +656,7 @@ fn vote_options_representatives(){
             Amount::MAX - send_amount * 2,
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous.into()),
+            node1.work_generate_dev(previous),
         ));
         node1.process_active(send);
 
@@ -791,7 +791,7 @@ fn new_unconfirmed_block(){
             Amount::MAX - Amount::raw(1),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node1.process_local(send).unwrap();
 

@@ -29,7 +29,7 @@ fn check_signature() {
         Amount::MAX - Amount::raw(100),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     node.process(send1.clone()).unwrap();
     let election1 = start_election(&node, &send1.hash());
@@ -79,7 +79,7 @@ fn add_old() {
         Amount::zero(),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     node.process(send1.clone()).unwrap();
     start_election(&node, &send1.hash());
@@ -105,7 +105,7 @@ fn add_old() {
         Amount::zero(),
         key2.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let vote2 = Arc::new(Vote::new(
         &DEV_GENESIS_KEY,
@@ -144,7 +144,7 @@ fn add_cooldown() {
         Amount::zero(),
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     node.process(send1.clone()).unwrap();
     start_election(&node, &send1.hash());
@@ -170,7 +170,7 @@ fn add_cooldown() {
         Amount::zero(),
         key2.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let vote2 = Arc::new(Vote::new(
         &DEV_GENESIS_KEY,
@@ -379,7 +379,7 @@ fn vote_spacing_vote_generator() {
         node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let mut send2 = BlockEnum::State(StateBlock::new(
@@ -389,7 +389,7 @@ fn vote_spacing_vote_generator() {
         node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO) - Amount::raw(1),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node.ledger
@@ -474,7 +474,7 @@ fn vote_spacing_rapid() {
         node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let mut send2 = BlockEnum::State(StateBlock::new(
@@ -484,7 +484,7 @@ fn vote_spacing_rapid() {
         node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO) - Amount::raw(1),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node.ledger

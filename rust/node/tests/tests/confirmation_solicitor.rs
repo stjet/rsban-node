@@ -43,7 +43,7 @@ fn batches() {
         Amount::MAX - Amount::raw(100),
         Account::from(123).into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     )));
 
     {
@@ -124,7 +124,7 @@ fn different_hashes() {
         Amount::MAX - Amount::raw(100),
         Account::from(123).into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     )));
 
     let election = Election::new(
@@ -194,7 +194,7 @@ fn bypass_max_requests_cap() {
         Amount::MAX - Amount::raw(100),
         Account::from(123).into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     )));
 
     let election = Election::new(

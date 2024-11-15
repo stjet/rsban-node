@@ -98,7 +98,7 @@ fn inactive_votes_cache_basic() {
         Amount::MAX - Amount::raw(100),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send.hash()]));
     node.vote_processor_queue
@@ -134,7 +134,7 @@ fn non_final() {
         Amount::MAX - Amount::raw(100),
         Account::from(42).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     // Non-final vote
@@ -194,7 +194,7 @@ fn inactive_votes_cache_fork() {
         Amount::MAX - Amount::raw(100),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let send2 = BlockEnum::State(StateBlock::new(
@@ -204,7 +204,7 @@ fn inactive_votes_cache_fork() {
         Amount::MAX - Amount::raw(200),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send1.hash()]));
@@ -263,7 +263,7 @@ fn inactive_votes_cache_existing_vote() {
         Amount::MAX - rep_weight,
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let open = BlockEnum::State(StateBlock::new(
@@ -273,7 +273,7 @@ fn inactive_votes_cache_existing_vote() {
         rep_weight,
         send.hash().into(),
         &key,
-        node.work_generate_dev(key.public_key().into()),
+        node.work_generate_dev(&key),
     ));
 
     node.process(send.clone()).unwrap();
@@ -352,7 +352,7 @@ fn inactive_votes_cache_multiple_votes() {
         Amount::MAX - Amount::nano(100_000),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let send2 = BlockEnum::State(StateBlock::new(
@@ -362,7 +362,7 @@ fn inactive_votes_cache_multiple_votes() {
         Amount::nano(100_000),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash().into()),
+        node.work_generate_dev(send1.hash()),
     ));
 
     let open = BlockEnum::State(StateBlock::new(
@@ -372,7 +372,7 @@ fn inactive_votes_cache_multiple_votes() {
         Amount::nano(100_000),
         send1.hash().into(),
         &key,
-        node.work_generate_dev(key.public_key().into()),
+        node.work_generate_dev(&key),
     ));
 
     // put the blocks in the ledger witout triggering an election
@@ -433,7 +433,7 @@ fn inactive_votes_cache_election_start() {
         Amount::MAX - amount,
         key1.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let send2 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -442,7 +442,7 @@ fn inactive_votes_cache_election_start() {
         Amount::MAX - (amount * 2),
         key2.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash().into()),
+        node.work_generate_dev(send1.hash()),
     ));
     let open1 = BlockEnum::State(StateBlock::new(
         key1.account(),
@@ -451,7 +451,7 @@ fn inactive_votes_cache_election_start() {
         amount,
         send1.hash().into(),
         &key1,
-        node.work_generate_dev(key1.public_key().into()),
+        node.work_generate_dev(&key1),
     ));
     let open2 = BlockEnum::State(StateBlock::new(
         key2.account(),
@@ -460,7 +460,7 @@ fn inactive_votes_cache_election_start() {
         amount,
         send2.hash().into(),
         &key2,
-        node.work_generate_dev(key2.public_key().into()),
+        node.work_generate_dev(&key2),
     ));
     node.process(send1.clone()).unwrap();
     node.process(send2.clone()).unwrap();
@@ -475,7 +475,7 @@ fn inactive_votes_cache_election_start() {
         send2.balance() - Amount::raw(1),
         Account::from(2).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send2.hash().into()),
+        node.work_generate_dev(send2.hash()),
     ));
     let send4 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -484,7 +484,7 @@ fn inactive_votes_cache_election_start() {
         send3.balance() - Amount::raw(1),
         Account::from(3).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send3.hash().into()),
+        node.work_generate_dev(send3.hash()),
     ));
 
     // Inactive votes
@@ -564,7 +564,7 @@ fn republish_winner() {
         Amount::MAX - Amount::nano(1000),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node1.process_active(send1.clone());
@@ -589,7 +589,7 @@ fn republish_winner() {
             Amount::MAX - Amount::raw(1 + i),
             key.account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node1.process_active(fork.clone());
         assert_timely(Duration::from_secs(5), || node1.active.active(&fork));
@@ -611,7 +611,7 @@ fn republish_winner() {
         Amount::MAX - Amount::nano(2000),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     node1.process_active(fork.clone());
     assert_timely(Duration::from_secs(5), || {
@@ -653,7 +653,7 @@ fn confirm_election_by_request() {
         Amount::MAX - Amount::raw(100),
         1.into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     // Process send1 locally on node1
@@ -1083,7 +1083,7 @@ fn fork_filter_cleanup() {
         Amount::MAX - Amount::nano(1),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev(latest_hash.into()),
+        node1.work_generate_dev(latest_hash),
     ));
 
     let mut stream = MemoryStream::new();
@@ -1099,7 +1099,7 @@ fn fork_filter_cleanup() {
             Amount::MAX - Amount::raw(1 + i),
             key.account().into(),
             &DEV_GENESIS_KEY,
-            node1.work_generate_dev(latest_hash.into()),
+            node1.work_generate_dev(latest_hash),
         ));
 
         node1.process_active(fork.clone());
@@ -1165,7 +1165,7 @@ fn conflicting_block_vote_existing_election() {
         Amount::MAX - Amount::raw(100),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let fork = BlockEnum::State(StateBlock::new(
@@ -1175,7 +1175,7 @@ fn conflicting_block_vote_existing_election() {
         Amount::MAX - Amount::raw(200),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let vote_fork = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![fork.hash()]));
@@ -1216,7 +1216,7 @@ fn activate_account_chain() {
         Amount::MAX - Amount::raw(1),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     let send2 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -1225,7 +1225,7 @@ fn activate_account_chain() {
         Amount::MAX - Amount::raw(2),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send.hash().into()),
+        node.work_generate_dev(send.hash()),
     ));
     let send3 = BlockEnum::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -1234,7 +1234,7 @@ fn activate_account_chain() {
         Amount::MAX - Amount::raw(3),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send2.hash().into()),
+        node.work_generate_dev(send2.hash()),
     ));
     let open = BlockEnum::State(StateBlock::new(
         key.account(),
@@ -1243,7 +1243,7 @@ fn activate_account_chain() {
         Amount::raw(1),
         send2.hash().into(),
         &key,
-        node.work_generate_dev(key.public_key().into()),
+        node.work_generate_dev(&key),
     ));
     let receive = BlockEnum::State(StateBlock::new(
         key.account(),
@@ -1252,7 +1252,7 @@ fn activate_account_chain() {
         Amount::raw(2),
         send3.hash().into(),
         &key,
-        node.work_generate_dev(open.hash().into()),
+        node.work_generate_dev(open.hash()),
     ));
 
     assert_eq!(

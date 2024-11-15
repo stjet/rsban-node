@@ -19,7 +19,7 @@ fn start_stop() {
         Amount::zero(),
         key1.public_key().as_account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     node1.process(send1.clone()).unwrap();
     assert_eq!(node1.active.len(), 0);
@@ -42,7 +42,7 @@ fn add_existing() {
         Amount::zero(),
         key1.public_key().as_account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     // add the block to ledger as an unconfirmed block
@@ -62,7 +62,7 @@ fn add_existing() {
         Amount::zero(),
         key2.public_key().as_account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     send2.set_sideband(BlockSideband::new_test_instance());
 
@@ -100,7 +100,7 @@ fn add_two() {
         Amount::zero(),
         key3.public_key().as_account().into(),
         &key1,
-        node.work_generate_dev(open1.hash().into()),
+        node.work_generate_dev(open1.hash()),
     ));
 
     // send 1 raw to account key3 from key2
@@ -111,7 +111,7 @@ fn add_two() {
         Amount::zero(),
         key3.public_key().as_account().into(),
         &key2,
-        node.work_generate_dev(open2.hash().into()),
+        node.work_generate_dev(open2.hash()),
     ));
 
     // activate elections for the previous two send blocks (to account3) that we did not forcefully confirm

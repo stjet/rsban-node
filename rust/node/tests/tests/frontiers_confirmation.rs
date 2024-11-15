@@ -1,8 +1,7 @@
-use std::{thread::sleep, time::Duration};
-
 use rsnano_core::{Amount, BlockEnum, KeyPair, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::config::{FrontiersConfirmationMode, NodeConfig};
+use std::{thread::sleep, time::Duration};
 use test_helpers::{assert_timely_eq, System};
 
 #[test]
@@ -23,7 +22,7 @@ fn frontiers_confirmation_mode() {
             Amount::MAX - Amount::nano(1000),
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node.process(send).unwrap();
         assert_timely_eq(Duration::from_secs(5), || node.active.len(), 1);
@@ -43,7 +42,7 @@ fn frontiers_confirmation_mode() {
             Amount::MAX - Amount::nano(1000),
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node.process(send).unwrap();
         assert_timely_eq(Duration::from_secs(5), || node.active.len(), 1);
@@ -63,7 +62,7 @@ fn frontiers_confirmation_mode() {
             Amount::MAX - Amount::nano(1000),
             key.public_key().as_account().into(),
             &DEV_GENESIS_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node.process(send).unwrap();
         node.insert_into_wallet(&DEV_GENESIS_KEY);

@@ -4,7 +4,6 @@ add_executable(
   difficulty.cpp
   ledger.cpp
   node.cpp
-  optimistic_scheduler.cpp
   unchecked_map.cpp
   vote_processor.cpp
   wallet.cpp

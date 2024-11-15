@@ -435,3 +435,79 @@ fn local_broadcast_without_a_representative() {
         1
     );
 }
+
+// Issue that tracks last changes on this test: https://github.com/nanocurrency/nano-node/issues/3485
+// Reopen in case the nondeterministic failure appears again.
+// Checks local votes (a vote with a key that is in the node's wallet) are not re-broadcast when received.
+// Done with a principal representative.
+#[test]
+fn no_broadcast_local_with_a_principal_representative() {
+    let mut system = System::new();
+    let flags = NodeFlags {
+        disable_request_loop: true,
+        ..Default::default()
+    };
+    let node = system
+        .build_node()
+        .config(NodeConfig {
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .flags(flags.clone())
+        .finish();
+    let _node2 = system
+        .build_node()
+        .config(NodeConfig {
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .flags(flags)
+        .finish();
+    // Reduce the weight of genesis to 2x default min voting weight
+    let key = KeyPair::new();
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - (node.config.vote_minimum * 2),
+        (&key).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    node.process_local(send.clone()).unwrap();
+    assert_timely(Duration::from_secs(10), || node.active.len() > 0);
+    assert_eq!(
+        node.ledger.weight(&DEV_GENESIS_PUB_KEY),
+        Amount::MAX - node.config.vote_minimum * 2
+    );
+    // Insert account in wallet. Votes on node are not enabled.
+    node.insert_into_wallet(&DEV_GENESIS_KEY);
+    // Ensure that the node knows the genesis key in its wallet.
+    node.wallets.compute_reps();
+    // Genesis balance after `send' is over both half_rep and PR threshold.
+    // Process a vote with a key that is in the local wallet.
+
+    let vote = Arc::new(Vote::new(
+        &DEV_GENESIS_KEY,
+        milliseconds_since_epoch(),
+        Vote::DURATION_MAX,
+        vec![send.hash()],
+    ));
+    node.vote_router.vote(&vote, VoteSource::Live);
+    // Make sure the vote was processed.
+    let election = node.active.election(&send.qualified_root()).unwrap();
+    let votes = election.mutex.lock().unwrap().last_votes.clone();
+    let existing = votes.get(&DEV_GENESIS_PUB_KEY).unwrap();
+    assert_eq!(existing.timestamp, vote.timestamp());
+    // Ensure the vote was not broadcast
+    assert_eq!(
+        node.stats
+            .count(StatType::Message, DetailType::ConfirmAck, Direction::Out),
+        0
+    );
+    assert_eq!(
+        node.stats
+            .count(StatType::Message, DetailType::Publish, Direction::Out),
+        1
+    );
+}

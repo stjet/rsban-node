@@ -58,3 +58,21 @@ fn fetch_locked() {
     assert!(wallet.fetch(&tx, &key1.public_key()).is_err());
     assert!(wallet.fetch(&tx, &key2).is_err());
 }
+
+#[test]
+fn retrieval() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    let wallet =
+        LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
+    let key1 = KeyPair::from(42);
+    wallet.insert_adhoc(&mut tx, &key1.private_key());
+    let prv1 = wallet.fetch(&tx, &key1.public_key()).unwrap();
+    assert_eq!(prv1, key1.private_key());
+    wallet.set_password(&mut tx, RawKey::from(123));
+    assert!(wallet.fetch(&tx, &key1.public_key()).is_err());
+    assert!(!wallet.valid_password(&tx));
+}

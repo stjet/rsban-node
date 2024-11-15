@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use rsnano_core::{
     Amount, BlockEnum, BlockHash, ChangeBlock, Epoch, KeyPair, Link, OpenBlock, PublicKey,
@@ -7,6 +7,7 @@ use rsnano_core::{
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeConfig},
+    consensus::{Election, ElectionBehavior, ElectionStatus},
     stats::{DetailType, Direction, StatType},
 };
 use test_helpers::{assert_timely_eq, System};
@@ -770,4 +771,61 @@ fn conflict_rollback_cemented() {
     );
     // fork1a should still remain after the rollback failed event
     assert!(node1.block_confirmed(&fork1a.hash()));
+}
+
+#[test]
+fn observers() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let key1 = KeyPair::new();
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(100),
+        (&key1).into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    node1.process(send.clone()).unwrap();
+    node1.confirm(send.hash());
+    assert_eq!(
+        node1.stats.count(
+            StatType::ConfirmationHeight,
+            DetailType::BlocksConfirmed,
+            Direction::In
+        ),
+        1
+    );
+}
+
+#[test]
+fn election_winner_details_clearing_node_process_confirmed() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let send = Arc::new(BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(1000),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    )));
+    // Add to election_winner_details. Use an unrealistic iteration so that it should fall into the else case and do a cleanup
+    let election = Arc::new(Election::new(
+        1,
+        send.clone(),
+        ElectionBehavior::Priority,
+        Box::new(|_| {}),
+        Box::new(|_| {}),
+    ));
+    node1
+        .active
+        .vote_applier
+        .add_election_winner_details(send.hash(), election);
+    let mut status = ElectionStatus::default();
+    status.winner = Some(send);
+    node1.active.process_confirmed(status, 1000000);
+    assert_eq!(node1.active.vote_applier.election_winner_details_len(), 0);
 }

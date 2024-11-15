@@ -6,7 +6,6 @@ add_executable(
   difficulty.cpp
   election_scheduler.cpp
   ledger.cpp
-  ledger_confirm.cpp
   node.cpp
   optimistic_scheduler.cpp
   unchecked_map.cpp

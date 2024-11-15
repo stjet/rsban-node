@@ -74,3 +74,34 @@ fn simple() {
     let block_listing3 = unchecked.get(&block.previous().into());
     assert!(block_listing3.is_empty());
 }
+
+// This test ensures the unchecked table is able to receive more than one block
+#[test]
+fn multiple() {
+    let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
+    let block = Arc::new(BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(1),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        0,
+    )));
+    // Asserts the block wasn't added yet to the unchecked table
+    let block_listing1 = unchecked.get(&block.previous().into());
+    assert!(block_listing1.is_empty());
+
+    // Enqueues the first block
+    unchecked.put(block.previous().into(), UncheckedInfo::new(block.clone()));
+    // Enqueues a second block
+    unchecked.put(6.into(), UncheckedInfo::new(block.clone()));
+    // Waits for the block to get written in the database
+    assert_timely(Duration::from_secs(5), || {
+        unchecked.get(&block.previous().into()).len() > 0
+    });
+    // Waits for and asserts the first block gets saved in the database
+    assert_timely(Duration::from_secs(5), || {
+        unchecked.get(&6.into()).len() > 0
+    });
+}

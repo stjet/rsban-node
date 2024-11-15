@@ -3,7 +3,6 @@ add_executable(
   entry.cpp
   active_elections.cpp
   bootstrap.cpp
-  conflicts.cpp
   difficulty.cpp
   election_scheduler.cpp
   ledger.cpp

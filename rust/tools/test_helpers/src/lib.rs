@@ -1,5 +1,5 @@
 use rsnano_core::{
-    work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, Epoch, KeyPair, Networks,
+    work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, Epoch, KeyPair, Networks, PublicKey,
     StateBlock, StateBlockBuilder, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
@@ -686,4 +686,48 @@ pub fn upgrade_epoch(
     );
 
     epoch_block
+}
+
+pub fn setup_new_account(
+    node: &Node,
+    amount: Amount,
+    source: &KeyPair,
+    dest: &KeyPair,
+    dest_rep: PublicKey,
+    force_confirm: bool,
+) -> (BlockEnum, BlockEnum) {
+    let source_account = source.public_key().as_account();
+    let dest_account = dest.public_key().as_account();
+    let latest = node.latest(&source_account);
+    let balance = node.balance(&source_account);
+
+    let send = BlockEnum::State(StateBlock::new(
+        source_account,
+        latest,
+        source.public_key(),
+        balance - amount,
+        dest_account.into(),
+        source,
+        node.work_generate_dev(latest.into()),
+    ));
+
+    let open = BlockEnum::State(StateBlock::new(
+        dest_account,
+        BlockHash::zero(),
+        dest_rep,
+        amount,
+        send.hash().into(),
+        dest,
+        node.work_generate_dev(dest_account.into()),
+    ));
+
+    node.process(send.clone()).unwrap();
+    node.process(open.clone()).unwrap();
+
+    if force_confirm {
+        node.confirm(send.hash());
+        node.confirm(open.hash());
+    }
+
+    (send, open)
 }

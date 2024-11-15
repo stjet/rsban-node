@@ -353,3 +353,85 @@ fn no_broadcast_local() {
         1
     );
 }
+
+// Issue that tracks last changes on this test: https://github.com/nanocurrency/nano-node/issues/3485
+// Reopen in case the nondeterministic failure appears again.
+// Checks non-local votes (a vote with a key that is not in the node's wallet) are re-broadcast when received.
+// Done without a representative.
+#[test]
+fn local_broadcast_without_a_representative() {
+    let mut system = System::new();
+    let flags = NodeFlags {
+        disable_request_loop: true,
+        ..Default::default()
+    };
+    let node = system
+        .build_node()
+        .config(NodeConfig {
+            representative_vote_weight_minimum: Amount::zero(),
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .flags(flags.clone())
+        .finish();
+    let _node2 = system
+        .build_node()
+        .config(NodeConfig {
+            representative_vote_weight_minimum: Amount::zero(),
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .flags(flags)
+        .finish();
+    // Reduce the weight of genesis to 2x default min voting weight
+    let key = KeyPair::new();
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        node.config.vote_minimum,
+        (&key).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    node.process_local(send.clone()).unwrap();
+    assert_timely(Duration::from_secs(10), || node.active.len() > 0);
+    assert_eq!(
+        node.ledger.weight(&DEV_GENESIS_PUB_KEY),
+        node.config.vote_minimum
+    );
+    start_election(&node, &send.hash());
+    // Process a vote without a representative
+    let vote = Arc::new(Vote::new(
+        &DEV_GENESIS_KEY,
+        milliseconds_since_epoch(),
+        Vote::DURATION_MAX,
+        vec![send.hash()],
+    ));
+    node.vote_router.vote(&vote, VoteSource::Live);
+    // Make sure the vote was processed.
+    let mut election = None;
+    assert_timely(Duration::from_secs(5), || {
+        match node.active.election(&send.qualified_root()) {
+            Some(e) => {
+                election = Some(e);
+                true
+            }
+            None => false,
+        }
+    });
+    let votes = election.unwrap().mutex.lock().unwrap().last_votes.clone();
+    let existing = votes.get(&DEV_GENESIS_PUB_KEY).unwrap();
+    assert_eq!(existing.timestamp, vote.timestamp());
+    // Ensure the vote was broadcast
+    assert_eq!(
+        node.stats
+            .count(StatType::Message, DetailType::ConfirmAck, Direction::Out),
+        1
+    );
+    assert_eq!(
+        node.stats
+            .count(StatType::Message, DetailType::Publish, Direction::Out),
+        1
+    );
+}

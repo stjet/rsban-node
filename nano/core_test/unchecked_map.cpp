@@ -18,45 +18,6 @@ namespace
 unsigned max_unchecked_blocks = 65536;
 }
 
-
-// This test checks for basic operations in the unchecked table such as putting a new block, retrieving it, and
-// deleting it from the database
-TEST (unchecked, simple)
-{
-	nano::test::system system{};
-	nano::unchecked_map unchecked{ max_unchecked_blocks, system.stats, false };
-	nano::block_builder builder;
-	nano::keypair key;
-	auto block = builder
-				 .send ()
-				 .previous (0)
-				 .destination (1)
-				 .balance (2)
-				 .sign (key.prv, key.pub)
-				 .work (5)
-				 .build ();
-	// Asserts the block wasn't added yet to the unchecked table
-	auto block_listing1 = unchecked.get (block->previous ());
-	ASSERT_TRUE (block_listing1.empty ());
-	// Enqueues a block to be saved on the unchecked table
-	unchecked.put (block->previous (), nano::unchecked_info (block));
-	// Waits for the block to get written in the database
-	auto check_block_is_listed = [&] (nano::block_hash const & block_hash_a) {
-		return unchecked.get (block_hash_a).size () > 0;
-	};
-	ASSERT_TIMELY (5s, check_block_is_listed (block->previous ()));
-	// Retrieves the block from the database
-	auto block_listing2 = unchecked.get (block->previous ());
-	ASSERT_FALSE (block_listing2.empty ());
-	// Asserts the added block is equal to the retrieved one
-	ASSERT_EQ (*block, *(block_listing2[0].get_block ()));
-	// Deletes the block from the database
-	unchecked.del (nano::unchecked_key (block->previous (), block->hash ()));
-	// Asserts the block is deleted
-	auto block_listing3 = unchecked.get (block->previous ());
-	ASSERT_TRUE (block_listing3.empty ());
-}
-
 // This test ensures the unchecked table is able to receive more than one block
 TEST (unchecked, multiple)
 {

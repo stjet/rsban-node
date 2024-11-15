@@ -14,29 +14,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (conflicts, start_stop)
-{
-	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
-	nano::keypair key1;
-	nano::block_builder builder;
-	auto send1 = builder
-				 .send ()
-				 .previous (nano::dev::genesis->hash ())
-				 .destination (key1.pub)
-				 .balance (0)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (0)
-				 .build ();
-	node1.work_generate_blocking (*send1);
-	ASSERT_EQ (nano::block_status::progress, node1.process (send1));
-	ASSERT_EQ (0, node1.active.size ());
-	auto election1 = nano::test::start_election (system, node1, send1->hash ());
-	ASSERT_EQ (1, node1.active.size ());
-	ASSERT_NE (nullptr, election1);
-	ASSERT_EQ (1, election1->votes ().size ());
-}
-
 TEST (conflicts, add_existing)
 {
 	nano::test::system system{ 1 };

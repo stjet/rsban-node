@@ -5,6 +5,7 @@ mod bootstrap_ascending;
 mod bootstrap_server;
 mod confirmation_solicitor;
 mod confirming_set;
+mod conflicts;
 mod election;
 mod election_scheduler;
 mod frontiers_confirmation;

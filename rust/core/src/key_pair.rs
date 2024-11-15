@@ -1,5 +1,5 @@
 use super::{PublicKey, RawKey, Signature};
-use crate::{Account, Block, Root, StateBlock};
+use crate::{Account, Block, Link, Root, StateBlock};
 use anyhow::Context;
 use ed25519_dalek::ed25519::signature::SignerMut;
 use ed25519_dalek::Verifier;
@@ -107,6 +107,12 @@ impl From<RawKey> for KeyPair {
 }
 
 impl From<&KeyPair> for Root {
+    fn from(value: &KeyPair) -> Self {
+        value.public_key().as_account().into()
+    }
+}
+
+impl From<&KeyPair> for Link {
     fn from(value: &KeyPair) -> Self {
         value.public_key().as_account().into()
     }

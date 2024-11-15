@@ -1,13 +1,15 @@
+use std::time::Duration;
+
 use rsnano_core::{
     Amount, BlockEnum, BlockHash, ChangeBlock, Epoch, KeyPair, Link, OpenBlock, PublicKey,
     ReceiveBlock, SendBlock, StateBlock, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeConfig},
     stats::{DetailType, Direction, StatType},
 };
-use test_helpers::System;
+use test_helpers::{assert_timely_eq, System};
 
 #[test]
 fn single() {
@@ -721,4 +723,51 @@ fn all_block_types() {
     let confirmed = node.ledger.confirm(&mut tx, state_send2.hash());
     assert_eq!(confirmed.len(), 15);
     assert_eq!(node.ledger.cemented_count(), 16);
+}
+
+#[test]
+// This test ensures a block that's cemented cannot be rolled back by the node
+// A block is inserted and confirmed then later a different block is force inserted with a rollback attempt
+fn conflict_rollback_cemented() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let key1 = KeyPair::new();
+    // create one side of a forked transaction on node1
+    let fork1a = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(100),
+        (&key1).into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    node1.process(fork1a.clone()).unwrap();
+    node1.confirm(fork1a.hash());
+
+    // create the other side of the fork on node2
+    let key2 = KeyPair::new();
+    let fork1b = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(100),
+        (&key2).into(), // Different destination same 'previous'
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    node1.block_processor.force(fork1b.into());
+    // node2 already has send2 forced confirmed whilst node1 should have confirmed send1 and therefore we have a cemented fork on node2
+    // and node2 should print an error message on the log that it cannot rollback send2 because it is already cemented
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node1
+                .stats
+                .count(StatType::Ledger, DetailType::RollbackFailed, Direction::In)
+        },
+        1,
+    );
+    // fork1a should still remain after the rollback failed event
+    assert!(node1.block_confirmed(&fork1a.hash()));
 }

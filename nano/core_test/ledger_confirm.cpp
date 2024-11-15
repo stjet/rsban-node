@@ -11,55 +11,6 @@
 
 using namespace std::chrono_literals;
 
-// This test ensures a block that's cemented cannot be rolled back by the node
-// A block is inserted and confirmed then later a different block is force inserted with a rollback attempt
-TEST (ledger_confirm, conflict_rollback_cemented)
-{
-	nano::state_block_builder builder;
-	auto const genesis_hash = nano::dev::genesis->hash ();
-
-	nano::test::system system;
-	nano::node_flags node_flags;
-	auto node1 = system.add_node (node_flags);
-
-	nano::keypair key1;
-	// create one side of a forked transaction on node1
-	auto fork1a = builder.make_block ()
-				  .previous (genesis_hash)
-				  .account (nano::dev::genesis_key.pub)
-				  .representative (nano::dev::genesis_key.pub)
-				  .link (key1.pub)
-				  .balance (nano::dev::constants.genesis_amount - 100)
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (*system.work.generate (genesis_hash))
-				  .build ();
-	{
-		auto transaction = node1->store.tx_begin_write ();
-		ASSERT_EQ (nano::block_status::progress, node1->ledger.process (*transaction, fork1a));
-		node1->ledger.confirm (*transaction, fork1a->hash ());
-	}
-	ASSERT_TRUE (nano::test::confirmed (*node1, { fork1a }));
-
-	// create the other side of the fork on node2
-	nano::keypair key2;
-	auto fork1b = builder.make_block ()
-				  .previous (genesis_hash)
-				  .account (nano::dev::genesis_key.pub)
-				  .representative (nano::dev::genesis_key.pub)
-				  .link (key2.pub) // Different destination same 'previous'
-				  .balance (nano::dev::constants.genesis_amount - 100)
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (*system.work.generate (genesis_hash))
-				  .build ();
-
-	node1->block_processor.force (fork1b);
-	// node2 already has send2 forced confirmed whilst node1 should have confirmed send1 and therefore we have a cemented fork on node2
-	// and node2 should print an error message on the log that it cannot rollback send2 because it is already cemented
-	[[maybe_unused]] size_t count = 0;
-	ASSERT_TIMELY_EQ (5s, 1, (count = node1->stats->count (nano::stat::type::ledger, nano::stat::detail::rollback_failed)));
-	ASSERT_TRUE (nano::test::confirmed (*node1, { fork1a->hash () })); // fork1a should still remain after the rollback failed event
-}
-
 TEST (ledger_confirm, observers)
 {
 	auto amount (std::numeric_limits<nano::uint128_t>::max ());

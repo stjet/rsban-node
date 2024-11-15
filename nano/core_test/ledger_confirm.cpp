@@ -11,47 +11,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (ledger_confirm, single)
-{
-	auto amount (std::numeric_limits<nano::uint128_t>::max ());
-	nano::test::system system;
-	nano::node_flags node_flags;
-	auto node = system.add_node (node_flags);
-	nano::keypair key1;
-	auto wallet_id = node->wallets.first_wallet_id ();
-	(void)node->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	nano::block_hash latest1 (node->latest (nano::dev::genesis_key.pub));
-	nano::block_builder builder;
-	auto send1 = builder
-				 .state ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (latest1)
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (amount - 100)
-				 .link (key1.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*system.work.generate (latest1))
-				 .build ();
-
-	// Check confirmation heights before, should be uninitialized (1 for genesis).
-	auto transaction = node->store.tx_begin_write ();
-	ASSERT_EQ (1, node->store.confirmation_height ().get (*transaction, nano::dev::genesis_key.pub).value ().height ());
-	ASSERT_EQ (nano::dev::genesis->hash (), node->store.confirmation_height ().get (*transaction, nano::dev::genesis_key.pub).value ().frontier ());
-
-	ASSERT_EQ (nano::block_status::progress, node->ledger.process (*transaction, send1));
-	ASSERT_FALSE (node->ledger.confirmed ().block_exists (*transaction, send1->hash ()));
-	node->ledger.confirm (*transaction, send1->hash ());
-	ASSERT_TRUE (node->ledger.confirmed ().block_exists (*transaction, send1->hash ()));
-	ASSERT_EQ (2, node->store.confirmation_height ().get (*transaction, nano::dev::genesis_key.pub).value ().height ());
-	ASSERT_EQ (send1->hash (), node->store.confirmation_height ().get (*transaction, nano::dev::genesis_key.pub).value ().frontier ());
-
-	// Rollbacks should fail as these blocks have been cemented
-	ASSERT_TRUE (node->ledger.rollback (*transaction, latest1));
-	ASSERT_TRUE (node->ledger.rollback (*transaction, send1->hash ()));
-	ASSERT_EQ (1, node->stats->count (nano::stat::type::confirmation_height, nano::stat::detail::blocks_confirmed, nano::stat::dir::in));
-	ASSERT_EQ (2, node->ledger.cemented_count ());
-}
-
 TEST (ledger_confirm, multiple_accounts)
 {
 	nano::test::system system;

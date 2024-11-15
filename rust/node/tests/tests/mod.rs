@@ -10,6 +10,7 @@ mod election;
 mod election_scheduler;
 mod frontiers_confirmation;
 mod ledger;
+mod ledger_confirm;
 mod network;
 mod node;
 mod peer_container;

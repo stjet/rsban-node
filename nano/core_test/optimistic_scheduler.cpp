@@ -12,29 +12,6 @@
 using namespace std::chrono_literals;
 
 /*
- * Ensure account gets activated for a single unconfirmed account chain
- */
-TEST (optimistic_scheduler, activate_one)
-{
-	nano::test::system system{};
-	auto & node = *system.add_node ();
-
-	// Needs to be greater than optimistic scheduler `gap_threshold`
-	const int howmany_blocks = 64;
-
-	auto chains = nano::test::setup_chains (system, node, /* single chain */ 1, howmany_blocks, nano::dev::genesis_key, /* do not confirm */ false);
-	auto & [account, blocks] = chains.front ();
-
-	// Confirm block towards at the beginning the chain, so gap between confirmation and account frontier is larger than `gap_threshold`
-	nano::test::confirm (node.ledger, blocks.at (11));
-
-	// Ensure unconfirmed account head block gets activated
-	auto const & block = blocks.back ();
-	ASSERT_TIMELY (5s, node.election_active (block->hash ()));
-	ASSERT_EQ (node.active.election (block->qualified_root ())->behavior (), nano::election_behavior::optimistic);
-}
-
-/*
  * Ensure account gets activated for a single unconfirmed account chain with nothing yet confirmed
  */
 TEST (optimistic_scheduler, activate_one_zero_conf)

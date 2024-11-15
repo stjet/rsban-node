@@ -12,27 +12,6 @@
 using namespace std::chrono_literals;
 
 /*
- * Ensure account gets activated for a single unconfirmed account chain with nothing yet confirmed
- */
-TEST (optimistic_scheduler, activate_one_zero_conf)
-{
-	nano::test::system system{};
-	auto & node = *system.add_node ();
-
-	// Can be smaller than optimistic scheduler `gap_threshold`
-	// This is meant to activate short account chains (eg. binary tree spam leaf accounts)
-	const int howmany_blocks = 6;
-
-	auto chains = nano::test::setup_chains (system, node, /* single chain */ 1, howmany_blocks, nano::dev::genesis_key, /* do not confirm */ false);
-	auto & [account, blocks] = chains.front ();
-
-	// Ensure unconfirmed account head block gets activated
-	auto const & block = blocks.back ();
-	ASSERT_TIMELY (5s, node.election_active (block->hash ()));
-	ASSERT_EQ (node.active.election (block->qualified_root ())->behavior (), nano::election_behavior::optimistic);
-}
-
-/*
  * Ensure account gets activated for a multiple unconfirmed account chains
  */
 TEST (optimistic_scheduler, activate_many)

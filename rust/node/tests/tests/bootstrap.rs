@@ -2642,6 +2642,55 @@ fn push_diamond_pruning() {
     );
 }
 
+#[test]
+fn push_one() {
+    let mut system = System::new();
+
+    let node0 = system
+        .build_node()
+        .config(NodeConfig {
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .finish();
+
+    let key1 = KeyPair::new();
+    let node1 = system.make_disconnected_node();
+    node1.insert_into_wallet(&DEV_GENESIS_KEY);
+
+    // send 100 raw from genesis to key1
+    node1
+        .wallets
+        .send_action2(
+            &node1.wallets.wallet_ids()[0],
+            *DEV_GENESIS_ACCOUNT,
+            key1.public_key().as_account(),
+            Amount::raw(100),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node1.balance(&DEV_GENESIS_ACCOUNT),
+        Amount::MAX - Amount::raw(100),
+    );
+
+    node1
+        .peer_connector
+        .connect_to(node0.tcp_listener.local_address());
+    node1
+        .bootstrap_initiator
+        .bootstrap2(node0.tcp_listener.local_address(), "".to_string());
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node0.balance(&DEV_GENESIS_ACCOUNT),
+        Amount::MAX - Amount::raw(100),
+    );
+}
+
 fn create_response_server(node: &Node) -> Arc<ResponseServer> {
     let channel = Channel::create(
         Arc::new(ChannelInfo::new_test_instance()),

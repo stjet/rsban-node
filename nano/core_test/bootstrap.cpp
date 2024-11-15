@@ -10,30 +10,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (bootstrap_processor, push_one)
-{
-	nano::test::system system;
-	nano::node_config config = system.default_config ();
-	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	auto node0 (system.add_node (config));
-	nano::keypair key1;
-	auto node1 = system.make_disconnected_node ();
-	auto wallet_id{ nano::random_wallet_id () };
-	node1->wallets.create (wallet_id);
-	nano::account account;
-	ASSERT_EQ (nano::wallets_error::none, node1->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv, true, account));
-
-	// send 100 raw from genesis to key1
-	nano::uint128_t genesis_balance = node1->balance (nano::dev::genesis_key.pub);
-	auto send = node1->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key1.pub, 100);
-	ASSERT_NE (nullptr, send);
-	ASSERT_TIMELY_EQ (5s, genesis_balance - 100, node1->balance (nano::dev::genesis_key.pub));
-
-	node1->connect (node0->network->endpoint ());
-	node1->bootstrap_initiator.bootstrap (node0->network->endpoint ());
-	ASSERT_TIMELY_EQ (5s, node0->balance (nano::dev::genesis_key.pub), genesis_balance - 100);
-}
-
 TEST (bootstrap_processor, lazy_max_pull_count)
 {
 	nano::test::system system;

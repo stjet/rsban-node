@@ -1,9 +1,11 @@
 use rsnano_core::{KeyPair, Signature, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY};
-use rsnano_ledger::DEV_GENESIS_HASH;
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeFlags},
+    consensus::RepTier,
     stats::{DetailType, Direction, StatType},
+    wallets::WalletsExt,
 };
 use std::{
     sync::Arc,
@@ -177,4 +179,95 @@ fn timestamp_and_duration_masking() {
     assert_eq!(vote.timestamp(), 0x1230);
     assert_eq!(vote.duration().as_millis(), 524288);
     assert_eq!(vote.duration_bits(), 0xf);
+}
+
+#[test]
+fn weights() {
+    let mut system = System::new();
+    let node0 = system.make_node();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let node3 = system.make_node();
+
+    // Create representatives of different weight levels
+    // FIXME: Using `online_weight_minimum` because calculation of trended and online weight is broken when running tests
+    let stake = node1.config.online_weight_minimum;
+    let level0 = stake / 5000; // 0.02%
+    let level1 = stake / 500; // 0.2%
+    let level2 = stake / 50; // 2%
+
+    let key0 = KeyPair::new();
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+
+    let wallet_id0 = node0.wallets.wallet_ids()[0];
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+    let wallet_id3 = node3.wallets.wallet_ids()[0];
+
+    node0.insert_into_wallet(&DEV_GENESIS_KEY);
+    node1.insert_into_wallet(&key0);
+    node2.insert_into_wallet(&key1);
+    node3.insert_into_wallet(&key2);
+
+    node1
+        .wallets
+        .set_representative(wallet_id1, key0.public_key(), false)
+        .unwrap();
+    node2
+        .wallets
+        .set_representative(wallet_id2, key1.public_key(), false)
+        .unwrap();
+    node3
+        .wallets
+        .set_representative(wallet_id3, key2.public_key(), false)
+        .unwrap();
+
+    node0.wallets.send_sync(
+        wallet_id0,
+        *DEV_GENESIS_ACCOUNT,
+        key0.account(),
+        level0,
+        0,
+        true,
+        None,
+    );
+    node0.wallets.send_sync(
+        wallet_id0,
+        *DEV_GENESIS_ACCOUNT,
+        key1.account(),
+        level1,
+        0,
+        true,
+        None,
+    );
+
+    node0.wallets.send_sync(
+        wallet_id0,
+        *DEV_GENESIS_ACCOUNT,
+        key2.account(),
+        level2,
+        0,
+        true,
+        None,
+    );
+
+    // Wait for representatives
+    assert_timely(Duration::from_secs(10), || {
+        node0.ledger.rep_weights.len() == 4
+    });
+
+    // Wait for rep tiers to be updated
+    node0.stats.clear();
+    assert_timely(Duration::from_secs(5), || {
+        node0
+            .stats
+            .count(StatType::RepTiers, DetailType::Updated, Direction::In)
+            >= 2
+    });
+
+    assert_eq!(node0.rep_tiers.tier(&key0.public_key()), RepTier::None);
+    assert_eq!(node0.rep_tiers.tier(&key1.public_key()), RepTier::Tier1);
+    assert_eq!(node0.rep_tiers.tier(&key2.public_key()), RepTier::Tier2);
+    assert_eq!(node0.rep_tiers.tier(&DEV_GENESIS_PUB_KEY), RepTier::Tier3);
 }

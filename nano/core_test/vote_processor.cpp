@@ -13,51 +13,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (vote_processor, weights)
-{
-	nano::test::system system (4);
-	auto & node (*system.nodes[0]);
-
-	// Create representatives of different weight levels
-	// FIXME: Using `online_weight_minimum` because calculation of trended and online weight is broken when running tests
-	auto const stake = node.config->online_weight_minimum.number ();
-	auto const level0 = stake / 5000; // 0.02%
-	auto const level1 = stake / 500; // 0.2%
-	auto const level2 = stake / 50; // 2%
-
-	nano::keypair key0;
-	nano::keypair key1;
-	nano::keypair key2;
-
-	auto wallet_id0 = system.nodes[0]->wallets.first_wallet_id ();
-	auto wallet_id1 = system.nodes[1]->wallets.first_wallet_id ();
-	auto wallet_id2 = system.nodes[2]->wallets.first_wallet_id ();
-	auto wallet_id3 = system.nodes[3]->wallets.first_wallet_id ();
-
-	(void)system.nodes[0]->wallets.insert_adhoc (wallet_id0, nano::dev::genesis_key.prv);
-	(void)system.nodes[1]->wallets.insert_adhoc (wallet_id1, key0.prv);
-	(void)system.nodes[2]->wallets.insert_adhoc (wallet_id2, key1.prv);
-	(void)system.nodes[3]->wallets.insert_adhoc (wallet_id3, key2.prv);
-	(void)system.nodes[1]->wallets.set_representative (wallet_id1, key0.pub);
-	(void)system.nodes[2]->wallets.set_representative (wallet_id2, key1.pub);
-	(void)system.nodes[3]->wallets.set_representative (wallet_id3, key2.pub);
-	system.nodes[0]->wallets.send_sync (wallet_id0, nano::dev::genesis_key.pub, key0.pub, level0);
-	system.nodes[0]->wallets.send_sync (wallet_id0, nano::dev::genesis_key.pub, key1.pub, level1);
-	system.nodes[0]->wallets.send_sync (wallet_id0, nano::dev::genesis_key.pub, key2.pub, level2);
-
-	// Wait for representatives
-	ASSERT_TIMELY_EQ (10s, node.get_rep_weights ().size (), 4);
-
-	// Wait for rep tiers to be updated
-	node.stats->clear ();
-	ASSERT_TIMELY (5s, node.stats->count (nano::stat::type::rep_tiers, nano::stat::detail::updated) >= 2);
-
-	ASSERT_EQ (node.rep_tiers.tier (key0.pub), nano::rep_tier::none);
-	ASSERT_EQ (node.rep_tiers.tier (key1.pub), nano::rep_tier::tier_1);
-	ASSERT_EQ (node.rep_tiers.tier (key2.pub), nano::rep_tier::tier_2);
-	ASSERT_EQ (node.rep_tiers.tier (nano::dev::genesis_key.pub), nano::rep_tier::tier_3);
-}
-
 // Issue that tracks last changes on this test: https://github.com/nanocurrency/nano-node/issues/3485
 // Reopen in case the nondeterministic failure appears again.
 // Checks local votes (a vote with a key that is in the node's wallet) are not re-broadcast when received.

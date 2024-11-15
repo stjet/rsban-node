@@ -78,3 +78,38 @@ pub fn activate_one_zero_conf() {
         ElectionBehavior::Optimistic
     );
 }
+
+/*
+ * Ensure account gets activated for a multiple unconfirmed account chains
+ */
+#[test]
+pub fn activate_many() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    // Needs to be greater than optimistic scheduler `gap_threshold`
+    let howmany_blocks = 64;
+    let howmany_chains = 16;
+
+    let chains = setup_chains(
+        &node,
+        howmany_chains,
+        howmany_blocks,
+        &DEV_GENESIS_KEY,
+        /* do not confirm */ false,
+    );
+
+    // Ensure all unconfirmed accounts head block gets activated
+    assert_timely(Duration::from_secs(5), || {
+        chains.iter().all(|(_, blocks)| {
+            let block = blocks.last().unwrap();
+            node.vote_router.active(&block.hash())
+                && node
+                    .active
+                    .election(&block.qualified_root())
+                    .unwrap()
+                    .behavior
+                    == ElectionBehavior::Optimistic
+        })
+    });
+}

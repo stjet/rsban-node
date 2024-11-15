@@ -12,28 +12,6 @@
 using namespace std::chrono_literals;
 
 /*
- * Ensure account gets activated for a multiple unconfirmed account chains
- */
-TEST (optimistic_scheduler, activate_many)
-{
-	nano::test::system system{};
-	auto & node = *system.add_node ();
-
-	// Needs to be greater than optimistic scheduler `gap_threshold`
-	const int howmany_blocks = 64;
-	const int howmany_chains = 16;
-
-	auto chains = nano::test::setup_chains (system, node, howmany_chains, howmany_blocks, nano::dev::genesis_key, /* do not confirm */ false);
-
-	// Ensure all unconfirmed accounts head block gets activated
-	ASSERT_TIMELY (5s, std::all_of (chains.begin (), chains.end (), [&] (auto const & entry) {
-		auto const & [account, blocks] = entry;
-		auto const & block = blocks.back ();
-		return node.election_active (block->hash ()) && node.active.election (block->qualified_root ())->behavior () == nano::election_behavior::optimistic;
-	}));
-}
-
-/*
  * Ensure accounts with some blocks already confirmed and with less than `gap_threshold` blocks do not get activated
  */
 TEST (optimistic_scheduler, under_gap_threshold)

@@ -21,4 +21,5 @@ mod telemetry;
 mod unchecked_map;
 mod vote_processor;
 mod votes;
+mod wallet;
 mod websocket;

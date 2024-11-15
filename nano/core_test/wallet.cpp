@@ -18,27 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, no_special_keys_accounts)
-{
-	bool init;
-	nano::store::lmdb::env env (init, nano::unique_path () / "wallet.ldb");
-	ASSERT_FALSE (init);
-	auto transaction (env.tx_begin_write ());
-	nano::kdf kdf{ nano::dev::network_params.kdf_work };
-	nano::wallet_store wallet (init, kdf, *transaction, nano::dev::genesis_key.pub, 1, "0");
-	ASSERT_FALSE (init);
-	nano::keypair key1;
-	ASSERT_FALSE (wallet.exists (*transaction, key1.pub));
-	wallet.insert_adhoc (*transaction, key1.prv);
-	ASSERT_TRUE (wallet.exists (*transaction, key1.pub));
-
-	for (uint64_t account = 0; account < nano::wallet_store::special_count; account++)
-	{
-		nano::account account_l (account);
-		ASSERT_FALSE (wallet.exists (*transaction, account_l));
-	}
-}
-
 TEST (wallet, no_key)
 {
 	bool init;

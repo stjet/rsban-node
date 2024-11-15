@@ -1,4 +1,3 @@
-use primitive_types::U256;
 use rsnano_core::{KeyDerivationFunction, KeyPair, PublicKey, RawKey};
 use rsnano_ledger::DEV_GENESIS_PUB_KEY;
 use rsnano_node::{unique_path, DEV_NETWORK_PARAMS};
@@ -75,4 +74,38 @@ fn retrieval() {
     wallet.set_password(&mut tx, RawKey::from(123));
     assert!(wallet.fetch(&tx, &key1.public_key()).is_err());
     assert!(!wallet.valid_password(&tx));
+}
+
+#[test]
+fn empty_iteration() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    let wallet =
+        LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
+    assert!(wallet.begin(&tx).is_end());
+}
+
+#[test]
+fn one_item_iteration() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    let wallet =
+        LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
+    let key1 = KeyPair::from(42);
+    wallet.insert_adhoc(&mut tx, &key1.private_key());
+    let mut it = wallet.begin(&tx);
+    while !it.is_end() {
+        let (k, v) = it.current().unwrap();
+        assert_eq!(*k, key1.public_key());
+        let password = wallet.wallet_key(&tx);
+        let key = v.key.decrypt(&password, &k.initialization_vector());
+        assert_eq!(key, key1.private_key());
+        it.next();
+    }
 }

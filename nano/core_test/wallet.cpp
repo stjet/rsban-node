@@ -18,42 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, empty_iteration)
-{
-	bool init;
-	nano::store::lmdb::env env (init, nano::unique_path () / "wallet.ldb");
-	ASSERT_FALSE (init);
-	auto transaction (env.tx_begin_write ());
-	nano::kdf kdf{ nano::dev::network_params.kdf_work };
-	nano::wallet_store wallet (init, kdf, *transaction, nano::dev::genesis_key.pub, 1, "0");
-	ASSERT_FALSE (init);
-	auto i (wallet.begin (*transaction));
-	auto j (wallet.end ());
-	ASSERT_EQ (i, j);
-}
-
-TEST (wallet, one_item_iteration)
-{
-	bool init;
-	nano::store::lmdb::env env (init, nano::unique_path () / "wallet.ldb");
-	ASSERT_FALSE (init);
-	auto transaction (env.tx_begin_write ());
-	nano::kdf kdf{ nano::dev::network_params.kdf_work };
-	nano::wallet_store wallet (init, kdf, *transaction, nano::dev::genesis_key.pub, 1, "0");
-	ASSERT_FALSE (init);
-	nano::keypair key1;
-	wallet.insert_adhoc (*transaction, key1.prv);
-	for (auto i (wallet.begin (*transaction)), j (wallet.end ()); i != j; ++i)
-	{
-		ASSERT_EQ (key1.pub, nano::uint256_union (i->first));
-		nano::raw_key password;
-		wallet.wallet_key (password, *transaction);
-		nano::raw_key key;
-		key.decrypt (nano::wallet_value (i->second).key, password, (nano::uint256_union (i->first)).owords[0].number ());
-		ASSERT_EQ (key1.prv, key);
-	}
-}
-
 TEST (wallet, two_item_iteration)
 {
 	bool init;

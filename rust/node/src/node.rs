@@ -1249,8 +1249,11 @@ impl Node {
 
     pub fn process_multi(&self, blocks: &[BlockEnum]) {
         let mut tx = self.ledger.rw_txn();
-        for block in blocks {
-            self.ledger.process(&mut tx, &mut block.clone()).unwrap();
+        for (i, block) in blocks.iter().enumerate() {
+            self.ledger
+                .process(&mut tx, &mut block.clone())
+                .map_err(|e| anyhow!("Could not multi-process block index {}: {:?}", i, e))
+                .unwrap();
         }
     }
 

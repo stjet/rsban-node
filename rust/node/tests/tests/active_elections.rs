@@ -1557,3 +1557,28 @@ fn vote_replays() {
         &VoteCode::Indeterminate
     );
 }
+
+#[test]
+fn confirm_new() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(100),
+        1.into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    node1.process_active(send.clone());
+    assert_timely_eq(Duration::from_secs(5), || node1.active.len(), 1);
+    let node2 = system.make_node();
+    // Add key to node2
+    node2.insert_into_wallet(&DEV_GENESIS_KEY);
+    // Let node2 know about the block
+    assert_timely(Duration::from_secs(5), || node2.block_exists(&send.hash()));
+    // Wait confirmation
+    assert_timely_eq(Duration::from_secs(5), || node1.ledger.cemented_count(), 2);
+    assert_timely_eq(Duration::from_secs(5), || node2.ledger.cemented_count(), 2);
+}

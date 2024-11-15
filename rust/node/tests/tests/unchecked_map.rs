@@ -105,3 +105,34 @@ fn multiple() {
         unchecked.get(&6.into()).len() > 0
     });
 }
+
+// This test ensures that a block can't occur twice in the unchecked table.
+#[test]
+fn double_put() {
+    let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
+    let block = Arc::new(BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(1),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        0,
+    )));
+    // Asserts the block wasn't added yet to the unchecked table
+    let block_listing1 = unchecked.get(&block.previous().into());
+    assert!(block_listing1.is_empty());
+
+    // Enqueues the block to be saved in the unchecked table
+    unchecked.put(block.previous().into(), UncheckedInfo::new(block.clone()));
+    // Enqueues the block again in an attempt to have it there twice
+    unchecked.put(block.previous().into(), UncheckedInfo::new(block.clone()));
+
+    // Waits for and asserts the block was added at least once
+    assert_timely(Duration::from_secs(5), || {
+        unchecked.get(&block.previous().into()).len() > 0
+    });
+    // Asserts the block was added at most once -- this is objective of this test.
+    let block_listing2 = unchecked.get(&block.previous().into());
+    assert_eq!(block_listing2.len(), 1);
+}

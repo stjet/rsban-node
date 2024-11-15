@@ -18,38 +18,6 @@ namespace
 unsigned max_unchecked_blocks = 65536;
 }
 
-// This test ensures that a block can't occur twice in the unchecked table.
-TEST (unchecked, double_put)
-{
-	nano::test::system system{};
-	nano::unchecked_map unchecked{ max_unchecked_blocks, system.stats, false };
-	nano::block_builder builder;
-	nano::keypair key;
-	auto block = builder
-				 .send ()
-				 .previous (4)
-				 .destination (1)
-				 .balance (2)
-				 .sign (key.prv, key.pub)
-				 .work (5)
-				 .build ();
-	// Asserts the block wasn't added yet to the unchecked table
-	auto block_listing1 = unchecked.get (block->previous ());
-	ASSERT_TRUE (block_listing1.empty ());
-	// Enqueues the block to be saved in the unchecked table
-	unchecked.put (block->previous (), nano::unchecked_info (block));
-	// Enqueues the block again in an attempt to have it there twice
-	unchecked.put (block->previous (), nano::unchecked_info (block));
-	auto check_block_is_listed = [&] (nano::block_hash const & block_hash_a) {
-		return unchecked.get (block_hash_a).size () > 0;
-	};
-	// Waits for and asserts the block was added at least once
-	ASSERT_TIMELY (5s, check_block_is_listed (block->previous ()));
-	// Asserts the block was added at most once -- this is objective of this test.
-	auto block_listing2 = unchecked.get (block->previous ());
-	ASSERT_EQ (block_listing2.size (), 1);
-}
-
 // Tests that recurrent get calls return the correct values
 TEST (unchecked, multiple_get)
 {

@@ -287,3 +287,147 @@ fn multiple_accounts() {
     assert!(node.ledger.rollback(&mut tx, &open1.hash()).is_err());
     assert!(node.ledger.rollback(&mut tx, &send2.hash()).is_err());
 }
+
+#[test]
+fn send_receive_between_2_accounts() {
+    let mut system = System::new();
+    let cfg = NodeConfig {
+        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+        ..System::default_config()
+    };
+    let node = system.build_node().config(cfg).finish();
+    let key1 = KeyPair::new();
+    let key1_acc = key1.public_key().as_account();
+    let latest = node.latest(&DEV_GENESIS_ACCOUNT);
+
+    let quorum_delta = node.online_reps.lock().unwrap().quorum_delta();
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        latest,
+        *DEV_GENESIS_PUB_KEY,
+        quorum_delta + Amount::raw(2),
+        key1.public_key().as_account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(latest.into()),
+    ));
+    let open1 = BlockEnum::State(StateBlock::new(
+        key1_acc,
+        BlockHash::zero(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - quorum_delta - Amount::raw(2),
+        send1.hash().into(),
+        &key1,
+        node.work_generate_dev(key1_acc.into()),
+    ));
+    let send2 = BlockEnum::State(StateBlock::new(
+        key1_acc,
+        open1.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::raw(1000),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key1,
+        node.work_generate_dev(open1.hash().into()),
+    ));
+    let send3 = BlockEnum::State(StateBlock::new(
+        key1_acc,
+        send2.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::raw(900),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key1,
+        node.work_generate_dev(send2.hash().into()),
+    ));
+    let send4 = BlockEnum::State(StateBlock::new(
+        key1_acc,
+        send3.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::raw(500),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key1,
+        node.work_generate_dev(send3.hash().into()),
+    ));
+    let receive1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send1.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(1000),
+        send2.hash().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(send1.hash().into()),
+    ));
+    let receive2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        receive1.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(900),
+        send3.hash().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(receive1.hash().into()),
+    ));
+    let receive3 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        receive2.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(500),
+        send4.hash().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(receive2.hash().into()),
+    ));
+    let send5 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        receive3.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        quorum_delta + Amount::raw(1),
+        key1.public_key().as_account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(receive3.hash().into()),
+    ));
+    let receive4 = BlockEnum::State(StateBlock::new(
+        key1_acc,
+        send4.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::raw(500) + (Amount::MAX - Amount::raw(500) - quorum_delta - Amount::raw(1)),
+        send5.hash().into(),
+        &key1,
+        node.work_generate_dev(send4.hash().into()),
+    ));
+    let key2 = KeyPair::new();
+    let send6 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send5.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        quorum_delta,
+        key2.public_key().as_account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(send5.hash().into()),
+    ));
+    // Unpocketed send
+
+    node.process_multi(&[
+        send1.clone(),
+        open1.clone(),
+        send2.clone(),
+        receive1.clone(),
+        send3.clone(),
+        send4.clone(),
+        receive2.clone(),
+        receive3.clone(),
+        send5.clone(),
+        send6.clone(),
+        receive4.clone(),
+    ]);
+
+    let mut tx = node.ledger.rw_txn();
+    let confirmed = node.ledger.confirm(&mut tx, receive4.hash());
+    assert_eq!(confirmed.len(), 10);
+    assert_eq!(
+        node.stats.count(
+            StatType::ConfirmationHeight,
+            DetailType::BlocksConfirmed,
+            Direction::In
+        ),
+        10
+    );
+    assert_eq!(node.ledger.cemented_count(), 11);
+}

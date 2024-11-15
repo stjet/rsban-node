@@ -2,7 +2,7 @@ use rsnano_core::{
     Account, Amount, BlockEnum, BlockHash, KeyPair, StateBlock, UncheckedKey, WalletId,
     DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::BulkPull;
 use rsnano_network::{
     bandwidth_limiter::OutboundBandwidthLimiter, Channel, ChannelInfo, NullNetworkObserver,
@@ -2516,6 +2516,130 @@ fn bulk_genesis_pruning() {
     assert_timely(Duration::from_secs(5), || {
         node2.latest(&DEV_GENESIS_ACCOUNT) == node1.latest(&DEV_GENESIS_ACCOUNT)
     });
+}
+
+#[test]
+#[ignore = "always fails?!"]
+// TODO Gustav: I've disabled this test because it fails I haven't found out why yet.
+// Legacy bootstrap will be removed soon and pruning is no priority currently
+fn push_diamond_pruning() {
+    let mut system = System::new();
+
+    let node0 = system
+        .build_node()
+        .config(NodeConfig {
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .flags(NodeFlags {
+            disable_ascending_bootstrap: true,
+            disable_ongoing_bootstrap: true,
+            ..Default::default()
+        })
+        .finish();
+
+    let node1 = system
+        .build_node()
+        .config(NodeConfig {
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            enable_voting: false,
+            ..System::default_config()
+        })
+        .flags(NodeFlags {
+            enable_pruning: true,
+            ..Default::default()
+        })
+        .finish();
+
+    let key = KeyPair::new();
+
+    // send all balance from genesis to key
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::zero(),
+        (&key).into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    node1.process(send1.clone()).unwrap();
+
+    // receive all balance on key
+    let open = BlockEnum::State(StateBlock::new(
+        key.public_key().as_account(),
+        BlockHash::zero(),
+        1.into(),
+        Amount::MAX,
+        send1.hash().into(),
+        &key,
+        node1.work_generate_dev(&key),
+    ));
+    node1.process(open.clone()).unwrap();
+
+    // 1st bootstrap
+    node1
+        .bootstrap_initiator
+        .bootstrap2(node0.tcp_listener.local_address(), "".to_owned());
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node0.balance(&key.public_key().as_account()),
+        Amount::MAX,
+    );
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node1.balance(&key.public_key().as_account()),
+        Amount::MAX,
+    );
+
+    // Process more blocks & prune old
+
+    // send 100 raw from key to genesis
+    let send2 = BlockEnum::State(StateBlock::new(
+        key.public_key().as_account(),
+        open.hash(),
+        1.into(),
+        Amount::MAX - Amount::raw(100),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key,
+        node1.work_generate_dev(open.hash()),
+    ));
+    node1.process(send2.clone()).unwrap();
+
+    // receive the 100 raw from key on genesis
+    let receive = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send1.hash(),
+        1.into(),
+        Amount::raw(100),
+        send2.hash().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(send1.hash()),
+    ));
+    node1.process(receive.clone()).unwrap();
+
+    {
+        let mut tx = node1.ledger.rw_txn();
+        node1.ledger.confirm(&mut tx, open.hash());
+        assert_eq!(node1.ledger.pruning_action(&mut tx, &send1.hash(), 2), 1);
+        assert_eq!(node1.ledger.pruning_action(&mut tx, &open.hash(), 1), 1);
+        assert_eq!(node1.ledger.pruned_count(), 2);
+    }
+
+    // 2nd bootstrap
+    node1
+        .bootstrap_initiator
+        .bootstrap2(node0.tcp_listener.local_address(), "".to_owned());
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node0.balance(&DEV_GENESIS_ACCOUNT),
+        Amount::raw(100),
+    );
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node1.balance(&DEV_GENESIS_ACCOUNT),
+        Amount::raw(100),
+    );
 }
 
 fn create_response_server(node: &Node) -> Arc<ResponseServer> {

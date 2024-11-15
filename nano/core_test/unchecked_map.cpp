@@ -16,75 +16,8 @@ using namespace std::chrono_literals;
 namespace
 {
 unsigned max_unchecked_blocks = 65536;
-
-class context
-{
-public:
-	context () :
-		unchecked{ max_unchecked_blocks, stats, false }
-	{
-	}
-	nano::stats stats;
-	nano::unchecked_map unchecked;
-};
-std::shared_ptr<nano::block> block ()
-{
-	nano::block_builder builder;
-	return builder.state ()
-	.account (nano::dev::genesis_key.pub)
-	.previous (nano::dev::genesis->hash ())
-	.representative (nano::dev::genesis_key.pub)
-	.balance (nano::dev::constants.genesis_amount - 1)
-	.link (nano::dev::genesis_key.pub)
-	.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-	.work (0)
-	.build ();
-}
 }
 
-TEST (unchecked_map, construction)
-{
-	context context;
-}
-
-TEST (unchecked_map, put_one)
-{
-	context context;
-	nano::unchecked_info info{ block () };
-	context.unchecked.put (info.get_block ()->previous (), info);
-}
-
-TEST (block_store, one_bootstrap)
-{
-	nano::test::system system{};
-	nano::unchecked_map unchecked{ max_unchecked_blocks, system.stats, false };
-	nano::keypair key;
-	nano::block_builder builder;
-	auto block1 = builder
-				  .send ()
-				  .previous (0)
-				  .destination (1)
-				  .balance (2)
-				  .sign (key.prv, key.pub)
-				  .work (5)
-				  .build ();
-	unchecked.put (block1->hash (), nano::unchecked_info{ block1 });
-	auto check_block_is_listed = [&] (nano::block_hash const & block_hash_a) {
-		return unchecked.get (block_hash_a).size () > 0;
-	};
-	// Waits for the block1 to get saved in the database
-	ASSERT_TIMELY (10s, check_block_is_listed (block1->hash ()));
-	std::vector<nano::block_hash> dependencies;
-	unchecked.for_each ([&dependencies] (nano::unchecked_key const & key, nano::unchecked_info const & info) {
-		dependencies.push_back (key.key ());
-	});
-	auto hash1 = dependencies[0];
-	ASSERT_EQ (block1->hash (), hash1);
-	auto blocks = unchecked.get (hash1);
-	ASSERT_EQ (1, blocks.size ());
-	auto block2 = blocks[0].get_block ();
-	ASSERT_EQ (*block1, *block2);
-}
 
 // This test checks for basic operations in the unchecked table such as putting a new block, retrieving it, and
 // deleting it from the database

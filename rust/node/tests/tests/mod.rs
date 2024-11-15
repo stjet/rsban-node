@@ -18,6 +18,7 @@ mod peer_container;
 mod rep_crawler;
 mod request_aggregator;
 mod telemetry;
+mod unchecked_map;
 mod vote_processor;
 mod votes;
 mod websocket;

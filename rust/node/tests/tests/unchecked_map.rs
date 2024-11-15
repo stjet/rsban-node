@@ -1,8 +1,10 @@
-use rsnano_core::{Amount, BlockEnum, StateBlock, UncheckedInfo, UncheckedKey, DEV_GENESIS_KEY};
+use rsnano_core::{
+    Amount, BlockEnum, KeyPair, StateBlock, UncheckedInfo, UncheckedKey, DEV_GENESIS_KEY,
+};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{block_processing::UncheckedMap, stats::Stats};
 use std::{sync::Arc, time::Duration};
-use test_helpers::assert_timely;
+use test_helpers::{assert_timely, assert_timely_eq};
 
 #[test]
 fn one_bootstrap() {
@@ -135,4 +137,100 @@ fn double_put() {
     // Asserts the block was added at most once -- this is objective of this test.
     let block_listing2 = unchecked.get(&block.previous().into());
     assert_eq!(block_listing2.len(), 1);
+}
+
+// Tests that recurrent get calls return the correct values
+#[test]
+fn multiple_get() {
+    let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
+    // Instantiates three blocks
+    let key1 = KeyPair::new();
+    let block1 = Arc::new(BlockEnum::State(StateBlock::new(
+        key1.account(),
+        1.into(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::raw(1),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key1,
+        0,
+    )));
+    let key2 = KeyPair::new();
+    let block2 = Arc::new(BlockEnum::State(StateBlock::new(
+        key2.account(),
+        2.into(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::raw(1),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key2,
+        0,
+    )));
+    let key3 = KeyPair::new();
+    let block3 = Arc::new(BlockEnum::State(StateBlock::new(
+        key3.account(),
+        3.into(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::raw(1),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key3,
+        0,
+    )));
+    // Add the blocks' info to the unchecked table
+    unchecked.put(block1.previous().into(), UncheckedInfo::new(block1.clone())); // unchecked1
+    unchecked.put(block1.hash().into(), UncheckedInfo::new(block1.clone())); // unchecked2
+    unchecked.put(block2.previous().into(), UncheckedInfo::new(block2.clone())); // unchecked3
+    unchecked.put(block1.previous().into(), UncheckedInfo::new(block2.clone())); // unchecked1
+    unchecked.put(block1.hash().into(), UncheckedInfo::new(block2.clone())); // unchecked2
+    unchecked.put(block3.previous().into(), UncheckedInfo::new(block3.clone()));
+    unchecked.put(block3.hash().into(), UncheckedInfo::new(block3.clone())); // unchecked4
+    unchecked.put(block1.previous().into(), UncheckedInfo::new(block3.clone()));
+    // unchecked1
+
+    // count the number of blocks in the unchecked table by counting them one by one
+    // we cannot trust the count() method if the backend is rocksdb
+    let count_unchecked_blocks_one_by_one = || {
+        let mut count = 0;
+        unchecked.for_each(
+            |_, _| {
+                count += 1;
+            },
+            || true,
+        );
+        count
+    };
+
+    // Waits for the blocks to get saved in the database
+    assert_timely_eq(Duration::from_secs(5), count_unchecked_blocks_one_by_one, 8);
+
+    let mut unchecked1 = Vec::new();
+    // Asserts the entries will be found for the provided key
+    let unchecked1_blocks = unchecked.get(&block1.previous().into());
+    assert_eq!(unchecked1_blocks.len(), 3);
+    for i in unchecked1_blocks {
+        unchecked1.push(i.block.as_ref().unwrap().hash());
+    }
+    // Asserts the payloads where correclty saved
+    assert!(unchecked1.contains(&block1.hash()));
+    assert!(unchecked1.contains(&block2.hash()));
+    assert!(unchecked1.contains(&block3.hash()));
+    let mut unchecked2 = Vec::new();
+    // Asserts the entries will be found for the provided key
+    let unchecked2_blocks = unchecked.get(&block1.hash().into());
+    assert_eq!(unchecked2_blocks.len(), 2);
+    for i in unchecked2_blocks {
+        unchecked2.push(i.block.as_ref().unwrap().hash());
+    }
+    // Asserts the payloads where correctly saved
+    assert!(unchecked2.contains(&block1.hash()));
+    assert!(unchecked2.contains(&block2.hash()));
+    // Asserts the entry is found by the key and the payload is saved
+    let unchecked3 = unchecked.get(&block2.previous().into());
+    assert_eq!(unchecked3.len(), 1);
+    assert_eq!(unchecked3[0].block.as_ref().unwrap().hash(), block2.hash());
+    // Asserts the entry is found by the key and the payload is saved
+    let unchecked4 = unchecked.get(&block3.hash().into());
+    assert_eq!(unchecked4.len(), 1);
+    assert_eq!(unchecked4[0].block.as_ref().unwrap().hash(), block3.hash());
+    // Asserts no entry is found for a block that wasn't added
+    let unchecked5 = unchecked.get(&block2.hash().into());
+    assert_eq!(unchecked5.len(), 0);
 }

@@ -118,6 +118,12 @@ impl From<&KeyPair> for Link {
     }
 }
 
+impl From<&KeyPair> for Account {
+    fn from(value: &KeyPair) -> Self {
+        value.public_key().as_account()
+    }
+}
+
 pub fn sign_message(private_key: &RawKey, data: &[u8]) -> Signature {
     let secret = ed25519_dalek::SecretKey::from(*private_key.as_bytes());
     let mut signing_key = ed25519_dalek::SigningKey::from(&secret);

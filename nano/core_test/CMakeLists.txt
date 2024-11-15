@@ -1,7 +1,6 @@
 add_executable(
   core_test
   entry.cpp
-  active_elections.cpp
   difficulty.cpp
   election_scheduler.cpp
   ledger.cpp

@@ -20,9 +20,9 @@ use std::{
     usize,
 };
 use test_helpers::{
-    assert_never, assert_timely, assert_timely_eq, assert_timely_msg, get_available_port,
-    process_open_block, process_send_block, setup_independent_blocks, start_election,
-    start_elections, System,
+    assert_always_eq, assert_never, assert_timely, assert_timely_eq, assert_timely_msg,
+    get_available_port, process_open_block, process_send_block, setup_independent_blocks,
+    start_election, start_elections, System,
 };
 
 /// What this test is doing:
@@ -1581,4 +1581,107 @@ fn confirm_new() {
     // Wait confirmation
     assert_timely_eq(Duration::from_secs(5), || node1.ledger.cemented_count(), 2);
     assert_timely_eq(Duration::from_secs(5), || node2.ledger.cemented_count(), 2);
+}
+
+#[test]
+#[ignore = "TODO"]
+/*
+ * Ensures we limit the number of vote hinted elections in AEC
+ */
+fn limit_vote_hinted_elections() {
+    // disabled because it doesn't run after tokio switch
+    // TODO reimplement in Rust
+}
+
+#[test]
+fn active_inactive() {
+    let mut system = System::new();
+    let node = system
+        .build_node()
+        .config(NodeConfig {
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .finish();
+
+    let key = KeyPair::new();
+
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(1),
+        (&key).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+
+    let send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(2),
+        1.into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(send.hash()),
+    ));
+
+    let open = BlockEnum::State(StateBlock::new(
+        (&key).into(),
+        BlockHash::zero(),
+        key.public_key(),
+        Amount::raw(1),
+        send.hash().into(),
+        &key,
+        node.work_generate_dev(&key),
+    ));
+
+    node.process_multi(&[send.clone(), send2.clone(), open]);
+
+    let election = start_election(&node, &send2.hash());
+    node.active.force_confirm(&election);
+
+    assert_timely(Duration::from_secs(5), || {
+        !node.confirming_set.exists(&send2.hash())
+    });
+    assert_timely(Duration::from_secs(5), || {
+        node.block_confirmed(&send2.hash())
+    });
+    assert_timely(Duration::from_secs(5), || {
+        node.block_confirmed(&send.hash())
+    });
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats.count(
+                StatType::ConfirmationObserver,
+                DetailType::InactiveConfHeight,
+                Direction::Out,
+            )
+        },
+        1,
+    );
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node.stats.count(
+                StatType::ConfirmationObserver,
+                DetailType::ActiveQuorum,
+                Direction::Out,
+            )
+        },
+        1,
+    );
+    assert_always_eq(
+        Duration::from_millis(50),
+        || {
+            node.stats.count(
+                StatType::ConfirmationObserver,
+                DetailType::ActiveConfHeight,
+                Direction::Out,
+            )
+        },
+        0,
+    );
 }

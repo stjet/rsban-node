@@ -1,7 +1,6 @@
 add_executable(
   core_test
   entry.cpp
-  difficulty.cpp
   ledger.cpp
   node.cpp
   wallet.cpp

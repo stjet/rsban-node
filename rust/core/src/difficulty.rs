@@ -110,6 +110,10 @@ impl Difficulty for StubDifficulty {
 
 #[cfg(test)]
 mod tests {
+    use num::Float;
+
+    use crate::work::WorkThresholds;
+
     use super::*;
 
     #[test]
@@ -241,5 +245,36 @@ mod tests {
         let multiplier = 1000000000.0_f64; // Increase difficulty
 
         assert_eq!(difficulty, DifficultyV1::from_multiplier(multiplier, base));
+    }
+
+    #[test]
+    fn network_multiplier() {
+        let full = WorkThresholds::publish_full();
+        let beta = WorkThresholds::publish_beta();
+        let dev = WorkThresholds::publish_dev();
+
+        let assert_multiplier = |difficulty: u64, base_difficulty: u64, expected: f64| {
+            let multi = DifficultyV1::to_multiplier(difficulty, base_difficulty);
+            assert!((multi - expected).abs() < 1e-10);
+        };
+
+        // live
+        assert_multiplier(full.epoch_2, full.epoch_1, 8.0);
+        assert_multiplier(full.epoch_2_receive, full.epoch_1, 1.0 / 8.0);
+        assert_multiplier(full.epoch_2_receive, full.entry, 1.0);
+        assert_multiplier(full.epoch_2, full.base, 1.0);
+
+        // beta
+        assert_multiplier(beta.epoch_1, full.epoch_1, 1.0 / 64.0);
+        assert_multiplier(beta.epoch_2, beta.epoch_1, 1.0);
+        assert_multiplier(beta.epoch_2_receive, beta.epoch_1, 1.0 / 2.0);
+        assert_multiplier(beta.epoch_2_receive, beta.entry, 1.0);
+        assert_multiplier(beta.epoch_2, beta.base, 1.0);
+
+        // dev
+        assert_multiplier(dev.epoch_2, dev.epoch_1, 8.0);
+        assert_multiplier(dev.epoch_2_receive, dev.epoch_1, 1.0 / 8.0);
+        assert_multiplier(dev.epoch_2_receive, dev.entry, 1.0);
+        assert_multiplier(dev.epoch_2, dev.base, 1.0);
     }
 }

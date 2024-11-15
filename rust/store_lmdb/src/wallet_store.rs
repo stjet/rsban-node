@@ -340,6 +340,10 @@ impl LmdbWalletStore {
         self.entry_put_raw(txn, &Self::deterministic_index_special(), &value);
     }
 
+    pub fn set_password(&self, txn: &mut LmdbWriteTransaction, password: RawKey) {
+        self.fans.lock().unwrap().password.value_set(password);
+    }
+
     pub fn valid_password(&self, txn: &dyn Transaction) -> bool {
         let wallet_key = self.wallet_key(txn);
         self.check_wallet_key(txn, &wallet_key)

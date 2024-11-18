@@ -3515,7 +3515,7 @@ fn unconfirmed_send() {
                 .store
                 .confirmation_height
                 .get(&tx, &key2.account())
-                .unwrap()
+                .unwrap_or_default()
                 .height
         },
         1,

@@ -14,64 +14,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (ledger, unchecked_epoch)
-{
-	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
-	nano::keypair destination;
-	nano::block_builder builder;
-	auto send1 = builder
-				 .state ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (destination.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (0)
-				 .build ();
-	node1.work_generate_blocking (*send1);
-	auto open1 = builder
-				 .state ()
-				 .account (destination.pub)
-				 .previous (0)
-				 .representative (destination.pub)
-				 .balance (nano::Gxrb_ratio)
-				 .link (send1->hash ())
-				 .sign (destination.prv, destination.pub)
-				 .work (0)
-				 .build ();
-	node1.work_generate_blocking (*open1);
-	auto epoch1 = builder
-				  .state ()
-				  .account (destination.pub)
-				  .previous (open1->hash ())
-				  .representative (destination.pub)
-				  .balance (nano::Gxrb_ratio)
-				  .link (node1.ledger.epoch_link (nano::epoch::epoch_1))
-				  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				  .work (0)
-				  .build ();
-	node1.work_generate_blocking (*epoch1);
-	node1.block_processor.add (epoch1);
-	{
-		// Waits for the epoch1 block to pass through block_processor and unchecked.put queues
-		ASSERT_TIMELY_EQ (10s, 1, node1.unchecked.count ());
-		auto blocks = node1.unchecked.get (epoch1->previous ());
-		ASSERT_EQ (blocks.size (), 1);
-	}
-	node1.block_processor.add (send1);
-	node1.block_processor.add (open1);
-	ASSERT_TIMELY (5s, node1.ledger.any ().block_exists (*node1.store.tx_begin_read (), epoch1->hash ()));
-	{
-		// Waits for the last blocks to pass through block_processor and unchecked.put queues
-		ASSERT_TIMELY_EQ (10s, 0, node1.unchecked.count ());
-		auto info = node1.ledger.any ().account_get (*node1.store.tx_begin_read (), destination.pub);
-		ASSERT_TRUE (info);
-		ASSERT_EQ (info->epoch (), nano::epoch::epoch_1);
-	}
-}
-
 TEST (ledger, unchecked_epoch_invalid)
 {
 	nano::test::system system;

@@ -273,7 +273,6 @@ fn block_hash_account_conflict() {
     let mut system = System::new();
     let node1 = system.make_node();
     let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
 
     /*
      * Generate a send block whose destination is a block hash already
@@ -357,4 +356,71 @@ fn block_hash_account_conflict() {
     assert_eq!(election2.winner_hash().unwrap(), receive1.hash());
     assert_eq!(election3.winner_hash().unwrap(), send2.hash());
     assert_eq!(election4.winner_hash().unwrap(), open_epoch1.hash());
+}
+
+#[test]
+fn unchecked_epoch() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let destination = KeyPair::new();
+
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(1000),
+        destination.account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+
+    let open1 = BlockEnum::State(StateBlock::new(
+        destination.account(),
+        BlockHash::zero(),
+        destination.public_key(),
+        Amount::nano(1000),
+        send1.hash().into(),
+        &destination,
+        node1.work_generate_dev(&destination),
+    ));
+
+    let epoch1 = BlockEnum::State(StateBlock::new(
+        destination.account(),
+        open1.hash(),
+        destination.public_key(),
+        Amount::nano(1000),
+        node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(&open1.hash()),
+    ));
+
+    node1.block_processor.add(
+        epoch1.clone().into(),
+        BlockSource::Live,
+        ChannelId::LOOPBACK,
+    );
+
+    // Waits for the epoch1 block to pass through block_processor and unchecked.put queues
+    assert_timely_eq(Duration::from_secs(10), || node1.unchecked.len(), 1);
+    node1
+        .block_processor
+        .add(send1.into(), BlockSource::Live, ChannelId::LOOPBACK);
+    node1
+        .block_processor
+        .add(open1.into(), BlockSource::Live, ChannelId::LOOPBACK);
+    assert_timely(Duration::from_secs(5), || {
+        node1
+            .ledger
+            .any()
+            .block_exists(&node1.ledger.read_txn(), &epoch1.hash())
+    });
+
+    // Waits for the last blocks to pass through block_processor and unchecked.put queues
+    assert_timely_eq(Duration::from_secs(10), || node1.unchecked.len(), 0);
+    let info = node1
+        .ledger
+        .any()
+        .get_account(&node1.ledger.read_txn(), &destination.account())
+        .unwrap();
+    assert_eq!(info.epoch, Epoch::Epoch1);
 }

@@ -1,8 +1,5 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder,
-    BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
-    PublicKey, Root, SendBlock, Signature, StateBlock, Vote, VoteSource, VoteWithWeightInfo,
-    WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO,
+    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock, PublicKey, Root, SendBlock, Signature, StateBlock, UncheckedInfo, Vote, VoteSource, VoteWithWeightInfo, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -3585,3 +3582,134 @@ fn unconfirmed_send() {
         Amount::MAX,
     );
 }
+
+#[test]
+fn block_processor_signatures() {
+    let mut system = System::new();
+    let node = system.make_node();
+
+    // Insert the genesis key into the wallet for signing operations
+    let wallet_id = node.wallets.wallet_ids()[0];
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    let latest = node.latest(&*DEV_GENESIS_ACCOUNT);
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+    let key3 = KeyPair::new();
+
+    // Create a valid send block
+    let send1 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(latest)
+        .representative(*DEV_GENESIS_PUB_KEY)
+        .balance(node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO))
+        .link(key1.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(latest))
+        .build();
+
+    // Create additional send blocks with proper signatures
+    let send2 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(send1.hash())
+        .representative(*DEV_GENESIS_PUB_KEY)
+        .balance(node.ledger.constants.genesis_amount - Amount::raw(2 * *GXRB_RATIO))
+        .link(key2.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(send1.hash()))
+        .build();
+
+    let send3 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(send2.hash())
+        .representative(*DEV_GENESIS_PUB_KEY)
+        .balance(node.ledger.constants.genesis_amount - Amount::raw(3 * *GXRB_RATIO))
+        .link(key3.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(send2.hash()))
+        .build();
+
+    // Create a block with an invalid signature (tampered signature bits)
+    let mut send4 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(send3.hash())
+        .representative(*DEV_GENESIS_PUB_KEY)
+        .balance(node.ledger.constants.genesis_amount - Amount::raw(4 * *GXRB_RATIO))
+        .link(key3.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(send3.hash()))
+        .build();
+
+    // Tamper with the signature
+    send4.set_block_signature(&Signature::new());
+
+    // Invalid signature bit (force)
+    let mut send5 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(send3.hash())
+        .representative(*DEV_GENESIS_PUB_KEY)
+        .balance(node.ledger.constants.genesis_amount - Amount::raw(5 * *GXRB_RATIO))
+        .link(key3.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node.work_generate_dev(send3.hash()))
+        .build();
+
+    send5.set_block_signature(&Signature::new());
+    // Invalid signature to unchecked
+    node.unchecked.put(send5.previous().into(), UncheckedInfo::new(Arc::new(send5.clone())));
+
+    // Create a valid receive block
+    let receive1 = BlockBuilder::state()
+        .account(key1.account())
+        .previous(BlockHash::zero())
+        .representative(*DEV_GENESIS_PUB_KEY) // No previous block for the account (open block)
+        .balance(Amount::raw(*GXRB_RATIO))
+        .link(send1.hash())
+        .sign(&key1)
+        .work(node.work_generate_dev(key1.account()))
+        .build();
+
+    let receive2 = BlockBuilder::state()
+        .account(key2.account())
+        .previous(BlockHash::zero())
+        .representative(*DEV_GENESIS_PUB_KEY) // No previous block for the account (open block)
+        .balance(Amount::raw(*GXRB_RATIO))
+        .link(send2.hash())
+        .sign(&key2)
+        .work(node.work_generate_dev(key2.account()))
+        .build();
+
+    // Invalid private key
+    let receive3 = BlockBuilder::state()
+        .account(key3.account())
+        .previous(BlockHash::zero())
+        .representative(*DEV_GENESIS_PUB_KEY) // No previous block for the account (open block)
+        .balance(Amount::raw(*GXRB_RATIO))
+        .link(send3.hash())
+        .sign(&key2)
+        .work(node.work_generate_dev(key3.account()))
+        .build();
+
+    node.process_active(send1.clone());
+    node.process_active(send2.clone());
+    node.process_active(send3.clone());
+    node.process_active(send4.clone());
+    node.process_active(receive1.clone());
+    node.process_active(receive2.clone());
+    node.process_active(receive3.clone());
+
+    assert_timely(Duration::from_secs(5), || {
+        node.block(&receive2.hash()).is_some()
+    });
+
+    assert_timely_eq(Duration::from_secs(5), || {
+        node.unchecked.len()
+    }, 0);
+
+    assert!(node.block(&receive3.hash()).is_none()); // Invalid signer
+    assert!(node.block(&send4.hash()).is_none()); // Invalid signature via process_active
+    assert!(node.block(&send5.hash()).is_none()); // Invalid signature via unchecked
+}
+

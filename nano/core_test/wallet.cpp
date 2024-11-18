@@ -18,28 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-/**
- * This test checks that wallets::foreach_representative can be used recursively
- */
-TEST (wallet, foreach_representative_deadlock)
-{
-	nano::test::system system (1);
-	auto & node (*system.nodes[0]);
-	auto wallet_id = node.wallets.first_wallet_id ();
-	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	node.wallets.compute_reps ();
-	ASSERT_EQ (1, node.wallets.voting_reps_count ());
-
-	bool set = false;
-	node.wallets.foreach_representative ([&node, &set, &system] (nano::public_key const & pub, nano::raw_key const & prv) {
-		node.wallets.foreach_representative ([&node, &set, &system] (nano::public_key const & pub, nano::raw_key const & prv) {
-			ASSERT_TIMELY (5s, node.wallets.mutex.try_lock ().has_value ());
-			set = true;
-		});
-	});
-	ASSERT_TRUE (set);
-}
-
 TEST (wallet, search_receivable)
 {
 	nano::test::system system;

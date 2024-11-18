@@ -1355,6 +1355,32 @@ fn epoch_2_receive_unopened() {
     assert!(tries < max_tries);
 }
 
+/**
+ * This test checks that wallets::foreach_representative can be used recursively
+ */
+#[test]
+fn foreach_representative_deadlock() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+        .unwrap();
+    node.wallets.compute_reps();
+    assert_eq!(node.wallets.voting_reps_count(), 1);
+    let mut set = false;
+    node.wallets.foreach_representative(|_| {
+        node.wallets.foreach_representative(|_| {
+            assert_timely(Duration::from_secs(5), || {
+                node.wallets.mutex.try_lock().is_ok()
+            });
+            set = true;
+        })
+    });
+    assert!(set);
+}
+
 fn upgrade_genesis_epoch(node: &Node, epoch: Epoch) {
     let mut tx = node.ledger.rw_txn();
     let latest = node

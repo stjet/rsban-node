@@ -1,7 +1,6 @@
 add_executable(
   core_test
   entry.cpp
-  ledger.cpp
   node.cpp)
 
 target_compile_definitions(

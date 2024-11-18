@@ -1,8 +1,8 @@
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder,
     BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
-    PublicKey, Root, SendBlock, Signature, StateBlock, UncheckedInfo, Vote, VoteSource,
-    VoteWithWeightInfo, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO,
+    PublicKey, QualifiedRoot, Root, SendBlock, Signature, StateBlock, UncheckedInfo, Vote,
+    VoteSource, VoteWithWeightInfo, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -4197,4 +4197,60 @@ fn dependency_graph() {
     });
     assert_eq!(node.ledger.cemented_count(), node.ledger.block_count());
     assert_timely(Duration::from_secs(5), || node.active.len() == 0);
+}
+
+#[test]
+fn fork_keep() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+    // send1 and send2 fork to different accounts
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(100),
+        key1.account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    let send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(100),
+        key2.account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    node1.process_active(send1.clone());
+    node2.process_active(send1.clone());
+    assert_timely_eq(Duration::from_secs(5), || node1.active.len(), 1);
+    assert_timely_eq(Duration::from_secs(5), || node2.active.len(), 1);
+    node1.insert_into_wallet(&DEV_GENESIS_KEY);
+    // Fill node with forked blocks
+    node1.process_active(send2.clone());
+    assert_timely(Duration::from_secs(5), || node1.active.active(&send2));
+    node2.process_active(send2.clone());
+    let election1 = node2
+        .active
+        .election(&QualifiedRoot::new(
+            (*DEV_GENESIS_HASH).into(),
+            *DEV_GENESIS_HASH,
+        ))
+        .unwrap();
+    assert_eq!(election1.vote_count(), 1);
+    assert!(node1.block_exists(&send1.hash()));
+    assert!(node2.block_exists(&send1.hash()));
+    // Wait until the genesis rep makes a vote
+    assert_timely(Duration::from_secs(60), || election1.vote_count() != 1);
+    // The vote should be in agreement with what we already have.
+    let guard = election1.mutex.lock().unwrap();
+    let (winner_hash, winner_tally) = guard.last_tally.iter().next().unwrap();
+    assert_eq!(*winner_hash, send1.hash());
+    assert_eq!(*winner_tally, Amount::MAX - Amount::raw(100));
+    assert!(node1.block_exists(&send1.hash()));
+    assert!(node2.block_exists(&send1.hash()));
 }

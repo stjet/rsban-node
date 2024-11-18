@@ -8,6 +8,7 @@ use rsnano_node::{
     block_processing::BlockSource,
     config::{FrontiersConfirmationMode, NodeConfig},
 };
+use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely, assert_timely_eq, start_elections, System};
 
@@ -577,5 +578,86 @@ fn unchecked_open() {
         .add(send1.into(), BlockSource::Live, ChannelId::LOOPBACK);
     // Waits for the send1 block to pass through block_processor and unchecked.put queues
     assert_timely(Duration::from_secs(5), || node1.block_exists(&open1.hash()));
+    assert_eq!(node1.unchecked.len(), 0);
+}
+
+#[test]
+fn unchecked_receive() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let destination = KeyPair::new();
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(1000),
+        destination.account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    let send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        send1.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(2000),
+        destination.account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(send1.hash()),
+    ));
+    let open1 = BlockEnum::State(StateBlock::new(
+        destination.account(),
+        BlockHash::zero(),
+        destination.public_key(),
+        Amount::nano(1000),
+        send1.hash().into(),
+        &destination,
+        node1.work_generate_dev(&destination),
+    ));
+    let receive1 = BlockEnum::State(StateBlock::new(
+        destination.account(),
+        open1.hash(),
+        destination.public_key(),
+        Amount::nano(2000),
+        send2.hash().into(),
+        &destination,
+        node1.work_generate_dev(open1.hash()),
+    ));
+    node1
+        .block_processor
+        .add(send1.into(), BlockSource::Live, ChannelId::LOOPBACK);
+    node1.block_processor.add(
+        receive1.clone().into(),
+        BlockSource::Live,
+        ChannelId::LOOPBACK,
+    );
+    let check_block_is_listed = |tx: &LmdbReadTransaction, hash: &BlockHash| {
+        !node1.unchecked.get(&((*hash).into())).is_empty()
+    };
+    // Previous block for receive1 is unknown, signature cannot be validated
+
+    // Waits for the last blocks to pass through block_processor and unchecked.put queues
+    assert_timely(Duration::from_secs(15), || {
+        check_block_is_listed(&node1.ledger.read_txn(), &receive1.previous())
+    });
+    assert_eq!(node1.unchecked.get(&receive1.previous().into()).len(), 1);
+
+    // Waits for the open1 block to pass through block_processor and unchecked.put queues
+    node1
+        .block_processor
+        .add(open1.clone().into(), BlockSource::Live, ChannelId::LOOPBACK);
+    assert_timely(Duration::from_secs(15), || {
+        check_block_is_listed(&node1.ledger.read_txn(), &receive1.source_or_link())
+    });
+    // Previous block for receive1 is known, signature was validated
+    assert_eq!(
+        node1.unchecked.get(&receive1.source_or_link().into()).len(),
+        1
+    );
+    node1
+        .block_processor
+        .add(send2.clone().into(), BlockSource::Live, ChannelId::LOOPBACK);
+    assert_timely(Duration::from_secs(10), || {
+        node1.block_exists(&receive1.hash())
+    });
     assert_eq!(node1.unchecked.len(), 0);
 }

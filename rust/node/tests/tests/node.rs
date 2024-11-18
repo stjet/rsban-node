@@ -10,7 +10,12 @@ use rsnano_ledger::{
 use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_network::{ChannelId, DropPolicy, TrafficType};
 use rsnano_node::{
-    block_processing::BlockSource, bootstrap::BootstrapInitiatorExt, config::{FrontiersConfirmationMode, NodeConfig, NodeFlags}, consensus::{ActiveElectionsExt, VoteApplierExt}, stats::{DetailType, Direction, StatType}, wallets::WalletsExt
+    block_processing::BlockSource,
+    bootstrap::BootstrapInitiatorExt,
+    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
+    consensus::{ActiveElectionsExt, VoteApplierExt},
+    stats::{DetailType, Direction, StatType},
+    wallets::WalletsExt,
 };
 use std::{
     sync::{
@@ -3602,28 +3607,29 @@ fn block_confirm() {
 
     let hash1 = send1.hash();
 
-    assert_eq!(node1
-        .block_processor
-        .add(send1.clone().into(), BlockSource::Live, ChannelId::LOOPBACK), true);
-    assert_eq!(node2.block_processor.add(
-        send1.clone().into(),
-        BlockSource::Live,
-        ChannelId::LOOPBACK,
-    ), true);
+    assert_eq!(
+        node1
+            .block_processor
+            .add(send1.clone().into(), BlockSource::Live, ChannelId::LOOPBACK),
+        true
+    );
+    assert_eq!(
+        node2
+            .block_processor
+            .add(send1.clone().into(), BlockSource::Live, ChannelId::LOOPBACK,),
+        true
+    );
 
-    assert_timely(
-        Duration::from_secs(5),
-        || {
-            node1
+    assert_timely(Duration::from_secs(5), || {
+        node1
+            .ledger
+            .any()
+            .block_exists_or_pruned(&node1.store.tx_begin_read(), &hash1)
+            && node2
                 .ledger
                 .any()
-                .block_exists_or_pruned(&node1.store.tx_begin_read(), &hash1)
-                && node2
-                    .ledger
-                    .any()
-                    .block_exists_or_pruned(&node2.store.tx_begin_read(), &hash1) 
-        },
-    );
+                .block_exists_or_pruned(&node2.store.tx_begin_read(), &hash1)
+    });
 
     assert!(node1
         .ledger
@@ -3639,12 +3645,7 @@ fn block_confirm() {
 
     assert_timely_eq(
         Duration::from_secs(5),
-        || {
-            node2
-                .active
-                .election(&send1.qualified_root())
-                .is_some() as u64
-        },
+        || node2.active.election(&send1.qualified_root()).is_some() as u64,
         1,
     );
 
@@ -3658,5 +3659,196 @@ fn block_confirm() {
         Duration::from_secs(10),
         || node1.active.recently_cemented_list().len(),
         1,
+    );
+}
+
+/// Confirm a complex dependency graph. Uses frontiers confirmation which will fail to
+/// confirm a frontier optimistically then fallback to pessimistic confirmation.
+#[test]
+fn dependency_graph_frontier() {
+    let mut system = System::new();
+    let node1 = system
+        .build_node()
+        .config(NodeConfig {
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .finish();
+    let node2 = system
+        .build_node()
+        .config(NodeConfig {
+            frontiers_confirmation: FrontiersConfirmationMode::Always,
+            ..System::default_config()
+        })
+        .finish();
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+    let key3 = KeyPair::new();
+
+    // Send to key1
+    let gen_send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(1),
+        key1.account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+
+    // Receive from genesis
+    let key1_open = BlockEnum::State(StateBlock::new(
+        key1.account(),
+        BlockHash::zero(),
+        key1.public_key(),
+        Amount::raw(1),
+        gen_send1.hash().into(),
+        &key1,
+        node1.work_generate_dev(&key1),
+    ));
+    // Send to genesis
+    let key1_send1 = BlockEnum::State(StateBlock::new(
+        key1.account(),
+        key1_open.hash(),
+        key1.public_key(),
+        Amount::zero(),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key1,
+        node1.work_generate_dev(key1_open.hash()),
+    ));
+    // Receive from key1
+    let gen_receive = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        gen_send1.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX,
+        key1_send1.hash().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(gen_send1.hash()),
+    ));
+    // Send to key2
+    let gen_send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        gen_receive.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(2),
+        key2.account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(gen_receive.hash()),
+    ));
+    // Receive from genesis
+    let key2_open = BlockEnum::State(StateBlock::new(
+        key2.account(),
+        BlockHash::zero(),
+        key2.public_key(),
+        Amount::raw(2),
+        gen_send2.hash().into(),
+        &key2,
+        node1.work_generate_dev(&key2),
+    ));
+    // Send to key3
+    let key2_send1 = BlockEnum::State(StateBlock::new(
+        key2.account(),
+        key2_open.hash(),
+        key2.public_key(),
+        Amount::raw(1),
+        key3.account().into(),
+        &key2,
+        node1.work_generate_dev(key2_open.hash()),
+    ));
+    // Receive from key2
+    let key3_open = BlockEnum::State(StateBlock::new(
+        key3.account(),
+        BlockHash::zero(),
+        key3.public_key(),
+        Amount::raw(1),
+        key2_send1.hash().into(),
+        &key3,
+        node1.work_generate_dev(&key3),
+    ));
+    // Send to key1
+    let key2_send2 = BlockEnum::State(StateBlock::new(
+        key2.account(),
+        key2_send1.hash(),
+        key2.public_key(),
+        Amount::zero(),
+        key1.account().into(),
+        &key2,
+        node1.work_generate_dev(key2_send1.hash()),
+    ));
+    // Receive from key2
+    let key1_receive = BlockEnum::State(StateBlock::new(
+        key1.account(),
+        key1_send1.hash(),
+        key1.public_key(),
+        Amount::raw(1),
+        key2_send2.hash().into(),
+        &key1,
+        node1.work_generate_dev(key1_send1.hash()),
+    ));
+    // Send to key3
+    let key1_send2 = BlockEnum::State(StateBlock::new(
+        key1.account(),
+        key1_receive.hash(),
+        key1.public_key(),
+        Amount::zero(),
+        key3.account().into(),
+        &key1,
+        node1.work_generate_dev(key1_receive.hash()),
+    ));
+    // Receive from key1
+    let key3_receive = BlockEnum::State(StateBlock::new(
+        key3.account(),
+        key3_open.hash(),
+        key3.public_key(),
+        Amount::raw(2),
+        key1_send2.hash().into(),
+        &key3,
+        node1.work_generate_dev(key3_open.hash()),
+    ));
+    // Upgrade key3
+    let key3_epoch = BlockEnum::State(StateBlock::new(
+        key3.account(),
+        key3_receive.hash(),
+        key3.public_key(),
+        Amount::raw(2),
+        node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(key3_receive.hash()),
+    ));
+
+    for node in &system.nodes {
+        node.process_multi(&[
+            gen_send1.clone(),
+            key1_open.clone(),
+            key1_send1.clone(),
+            gen_receive.clone(),
+            gen_send2.clone(),
+            key2_open.clone(),
+            key2_send1.clone(),
+            key3_open.clone(),
+            key2_send2.clone(),
+            key1_receive.clone(),
+            key1_send2.clone(),
+            key3_receive.clone(),
+            key3_epoch.clone(),
+        ]);
+    }
+
+    // node1 can vote, but only on the first block
+    node1.insert_into_wallet(&DEV_GENESIS_KEY);
+    assert_timely(Duration::from_secs(10), || {
+        node2.active.active_root(&gen_send1.qualified_root())
+    });
+    start_election(&node1, &gen_send1.hash());
+    assert_timely_eq(
+        Duration::from_secs(15),
+        || node1.ledger.cemented_count(),
+        node1.ledger.block_count(),
+    );
+    assert_timely_eq(
+        Duration::from_secs(15),
+        || node2.ledger.cemented_count(),
+        node2.ledger.block_count(),
     );
 }

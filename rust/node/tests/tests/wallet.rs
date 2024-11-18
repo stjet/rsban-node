@@ -1,4 +1,6 @@
-use rsnano_core::{Amount, KeyDerivationFunction, KeyPair, PublicKey, RawKey, DEV_GENESIS_KEY};
+use rsnano_core::{
+    Account, Amount, KeyDerivationFunction, KeyPair, PublicKey, RawKey, DEV_GENESIS_KEY,
+};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     unique_path,
@@ -250,4 +252,39 @@ fn send_async() {
         node.balance(&DEV_GENESIS_ACCOUNT).is_zero()
     });
     assert!(block.lock().unwrap().is_some());
+}
+
+#[test]
+fn spend() {
+    let mut system = System::new();
+    let node = system.make_node();
+    node.insert_into_wallet(&DEV_GENESIS_KEY);
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    // Sending from empty accounts should always be an error.
+    // Accounts need to be opened with an open block, not a send block.
+    assert!(node
+        .wallets
+        .send_action2(
+            &wallet_id,
+            Account::zero(),
+            key2.account(),
+            Amount::zero(),
+            0,
+            true,
+            None
+        )
+        .is_err());
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            Amount::MAX,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_eq!(node.balance(&DEV_GENESIS_ACCOUNT), Amount::zero());
 }

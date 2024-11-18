@@ -18,28 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, spend)
-{
-	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
-	auto wallet_id1 = node1.wallets.first_wallet_id ();
-	nano::block_hash latest1 (node1.latest (nano::dev::genesis_key.pub));
-	(void)node1.wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
-	nano::keypair key2;
-	// Sending from empty accounts should always be an error.  Accounts need to be opened with an open block, not a send block.
-	ASSERT_EQ (nullptr, node1.wallets.send_action (wallet_id1, 0, key2.pub, 0));
-	ASSERT_NE (nullptr, node1.wallets.send_action (wallet_id1, nano::dev::genesis_key.pub, key2.pub, std::numeric_limits<nano::uint128_t>::max ()));
-	auto transaction (node1.store.tx_begin_read ());
-	auto info2 = node1.ledger.any ().account_get (*transaction, nano::dev::genesis_key.pub);
-	ASSERT_TRUE (info2);
-	ASSERT_NE (latest1, info2->head ());
-	auto block (node1.ledger.any ().block_get (*transaction, info2->head ()));
-	ASSERT_NE (nullptr, block);
-	ASSERT_EQ (latest1, block->previous ());
-	ASSERT_TRUE (info2->balance ().is_zero ());
-	ASSERT_EQ (0, node1.balance (nano::dev::genesis_key.pub));
-}
-
 TEST (wallet, partial_spend)
 {
 	nano::test::system system (1);

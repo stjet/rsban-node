@@ -355,3 +355,19 @@ fn find_none() {
         LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
     assert!(wallet.find(&tx, &PublicKey::from(1000)).is_end());
 }
+
+#[test]
+fn find_existing() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    let wallet =
+        LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
+    let key1 = KeyPair::new();
+    assert_eq!(wallet.exists(&tx, &key1.public_key()), false);
+    wallet.insert_adhoc(&mut tx, &key1.private_key());
+    assert_eq!(wallet.exists(&tx, &key1.public_key()), true);
+    wallet.find(&tx, &key1.public_key()).current().unwrap();
+}

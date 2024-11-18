@@ -371,3 +371,30 @@ fn find_existing() {
     assert_eq!(wallet.exists(&tx, &key1.public_key()), true);
     wallet.find(&tx, &key1.public_key()).current().unwrap();
 }
+
+#[test]
+fn rekey() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    let wallet =
+        LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
+    let password = wallet.password();
+    assert!(password.is_zero());
+    let key1 = KeyPair::new();
+    wallet.insert_adhoc(&mut tx, &key1.private_key());
+    assert_eq!(
+        wallet.fetch(&tx, &key1.public_key()).unwrap(),
+        key1.private_key()
+    );
+    wallet.rekey(&mut tx, "1").unwrap();
+    let password = wallet.password();
+    let password1 = wallet.derive_key(&tx, "1");
+    assert_eq!(password1, password);
+    let prv2 = wallet.fetch(&tx, &key1.public_key()).unwrap();
+    assert_eq!(prv2, key1.private_key());
+    wallet.set_password(&mut tx, RawKey::from(2));
+    assert!(wallet.rekey(&mut tx, "2").is_err());
+}

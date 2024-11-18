@@ -3,17 +3,9 @@ name: Static Analyzers
 on: [ push, pull_request ]
 
 jobs:
-  code_inspector:
-    runs-on: ubuntu-20.04
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    steps:
-      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 #v3.1.0
-      - name: Run code-inspector
-        run: ci/code-inspector-check.sh
-
   cargo_fmt:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@50fbc622fc4ef5163becd7fab6573eac35f8462e
       - name: Run cargo fmt
-        run: ci/cargo-fmt-check.sh
+        run: scripts/ci/cargo-fmt-check.sh

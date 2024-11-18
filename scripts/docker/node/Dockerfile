@@ -4,7 +4,7 @@ ARG COMPILER=gcc
 ARG NANO_NETWORK=live
 
 # Install build dependencies
-COPY ./ci/prepare/linux /tmp/prepare
+COPY ./scripts/ci/prepare/linux /tmp/prepare
 RUN /tmp/prepare/prepare.sh
 
 COPY ./ /tmp/src
@@ -22,7 +22,7 @@ ARG SANITIZER
 
 # Build node
 ENV PATH="/root/.cargo/bin:${PATH}"
-RUN cd rust/main && cargo build --release
+RUN cd main && cargo build --release
 RUN echo ${NANO_NETWORK} >/etc/nano-network
 
 FROM ubuntu:22.04
@@ -30,11 +30,10 @@ FROM ubuntu:22.04
 RUN groupadd --gid 1000 nanocurrency && \
     useradd --uid 1000 --gid nanocurrency --shell /bin/bash --create-home nanocurrency
 
-COPY --from=builder /tmp/src/build/cargo/release/rsnano_node /usr/bin
-COPY --from=builder /tmp/src/api/ /usr/bin/api/
+COPY --from=builder /tmp/src/target/release/rsnano_node /usr/bin
 COPY --from=builder /etc/nano-network /etc
 
-COPY docker/node/config /usr/share/nano/config
+COPY scripts/docker/node/config /usr/share/nano/config
 RUN ldconfig
 
 WORKDIR /root

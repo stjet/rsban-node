@@ -140,35 +140,3 @@ jobs:
           DOCKER_USER: ${{ github.repository_owner }}
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
-
-  windows_job:
-    needs: prepare_build
-    if: ${{ needs.prepare_build.outputs.tag_created == 'true' }}
-    runs-on: windows-latest
-    timeout-minutes: 90
-    strategy:
-      matrix:
-        network: ["TEST", "BETA", "LIVE"]
-    steps:
-      - uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 #v3.1.0
-        with:
-          submodules: "recursive"
-          ref: ${{ needs.prepare_build.outputs.ci_tag }}
-          repository: ${{ github.repository }}
-      - name: Prepare
-        run: ci/prepare/windows/prepare.ps1
-      - name: Build Artifact
-        run: ci/actions/windows/build.ps1
-        env:
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-      - name: Deploy Artifact
-        run: ci/actions/windows/deploy.ps1
-        env:
-          NETWORK: ${{ matrix.network }}
-          TAG: ${{ needs.prepare_build.outputs.ci_tag }}
-          S3_BUCKET_NAME: ${{ vars.S3_BUCKET_NAME }}
-          S3_BUILD_DIRECTORY: ${{ vars.S3_BUILD_DIRECTORY }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: us-east-2

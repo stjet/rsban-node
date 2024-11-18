@@ -3,7 +3,6 @@ add_executable(
   entry.cpp
   ledger.cpp
   node.cpp
-  wallet.cpp
   wallets.cpp)
 
 target_compile_definitions(

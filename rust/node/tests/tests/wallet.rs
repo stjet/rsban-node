@@ -1462,6 +1462,101 @@ fn search_receivable() {
     assert_eq!(receive.source().unwrap(), send.hash());
 }
 
+#[test]
+fn receive_pruned() {
+    let mut system = System::new();
+    let node1 = system
+        .build_node()
+        .flags(NodeFlags {
+            disable_request_loop: true,
+            ..Default::default()
+        })
+        .finish();
+    let node2 = system
+        .build_node()
+        .config(NodeConfig {
+            enable_voting: false,
+            ..System::default_config()
+        })
+        .flags(NodeFlags {
+            disable_request_loop: true,
+            enable_pruning: true,
+            ..Default::default()
+        })
+        .finish();
+
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+
+    let key = KeyPair::new();
+
+    // Send
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), false)
+        .unwrap();
+    let amount = node2.config.receive_minimum;
+    let send1 = node1
+        .wallets
+        .send_action2(
+            &wallet_id1,
+            *DEV_GENESIS_ACCOUNT,
+            key.account(),
+            amount,
+            1,
+            true,
+            None,
+        )
+        .unwrap();
+    let _send2 = node1
+        .wallets
+        .send_action2(
+            &wallet_id1,
+            *DEV_GENESIS_ACCOUNT,
+            key.account(),
+            Amount::raw(1),
+            1,
+            true,
+            None,
+        )
+        .unwrap();
+
+    // Pruning
+    assert_timely_eq(Duration::from_secs(5), || node2.ledger.cemented_count(), 3);
+    {
+        let mut tx = node2.ledger.rw_txn();
+        assert_eq!(node2.ledger.pruning_action(&mut tx, &send1.hash(), 2), 1);
+    }
+
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &key.private_key(), false)
+        .unwrap();
+
+    let open1 = node2
+        .wallets
+        .receive_action2(
+            &wallet_id2,
+            send1.hash(),
+            key.public_key(),
+            amount,
+            key.account(),
+            1,
+            true,
+        )
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        node2
+            .ledger
+            .any()
+            .block_balance(&node2.ledger.read_txn(), &open1.hash()),
+        Some(amount)
+    );
+    assert_timely_eq(Duration::from_secs(5), || node2.ledger.cemented_count(), 4);
+}
+
 fn upgrade_genesis_epoch(node: &Node, epoch: Epoch) {
     let mut tx = node.ledger.rw_txn();
     let latest = node

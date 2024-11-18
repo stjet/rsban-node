@@ -16,7 +16,6 @@ members = [
     "store_lmdb",
     "ledger",
     "node",
-    "ffi",
     "main",
     "tools/load_test",
     "tools/xtask",

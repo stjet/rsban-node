@@ -834,3 +834,51 @@ fn insert_locked() {
         .unwrap_err();
     assert_eq!(err, WalletsError::WalletLocked);
 }
+
+#[test]
+fn deterministic_keys() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    let wallet = LmdbWalletStore::new(
+        0,
+        kdf.clone(),
+        &mut tx,
+        &DEV_GENESIS_PUB_KEY,
+        &PathBuf::from("0"),
+    )
+    .unwrap();
+    let key1 = wallet.deterministic_key(&tx, 0);
+    let key2 = wallet.deterministic_key(&tx, 0);
+    assert_eq!(key1, key2);
+    let key3 = wallet.deterministic_key(&tx, 1);
+    assert_ne!(key1, key3);
+    assert_eq!(wallet.deterministic_index_get(&tx), 0);
+    wallet.deterministic_index_set(&mut tx, 1);
+    assert_eq!(wallet.deterministic_index_get(&tx), 1);
+    let key4 = wallet.deterministic_insert(&mut tx);
+    let key5 = wallet.fetch(&tx, &key4).unwrap();
+    assert_eq!(key5, key3);
+    assert_eq!(wallet.deterministic_index_get(&tx), 2);
+    wallet.deterministic_index_set(&mut tx, 1);
+    assert_eq!(wallet.deterministic_index_get(&tx), 1);
+    wallet.erase(&mut tx, &key4);
+    assert_eq!(wallet.exists(&tx, &key4), false);
+    let key8 = wallet.deterministic_insert(&mut tx);
+    assert_eq!(key8, key4);
+    let key6 = wallet.deterministic_insert(&mut tx);
+    let key7 = wallet.fetch(&tx, &key6).unwrap();
+    assert_ne!(key7, key5);
+    assert_eq!(wallet.deterministic_index_get(&tx), 3);
+    let key9 = KeyPair::new();
+    wallet.insert_adhoc(&mut tx, &key9.private_key());
+    assert!(wallet.exists(&tx, &key9.public_key()));
+    wallet.deterministic_clear(&mut tx);
+    assert_eq!(wallet.deterministic_index_get(&tx), 0);
+    assert_eq!(wallet.exists(&tx, &key4), false);
+    assert_eq!(wallet.exists(&tx, &key6), false);
+    assert_eq!(wallet.exists(&tx, &key8), false);
+    assert_eq!(wallet.exists(&tx, &key9.public_key()), true);
+}

@@ -18,49 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, deterministic_keys)
-{
-	bool init;
-	nano::store::lmdb::env env (init, nano::unique_path () / "wallet.ldb");
-	ASSERT_FALSE (init);
-	auto transaction (env.tx_begin_write ());
-	nano::kdf kdf{ nano::dev::network_params.kdf_work };
-	nano::wallet_store wallet (init, kdf, *transaction, nano::dev::genesis_key.pub, 1, "0");
-	auto key1 = wallet.deterministic_key (*transaction, 0);
-	auto key2 = wallet.deterministic_key (*transaction, 0);
-	ASSERT_EQ (key1, key2);
-	auto key3 = wallet.deterministic_key (*transaction, 1);
-	ASSERT_NE (key1, key3);
-	ASSERT_EQ (0, wallet.deterministic_index_get (*transaction));
-	wallet.deterministic_index_set (*transaction, 1);
-	ASSERT_EQ (1, wallet.deterministic_index_get (*transaction));
-	auto key4 (wallet.deterministic_insert (*transaction));
-	nano::raw_key key5;
-	ASSERT_FALSE (wallet.fetch (*transaction, key4, key5));
-	ASSERT_EQ (key3, key5);
-	ASSERT_EQ (2, wallet.deterministic_index_get (*transaction));
-	wallet.deterministic_index_set (*transaction, 1);
-	ASSERT_EQ (1, wallet.deterministic_index_get (*transaction));
-	wallet.erase (*transaction, key4);
-	ASSERT_FALSE (wallet.exists (*transaction, key4));
-	auto key8 (wallet.deterministic_insert (*transaction));
-	ASSERT_EQ (key4, key8);
-	auto key6 (wallet.deterministic_insert (*transaction));
-	nano::raw_key key7;
-	ASSERT_FALSE (wallet.fetch (*transaction, key6, key7));
-	ASSERT_NE (key5, key7);
-	ASSERT_EQ (3, wallet.deterministic_index_get (*transaction));
-	nano::keypair key9;
-	ASSERT_EQ (key9.pub, wallet.insert_adhoc (*transaction, key9.prv));
-	ASSERT_TRUE (wallet.exists (*transaction, key9.pub));
-	wallet.deterministic_clear (*transaction);
-	ASSERT_EQ (0, wallet.deterministic_index_get (*transaction));
-	ASSERT_FALSE (wallet.exists (*transaction, key4));
-	ASSERT_FALSE (wallet.exists (*transaction, key6));
-	ASSERT_FALSE (wallet.exists (*transaction, key8));
-	ASSERT_TRUE (wallet.exists (*transaction, key9.pub));
-}
-
 TEST (wallet, reseed)
 {
 	bool init;

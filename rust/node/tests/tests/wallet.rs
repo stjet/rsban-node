@@ -999,3 +999,21 @@ fn send_race() {
         )
     }
 }
+
+#[test]
+fn password_race() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    std::thread::scope(|s| {
+        s.spawn(|| {
+            for i in 0..100 {
+                node1.wallets.rekey(&wallet_id, i.to_string()).unwrap();
+            }
+        });
+        s.spawn(|| {
+            // Password should always be valid, the rekey operation should be atomic.
+            assert!(node1.wallets.valid_password(&wallet_id).is_ok());
+        });
+    });
+}

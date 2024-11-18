@@ -8,8 +8,6 @@
 [daemon]
 [node]
 [main]
-[ffi]
-[C++ node]
 [rpc_messages]
 [rpc_server]
 [rpc_client]
@@ -24,7 +22,6 @@ folder "nullables"{
 [output_tracker]
 }
 
-[C++ node] --> [ffi]
 [main] --> [daemon]
 [daemon] --> [node]
 [daemon] --> [rpc_server]
@@ -39,7 +36,6 @@ folder "nullables"{
 [network] --> [core]
 [ledger] --> [store_lmdb]
 [store_lmdb] --> [core]
-[ffi] --> [node]
 [core] --> "nullables"
 
 @enduml

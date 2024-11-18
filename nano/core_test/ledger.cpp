@@ -14,46 +14,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (ledger, epoch_open_pending)
-{
-	nano::block_builder builder{};
-	nano::test::system system{ 1 };
-	auto & node1 = *system.nodes[0];
-	nano::work_pool pool{ nano::dev::network_params.network, std::numeric_limits<unsigned>::max () };
-	nano::keypair key1{};
-	auto epoch_open = builder.state ()
-					  .account (key1.pub)
-					  .previous (0)
-					  .representative (0)
-					  .balance (0)
-					  .link (node1.ledger.epoch_link (nano::epoch::epoch_1))
-					  .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-					  .work (*pool.generate (key1.pub))
-					  .build ();
-	auto block_status = node1.ledger.process (*node1.store.tx_begin_write (), epoch_open);
-	ASSERT_EQ (nano::block_status::gap_epoch_open_pending, block_status);
-	node1.block_processor.add (epoch_open);
-	// Waits for the block to get saved in the database
-	ASSERT_TIMELY_EQ (10s, 1, node1.unchecked.count ());
-	ASSERT_FALSE (node1.block_or_pruned_exists (epoch_open->hash ()));
-	// Open block should be inserted into unchecked
-	auto blocks = node1.unchecked.get (nano::hash_or_account (epoch_open->account_field ().value ()).hash);
-	ASSERT_EQ (blocks.size (), 1);
-	ASSERT_EQ (blocks[0].get_block ()->full_hash (), epoch_open->full_hash ());
-	// New block to process epoch open
-	auto send1 = builder.state ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - 100)
-				 .link (key1.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*pool.generate (nano::dev::genesis->hash ()))
-				 .build ();
-	node1.block_processor.add (send1);
-	ASSERT_TIMELY (10s, node1.block_or_pruned_exists (epoch_open->hash ()));
-}
-
 TEST (ledger, block_hash_account_conflict)
 {
 	nano::block_builder builder;

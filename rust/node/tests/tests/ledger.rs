@@ -1,9 +1,12 @@
 use rsnano_core::{
-    Amount, BlockEnum, KeyPair, SendBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
+    Amount, BlockEnum, BlockHash, Epoch, KeyPair, PublicKey, SendBlock, StateBlock, Vote, VoteCode,
+    VoteSource, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_network::ChannelId;
+use rsnano_node::block_processing::BlockSource;
 use std::{sync::Arc, time::Duration};
-use test_helpers::{assert_timely, System};
+use test_helpers::{assert_timely, assert_timely_eq, System};
 
 mod votes {
     use std::time::SystemTime;
@@ -215,4 +218,52 @@ mod votes {
         assert!(votes.contains_key(&DEV_GENESIS_PUB_KEY));
         assert_eq!(votes.get(&DEV_GENESIS_PUB_KEY).unwrap().hash, send2.hash());
     }
+}
+
+#[test]
+fn epoch_open_pending() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let key1 = KeyPair::new();
+    let epoch_open = BlockEnum::State(StateBlock::new(
+        key1.account(),
+        BlockHash::zero(),
+        PublicKey::zero(),
+        Amount::zero(),
+        node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(&key1),
+    ));
+    let status = node1.process(epoch_open.clone()).unwrap_err();
+    assert_eq!(status, BlockStatus::GapEpochOpenPending);
+    node1.block_processor.add(
+        epoch_open.clone().into(),
+        BlockSource::Live,
+        ChannelId::LOOPBACK,
+    );
+    // Waits for the block to get saved in the database
+    assert_timely_eq(Duration::from_secs(10), || node1.unchecked.len(), 1);
+    // Open block should be inserted into unchecked
+    let blocks = node1.unchecked.get(&epoch_open.account().into());
+    assert_eq!(blocks.len(), 1);
+    assert_eq!(
+        blocks[0].block.as_ref().unwrap().full_hash(),
+        epoch_open.full_hash()
+    );
+    // New block to process epoch open
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(100),
+        key1.account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    node1
+        .block_processor
+        .add(send1.into(), BlockSource::Live, ChannelId::LOOPBACK);
+    assert_timely(Duration::from_secs(10), || {
+        node1.block_exists(&epoch_open.hash())
+    });
 }

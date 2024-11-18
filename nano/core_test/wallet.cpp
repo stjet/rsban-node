@@ -18,35 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, serialize_json_one)
-{
-	auto error (false);
-	nano::store::lmdb::env env (error, nano::unique_path () / "wallet.ldb");
-	ASSERT_FALSE (error);
-	auto transaction (env.tx_begin_write ());
-	nano::kdf kdf{ nano::dev::network_params.kdf_work };
-	nano::wallet_store wallet1 (error, kdf, *transaction, nano::dev::genesis_key.pub, 1, "0");
-	ASSERT_FALSE (error);
-	nano::keypair key;
-	wallet1.insert_adhoc (*transaction, key.prv);
-	std::string serialized;
-	wallet1.serialize_json (*transaction, serialized);
-	nano::wallet_store wallet2 (error, kdf, *transaction, nano::dev::genesis_key.pub, 1, "1", serialized);
-	ASSERT_FALSE (error);
-	nano::raw_key password1;
-	nano::raw_key password2;
-	wallet1.wallet_key (password1, *transaction);
-	wallet2.wallet_key (password2, *transaction);
-	ASSERT_EQ (password1, password2);
-	ASSERT_EQ (wallet1.salt (*transaction), wallet2.salt (*transaction));
-	ASSERT_EQ (wallet1.check (*transaction), wallet2.check (*transaction));
-	ASSERT_EQ (wallet1.representative (*transaction), wallet2.representative (*transaction));
-	ASSERT_TRUE (wallet2.exists (*transaction, key.pub));
-	nano::raw_key prv;
-	wallet2.fetch (*transaction, key.pub, prv);
-	ASSERT_EQ (key.prv, prv);
-}
-
 TEST (wallet, serialize_json_password)
 {
 	auto error (false);

@@ -4,7 +4,10 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
-use rsnano_node::block_processing::BlockSource;
+use rsnano_node::{
+    block_processing::BlockSource,
+    config::{FrontiersConfirmationMode, NodeConfig},
+};
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely, assert_timely_eq, start_elections, System};
 
@@ -423,4 +426,102 @@ fn unchecked_epoch() {
         .get_account(&node1.ledger.read_txn(), &destination.account())
         .unwrap();
     assert_eq!(info.epoch, Epoch::Epoch1);
+}
+
+#[test]
+fn unchecked_epoch_invalid() {
+    let mut system = System::new();
+    let node1 = system
+        .build_node()
+        .config(NodeConfig {
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .finish();
+
+    let destination = KeyPair::new();
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(1000),
+        destination.account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    let open1 = BlockEnum::State(StateBlock::new(
+        destination.account(),
+        BlockHash::zero(),
+        destination.public_key(),
+        Amount::nano(1000),
+        send1.hash().into(),
+        &destination,
+        node1.work_generate_dev(&destination),
+    ));
+
+    // Epoch block with account own signature
+    let epoch1 = BlockEnum::State(StateBlock::new(
+        destination.account(),
+        open1.hash(),
+        destination.public_key(),
+        Amount::nano(1000),
+        node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
+        &destination,
+        node1.work_generate_dev(open1.hash()),
+    ));
+    // Pseudo epoch block (send subtype, destination - epoch link)
+    let epoch2 = BlockEnum::State(StateBlock::new(
+        destination.account(),
+        open1.hash(),
+        destination.public_key(),
+        Amount::nano(999),
+        node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
+        &destination,
+        node1.work_generate_dev(open1.hash()),
+    ));
+    node1.block_processor.add(
+        epoch1.clone().into(),
+        BlockSource::Live,
+        ChannelId::LOOPBACK,
+    );
+    node1.block_processor.add(
+        epoch2.clone().into(),
+        BlockSource::Live,
+        ChannelId::LOOPBACK,
+    );
+
+    // Waits for the last blocks to pass through block_processor and unchecked.put queues
+    assert_timely_eq(Duration::from_secs(10), || node1.unchecked.len(), 2);
+    node1
+        .block_processor
+        .add(send1.into(), BlockSource::Live, ChannelId::LOOPBACK);
+    node1
+        .block_processor
+        .add(open1.into(), BlockSource::Live, ChannelId::LOOPBACK);
+
+    // Waits for the last blocks to pass through block_processor and unchecked.put queues
+    assert_timely(Duration::from_secs(10), || {
+        node1
+            .ledger
+            .any()
+            .block_exists(&node1.ledger.read_txn(), &epoch2.hash())
+    });
+
+    let tx = node1.ledger.read_txn();
+    assert_eq!(node1.ledger.any().block_exists(&tx, &epoch1.hash()), false);
+    assert_eq!(node1.unchecked.len(), 0);
+    let info = node1
+        .ledger
+        .any()
+        .get_account(&tx, &destination.account())
+        .unwrap();
+    assert_eq!(info.epoch, Epoch::Epoch0);
+    let epoch2_store = node1.block(&epoch2.hash()).unwrap();
+    assert_eq!(
+        epoch2_store.sideband().unwrap().details.epoch,
+        Epoch::Epoch0
+    );
+    assert!(epoch2_store.is_send());
+    assert_eq!(epoch2_store.sideband().unwrap().details.is_epoch, false);
+    assert_eq!(epoch2_store.sideband().unwrap().details.is_receive, false);
 }

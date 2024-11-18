@@ -18,46 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, epoch_2_validation)
-{
-	nano::test::system system (1);
-	auto & node (*system.nodes[0]);
-	auto wallet_id = node.wallets.first_wallet_id ();
-
-	// Upgrade the genesis account to epoch 2
-	ASSERT_NE (nullptr, system.upgrade_genesis_epoch (node, nano::epoch::epoch_1));
-	ASSERT_NE (nullptr, system.upgrade_genesis_epoch (node, nano::epoch::epoch_2));
-
-	(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv, false);
-
-	// Test send and receive blocks
-	// An epoch 2 receive block should be generated with lower difficulty with high probability
-	auto tries = 0;
-	auto max_tries = 20;
-	auto amount = node.config->receive_minimum.number ();
-	while (++tries < max_tries)
-	{
-		auto send = node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, nano::dev::genesis_key.pub, amount, 1);
-		ASSERT_NE (nullptr, send);
-		ASSERT_EQ (nano::epoch::epoch_2, send->sideband ().details ().epoch ());
-		ASSERT_EQ (nano::epoch::epoch_0, send->sideband ().source_epoch ()); // Not used for send state blocks
-
-		auto receive = node.wallets.receive_action (wallet_id, send->hash (), nano::dev::genesis_key.pub, amount, send->destination (), 1);
-		ASSERT_NE (nullptr, receive);
-		if (nano::dev::network_params.work.difficulty (*receive) < node.network_params.work.get_base ())
-		{
-			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive), node.network_params.work.get_epoch_2_receive ());
-			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().details ().epoch ());
-			ASSERT_EQ (nano::epoch::epoch_2, receive->sideband ().source_epoch ());
-			break;
-		}
-	}
-	ASSERT_LT (tries, max_tries);
-
-	// Test a change block
-	ASSERT_NE (nullptr, node.wallets.change_action (wallet_id, nano::dev::genesis_key.pub, nano::keypair ().pub, 1));
-}
-
 // Receiving from an upgraded account uses the lower threshold and upgrades the receiving account
 TEST (wallet, epoch_2_receive_propagation)
 {

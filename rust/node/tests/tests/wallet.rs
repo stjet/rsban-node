@@ -1,12 +1,12 @@
 use rsnano_core::{
-    deterministic_key, Account, Amount, KeyDerivationFunction, KeyPair, PublicKey, RawKey,
-    WorkVersion, DEV_GENESIS_KEY,
+    deterministic_key, Account, Amount, BlockEnum, Epoch, KeyDerivationFunction, KeyPair,
+    PublicKey, RawKey, StateBlock, WorkVersion, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     unique_path,
     wallets::{WalletsError, WalletsExt},
-    DEV_NETWORK_PARAMS,
+    Node, DEV_NETWORK_PARAMS,
 };
 use rsnano_store_lmdb::{LmdbEnv, LmdbWalletStore};
 use std::{
@@ -1093,4 +1093,102 @@ fn change_seed() {
     node1.wallets.change_seed(wallet_id, &seed1, 0).unwrap();
     assert_eq!(node1.wallets.get_seed(wallet_id).unwrap(), seed1);
     assert!(node1.wallets.exists(&pub_key));
+}
+
+#[test]
+fn epoch_2_validation() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+
+    // Upgrade the genesis account to epoch 2
+    upgrade_genesis_epoch(&node, Epoch::Epoch1);
+    upgrade_genesis_epoch(&node, Epoch::Epoch2);
+
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+        .unwrap();
+
+    // Test send and receive blocks
+    // An epoch 2 receive block should be generated with lower difficulty with high probability
+    let mut tries = 0;
+    let max_tries = 20;
+    let amount = node.config.receive_minimum;
+    while tries < max_tries {
+        tries += 1;
+        let send = node
+            .wallets
+            .send_action2(
+                &wallet_id,
+                *DEV_GENESIS_ACCOUNT,
+                *DEV_GENESIS_ACCOUNT,
+                amount,
+                1,
+                true,
+                None,
+            )
+            .unwrap();
+        assert_eq!(send.sideband().unwrap().details.epoch, Epoch::Epoch2);
+        assert_eq!(send.sideband().unwrap().source_epoch, Epoch::Epoch0); // Not used for send state blocks
+
+        let receive = node
+            .wallets
+            .receive_action2(
+                &wallet_id,
+                send.hash(),
+                *DEV_GENESIS_PUB_KEY,
+                amount,
+                *DEV_GENESIS_ACCOUNT,
+                1,
+                true,
+            )
+            .unwrap()
+            .unwrap();
+        if DEV_NETWORK_PARAMS.work.difficulty_block(&receive) < DEV_NETWORK_PARAMS.work.base {
+            assert!(
+                DEV_NETWORK_PARAMS.work.difficulty_block(&receive)
+                    >= DEV_NETWORK_PARAMS.work.epoch_2_receive
+            );
+            assert_eq!(receive.sideband().unwrap().details.epoch, Epoch::Epoch2);
+            assert_eq!(receive.sideband().unwrap().source_epoch, Epoch::Epoch2);
+            break;
+        }
+    }
+    assert!(tries < max_tries);
+
+    // Test a change block
+    node.wallets
+        .change_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            *DEV_GENESIS_PUB_KEY,
+            1,
+            true,
+        )
+        .unwrap();
+}
+
+fn upgrade_genesis_epoch(node: &Node, epoch: Epoch) {
+    let mut tx = node.ledger.rw_txn();
+    let latest = node
+        .ledger
+        .any()
+        .account_head(&tx, &DEV_GENESIS_ACCOUNT)
+        .unwrap();
+    let balance = node
+        .ledger
+        .any()
+        .account_balance(&tx, &DEV_GENESIS_ACCOUNT)
+        .unwrap();
+
+    let mut epoch = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        latest,
+        *DEV_GENESIS_PUB_KEY,
+        balance,
+        node.ledger.epoch_link(epoch).unwrap(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(latest),
+    ));
+    node.ledger.process(&mut tx, &mut epoch).unwrap();
 }

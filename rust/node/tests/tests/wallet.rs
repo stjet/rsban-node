@@ -1,5 +1,6 @@
 use rsnano_core::{
-    Account, Amount, KeyDerivationFunction, KeyPair, PublicKey, RawKey, DEV_GENESIS_KEY,
+    Account, Amount, KeyDerivationFunction, KeyPair, PublicKey, RawKey, WorkVersion,
+    DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
@@ -12,7 +13,7 @@ use std::{
     collections::HashSet,
     path::PathBuf,
     sync::{Arc, Mutex},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use test_helpers::{assert_timely, System};
 
@@ -667,4 +668,35 @@ fn wallet_store_fail_import_corrupt() {
         .wallets
         .import_replace(wallet_id1, "", "1")
         .unwrap_err();
+}
+
+// Test work is precached when a key is inserted
+#[test]
+fn work() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    let start = Instant::now();
+    loop {
+        let work = node1.wallets.work_get(&wallet_id1, &DEV_GENESIS_PUB_KEY);
+        if DEV_NETWORK_PARAMS
+            .work
+            .difficulty(WorkVersion::Work1, &(*DEV_GENESIS_HASH).into(), work)
+            > DEV_NETWORK_PARAMS.work.threshold_base(WorkVersion::Work1)
+        {
+            break;
+        }
+        if start.elapsed() > Duration::from_secs(20) {
+            panic!("timeout");
+        }
+    }
 }

@@ -18,24 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-// Test work is precached when a key is inserted
-TEST (wallet, work)
-{
-	nano::test::system system (1);
-	auto node1 (system.nodes[0]);
-	auto wallet_id1 = node1->wallets.first_wallet_id ();
-	(void)node1->wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
-	(void)node1->wallets.insert_adhoc (wallet_id1, nano::dev::genesis_key.prv);
-	auto done (false);
-	system.deadline_set (20s);
-	while (!done)
-	{
-		auto work = node1->wallets.work_get (wallet_id1, nano::dev::genesis_key.pub);
-		done = nano::dev::network_params.work.difficulty (nano::dev::genesis->work_version (), nano::dev::genesis->hash (), work) >= system.nodes[0]->default_difficulty (nano::dev::genesis->work_version ());
-		ASSERT_NO_ERROR (system.poll ());
-	}
-}
-
 TEST (wallet, work_generate)
 {
 	nano::test::system system (1);

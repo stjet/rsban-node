@@ -712,7 +712,7 @@ fn work_generate() {
         .unwrap();
     let account1 = node1.wallets.get_accounts(1)[0];
     let key = KeyPair::new();
-    let block = node1
+    let _block = node1
         .wallets
         .send_action2(
             &wallet_id,
@@ -746,6 +746,70 @@ fn work_generate() {
         {
             break;
         }
+        if start.elapsed() > Duration::from_secs(10) {
+            panic!("timeout");
+        }
+    }
+}
+
+#[test]
+fn work_cache_delayed() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    let account1 = node1.wallets.get_accounts(1)[0];
+    let key = KeyPair::new();
+    let _block1 = node1
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key.account(),
+            Amount::raw(100),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    let block2 = node1
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key.account(),
+            Amount::raw(100),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_eq!(
+        node1
+            .wallets
+            .delayed_work
+            .lock()
+            .unwrap()
+            .get(&DEV_GENESIS_ACCOUNT)
+            .unwrap(),
+        &block2.hash().into()
+    );
+    let threshold = node1.network_params.work.threshold_base(WorkVersion::Work1);
+    let start = Instant::now();
+    loop {
+        let work1 = node1.wallets.work_get(&wallet_id, &account1.into());
+
+        if DEV_NETWORK_PARAMS
+            .work
+            .difficulty(WorkVersion::Work1, &block2.hash().into(), work1)
+            >= threshold
+        {
+            break;
+        }
+
         if start.elapsed() > Duration::from_secs(10) {
             panic!("timeout");
         }

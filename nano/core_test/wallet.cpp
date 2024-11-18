@@ -18,32 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, work_cache_delayed)
-{
-	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
-	auto wallet_id = node1.wallets.first_wallet_id ();
-	uint64_t work1;
-	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	auto account1{ system.account (0) };
-	nano::keypair key;
-	auto block1 (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, 100));
-	ASSERT_EQ (block1->hash (), node1.latest (nano::dev::genesis_key.pub));
-	auto block2 (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, 100));
-	ASSERT_EQ (block2->hash (), node1.latest (nano::dev::genesis_key.pub));
-	ASSERT_EQ (block2->hash (), node1.wallets.get_delayed_work (nano::dev::genesis_key.pub).as_block_hash ());
-	auto threshold (node1.default_difficulty (nano::work_version::work_1));
-	auto again (true);
-	system.deadline_set (10s);
-	while (again)
-	{
-		ASSERT_NO_ERROR (system.poll ());
-		work1 = node1.wallets.work_get (wallet_id, account1);
-		again = nano::dev::network_params.work.difficulty (nano::work_version::work_1, block2->hash (), work1) < threshold;
-	}
-	ASSERT_GE (nano::dev::network_params.work.difficulty (nano::work_version::work_1, block2->hash (), work1), threshold);
-}
-
 TEST (wallet, insert_locked)
 {
 	nano::test::system system (1);

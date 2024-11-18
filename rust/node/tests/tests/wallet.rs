@@ -4,7 +4,8 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
-    config::NodeFlags,
+    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
+    consensus::ActiveElectionsExt,
     unique_path,
     wallets::{WalletsError, WalletsExt},
     Node, DEV_NETWORK_PARAMS,
@@ -16,7 +17,7 @@ use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
-use test_helpers::{assert_timely, System};
+use test_helpers::{assert_timely, assert_timely_eq, System};
 
 #[test]
 fn no_special_keys_accounts() {
@@ -1379,6 +1380,86 @@ fn foreach_representative_deadlock() {
         })
     });
     assert!(set);
+}
+
+#[test]
+fn search_receivable() {
+    let mut system = System::new();
+    let node = system
+        .build_node()
+        .config(NodeConfig {
+            enable_voting: false,
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .flags(NodeFlags {
+            disable_search_pending: true,
+            ..Default::default()
+        })
+        .finish();
+
+    let wallet_id = node.wallets.wallet_ids()[0];
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+        .unwrap();
+
+    let send = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - node.config.receive_minimum,
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    node.process(send.clone()).unwrap();
+
+    // Pending search should start an election
+    assert_eq!(node.active.len(), 0);
+    node.wallets.search_receivable_wallet(wallet_id).unwrap();
+    let mut election = None;
+    assert_timely(Duration::from_secs(5), || {
+        match node.active.election(&send.qualified_root()) {
+            Some(e) => {
+                election = Some(e);
+                true
+            }
+            None => false,
+        }
+    });
+
+    // Erase the key so the confirmation does not trigger an automatic receive
+    node.wallets
+        .remove_key(&wallet_id, &DEV_GENESIS_PUB_KEY)
+        .unwrap();
+
+    // Now confirm the election
+    node.active.force_confirm(&election.unwrap());
+    assert_timely(Duration::from_secs(5), || {
+        node.block_confirmed(&send.hash()) && node.active.len() == 0
+    });
+
+    // Re-insert the key
+    node.wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+        .unwrap();
+
+    // Pending search should create the receive block
+    assert_eq!(node.ledger.block_count(), 2);
+    node.wallets.search_receivable_wallet(wallet_id).unwrap();
+    assert_timely_eq(
+        Duration::from_secs(3),
+        || node.balance(&DEV_GENESIS_ACCOUNT),
+        Amount::MAX,
+    );
+    let receive_hash = node
+        .ledger
+        .any()
+        .account_head(&node.ledger.read_txn(), &DEV_GENESIS_ACCOUNT)
+        .unwrap();
+    let receive = node.block(&receive_hash).unwrap();
+    assert_eq!(receive.sideband().unwrap().height, 3);
+    assert_eq!(receive.source().unwrap(), send.hash());
 }
 
 fn upgrade_genesis_epoch(node: &Node, epoch: Epoch) {

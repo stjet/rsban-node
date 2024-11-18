@@ -936,3 +936,36 @@ fn insert_deterministic_locked() {
         .unwrap_err();
     assert_eq!(err, WalletsError::WalletLocked);
 }
+
+#[test]
+fn no_work() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+        .unwrap();
+    let key2 = KeyPair::new();
+    let block = node1
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            Amount::MAX,
+            0,
+            false,
+            None,
+        )
+        .unwrap();
+    assert_ne!(block.work(), 0);
+    assert!(
+        DEV_NETWORK_PARAMS.work.difficulty_block(&block)
+            >= DEV_NETWORK_PARAMS
+                .work
+                .threshold(&block.sideband().unwrap().details)
+    );
+    let cached_work = node1.wallets.work_get(&wallet_id, &DEV_GENESIS_PUB_KEY);
+    assert_eq!(cached_work, 0);
+}

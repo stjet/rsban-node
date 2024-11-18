@@ -18,21 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, no_work)
-{
-	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
-	auto wallet_id = node1.wallets.first_wallet_id ();
-	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv, false);
-	nano::keypair key2;
-	auto block (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, std::numeric_limits<nano::uint128_t>::max (), false));
-	ASSERT_NE (nullptr, block);
-	ASSERT_NE (0, block->block_work ());
-	ASSERT_GE (nano::dev::network_params.work.difficulty (*block), nano::dev::network_params.work.threshold (block->work_version (), block->sideband ().details ()));
-	auto cached_work = node1.wallets.work_get (wallet_id, nano::dev::genesis_key.pub);
-	ASSERT_EQ (0, cached_work);
-}
-
 TEST (wallet, send_race)
 {
 	nano::test::system system (1);

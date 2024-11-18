@@ -917,3 +917,22 @@ fn reseed() {
     let key3 = wallet.deterministic_insert(&mut tx);
     assert_eq!(key1, key3);
 }
+
+#[test]
+fn insert_deterministic_locked() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    {
+        node1.wallets.rekey(&wallet_id, "1").unwrap();
+        assert_eq!(
+            node1.wallets.enter_password(wallet_id, "").unwrap_err(),
+            WalletsError::InvalidPassword
+        );
+    }
+    let err = node1
+        .wallets
+        .deterministic_insert2(&wallet_id, true)
+        .unwrap_err();
+    assert_eq!(err, WalletsError::WalletLocked);
+}

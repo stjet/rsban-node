@@ -18,25 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, insert_deterministic_locked)
-{
-	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
-	auto wallet_id{ node1.wallets.first_wallet_id () };
-	ASSERT_EQ (nano::wallets_error::none, node1.wallets.rekey (wallet_id, "1"));
-	{
-		bool valid = false;
-		(void)node1.wallets.valid_password (wallet_id, valid);
-		ASSERT_TRUE (valid);
-		ASSERT_EQ (nano::wallets_error::invalid_password, node1.wallets.enter_password (wallet_id, ""));
-		(void)node1.wallets.valid_password (wallet_id, valid);
-		ASSERT_FALSE (valid);
-	}
-	nano::public_key key;
-	ASSERT_EQ (nano::wallets_error::wallet_locked, node1.wallets.deterministic_insert (wallet_id, true, key));
-	ASSERT_TRUE (key.is_zero ());
-}
-
 TEST (wallet, no_work)
 {
 	nano::test::system system (1);

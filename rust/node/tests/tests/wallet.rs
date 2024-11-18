@@ -398,3 +398,19 @@ fn rekey() {
     wallet.set_password(&mut tx, RawKey::from(2));
     assert!(wallet.rekey(&mut tx, "2").is_err());
 }
+
+#[test]
+fn hash_password() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    let wallet =
+        LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
+    let hash1 = wallet.derive_key(&tx, "");
+    let hash2 = wallet.derive_key(&tx, "");
+    assert_eq!(hash1, hash2);
+    let hash3 = wallet.derive_key(&tx, "a");
+    assert_ne!(hash1, hash3);
+}

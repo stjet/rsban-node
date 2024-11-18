@@ -1,5 +1,8 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder, BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock, PublicKey, Root, SendBlock, Signature, StateBlock, UncheckedInfo, Vote, VoteSource, VoteWithWeightInfo, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO
+    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder,
+    BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
+    PublicKey, Root, SendBlock, Signature, StateBlock, UncheckedInfo, Vote, VoteSource,
+    VoteWithWeightInfo, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -3660,7 +3663,10 @@ fn block_processor_signatures() {
 
     send5.set_block_signature(&Signature::new());
     // Invalid signature to unchecked
-    node.unchecked.put(send5.previous().into(), UncheckedInfo::new(Arc::new(send5.clone())));
+    node.unchecked.put(
+        send5.previous().into(),
+        UncheckedInfo::new(Arc::new(send5.clone())),
+    );
 
     // Create a valid receive block
     let receive1 = BlockBuilder::state()
@@ -3706,15 +3712,12 @@ fn block_processor_signatures() {
         node.block(&receive2.hash()).is_some()
     });
 
-    assert_timely_eq(Duration::from_secs(5), || {
-        node.unchecked.len()
-    }, 0);
+    assert_timely_eq(Duration::from_secs(5), || node.unchecked.len(), 0);
 
     assert!(node.block(&receive3.hash()).is_none()); // Invalid signer
     assert!(node.block(&send4.hash()).is_none()); // Invalid signature via process_active
     assert!(node.block(&send5.hash()).is_none()); // Invalid signature via unchecked
 }
-
 
 #[test]
 fn block_confirm() {

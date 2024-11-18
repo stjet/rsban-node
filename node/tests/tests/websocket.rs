@@ -1,15 +1,21 @@
 use core::panic;
 use futures_util::{SinkExt, StreamExt};
-use rsnano_core::{Account, Amount, BlockEnum, JsonBlock, KeyPair, Networks, SendBlock, StateBlock, Vote, VoteCode, DEV_GENESIS_KEY};
+use rsnano_core::{
+    Account, Amount, BlockEnum, JsonBlock, KeyPair, Networks, SendBlock, StateBlock, Vote,
+    VoteCode, DEV_GENESIS_KEY,
+};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-use rsnano_messages::{Message, Publish, };
+use rsnano_messages::{Message, Publish};
 use rsnano_node::{
-    bootstrap::{BootstrapInitiatorExt, BootstrapStarted}, config::{NetworkConstants, NodeConfig}, websocket::{vote_received, BlockConfirmed, OutgoingMessageEnvelope, TelemetryReceived, Topic, VoteReceived, WebsocketConfig}, Node
+    bootstrap::{BootstrapInitiatorExt, BootstrapStarted},
+    config::{NetworkConstants, NodeConfig},
+    websocket::{
+        vote_received, BlockConfirmed, OutgoingMessageEnvelope, TelemetryReceived, Topic,
+        VoteReceived, WebsocketConfig,
+    },
+    Node,
 };
-use std::{
-    sync::Arc,
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely, get_available_port, make_fake_channel, System};
 use tokio::{net::TcpStream, task::spawn_blocking, time::timeout};
 use tokio_tungstenite::{connect_async, tungstenite, MaybeTlsStream, WebSocketStream};
@@ -80,7 +86,7 @@ fn stopped_election() {
         let mut ws_stream = connect_websocket(&node1).await;
         ws_stream
             .send(tungstenite::Message::Text(
-           r#"{"action": "subscribe", "topic": "stopped_election", "ack": true}"#.to_string(),
+                r#"{"action": "subscribe", "topic": "stopped_election", "ack": true}"#.to_string(),
             ))
             .await
             .unwrap();
@@ -262,7 +268,7 @@ fn confirmation_options() {
             .unwrap();
         //await ack
         ws_stream.next().await.unwrap().unwrap();
-        
+
         // Confirm a state block for an in-wallet account
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
         let key = KeyPair::new();
@@ -331,11 +337,11 @@ fn confirmation_options() {
             .unwrap();
         //await ack
         ws_stream.next().await.unwrap().unwrap();
-        
+
         // Confirm a legacy block
         // When filtering options are enabled, legacy blocks are always filtered
         balance = balance - send_amount;
-        let send = BlockEnum::LegacySend(SendBlock::new(&previous, &key.public_key().as_account(), &balance, &DEV_GENESIS_KEY.private_key(), 
+        let send = BlockEnum::LegacySend(SendBlock::new(&previous, &key.public_key().as_account(), &balance, &DEV_GENESIS_KEY.private_key(),
                 node1.work_generate_dev(previous)));
         node1.process_active(send);
         timeout(Duration::from_secs(1), ws_stream.next())
@@ -345,7 +351,7 @@ fn confirmation_options() {
 }
 
 #[test]
-fn confirmation_options_votes(){
+fn confirmation_options_votes() {
     let mut system = System::new();
     let node1 = create_node_with_websocket(&mut system);
     node1.runtime.block_on(async {
@@ -358,7 +364,7 @@ fn confirmation_options_votes(){
             .unwrap();
         //await ack
         ws_stream.next().await.unwrap().unwrap();
-        
+
         // Confirm a state block for an in-wallet account
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
         let key = KeyPair::new();
@@ -398,7 +404,7 @@ fn confirmation_options_votes(){
 }
 
 #[test]
-fn confirmation_options_sideband(){
+fn confirmation_options_sideband() {
     let mut system = System::new();
     let node1 = create_node_with_websocket(&mut system);
     node1.runtime.block_on(async {
@@ -448,7 +454,7 @@ fn confirmation_options_sideband(){
 
 #[test]
 // Tests updating options of block confirmations
-fn confirmation_options_update(){
+fn confirmation_options_update() {
     let mut system = System::new();
     let node1 = create_node_with_websocket(&mut system);
     node1.runtime.block_on(async {
@@ -461,7 +467,7 @@ fn confirmation_options_update(){
             .unwrap();
         //await ack
         ws_stream.next().await.unwrap().unwrap();
-        
+
 		// Now update filter with an account and wait for a response
         ws_stream
             .send(tungstenite::Message::Text(
@@ -471,7 +477,7 @@ fn confirmation_options_update(){
             .unwrap();
         //await ack
         ws_stream.next().await.unwrap().unwrap();
-        
+
         // Confirm a block
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
         let key = KeyPair::new();
@@ -514,7 +520,7 @@ fn confirmation_options_update(){
             node1.work_generate_dev(previous),
         ));
         node1.process_active(send2);
-        
+
         timeout(Duration::from_secs(1), ws_stream.next())
             .await
             .unwrap_err();
@@ -523,7 +529,7 @@ fn confirmation_options_update(){
 
 #[test]
 // Subscribes to votes, sends a block and awaits websocket notification of a vote arrival
-fn vote(){
+fn vote() {
     let mut system = System::new();
     let node1 = create_node_with_websocket(&mut system);
     node1.runtime.block_on(async {
@@ -537,7 +543,7 @@ fn vote(){
         //await ack
         ws_stream.next().await.unwrap().unwrap();
 
-	    // Quick-confirm a block
+        // Quick-confirm a block
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
         let key = KeyPair::new();
         let previous = *DEV_GENESIS_HASH;
@@ -563,7 +569,7 @@ fn vote(){
 
 #[test]
 // Tests vote subscription options - vote type
-fn vote_options_type(){
+fn vote_options_type() {
     let mut system = System::new();
     let node1 = create_node_with_websocket(&mut system);
     node1.runtime.block_on(async {
@@ -594,13 +600,11 @@ fn vote_options_type(){
         let message: VoteReceived  = serde_json::from_value(response_json.message.unwrap()).unwrap();
         assert_eq!(message.vote_type, "replay");
     });
-
 }
 
 #[test]
 // Tests vote subscription options - list of representatives
-fn vote_options_representatives(){
-
+fn vote_options_representatives() {
     let mut system = System::new();
     let node1 = create_node_with_websocket(&mut system);
     node1.runtime.block_on(async {
@@ -613,7 +617,7 @@ fn vote_options_representatives(){
             .unwrap();
         //await ack
         ws_stream.next().await.unwrap().unwrap();
-        
+
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
 	    // Quick-confirm a block
         let key = KeyPair::new();
@@ -648,7 +652,7 @@ fn vote_options_representatives(){
             .unwrap();
         //await ack
         ws_stream.next().await.unwrap().unwrap();
-        
+
         let send = BlockEnum::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             previous,
@@ -671,61 +675,72 @@ fn vote_options_representatives(){
 
 #[test]
 #[ignore = "Disabled, because distributed work generation was temporarily removed"]
-fn work(){
-}
+fn work() {}
 
 #[test]
 // Test client subscribing to notifications for bootstrap
-fn bootstrap(){
+fn bootstrap() {
     let mut system = System::new();
     let node1 = create_node_with_websocket(&mut system);
     node1.runtime.block_on(async {
         let mut ws_stream = connect_websocket(&node1).await;
         ws_stream
             .send(tungstenite::Message::Text(
-                r#"{"action": "subscribe", "topic": "bootstrap", "ack": true}"#.to_string()
+                r#"{"action": "subscribe", "topic": "bootstrap", "ack": true}"#.to_string(),
             ))
             .await
             .unwrap();
         //await ack
         ws_stream.next().await.unwrap().unwrap();
-        
+
         // Start bootstrap attempt
         let node_l = node1.clone();
-        spawn_blocking(move ||{
-            node_l.bootstrap_initiator.bootstrap(true, "123abc".to_owned(), u32::MAX, Account::zero());
-        }).await.unwrap();
+        spawn_blocking(move || {
+            node_l.bootstrap_initiator.bootstrap(
+                true,
+                "123abc".to_owned(),
+                u32::MAX,
+                Account::zero(),
+            );
+        })
+        .await
+        .unwrap();
 
-        assert_timely(Duration::from_secs(5), || node1.bootstrap_initiator.current_legacy_attempt().is_none());
+        assert_timely(Duration::from_secs(5), || {
+            node1.bootstrap_initiator.current_legacy_attempt().is_none()
+        });
 
         let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
             panic!("not a text message");
         };
 
-	    // Wait for the bootstrap notification
+        // Wait for the bootstrap notification
         let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
 
         // Check the bootstrap notification message
-        let message: BootstrapStarted = serde_json::from_value(response_json.message.unwrap()).unwrap();
+        let message: BootstrapStarted =
+            serde_json::from_value(response_json.message.unwrap()).unwrap();
         assert_eq!(message.id, "123abc");
         assert_eq!(message.reason, "started");
         assert_eq!(message.mode, "legacy");
-        
-	    // Wait for bootstrap finish
-        assert_timely(Duration::from_secs(5), ||!node1.bootstrap_initiator.in_progress());
+
+        // Wait for bootstrap finish
+        assert_timely(Duration::from_secs(5), || {
+            !node1.bootstrap_initiator.in_progress()
+        });
     });
 }
 
 #[test]
 // Tests sending keepalive
-fn ws_keepalive(){
+fn ws_keepalive() {
     let mut system = System::new();
     let node1 = create_node_with_websocket(&mut system);
     node1.runtime.block_on(async {
         let mut ws_stream = connect_websocket(&node1).await;
         ws_stream
             .send(tungstenite::Message::Text(
-                r#"{"action": "ping"}"#.to_string()
+                r#"{"action": "ping"}"#.to_string(),
             ))
             .await
             .unwrap();
@@ -736,7 +751,7 @@ fn ws_keepalive(){
 
 #[test]
 // Tests sending telemetry
-fn telemetry(){
+fn telemetry() {
     let mut system = System::new();
     let node1 = create_node_with_websocket(&mut system);
     let node2 = create_node_with_websocket(&mut system);
@@ -744,7 +759,7 @@ fn telemetry(){
         let mut ws_stream = connect_websocket(&node1).await;
         ws_stream
             .send(tungstenite::Message::Text(
-                r#"{"action": "subscribe", "topic": "telemetry", "ack": true}"#.to_string()
+                r#"{"action": "subscribe", "topic": "telemetry", "ack": true}"#.to_string(),
             ))
             .await
             .unwrap();
@@ -759,31 +774,46 @@ fn telemetry(){
         assert_eq!(response_json.topic, Some(Topic::Telemetry));
 
         // Check the bootstrap notification message
-        let message: TelemetryReceived = serde_json::from_value(response_json.message.unwrap()).unwrap();
-        assert_eq!(message.address, node2.tcp_listener.local_address().ip().to_string());
-        assert_eq!(message.port, node2.tcp_listener.local_address().port().to_string());
-        
-	    // Other node should have no subscribers
-        assert_eq!(node2.websocket.as_ref().unwrap().subscriber_count(Topic::Telemetry), 0);
+        let message: TelemetryReceived =
+            serde_json::from_value(response_json.message.unwrap()).unwrap();
+        assert_eq!(
+            message.address,
+            node2.tcp_listener.local_address().ip().to_string()
+        );
+        assert_eq!(
+            message.port,
+            node2.tcp_listener.local_address().port().to_string()
+        );
+
+        // Other node should have no subscribers
+        assert_eq!(
+            node2
+                .websocket
+                .as_ref()
+                .unwrap()
+                .subscriber_count(Topic::Telemetry),
+            0
+        );
     });
 }
 
 #[test]
-fn new_unconfirmed_block(){
+fn new_unconfirmed_block() {
     let mut system = System::new();
     let node1 = create_node_with_websocket(&mut system);
     node1.runtime.block_on(async {
         let mut ws_stream = connect_websocket(&node1).await;
         ws_stream
             .send(tungstenite::Message::Text(
-                r#"{"action": "subscribe", "topic": "new_unconfirmed_block", "ack": true}"#.to_string(),
+                r#"{"action": "subscribe", "topic": "new_unconfirmed_block", "ack": true}"#
+                    .to_string(),
             ))
             .await
             .unwrap();
         //await ack
         ws_stream.next().await.unwrap().unwrap();
 
-	    // Process a new block
+        // Process a new block
         let send = BlockEnum::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
@@ -801,13 +831,14 @@ fn new_unconfirmed_block(){
 
         let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
         assert_eq!(response_json.topic, Some(Topic::NewUnconfirmedBlock));
-        
-	    // Check the response
+
+        // Check the response
         let msg = response_json.message.unwrap();
         let block: JsonBlock = serde_json::from_value(msg).unwrap();
-        let JsonBlock::State(_state) = block else {panic!("not a state block")};
+        let JsonBlock::State(_state) = block else {
+            panic!("not a state block")
+        };
     });
-
 }
 
 fn create_node_with_websocket(system: &mut System) -> Arc<Node> {

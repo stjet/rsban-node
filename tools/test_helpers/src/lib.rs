@@ -84,11 +84,13 @@ impl System {
         disconnected: bool,
     ) -> Arc<Node> {
         let node = self.new_node(config, flags);
-        
+
         for block in &mut self.initialization_blocks {
-            node.ledger.process(&mut node.store.tx_begin_write(), block).unwrap();
+            node.ledger
+                .process(&mut node.store.tx_begin_write(), block)
+                .unwrap();
         }
-        
+
         let wallet_id = WalletId::random();
         node.wallets.create(wallet_id);
         node.start();

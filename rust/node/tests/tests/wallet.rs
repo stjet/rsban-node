@@ -691,11 +691,62 @@ fn work() {
         if DEV_NETWORK_PARAMS
             .work
             .difficulty(WorkVersion::Work1, &(*DEV_GENESIS_HASH).into(), work)
-            > DEV_NETWORK_PARAMS.work.threshold_base(WorkVersion::Work1)
+            >= DEV_NETWORK_PARAMS.work.threshold_base(WorkVersion::Work1)
         {
             break;
         }
         if start.elapsed() > Duration::from_secs(20) {
+            panic!("timeout");
+        }
+    }
+}
+
+#[test]
+fn work_generate() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    let account1 = node1.wallets.get_accounts(1)[0];
+    let key = KeyPair::new();
+    let block = node1
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key.account(),
+            Amount::raw(100),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_timely(Duration::from_secs(10), || {
+        let tx = node1.ledger.read_txn();
+        node1
+            .ledger
+            .any()
+            .account_balance(&tx, &DEV_GENESIS_ACCOUNT)
+            .unwrap()
+            != Amount::MAX
+    });
+
+    let start = Instant::now();
+    loop {
+        let tx = node1.ledger.read_txn();
+        let work1 = node1.wallets.work_get(&wallet_id, &account1.into());
+        let root = node1.ledger.latest_root(&tx, &account1);
+        if DEV_NETWORK_PARAMS
+            .work
+            .difficulty(WorkVersion::Work1, &root, work1)
+            >= DEV_NETWORK_PARAMS.work.threshold_base(WorkVersion::Work1)
+        {
+            break;
+        }
+        if start.elapsed() > Duration::from_secs(10) {
             panic!("timeout");
         }
     }

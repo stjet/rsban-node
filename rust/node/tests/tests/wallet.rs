@@ -1017,3 +1017,40 @@ fn password_race() {
         });
     });
 }
+
+#[test]
+fn password_race_corrupted_seed() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    node1.wallets.rekey(&wallet_id, "4567").unwrap();
+    let seed = node1.wallets.get_seed(wallet_id).unwrap();
+    assert!(node1.wallets.attempt_password(&wallet_id, "4567").is_ok());
+    std::thread::scope(|s| {
+        s.spawn(|| {
+            for _ in 0..10 {
+                let _ = node1.wallets.rekey(&wallet_id, "0000");
+            }
+        });
+        s.spawn(|| {
+            for _ in 0..10 {
+                let _ = node1.wallets.rekey(&wallet_id, "1234");
+            }
+        });
+        s.spawn(|| {
+            for _ in 0..10 {
+                let _ = node1.wallets.attempt_password(&wallet_id, "1234");
+            }
+        });
+    });
+
+    if node1.wallets.attempt_password(&wallet_id, "1234").is_ok() {
+        assert_eq!(node1.wallets.get_seed(wallet_id).unwrap(), seed);
+    } else if node1.wallets.attempt_password(&wallet_id, "0000").is_ok() {
+        assert_eq!(node1.wallets.get_seed(wallet_id).unwrap(), seed);
+    } else if node1.wallets.attempt_password(&wallet_id, "4567").is_ok() {
+        assert_eq!(node1.wallets.get_seed(wallet_id).unwrap(), seed);
+    } else {
+        unreachable!()
+    }
+}

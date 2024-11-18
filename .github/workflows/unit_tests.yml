@@ -38,7 +38,7 @@ jobs:
           submodules: "recursive"
 
       - name: Prepare
-        run: sudo -E ci/prepare/linux/prepare.sh
+        run: sudo -E scripts/ci/prepare/linux/prepare.sh
 
       - name: Build Tests
         id: build

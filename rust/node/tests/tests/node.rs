@@ -3204,7 +3204,7 @@ fn epoch_conflict_confirm() {
 fn node_receive_quorum() {
     let mut system = System::new();
     let node1 = system.make_node();
-    
+
     let wallet_id = node1.wallets.wallet_ids()[0];
     let key = KeyPair::new();
     let previous = node1.latest(&DEV_GENESIS_ACCOUNT);
@@ -3258,5 +3258,77 @@ fn node_receive_quorum() {
         Duration::from_secs(10),
         || !node1.balance(&key.account()).is_zero(),
         "balance is still zero",
+    );
+}
+
+#[test]
+fn auto_bootstrap() {
+    let mut system = System::new();
+    let mut config = System::default_config();
+    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut node_flags = NodeFlags::default();
+    node_flags.disable_bootstrap_bulk_push_client = true;
+    node_flags.disable_lazy_bootstrap = true;
+
+    let node0 = system
+        .build_node()
+        .config(config.clone())
+        .flags(node_flags.clone())
+        .finish();
+    let wallet_id = node0.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    node0
+        .wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .unwrap();
+
+    let send1 = node0
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            node0.config.receive_minimum,
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node0.balance(&key2.account()) == node0.config.receive_minimum,
+        "balance not updated",
+    );
+
+    let node1 = system.make_node();
+
+    establish_tcp(&node1, &node0);
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node1.balance(&key2.account()) == node0.config.receive_minimum,
+        "balance not synced",
+    );
+
+    assert!(node1.block_exists(&send1.hash()));
+
+    // Wait for block receive
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.ledger.block_count() == 3,
+        "block count not 3",
+    );
+
+    // Confirmation for all blocks
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.ledger.cemented_count() == 3,
+        "cemented count not 3",
     );
 }

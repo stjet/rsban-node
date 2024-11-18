@@ -882,3 +882,38 @@ fn deterministic_keys() {
     assert_eq!(wallet.exists(&tx, &key8), false);
     assert_eq!(wallet.exists(&tx, &key9.public_key()), true);
 }
+
+#[test]
+fn reseed() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    let wallet = LmdbWalletStore::new(
+        0,
+        kdf.clone(),
+        &mut tx,
+        &DEV_GENESIS_PUB_KEY,
+        &PathBuf::from("0"),
+    )
+    .unwrap();
+
+    let seed1 = RawKey::from(1);
+    let seed2 = RawKey::from(2);
+    wallet.set_seed(&mut tx, &seed1);
+    let seed3 = wallet.seed(&tx);
+    assert_eq!(seed3, seed1);
+    let key1 = wallet.deterministic_insert(&mut tx);
+    wallet.set_seed(&mut tx, &seed2);
+    assert_eq!(wallet.deterministic_index_get(&tx), 0);
+    let seed4 = wallet.seed(&tx);
+    assert_eq!(seed4, seed2);
+    let key2 = wallet.deterministic_insert(&mut tx);
+    assert_ne!(key2, key1);
+    wallet.set_seed(&mut tx, &seed1);
+    let seed5 = wallet.seed(&tx);
+    assert_eq!(seed5, seed1);
+    let key3 = wallet.deterministic_insert(&mut tx);
+    assert_eq!(key1, key3);
+}

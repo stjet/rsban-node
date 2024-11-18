@@ -18,39 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, reseed)
-{
-	bool init;
-	nano::store::lmdb::env env (init, nano::unique_path () / "wallet.ldb");
-	ASSERT_FALSE (init);
-	auto transaction (env.tx_begin_write ());
-	nano::kdf kdf{ nano::dev::network_params.kdf_work };
-	nano::wallet_store wallet (init, kdf, *transaction, nano::dev::genesis_key.pub, 1, "0");
-	nano::raw_key seed1;
-	seed1 = 1;
-	nano::raw_key seed2;
-	seed2 = 2;
-	wallet.seed_set (*transaction, seed1);
-	nano::raw_key seed3;
-	wallet.seed (seed3, *transaction);
-	ASSERT_EQ (seed1, seed3);
-	auto key1 (wallet.deterministic_insert (*transaction));
-	ASSERT_EQ (1, wallet.deterministic_index_get (*transaction));
-	wallet.seed_set (*transaction, seed2);
-	ASSERT_EQ (0, wallet.deterministic_index_get (*transaction));
-	nano::raw_key seed4;
-	wallet.seed (seed4, *transaction);
-	ASSERT_EQ (seed2, seed4);
-	auto key2 (wallet.deterministic_insert (*transaction));
-	ASSERT_NE (key1, key2);
-	wallet.seed_set (*transaction, seed1);
-	nano::raw_key seed5;
-	wallet.seed (seed5, *transaction);
-	ASSERT_EQ (seed1, seed5);
-	auto key3 (wallet.deterministic_insert (*transaction));
-	ASSERT_EQ (key1, key3);
-}
-
 TEST (wallet, insert_deterministic_locked)
 {
 	nano::test::system system (1);

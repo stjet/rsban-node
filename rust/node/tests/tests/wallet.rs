@@ -10,8 +10,10 @@ use std::{
     borrow::Borrow,
     collections::HashSet,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
+    time::Duration,
 };
-use test_helpers::System;
+use test_helpers::{assert_timely, System};
 
 #[test]
 fn no_special_keys_accounts() {
@@ -218,4 +220,34 @@ fn spend_all_one() {
     let block = node.ledger.any().get_block(&tx, &info2.head).unwrap();
     assert_eq!(block.previous(), *DEV_GENESIS_HASH);
     assert_eq!(block.balance(), Amount::zero());
+}
+
+#[test]
+fn send_async() {
+    let mut system = System::new();
+    let node = system.make_node();
+    node.insert_into_wallet(&DEV_GENESIS_KEY);
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    let block = Arc::new(Mutex::new(None));
+    let block2 = block.clone();
+    node.wallets
+        .send_async(
+            wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            Amount::MAX,
+            Box::new(move |b| {
+                *block2.lock().unwrap() = Some(b);
+            }),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    assert_timely(Duration::from_secs(10), || {
+        node.balance(&DEV_GENESIS_ACCOUNT).is_zero()
+    });
+    assert!(block.lock().unwrap().is_some());
 }

@@ -1,11 +1,16 @@
-use rsnano_core::{KeyDerivationFunction, KeyPair, PublicKey, RawKey};
-use rsnano_ledger::DEV_GENESIS_PUB_KEY;
-use rsnano_node::{unique_path, DEV_NETWORK_PARAMS};
+use rsnano_core::{Amount, KeyDerivationFunction, KeyPair, PublicKey, RawKey, DEV_GENESIS_KEY};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
+use rsnano_node::{
+    unique_path,
+    wallets::{WalletsError, WalletsExt},
+    DEV_NETWORK_PARAMS,
+};
 use rsnano_store_lmdb::{LmdbEnv, LmdbWalletStore};
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
 };
+use test_helpers::System;
 
 #[test]
 fn no_special_keys_accounts() {
@@ -146,4 +151,39 @@ fn two_item_iteration() {
     assert!(prvs.contains(&key1.private_key()));
     assert!(pubs.contains(&key2.public_key()));
     assert!(prvs.contains(&key2.private_key()));
+}
+
+#[test]
+fn insufficient_spend_one() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let key1 = KeyPair::new();
+    node.insert_into_wallet(&DEV_GENESIS_KEY);
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let _block = node
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key1.account(),
+            Amount::raw(500),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    let error = node
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key1.account(),
+            Amount::MAX,
+            0,
+            true,
+            None,
+        )
+        .unwrap_err();
+    assert_eq!(error, WalletsError::Generic);
 }

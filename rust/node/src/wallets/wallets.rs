@@ -40,7 +40,7 @@ use std::{
 };
 use tracing::{info, warn};
 
-#[derive(FromPrimitive, Debug, Serialize, Deserialize)]
+#[derive(FromPrimitive, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum WalletsError {
     None,
     Generic,

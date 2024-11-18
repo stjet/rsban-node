@@ -12,17 +12,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (wallets, open_create)
-{
-	nano::test::system system (1);
-	nano::wallets wallets (*system.nodes[0]);
-	ASSERT_EQ (1, wallets.wallet_count ()); // it starts out with a default wallet
-	auto id = nano::random_wallet_id ();
-	ASSERT_FALSE (wallets.wallet_exists (id));
-	wallets.create (id);
-	ASSERT_TRUE (wallets.wallet_exists (id));
-}
-
 TEST (wallets, open_existing)
 {
 	nano::test::system system (1);

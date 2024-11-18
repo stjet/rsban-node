@@ -18,6 +18,7 @@ use rsnano_node::{
     wallets::WalletsExt,
 };
 use std::{
+    collections::HashMap,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -3851,4 +3852,218 @@ fn dependency_graph_frontier() {
         || node2.ledger.cemented_count(),
         node2.ledger.block_count(),
     );
+}
+
+/// Confirm a complex dependency graph starting from the first block
+#[test]
+fn dependency_graph() {
+    let mut system = System::new();
+    let node = system
+        .build_node()
+        .config(NodeConfig {
+            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
+            ..System::default_config()
+        })
+        .finish();
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+    let key3 = KeyPair::new();
+
+    // Send to key1
+    let gen_send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(1),
+        key1.account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+
+    // Receive from genesis
+    let key1_open = BlockEnum::State(StateBlock::new(
+        key1.account(),
+        BlockHash::zero(),
+        key1.public_key(),
+        Amount::raw(1),
+        gen_send1.hash().into(),
+        &key1,
+        node.work_generate_dev(&key1),
+    ));
+    // Send to genesis
+    let key1_send1 = BlockEnum::State(StateBlock::new(
+        key1.account(),
+        key1_open.hash(),
+        key1.public_key(),
+        Amount::zero(),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key1,
+        node.work_generate_dev(key1_open.hash()),
+    ));
+    // Receive from key1
+    let gen_receive = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        gen_send1.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX,
+        key1_send1.hash().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(gen_send1.hash()),
+    ));
+    // Send to key2
+    let gen_send2 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        gen_receive.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::raw(2),
+        key2.account().into(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(gen_receive.hash()),
+    ));
+    // Receive from genesis
+    let key2_open = BlockEnum::State(StateBlock::new(
+        key2.account(),
+        BlockHash::zero(),
+        key2.public_key(),
+        Amount::raw(2),
+        gen_send2.hash().into(),
+        &key2,
+        node.work_generate_dev(&key2),
+    ));
+    // Send to key3
+    let key2_send1 = BlockEnum::State(StateBlock::new(
+        key2.account(),
+        key2_open.hash(),
+        key2.public_key(),
+        Amount::raw(1),
+        key3.account().into(),
+        &key2,
+        node.work_generate_dev(key2_open.hash()),
+    ));
+    // Receive from key2
+    let key3_open = BlockEnum::State(StateBlock::new(
+        key3.account(),
+        BlockHash::zero(),
+        key3.public_key(),
+        Amount::raw(1),
+        key2_send1.hash().into(),
+        &key3,
+        node.work_generate_dev(&key3),
+    ));
+    // Send to key1
+    let key2_send2 = BlockEnum::State(StateBlock::new(
+        key2.account(),
+        key2_send1.hash(),
+        key2.public_key(),
+        Amount::zero(),
+        key1.account().into(),
+        &key2,
+        node.work_generate_dev(key2_send1.hash()),
+    ));
+    // Receive from key2
+    let key1_receive = BlockEnum::State(StateBlock::new(
+        key1.account(),
+        key1_send1.hash(),
+        key1.public_key(),
+        Amount::raw(1),
+        key2_send2.hash().into(),
+        &key1,
+        node.work_generate_dev(key1_send1.hash()),
+    ));
+    // Send to key3
+    let key1_send2 = BlockEnum::State(StateBlock::new(
+        key1.account(),
+        key1_receive.hash(),
+        key1.public_key(),
+        Amount::zero(),
+        key3.account().into(),
+        &key1,
+        node.work_generate_dev(key1_receive.hash()),
+    ));
+    // Receive from key1
+    let key3_receive = BlockEnum::State(StateBlock::new(
+        key3.account(),
+        key3_open.hash(),
+        key3.public_key(),
+        Amount::raw(2),
+        key1_send2.hash().into(),
+        &key3,
+        node.work_generate_dev(key3_open.hash()),
+    ));
+    // Upgrade key3
+    let key3_epoch = BlockEnum::State(StateBlock::new(
+        key3.account(),
+        key3_receive.hash(),
+        key3.public_key(),
+        Amount::raw(2),
+        node.ledger.epoch_link(Epoch::Epoch1).unwrap(),
+        &DEV_GENESIS_KEY,
+        node.work_generate_dev(key3_receive.hash()),
+    ));
+
+    for node in &system.nodes {
+        node.process_multi(&[
+            gen_send1.clone(),
+            key1_open.clone(),
+            key1_send1.clone(),
+            gen_receive.clone(),
+            gen_send2.clone(),
+            key2_open.clone(),
+            key2_send1.clone(),
+            key3_open.clone(),
+            key2_send2.clone(),
+            key1_receive.clone(),
+            key1_send2.clone(),
+            key3_receive.clone(),
+            key3_epoch.clone(),
+        ]);
+    }
+
+    // Hash -> Ancestors
+    let dependency_graph: HashMap<BlockHash, Vec<BlockHash>> = [
+        (key1_open.hash(), vec![gen_send1.hash()]),
+        (key1_send1.hash(), vec![key1_open.hash()]),
+        (gen_receive.hash(), vec![gen_send1.hash(), key1_open.hash()]),
+        (gen_send2.hash(), vec![gen_receive.hash()]),
+        (key2_open.hash(), vec![gen_send2.hash()]),
+        (key2_send1.hash(), vec![key2_open.hash()]),
+        (key3_open.hash(), vec![key2_send1.hash()]),
+        (key2_send2.hash(), vec![key2_send1.hash()]),
+        (
+            key1_receive.hash(),
+            vec![key1_send1.hash(), key2_send2.hash()],
+        ),
+        (key1_send2.hash(), vec![key1_send1.hash()]),
+        (
+            key3_receive.hash(),
+            vec![key3_open.hash(), key1_send2.hash()],
+        ),
+        (key3_epoch.hash(), vec![key3_receive.hash()]),
+    ]
+    .into();
+    assert_eq!(node.ledger.block_count() - 2, dependency_graph.len() as u64);
+
+    // Start an election for the first block of the dependency graph, and ensure all blocks are eventually confirmed
+    node.insert_into_wallet(&DEV_GENESIS_KEY);
+    start_election(&node, &gen_send1.hash());
+    assert_timely(Duration::from_secs(15), || {
+        // Not many blocks should be active simultaneously
+        assert!(node.active.len() < 6);
+
+        // Ensure that active blocks have their ancestors confirmed
+        let error = dependency_graph.iter().any(|entry| {
+            if node.vote_router.active(entry.0) {
+                for ancestor in entry.1 {
+                    if !node.block_confirmed(ancestor) {
+                        return true;
+                    }
+                }
+            }
+            false
+        });
+        assert!(!error);
+        error || node.ledger.cemented_count() == node.ledger.block_count()
+    });
+    assert_eq!(node.ledger.cemented_count(), node.ledger.block_count());
+    assert_timely(Duration::from_secs(5), || node.active.len() == 0);
 }

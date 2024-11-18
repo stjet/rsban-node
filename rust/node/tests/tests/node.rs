@@ -3459,3 +3459,129 @@ fn fork_open_flip() {
     assert!(node2.block_exists(&&open1.hash()));
     assert!(!node2.block_exists(&open2.hash()));
 }
+
+#[test]
+fn unconfirmed_send() {
+    let mut system = System::new();
+
+    let node1 = system.make_node();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    let key2 = KeyPair::new();
+    let node2 = system.make_node();
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .unwrap();
+
+    // firstly, send two units from node1 to node2 and expect that both nodes see the block as confirmed
+    // (node1 will start an election for it, vote on it and node2 gets synced up)
+    let send1 = node1
+        .wallets
+        .send_action2(
+            &wallet_id1,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            Amount::raw(2 * *MXRB_RATIO),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.block_confirmed(&send1.hash()),
+        "send1 not confirmed on node1",
+    );
+
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node2.block_confirmed(&send1.hash()),
+        "send1 not confirmed on node2",
+    );
+
+    // wait until receive1 (auto-receive created by wallet) is cemented
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            let tx = node2.store.tx_begin_read();
+            node2
+                .store
+                .confirmation_height
+                .get(&tx, &key2.account())
+                .unwrap()
+                .height
+        },
+        1,
+    );
+
+    assert_eq!(node2.balance(&key2.account()), Amount::raw(2 * *MXRB_RATIO));
+
+    let recv1 = {
+        let tx = node2.store.tx_begin_read();
+        node2
+            .ledger
+            .find_receive_block_by_send_hash(&tx, &key2.account(), &send1.hash())
+            .unwrap()
+    };
+
+    // create send2 to send from node2 to node1 and save it to node2's ledger without triggering an election (node1 does not hear about it)
+    let send2 = BlockEnum::State(StateBlock::new(
+        key2.account(),
+        recv1.hash(),
+        *DEV_GENESIS_PUB_KEY,
+        Amount::raw(*MXRB_RATIO),
+        (*DEV_GENESIS_ACCOUNT).into(),
+        &key2,
+        system.work.generate_dev2(recv1.hash().into()).unwrap(),
+    ));
+    assert_eq!(
+        BlockStatus::Progress,
+        node2.process_local(send2.clone()).unwrap()
+    );
+
+    let send3 = node2
+        .wallets
+        .send_action2(
+            &wallet_id2,
+            key2.account(),
+            *DEV_GENESIS_ACCOUNT,
+            Amount::raw(*MXRB_RATIO),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node2.block_confirmed(&send2.hash()),
+        "send2 not confirmed on node2",
+    );
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.block_confirmed(&send2.hash()),
+        "send2 not confirmed on node1",
+    );
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node2.block_confirmed(&send3.hash()),
+        "send3 not confirmed on node2",
+    );
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.block_confirmed(&send3.hash()),
+        "send3 not confirmed on node1",
+    );
+    assert_timely_eq(Duration::from_secs(5), || node2.ledger.cemented_count(), 7);
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || node1.balance(&DEV_GENESIS_ACCOUNT),
+        Amount::MAX,
+    );
+}

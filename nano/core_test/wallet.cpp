@@ -18,33 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, change_seed)
-{
-	nano::test::system system (1);
-	auto & node1 (*system.nodes[0]);
-	auto wallet_id = node1.wallets.first_wallet_id ();
-	node1.wallets.enter_initial_password (wallet_id);
-	nano::raw_key seed1;
-	seed1 = 1;
-	nano::public_key pub;
-	uint32_t index (4);
-	auto prv = nano::deterministic_key (seed1, index);
-	pub = nano::pub_key (prv);
-	(void)node1.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv, false);
-	auto block (node1.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, pub, 100));
-	ASSERT_NE (nullptr, block);
-	ASSERT_TIMELY (5s, nano::test::exists (*system.nodes[0], { block }));
-	{
-		nano::account first_account;
-		uint32_t restored_count;
-		ASSERT_EQ (nano::wallets_error::none, node1.wallets.change_seed (wallet_id, seed1, 0, first_account, restored_count));
-		nano::raw_key seed2;
-		(void)node1.wallets.get_seed (wallet_id, seed2);
-		ASSERT_EQ (seed1, seed2);
-	}
-	ASSERT_TRUE (node1.wallets.exists (pub));
-}
-
 TEST (wallet, epoch_2_validation)
 {
 	nano::test::system system (1);

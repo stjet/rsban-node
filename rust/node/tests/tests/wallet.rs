@@ -1,6 +1,6 @@
 use rsnano_core::{
-    Account, Amount, KeyDerivationFunction, KeyPair, PublicKey, RawKey, WorkVersion,
-    DEV_GENESIS_KEY,
+    deterministic_key, Account, Amount, KeyDerivationFunction, KeyPair, PublicKey, RawKey,
+    WorkVersion, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
@@ -1053,4 +1053,44 @@ fn password_race_corrupted_seed() {
     } else {
         unreachable!()
     }
+}
+
+#[test]
+fn change_seed() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    let wallet = node1
+        .wallets
+        .mutex
+        .lock()
+        .unwrap()
+        .get(&wallet_id)
+        .unwrap()
+        .clone();
+    node1.wallets.enter_initial_password(&wallet);
+    let seed1 = RawKey::from(1);
+    let index = 4;
+    let prv = deterministic_key(&seed1, index);
+    let pub_key = PublicKey::try_from(&prv).unwrap();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+        .unwrap();
+    let block = node1
+        .wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            pub_key.into(),
+            Amount::raw(100),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_timely(Duration::from_secs(5), || node1.block_exists(&block.hash()));
+    node1.wallets.change_seed(wallet_id, &seed1, 0).unwrap();
+    assert_eq!(node1.wallets.get_seed(wallet_id).unwrap(), seed1);
+    assert!(node1.wallets.exists(&pub_key));
 }

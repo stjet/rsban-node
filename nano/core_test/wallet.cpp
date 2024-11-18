@@ -18,59 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-// Opening an upgraded account uses the lower threshold
-TEST (wallet, epoch_2_receive_unopened)
-{
-	// Ensure the lower receive work is used when receiving
-	auto tries = 0;
-	auto const max_tries = 20;
-	while (++tries < max_tries)
-	{
-		nano::test::system system;
-		nano::node_flags node_flags;
-		node_flags.set_disable_request_loop (true);
-		auto & node (*system.add_node (node_flags));
-		auto wallet_id = node.wallets.first_wallet_id ();
-
-		// Upgrade the genesis account to epoch 1
-		auto epoch1 = system.upgrade_genesis_epoch (node, nano::epoch::epoch_1);
-		ASSERT_NE (nullptr, epoch1);
-
-		nano::keypair key;
-		nano::state_block_builder builder;
-
-		// Send
-		(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv, false);
-		auto amount = node.config->receive_minimum.number ();
-		auto send1 = node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, amount, 1);
-
-		// Upgrade unopened account to epoch_2
-		auto epoch2_unopened = builder
-							   .account (key.pub)
-							   .previous (0)
-							   .representative (0)
-							   .balance (0)
-							   .link (node.network_params.ledger.epochs.link (nano::epoch::epoch_2))
-							   .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-							   .work (*system.work.generate (key.pub, node.network_params.work.get_epoch_2 ()))
-							   .build ();
-		ASSERT_EQ (nano::block_status::progress, node.process (epoch2_unopened));
-
-		(void)node.wallets.insert_adhoc (wallet_id, key.prv, false);
-
-		auto receive1 = node.wallets.receive_action (wallet_id, send1->hash (), key.pub, amount, send1->destination (), 1);
-		ASSERT_NE (nullptr, receive1);
-		if (nano::dev::network_params.work.difficulty (*receive1) < node.network_params.work.get_base ())
-		{
-			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive1), node.network_params.work.get_epoch_2_receive ());
-			ASSERT_EQ (nano::epoch::epoch_2, node.ledger.version (*node.store.tx_begin_read (), receive1->hash ()));
-			ASSERT_EQ (nano::epoch::epoch_1, receive1->sideband ().source_epoch ());
-			break;
-		}
-	}
-	ASSERT_LT (tries, max_tries);
-}
-
 /**
  * This test checks that wallets::foreach_representative can be used recursively
  */

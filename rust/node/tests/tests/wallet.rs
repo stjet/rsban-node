@@ -1,6 +1,6 @@
 use rsnano_core::{
-    deterministic_key, Account, Amount, BlockEnum, Epoch, KeyDerivationFunction, KeyPair,
-    PublicKey, RawKey, StateBlock, WorkVersion, DEV_GENESIS_KEY,
+    deterministic_key, Account, Amount, BlockEnum, BlockHash, Epoch, KeyDerivationFunction,
+    KeyPair, PublicKey, RawKey, StateBlock, WorkVersion, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
@@ -1260,6 +1260,95 @@ fn epoch_2_receive_propagation() {
             let tx = node.ledger.read_txn();
             assert_eq!(node.ledger.version(&tx, &receive2.hash()), Epoch::Epoch2);
             assert_eq!(receive2.sideband().unwrap().source_epoch, Epoch::Epoch2);
+            break;
+        }
+    }
+    assert!(tries < max_tries);
+}
+
+/// Opening an upgraded account uses the lower threshold
+#[test]
+fn epoch_2_receive_unopened() {
+    // Ensure the lower receive work is used when receiving
+    let mut tries = 0;
+    let max_tries = 20;
+    while tries < max_tries {
+        tries += 1;
+        let mut system = System::new();
+        let node = system
+            .build_node()
+            .flags(NodeFlags {
+                disable_request_loop: true,
+                ..Default::default()
+            })
+            .finish();
+        let wallet_id = node.wallets.wallet_ids()[0];
+
+        // Upgrade the genesis account to epoch 1
+        upgrade_genesis_epoch(&node, Epoch::Epoch1);
+
+        let key = KeyPair::new();
+
+        // Send
+        node.wallets
+            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+            .unwrap();
+        let amount = node.config.receive_minimum;
+        let send1 = node
+            .wallets
+            .send_action2(
+                &wallet_id,
+                *DEV_GENESIS_ACCOUNT,
+                key.account(),
+                amount,
+                1,
+                true,
+                None,
+            )
+            .unwrap();
+
+        // Upgrade unopened account to epoch_2
+        let epoch2_unopened = BlockEnum::State(StateBlock::new(
+            key.account(),
+            BlockHash::zero(),
+            PublicKey::zero(),
+            Amount::zero(),
+            *node
+                .network_params
+                .ledger
+                .epochs
+                .link(Epoch::Epoch2)
+                .unwrap(),
+            &DEV_GENESIS_KEY,
+            node.work_generate_dev(&key),
+        ));
+        node.process(epoch2_unopened).unwrap();
+
+        node.wallets
+            .insert_adhoc2(&wallet_id, &key.private_key(), false)
+            .unwrap();
+
+        let receive1 = node
+            .wallets
+            .receive_action2(
+                &wallet_id,
+                send1.hash(),
+                key.public_key(),
+                amount,
+                key.account(),
+                1,
+                true,
+            )
+            .unwrap()
+            .unwrap();
+        if DEV_NETWORK_PARAMS.work.difficulty_block(&receive1) < DEV_NETWORK_PARAMS.work.base {
+            assert!(
+                DEV_NETWORK_PARAMS.work.difficulty_block(&receive1)
+                    >= DEV_NETWORK_PARAMS.work.epoch_2_receive
+            );
+            let tx = node.ledger.read_txn();
+            assert_eq!(node.ledger.version(&tx, &receive1.hash()), Epoch::Epoch2);
+            assert_eq!(receive1.sideband().unwrap().source_epoch, Epoch::Epoch1);
             break;
         }
     }

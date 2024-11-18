@@ -585,3 +585,39 @@ fn serialize_json_password() {
     let prv = wallet2.fetch(&tx, &key.public_key()).unwrap();
     assert_eq!(prv, key.private_key());
 }
+
+#[test]
+fn wallet_store_move() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    let wallet1 = LmdbWalletStore::new(
+        0,
+        kdf.clone(),
+        &mut tx,
+        &DEV_GENESIS_PUB_KEY,
+        &PathBuf::from("0"),
+    )
+    .unwrap();
+    let key = KeyPair::new();
+    wallet1.insert_adhoc(&mut tx, &key.private_key());
+
+    let wallet2 = LmdbWalletStore::new(
+        0,
+        kdf.clone(),
+        &mut tx,
+        &DEV_GENESIS_PUB_KEY,
+        &PathBuf::from("1"),
+    )
+    .unwrap();
+    let key2 = KeyPair::new();
+    wallet2.insert_adhoc(&mut tx, &key2.private_key());
+    assert_eq!(wallet1.exists(&tx, &key2.public_key()), false);
+    wallet1
+        .move_keys(&mut tx, &wallet2, &[key2.public_key()])
+        .unwrap();
+    assert_eq!(wallet1.exists(&tx, &key2.public_key()), true);
+    assert_eq!(wallet2.exists(&tx, &key2.public_key()), false);
+}

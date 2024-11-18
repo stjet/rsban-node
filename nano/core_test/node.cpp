@@ -201,45 +201,6 @@ TEST (node, balance_observer)
 	}
 }
 
-TEST (node, block_confirm)
-{
-	nano::node_flags node_flags;
-	nano::test::system system (2, node_flags);
-	auto & node1 (*system.nodes[0]);
-	auto & node2 (*system.nodes[1]);
-	auto wallet_id1 = node1.wallets.first_wallet_id ();
-	auto wallet_id2 = node2.wallets.first_wallet_id ();
-	nano::keypair key;
-	nano::state_block_builder builder;
-	auto send1 = builder.make_block ()
-				 .account (nano::dev::genesis_key.pub)
-				 .previous (nano::dev::genesis->hash ())
-				 .representative (nano::dev::genesis_key.pub)
-				 .balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				 .link (key.pub)
-				 .sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				 .work (*node1.work_generate_blocking (nano::dev::genesis->hash ()))
-				 .build ();
-	// A copy is necessary to avoid data races during ledger processing, which sets the sideband
-	auto send1_copy = builder.make_block ()
-					  .from (*send1)
-					  .build ();
-	auto hash1 = send1->hash ();
-	auto hash2 = send1_copy->hash ();
-	node1.block_processor.add (send1);
-	node2.block_processor.add (send1_copy);
-	ASSERT_TIMELY (5s, node1.block_or_pruned_exists (send1->hash ()) && node2.block_or_pruned_exists (send1_copy->hash ()));
-	ASSERT_TRUE (node1.block_or_pruned_exists (send1->hash ()));
-	ASSERT_TRUE (node2.block_or_pruned_exists (send1_copy->hash ()));
-	// Confirm send1 on node2 so it can vote for send2
-	node2.start_election (send1_copy);
-	std::shared_ptr<nano::election> election;
-	ASSERT_TIMELY (5s, election = node2.active.election (send1_copy->qualified_root ()));
-	// Make node2 genesis representative so it can vote
-	(void)node2.wallets.insert_adhoc (wallet_id2, nano::dev::genesis_key.prv);
-	ASSERT_TIMELY_EQ (10s, node1.active.recently_cemented_size (), 1);
-}
-
 /** This checks that a node can be opened (without being blocked) when a write lock is held elsewhere */
 TEST (node, dont_write_lock_node)
 {

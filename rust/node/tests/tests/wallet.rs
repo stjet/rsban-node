@@ -491,3 +491,31 @@ fn representative() {
     wallet.insert_adhoc(&mut tx, &key.private_key());
     assert_eq!(wallet.exists(&tx, &wallet.representative(&tx)), true);
 }
+
+#[test]
+fn serialize_json_empty() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    let wallet1 = LmdbWalletStore::new(
+        0,
+        kdf.clone(),
+        &mut tx,
+        &DEV_GENESIS_PUB_KEY,
+        &PathBuf::from("0"),
+    )
+    .unwrap();
+    let serialized = wallet1.serialize_json(&tx);
+    let wallet2 =
+        LmdbWalletStore::new_from_json(0, kdf, &mut tx, &PathBuf::from("1"), &serialized).unwrap();
+    let password1 = wallet1.wallet_key(&tx);
+    let password2 = wallet2.wallet_key(&tx);
+    assert_eq!(password1, password2);
+    assert_eq!(wallet1.salt(&tx), wallet2.salt(&tx));
+    assert_eq!(wallet1.check(&tx), wallet2.check(&tx));
+    assert_eq!(wallet1.representative(&tx), wallet2.representative(&tx));
+    assert!(wallet1.begin(&tx).is_end());
+    assert!(wallet2.begin(&tx).is_end());
+}

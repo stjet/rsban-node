@@ -18,16 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet_store, fail_import_corrupt)
-{
-	nano::test::system system (1);
-	auto node1 = system.nodes[0];
-	auto wallet_id1 = node1->wallets.first_wallet_id ();
-	std::string json;
-	auto error (node1->wallets.import_replace (wallet_id1, json, "1"));
-	ASSERT_TRUE (error);
-}
-
 // Test work is precached when a key is inserted
 TEST (wallet, work)
 {

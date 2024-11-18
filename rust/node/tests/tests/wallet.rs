@@ -657,3 +657,14 @@ fn wallet_store_fail_import_bad_password() {
         .import_replace(wallet_id2, &json, "1")
         .unwrap_err();
 }
+
+#[test]
+fn wallet_store_fail_import_corrupt() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    node1
+        .wallets
+        .import_replace(wallet_id1, "", "1")
+        .unwrap_err();
+}

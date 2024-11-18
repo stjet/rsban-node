@@ -2,8 +2,7 @@ add_executable(
   core_test
   entry.cpp
   ledger.cpp
-  node.cpp
-  wallets.cpp)
+  node.cpp)
 
 target_compile_definitions(
   core_test PRIVATE -DTAG_VERSION_STRING=${TAG_VERSION_STRING}

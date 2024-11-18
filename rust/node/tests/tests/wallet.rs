@@ -288,3 +288,27 @@ fn spend() {
         .unwrap();
     assert_eq!(node.balance(&DEV_GENESIS_ACCOUNT), Amount::zero());
 }
+
+#[test]
+fn partial_spend() {
+    let mut system = System::new();
+    let node = system.make_node();
+    node.insert_into_wallet(&DEV_GENESIS_KEY);
+    let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            Amount::raw(500),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_eq!(
+        node.balance(&DEV_GENESIS_ACCOUNT),
+        Amount::MAX - Amount::raw(500)
+    );
+}

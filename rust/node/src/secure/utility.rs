@@ -33,7 +33,7 @@ pub fn working_path_for(network: Networks) -> Option<PathBuf> {
 }
 
 pub fn unique_path() -> Option<PathBuf> {
-    unique_path_for(NetworkConstants::active_network())
+    unique_path_for(Networks::NanoDevNetwork)
 }
 
 pub fn unique_path_for(network: Networks) -> Option<PathBuf> {

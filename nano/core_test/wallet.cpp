@@ -18,41 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, two_item_iteration)
-{
-	bool init;
-	nano::store::lmdb::env env (init, nano::unique_path () / "wallet.ldb");
-	ASSERT_FALSE (init);
-	nano::keypair key1;
-	nano::keypair key2;
-	ASSERT_NE (key1.pub, key2.pub);
-	std::unordered_set<nano::public_key> pubs;
-	std::unordered_set<nano::raw_key> prvs;
-	nano::kdf kdf{ nano::dev::network_params.kdf_work };
-	{
-		auto transaction (env.tx_begin_write ());
-		nano::wallet_store wallet (init, kdf, *transaction, nano::dev::genesis_key.pub, 1, "0");
-		ASSERT_FALSE (init);
-		wallet.insert_adhoc (*transaction, key1.prv);
-		wallet.insert_adhoc (*transaction, key2.prv);
-		for (auto i (wallet.begin (*transaction)), j (wallet.end ()); i != j; ++i)
-		{
-			pubs.insert (i->first);
-			nano::raw_key password;
-			wallet.wallet_key (password, *transaction);
-			nano::raw_key key;
-			key.decrypt (nano::wallet_value (i->second).key, password, (i->first).owords[0].number ());
-			prvs.insert (key);
-		}
-	}
-	ASSERT_EQ (2, pubs.size ());
-	ASSERT_EQ (2, prvs.size ());
-	ASSERT_NE (pubs.end (), pubs.find (key1.pub));
-	ASSERT_NE (prvs.end (), prvs.find (key1.prv));
-	ASSERT_NE (pubs.end (), pubs.find (key2.pub));
-	ASSERT_NE (prvs.end (), prvs.find (key2.prv));
-}
-
 TEST (wallet, insufficient_spend_one)
 {
 	nano::test::system system (1);

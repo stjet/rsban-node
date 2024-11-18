@@ -2,7 +2,10 @@ use rsnano_core::{KeyDerivationFunction, KeyPair, PublicKey, RawKey};
 use rsnano_ledger::DEV_GENESIS_PUB_KEY;
 use rsnano_node::{unique_path, DEV_NETWORK_PARAMS};
 use rsnano_store_lmdb::{LmdbEnv, LmdbWalletStore};
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
 #[test]
 fn no_special_keys_accounts() {
@@ -108,4 +111,39 @@ fn one_item_iteration() {
         assert_eq!(key, key1.private_key());
         it.next();
     }
+}
+
+#[test]
+fn two_item_iteration() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+    let mut pubs = HashSet::new();
+    let mut prvs = HashSet::new();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    {
+        let mut tx = env.tx_begin_write();
+        let wallet =
+            LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0"))
+                .unwrap();
+        wallet.insert_adhoc(&mut tx, &key1.private_key());
+        wallet.insert_adhoc(&mut tx, &key2.private_key());
+        let mut it = wallet.begin(&tx);
+        while let Some((k, v)) = it.current() {
+            pubs.insert(*k);
+            let password = wallet.wallet_key(&tx);
+            let key = v.key.decrypt(&password, &k.initialization_vector());
+            prvs.insert(key);
+            it.next();
+        }
+    }
+    assert_eq!(pubs.len(), 2);
+    assert_eq!(prvs.len(), 2);
+    assert!(pubs.contains(&key1.public_key()));
+    assert!(prvs.contains(&key1.private_key()));
+    assert!(pubs.contains(&key2.public_key()));
+    assert!(prvs.contains(&key2.private_key()));
 }

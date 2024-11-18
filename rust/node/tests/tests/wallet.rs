@@ -969,3 +969,33 @@ fn no_work() {
     let cached_work = node1.wallets.work_get(&wallet_id, &DEV_GENESIS_PUB_KEY);
     assert_eq!(cached_work, 0);
 }
+
+#[test]
+fn send_race() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    let key2 = KeyPair::new();
+    for i in 1..60 {
+        node1
+            .wallets
+            .send_action2(
+                &wallet_id,
+                *DEV_GENESIS_ACCOUNT,
+                key2.account(),
+                Amount::nano(1000),
+                0,
+                true,
+                None,
+            )
+            .unwrap();
+        assert_eq!(
+            node1.balance(&DEV_GENESIS_ACCOUNT),
+            Amount::MAX - Amount::nano(1000) * i
+        )
+    }
+}

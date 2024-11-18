@@ -1,6 +1,6 @@
 use rsnano_core::{
-    Account, Amount, BlockEnum, BlockHash, Epoch, KeyPair, PublicKey, SendBlock, StateBlock, Vote,
-    VoteCode, VoteSource, DEV_GENESIS_KEY,
+    Account, Amount, BlockEnum, BlockHash, Epoch, KeyPair, PublicKey, SendBlock, Signature,
+    StateBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
@@ -524,4 +524,58 @@ fn unchecked_epoch_invalid() {
     assert!(epoch2_store.is_send());
     assert_eq!(epoch2_store.sideband().unwrap().details.is_epoch, false);
     assert_eq!(epoch2_store.sideband().unwrap().details.is_receive, false);
+}
+
+#[test]
+fn unchecked_open() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let destination = KeyPair::new();
+    let send1 = BlockEnum::State(StateBlock::new(
+        *DEV_GENESIS_ACCOUNT,
+        *DEV_GENESIS_HASH,
+        *DEV_GENESIS_PUB_KEY,
+        Amount::MAX - Amount::nano(1000),
+        destination.account().into(),
+        &DEV_GENESIS_KEY,
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
+    ));
+    let open1 = BlockEnum::State(StateBlock::new(
+        destination.account(),
+        BlockHash::zero(),
+        destination.public_key(),
+        Amount::nano(1000),
+        send1.hash().into(),
+        &destination,
+        node1.work_generate_dev(&destination),
+    ));
+    // Invalid signature for open block
+    let mut open2 = BlockEnum::State(StateBlock::new(
+        destination.account(),
+        BlockHash::zero(),
+        destination.public_key(),
+        Amount::nano(1000),
+        send1.hash().into(),
+        &destination,
+        node1.work_generate_dev(&destination),
+    ));
+    open2.set_block_signature(&Signature::from_bytes([1; 64]));
+
+    // Insert open2 in to the queue before open1
+    node1
+        .block_processor
+        .add(open2.into(), BlockSource::Live, ChannelId::LOOPBACK);
+    node1
+        .block_processor
+        .add(open1.clone().into(), BlockSource::Live, ChannelId::LOOPBACK);
+
+    // Waits for the last blocks to pass through block_processor and unchecked.put queues
+    assert_timely_eq(Duration::from_secs(5), || node1.unchecked.len(), 1);
+    // When open1 existists in unchecked, we know open2 has been processed.
+    node1
+        .block_processor
+        .add(send1.into(), BlockSource::Live, ChannelId::LOOPBACK);
+    // Waits for the send1 block to pass through block_processor and unchecked.put queues
+    assert_timely(Duration::from_secs(5), || node1.block_exists(&open1.hash()));
+    assert_eq!(node1.unchecked.len(), 0);
 }

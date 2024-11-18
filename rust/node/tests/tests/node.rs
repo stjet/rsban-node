@@ -3199,3 +3199,130 @@ fn epoch_conflict_confirm() {
         node0.blocks_confirmed(&[change.clone(), epoch_open.clone()])
     });
 }
+
+#[test]
+fn fork_open_flip() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+
+    let key1 = KeyPair::new();
+    let rep1 = KeyPair::new();
+    let rep2 = KeyPair::new();
+
+    // send 1 raw from genesis to key1 on both node1 and node2
+    let send1 = BlockEnum::LegacySend(SendBlock::new(
+        &DEV_GENESIS_HASH,
+        &key1.account(),
+        &(Amount::MAX - Amount::raw(1)),
+        &DEV_GENESIS_KEY.private_key(),
+        system
+            .work
+            .generate_dev2((*DEV_GENESIS_HASH).into())
+            .unwrap(),
+    ));
+    node1.process_active(send1.clone());
+
+    // We should be keeping this block
+    let open1 = BlockEnum::LegacyOpen(OpenBlock::new(
+        send1.hash(),
+        rep1.public_key(),
+        key1.account(),
+        &key1.private_key(),
+        system.work.generate_dev2(key1.public_key().into()).unwrap(),
+    ));
+
+    // create a fork of block open1, this block will lose the election
+    let open2 = BlockEnum::LegacyOpen(OpenBlock::new(
+        send1.hash(),
+        rep2.public_key(),
+        key1.account(),
+        &key1.private_key(),
+        system.work.generate_dev2(key1.public_key().into()).unwrap(),
+    ));
+    assert_ne!(open1.hash(), open2.hash());
+
+    // give block open1 to node1, manually trigger an election for open1 and ensure it is in the ledger
+    node1.process_active(open1.clone());
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.block_exists(&open1.hash()),
+        "open1 not found on node1",
+    );
+    node1
+        .election_schedulers
+        .manual
+        .push(Arc::new(open1.clone()), None);
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.active.election(&open1.qualified_root()).is_some(),
+        "election for open1 not found",
+    );
+    let election = node1.active.election(&open1.qualified_root()).unwrap();
+    election.transition_active();
+
+    // create node2, with blocks send1 and open2 pre-initialised in the ledger,
+    // so that block open1 cannot possibly get in the ledger before open2 via background sync
+    system.initialization_blocks.push(send1.clone());
+    system.initialization_blocks.push(open2.clone());
+    let node2 = system.make_node();
+    system.initialization_blocks.clear();
+
+    // ensure open2 is in node2 ledger (and therefore has sideband) and manually trigger an election for open2
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node2.block_exists(&open2.hash()),
+        "open2 not found on node2",
+    );
+    node2
+        .election_schedulers
+        .manual
+        .push(Arc::new(open2.clone()), None);
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node2.active.election(&open2.qualified_root()).is_some(),
+        "election for open2 not found",
+    );
+    let election2 = node2.active.election(&open2.qualified_root()).unwrap();
+    election2.transition_active();
+
+    assert_timely_eq(Duration::from_secs(5), || node1.active.len(), 2);
+    assert_timely_eq(Duration::from_secs(5), || node2.active.len(), 2);
+
+    // allow node1 to vote and wait for open1 to be confirmed on node1
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.block_confirmed(&open1.hash()),
+        "open1 not confirmed on node1",
+    );
+
+    // Notify both nodes of both blocks, both nodes will become aware that a fork exists
+    node1.process_active(open2.clone());
+    node2.process_active(open1.clone());
+
+    assert_timely_eq(Duration::from_secs(5), || election.vote_count(), 2); // one more than expected due to elections having dummy votes
+
+    // Node2 should eventually settle on open1
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node2.block_exists(&open1.hash()),
+        "open1 not found on node2",
+    );
+    assert_timely_msg(
+        Duration::from_secs(5),
+        || node1.block_confirmed(&open1.hash()),
+        "open1 not confirmed on node1",
+    );
+    let election_status = election.mutex.lock().unwrap().status.clone();
+    assert_eq!(open1.hash(), election_status.winner.unwrap().hash());
+    assert_eq!(Amount::MAX - Amount::raw(1), election_status.tally);
+
+    // check the correct blocks are in the ledgers
+    assert!(node1.block_exists(&open1.hash()));
+    assert!(node2.block_exists(&&open1.hash()));
+    assert!(!node2.block_exists(&open2.hash()));
+}

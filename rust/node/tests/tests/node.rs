@@ -10,11 +10,7 @@ use rsnano_ledger::{
 use rsnano_messages::{ConfirmAck, Message, Publish};
 use rsnano_network::{ChannelId, DropPolicy, TrafficType};
 use rsnano_node::{
-    bootstrap::BootstrapInitiatorExt,
-    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
-    consensus::{ActiveElectionsExt, VoteApplierExt},
-    stats::{DetailType, Direction, StatType},
-    wallets::WalletsExt,
+    block_processing::BlockSource, bootstrap::BootstrapInitiatorExt, config::{FrontiersConfirmationMode, NodeConfig, NodeFlags}, consensus::{ActiveElectionsExt, VoteApplierExt}, stats::{DetailType, Direction, StatType}, wallets::WalletsExt
 };
 use std::{
     sync::{
@@ -3583,5 +3579,84 @@ fn unconfirmed_send() {
         Duration::from_secs(5),
         || node1.balance(&DEV_GENESIS_ACCOUNT),
         Amount::MAX,
+    );
+}
+
+#[test]
+fn block_confirm() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+    let key = KeyPair::new();
+
+    let send1 = BlockBuilder::state()
+        .account(*DEV_GENESIS_ACCOUNT)
+        .previous(*DEV_GENESIS_HASH)
+        .representative(*DEV_GENESIS_ACCOUNT)
+        .balance(node1.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO))
+        .link(key.account())
+        .sign(&DEV_GENESIS_KEY)
+        .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
+        .build();
+
+    let hash1 = send1.hash();
+
+    assert_eq!(node1
+        .block_processor
+        .add(send1.clone().into(), BlockSource::Live, ChannelId::LOOPBACK), true);
+    assert_eq!(node2.block_processor.add(
+        send1.clone().into(),
+        BlockSource::Live,
+        ChannelId::LOOPBACK,
+    ), true);
+
+    assert_timely(
+        Duration::from_secs(5),
+        || {
+            node1
+                .ledger
+                .any()
+                .block_exists_or_pruned(&node1.store.tx_begin_read(), &hash1)
+                && node2
+                    .ledger
+                    .any()
+                    .block_exists_or_pruned(&node2.store.tx_begin_read(), &hash1) 
+        },
+    );
+
+    assert!(node1
+        .ledger
+        .any()
+        .block_exists_or_pruned(&node1.ledger.read_txn(), &hash1));
+    assert!(node2
+        .ledger
+        .any()
+        .block_exists_or_pruned(&node2.ledger.read_txn(), &hash1));
+
+    // Confirm send1 on node2 so it can vote for send2
+    start_election(&node2, &hash1);
+
+    assert_timely_eq(
+        Duration::from_secs(5),
+        || {
+            node2
+                .active
+                .election(&send1.qualified_root())
+                .is_some() as u64
+        },
+        1,
+    );
+
+    // Make node2 genesis representative so it can vote
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+
+    assert_timely_eq(
+        Duration::from_secs(10),
+        || node1.active.recently_cemented_list().len(),
+        1,
     );
 }

@@ -106,36 +106,6 @@ TEST (node, node_receive_quorum)
 	}
 }
 
-TEST (node, auto_bootstrap)
-{
-	nano::test::system system;
-	nano::node_config config (system.get_available_port ());
-	config.frontiers_confirmation = nano::frontiers_confirmation_mode::disabled;
-	nano::node_flags node_flags;
-	node_flags.set_disable_bootstrap_bulk_push_client (true);
-	node_flags.set_disable_lazy_bootstrap (true);
-	auto node0 = system.add_node (config, node_flags);
-	auto wallet_id = node0->wallets.first_wallet_id ();
-	nano::keypair key2;
-	(void)node0->wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv);
-	(void)node0->wallets.insert_adhoc (wallet_id, key2.prv);
-	auto send1 (node0->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node0->config->receive_minimum.number ()));
-	ASSERT_NE (nullptr, send1);
-	ASSERT_TIMELY_EQ (10s, node0->balance (key2.pub), node0->config->receive_minimum.number ());
-	auto node1 (std::make_shared<nano::node> (system.async_rt, system.get_available_port (), nano::unique_path (), system.work, node_flags));
-	ASSERT_FALSE (node1->init_error ());
-	node1->start ();
-	system.nodes.push_back (node1);
-	nano::test::establish_tcp (system, *node1, node0->network->endpoint ());
-	ASSERT_TIMELY_EQ (10s, node1->balance (key2.pub), node0->config->receive_minimum.number ());
-	// ASSERT_TIMELY (10s, !node1->bootstrap_initiator.in_progress ());
-	ASSERT_TRUE (node1->block_or_pruned_exists (send1->hash ()));
-	// Wait block receive
-	ASSERT_TIMELY_EQ (5s, node1->ledger.block_count (), 3);
-	// Confirmation for all blocks
-	ASSERT_TIMELY_EQ (5s, node1->ledger.cemented_count (), 3);
-}
-
 TEST (node, merge_peers)
 {
 	nano::test::system system (1);

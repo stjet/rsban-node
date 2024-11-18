@@ -815,3 +815,22 @@ fn work_cache_delayed() {
         }
     }
 }
+
+#[test]
+fn insert_locked() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    {
+        node1.wallets.rekey(&wallet_id, "1").unwrap();
+        assert_eq!(
+            node1.wallets.enter_password(wallet_id, "").unwrap_err(),
+            WalletsError::InvalidPassword
+        );
+    }
+    let err = node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &RawKey::from(42), true)
+        .unwrap_err();
+    assert_eq!(err, WalletsError::WalletLocked);
+}

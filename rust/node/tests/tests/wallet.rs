@@ -472,3 +472,22 @@ fn reopen_default_password() {
         assert!(wallet.valid_password(&tx));
     }
 }
+
+#[test]
+fn representative() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    let wallet =
+        LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
+    assert_eq!(wallet.exists(&tx, &wallet.representative(&tx)), false);
+    assert_eq!(wallet.representative(&tx), *DEV_GENESIS_PUB_KEY);
+    let key = KeyPair::new();
+    wallet.representative_set(&mut tx, &key.public_key());
+    assert_eq!(wallet.representative(&tx), key.public_key());
+    assert_eq!(wallet.exists(&tx, &wallet.representative(&tx)), false);
+    wallet.insert_adhoc(&mut tx, &key.private_key());
+    assert_eq!(wallet.exists(&tx, &wallet.representative(&tx)), true);
+}

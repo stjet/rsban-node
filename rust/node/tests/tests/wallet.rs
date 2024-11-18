@@ -343,3 +343,15 @@ fn spend_no_previous() {
         Amount::MAX - Amount::raw(500)
     );
 }
+
+#[test]
+fn find_none() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    let wallet =
+        LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
+    assert!(wallet.find(&tx, &PublicKey::from(1000)).is_end());
+}

@@ -105,3 +105,27 @@ fn vote_minimum() {
         2
     );
 }
+
+#[test]
+fn exists() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let key1 = KeyPair::new();
+    let key2 = KeyPair::new();
+    let wallet_id = node.wallets.wallet_ids()[0];
+
+    assert_eq!(node.wallets.exists(&key1.public_key()), false);
+    assert_eq!(node.wallets.exists(&key2.public_key()), false);
+
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key1.private_key(), false)
+        .unwrap();
+    assert_eq!(node.wallets.exists(&key1.public_key()), true);
+    assert_eq!(node.wallets.exists(&key2.public_key()), false);
+
+    node.wallets
+        .insert_adhoc2(&wallet_id, &key2.private_key(), false)
+        .unwrap();
+    assert_eq!(node.wallets.exists(&key1.public_key()), true);
+    assert_eq!(node.wallets.exists(&key2.public_key()), true);
+}

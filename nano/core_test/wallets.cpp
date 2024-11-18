@@ -12,22 +12,6 @@
 
 using namespace std::chrono_literals;
 
-TEST (wallets, exists)
-{
-	nano::test::system system (1);
-	auto & node (*system.nodes[0]);
-	nano::keypair key1;
-	nano::keypair key2;
-	ASSERT_FALSE (node.wallets.exists (key1.pub));
-	ASSERT_FALSE (node.wallets.exists (key2.pub));
-	(void)node.wallets.insert_adhoc (node.wallets.first_wallet_id (), key1.prv);
-	ASSERT_TRUE (node.wallets.exists (key1.pub));
-	ASSERT_FALSE (node.wallets.exists (key2.pub));
-	(void)node.wallets.insert_adhoc (node.wallets.first_wallet_id (), key2.prv);
-	ASSERT_TRUE (node.wallets.exists (key1.pub));
-	ASSERT_TRUE (node.wallets.exists (key2.pub));
-}
-
 TEST (wallets, search_receivable)
 {
 	for (auto search_all : { false, true })

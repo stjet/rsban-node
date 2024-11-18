@@ -16,7 +16,7 @@ fn setup_test_environment(node: Arc<Node>) -> (KeyPair, BlockEnum, BlockEnum) {
         Amount::MAX - rep_weight,
         keys.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let status = node.process_local(send.clone()).unwrap();
@@ -29,7 +29,7 @@ fn setup_test_environment(node: Arc<Node>) -> (KeyPair, BlockEnum, BlockEnum) {
         rep_weight,
         send.hash().into(),
         &keys,
-        node.work_generate_dev(keys.public_key().into()),
+        node.work_generate_dev(keys.public_key()),
     ));
 
     let status = node.process_local(open.clone()).unwrap();
@@ -116,7 +116,7 @@ fn test_ledger_pending() {
         new_remaining_balance,
         keys.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(send_block.hash().into()),
+        node.work_generate_dev(send_block.hash()),
     );
 
     let status = node

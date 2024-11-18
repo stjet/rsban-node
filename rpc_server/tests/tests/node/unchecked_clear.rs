@@ -19,7 +19,7 @@ fn unchecked_clear() {
         Amount::MAX - Amount::raw(1),
         Account::zero().into(),
         &keypair,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node.process_local(send1.clone()).unwrap();

@@ -17,7 +17,7 @@ fn test_unchecked_keys() {
         .balance(1)
         .link(key.account())
         .sign(&key)
-        .work(node.work_generate_dev(key.account().into()))
+        .work(node.work_generate_dev(key.account()))
         .build();
 
     node.process_active(open.clone());
@@ -38,7 +38,7 @@ fn test_unchecked_keys() {
         .balance(2)
         .link(key.account())
         .sign(&key)
-        .work(node.work_generate_dev(key.account().into()))
+        .work(node.work_generate_dev(key.account()))
         .build();
 
     node.process_active(open2.clone());

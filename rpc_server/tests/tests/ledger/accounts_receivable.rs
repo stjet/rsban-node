@@ -28,7 +28,7 @@ fn send_block(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
         balance - amount,
         account.into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(previous.into()),
+        node.work_generate_dev(previous),
     ));
 
     node.process_active(send.clone());
@@ -54,7 +54,7 @@ fn accounts_receivable_include_only_confirmed() {
         .insert_adhoc2(&wallet, &private_key, false)
         .unwrap();
 
-    let send = send_block(node.clone(), public_key.into(), Amount::raw(1));
+    let _send = send_block(node.clone(), public_key.into(), Amount::raw(1));
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 

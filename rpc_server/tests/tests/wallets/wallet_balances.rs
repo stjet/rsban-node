@@ -15,7 +15,7 @@ fn send_block(node: Arc<Node>, account: Account) {
         Amount::MAX - Amount::raw(1),
         account.into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node.process_active(send1.clone());

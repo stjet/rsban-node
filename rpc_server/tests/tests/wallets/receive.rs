@@ -30,7 +30,7 @@ fn receive() {
             *DEV_GENESIS_ACCOUNT,
             key1.public_key().into(),
             node.config.receive_minimum,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
             true,
             None,
         )
@@ -66,7 +66,7 @@ fn receive() {
             *DEV_GENESIS_ACCOUNT,
             key1.public_key().into(),
             node.config.receive_minimum - Amount::raw(1),
-            node.work_generate_dev(send1.hash().into()),
+            node.work_generate_dev(send1.hash()),
             true,
             None,
         )

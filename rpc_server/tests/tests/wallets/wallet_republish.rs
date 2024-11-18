@@ -12,7 +12,7 @@ fn send_block(node: Arc<Node>) -> BlockEnum {
         Amount::MAX - Amount::raw(1),
         DEV_GENESIS_KEY.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node.process_active(send1.clone());

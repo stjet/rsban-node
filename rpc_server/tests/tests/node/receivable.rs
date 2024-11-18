@@ -28,7 +28,7 @@ fn send_block(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
         balance - amount,
         account.into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev(previous.into()),
+        node.work_generate_dev(previous),
     ));
 
     node.process_active(send.clone());

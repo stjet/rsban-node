@@ -35,7 +35,7 @@ fn bootstrap_id_none() {
         Amount::zero(),
         key.account().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
     node1.process(send1.clone()).unwrap();
 
@@ -47,7 +47,7 @@ fn bootstrap_id_none() {
         Amount::MAX,
         send1.hash().into(),
         &key,
-        node1.work_generate_dev(key.public_key().into()),
+        node1.work_generate_dev(key.public_key()),
     ));
     node1.process(open.clone()).unwrap();
 
@@ -59,7 +59,7 @@ fn bootstrap_id_none() {
         Amount::MAX - Amount::raw(100),
         (*DEV_GENESIS_ACCOUNT).into(),
         &key,
-        node1.work_generate_dev(open.hash().into()),
+        node1.work_generate_dev(open.hash()),
     ));
     node1.process(send2.clone()).unwrap();
 
@@ -71,7 +71,7 @@ fn bootstrap_id_none() {
         Amount::raw(100),
         send2.hash().into(),
         &DEV_GENESIS_KEY,
-        node1.work_generate_dev(send1.hash().into()),
+        node1.work_generate_dev(send1.hash()),
     ));
     node1.process(receive.clone()).unwrap();
 

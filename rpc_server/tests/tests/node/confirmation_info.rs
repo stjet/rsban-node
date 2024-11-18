@@ -14,7 +14,7 @@ fn confirmation_info() {
         .destination(Account::zero())
         .balance(Amount::MAX - Amount::raw(100))
         .sign((*DEV_GENESIS_KEY).clone())
-        .work(node.work_generate_dev((*DEV_GENESIS_HASH).into()))
+        .work(node.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 
     node.process_active(send.clone());

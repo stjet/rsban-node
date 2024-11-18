@@ -13,7 +13,7 @@ fn setup_test_environment(node: Arc<Node>, keys: KeyPair, send_amount: Amount) -
         Amount::MAX - send_amount,
         keys.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     node.process(send1.clone()).unwrap();
@@ -25,7 +25,7 @@ fn setup_test_environment(node: Arc<Node>, keys: KeyPair, send_amount: Amount) -
         send_amount,
         send1.hash().into(),
         &keys,
-        node.work_generate_dev(keys.public_key().into()),
+        node.work_generate_dev(keys.public_key()),
     ));
 
     node.process(open_block.clone()).unwrap();

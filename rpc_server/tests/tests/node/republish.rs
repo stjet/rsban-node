@@ -15,7 +15,7 @@ fn setup_test_environment(node: Arc<Node>) -> BlockHash {
         .destination(key.public_key().into())
         .balance(Amount::raw(100))
         .sign(DEV_GENESIS_KEY.clone())
-        .work(node.work_generate_dev(genesis_hash.into()))
+        .work(node.work_generate_dev(genesis_hash))
         .build();
 
     node.process_active(send.clone());
@@ -31,7 +31,7 @@ fn setup_test_environment(node: Arc<Node>) -> BlockHash {
         .representative(key.public_key().into())
         .account(key.public_key().into())
         .sign(&key)
-        .work(node.work_generate_dev(key.public_key().into()))
+        .work(node.work_generate_dev(key.public_key()))
         .build();
 
     node.process_active(open.clone());

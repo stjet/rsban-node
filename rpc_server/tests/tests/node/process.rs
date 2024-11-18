@@ -17,7 +17,7 @@ fn process() {
         Amount::MAX - Amount::raw(100),
         DEV_GENESIS_KEY.account().into(),
         &DEV_GENESIS_KEY,
-        node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+        node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
     let args: ProcessArgs = ProcessArgs::build(send1.json_representation())

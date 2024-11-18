@@ -8,8 +8,7 @@ fn work_validate() {
     let node = system.make_node();
 
     let server = setup_rpc_client_and_server(node.clone(), true);
-
-    let work = node.work_generate_dev((*DEV_GENESIS_HASH).into());
+    let work = node.work_generate_dev(*DEV_GENESIS_HASH);
 
     let result = node.runtime.block_on(async {
         server

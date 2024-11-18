@@ -22,7 +22,7 @@ fn account_history() {
             &wallet_id,
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_PUB_KEY,
-            node.work_generate_dev((*DEV_GENESIS_HASH).into()),
+            node.work_generate_dev(*DEV_GENESIS_HASH),
             false,
         )
         .unwrap();
@@ -34,7 +34,7 @@ fn account_history() {
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_ACCOUNT,
             node.config.receive_minimum,
-            node.work_generate_dev(change.hash().into()),
+            node.work_generate_dev(change.hash()),
             false,
             None,
         )
@@ -48,7 +48,7 @@ fn account_history() {
             *DEV_GENESIS_PUB_KEY,
             node.config.receive_minimum,
             *DEV_GENESIS_ACCOUNT,
-            node.work_generate_dev(send.hash().into()),
+            node.work_generate_dev(send.hash()),
             false,
         )
         .unwrap()
@@ -61,7 +61,7 @@ fn account_history() {
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_ACCOUNT,
             Amount::nano(1_000),
-            node.work_generate_dev(receive.hash().into()),
+            node.work_generate_dev(receive.hash()),
             false,
             None,
         )
@@ -75,7 +75,7 @@ fn account_history() {
             *DEV_GENESIS_PUB_KEY,
             Amount::nano(1_000),
             *DEV_GENESIS_ACCOUNT,
-            node.work_generate_dev(usend.hash().into()),
+            node.work_generate_dev(usend.hash()),
             false,
         )
         .unwrap()
@@ -87,7 +87,7 @@ fn account_history() {
             &wallet_id,
             *DEV_GENESIS_ACCOUNT,
             PublicKey::zero(),
-            node.work_generate_dev(ureceive.hash().into()),
+            node.work_generate_dev(ureceive.hash()),
             false,
         )
         .unwrap();
@@ -170,7 +170,7 @@ fn account_history() {
             *DEV_GENESIS_ACCOUNT,
             account2,
             node.config.receive_minimum,
-            node.work_generate_dev(uchange.hash().into()),
+            node.work_generate_dev(uchange.hash()),
             false,
             None,
         )
@@ -183,7 +183,7 @@ fn account_history() {
             account2.into(),
             node.config.receive_minimum,
             account2.into(),
-            node.work_generate_dev(send2.hash().into()),
+            node.work_generate_dev(send2.hash()),
             false,
         )
         .unwrap()

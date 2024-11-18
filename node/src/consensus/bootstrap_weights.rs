@@ -13,9 +13,9 @@ pub(crate) fn get_bootstrap_weights(network: Networks) -> (u64, HashMap<PublicKe
 
 fn get_bootstrap_weights_bin(network: Networks) -> &'static [u8] {
     if network == Networks::NanoLiveNetwork {
-        include_bytes!("../../../../rep_weights_live.bin")
+        include_bytes!("../../rep_weights_live.bin")
     } else {
-        include_bytes!("../../../../rep_weights_beta.bin")
+        include_bytes!("../../rep_weights_beta.bin")
     }
 }
 

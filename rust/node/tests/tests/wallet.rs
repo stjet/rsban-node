@@ -414,3 +414,61 @@ fn hash_password() {
     let hash3 = wallet.derive_key(&tx, "a");
     assert_ne!(hash1, hash3);
 }
+
+#[test]
+fn reopen_default_password() {
+    let mut test_file = unique_path().unwrap();
+    test_file.push("wallet.ldb");
+    let env = LmdbEnv::new(test_file).unwrap();
+    let mut tx = env.tx_begin_write();
+    let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
+    {
+        let wallet = LmdbWalletStore::new(
+            0,
+            kdf.clone(),
+            &mut tx,
+            &DEV_GENESIS_PUB_KEY,
+            &PathBuf::from("0"),
+        )
+        .unwrap();
+        assert!(wallet.valid_password(&tx));
+    }
+    {
+        let wallet = LmdbWalletStore::new(
+            0,
+            kdf.clone(),
+            &mut tx,
+            &DEV_GENESIS_PUB_KEY,
+            &PathBuf::from("0"),
+        )
+        .unwrap();
+        assert!(wallet.valid_password(&tx));
+    }
+    {
+        let wallet = LmdbWalletStore::new(
+            0,
+            kdf.clone(),
+            &mut tx,
+            &DEV_GENESIS_PUB_KEY,
+            &PathBuf::from("0"),
+        )
+        .unwrap();
+        wallet.rekey(&mut tx, "").unwrap();
+        assert!(wallet.valid_password(&tx));
+    }
+    {
+        let wallet = LmdbWalletStore::new(
+            0,
+            kdf.clone(),
+            &mut tx,
+            &DEV_GENESIS_PUB_KEY,
+            &PathBuf::from("0"),
+        )
+        .unwrap();
+        assert_eq!(wallet.valid_password(&tx), false);
+        wallet.attempt_password(&tx, " ");
+        assert_eq!(wallet.valid_password(&tx), false);
+        wallet.attempt_password(&tx, "");
+        assert!(wallet.valid_password(&tx));
+    }
+}

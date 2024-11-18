@@ -18,42 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-TEST (wallet, reopen_default_password)
-{
-	bool init;
-	nano::store::lmdb::env env (init, nano::unique_path () / "wallet.ldb");
-	auto transaction (env.tx_begin_write ());
-	ASSERT_FALSE (init);
-	nano::kdf kdf{ nano::dev::network_params.kdf_work };
-	{
-		nano::wallet_store wallet (init, kdf, *transaction, nano::dev::genesis_key.pub, 1, "0");
-		ASSERT_FALSE (init);
-		ASSERT_TRUE (wallet.valid_password (*transaction));
-	}
-	{
-		bool init;
-		nano::wallet_store wallet (init, kdf, *transaction, nano::dev::genesis_key.pub, 1, "0");
-		ASSERT_FALSE (init);
-		ASSERT_TRUE (wallet.valid_password (*transaction));
-	}
-	{
-		nano::wallet_store wallet (init, kdf, *transaction, nano::dev::genesis_key.pub, 1, "0");
-		ASSERT_FALSE (init);
-		wallet.rekey (*transaction, "");
-		ASSERT_TRUE (wallet.valid_password (*transaction));
-	}
-	{
-		bool init;
-		nano::wallet_store wallet (init, kdf, *transaction, nano::dev::genesis_key.pub, 1, "0");
-		ASSERT_FALSE (init);
-		ASSERT_FALSE (wallet.valid_password (*transaction));
-		wallet.attempt_password (*transaction, " ");
-		ASSERT_FALSE (wallet.valid_password (*transaction));
-		wallet.attempt_password (*transaction, "");
-		ASSERT_TRUE (wallet.valid_password (*transaction));
-	}
-}
-
 TEST (wallet, representative)
 {
 	auto error (false);

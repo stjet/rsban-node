@@ -68,44 +68,6 @@ TEST (node, send_unkeyed)
 	ASSERT_EQ (nullptr, node->wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key2.pub, node->config->receive_minimum.number ()));
 }
 
-TEST (node, node_receive_quorum)
-{
-	nano::test::system system (1);
-	auto & node1 = *system.nodes[0];
-	auto wallet_id = node1.wallets.first_wallet_id ();
-	nano::keypair key;
-	nano::block_hash previous (node1.latest (nano::dev::genesis_key.pub));
-	(void)node1.wallets.insert_adhoc (wallet_id, key.prv);
-	auto send = nano::send_block_builder ()
-				.previous (previous)
-				.destination (key.pub)
-				.balance (nano::dev::constants.genesis_amount - nano::Gxrb_ratio)
-				.sign (nano::dev::genesis_key.prv, nano::dev::genesis_key.pub)
-				.work (*system.work.generate (previous))
-				.build ();
-	node1.process_active (send);
-	ASSERT_TIMELY (10s, node1.block_or_pruned_exists (send->hash ()));
-	ASSERT_TIMELY (10s, node1.active.election (nano::qualified_root (previous, previous)) != nullptr);
-	auto election (node1.active.election (nano::qualified_root (previous, previous)));
-	ASSERT_NE (nullptr, election);
-	ASSERT_FALSE (node1.active.confirmed (*election));
-	ASSERT_EQ (1, election->votes ().size ());
-
-	nano::test::system system2;
-	system2.add_node ();
-	auto node2 = system2.nodes[0];
-	auto wallet_id2 = node2->wallets.first_wallet_id ();
-
-	(void)node2->wallets.insert_adhoc (wallet_id2, nano::dev::genesis_key.prv);
-	ASSERT_TRUE (node1.balance (key.pub).is_zero ());
-	node1.connect (node2->network->endpoint ());
-	while (node1.balance (key.pub).is_zero ())
-	{
-		ASSERT_NO_ERROR (system.poll ());
-		ASSERT_NO_ERROR (system2.poll ());
-	}
-}
-
 TEST (node, auto_bootstrap)
 {
 	nano::test::system system;

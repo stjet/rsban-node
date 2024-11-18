@@ -3199,3 +3199,64 @@ fn epoch_conflict_confirm() {
         node0.blocks_confirmed(&[change.clone(), epoch_open.clone()])
     });
 }
+
+#[test]
+fn node_receive_quorum() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    
+    let wallet_id = node1.wallets.wallet_ids()[0];
+    let key = KeyPair::new();
+    let previous = node1.latest(&DEV_GENESIS_ACCOUNT);
+
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id, &key.private_key(), true)
+        .unwrap();
+
+    let send = BlockEnum::LegacySend(SendBlock::new(
+        &previous,
+        &key.account(),
+        &(node1.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO)),
+        &DEV_GENESIS_KEY.private_key(),
+        system.work.generate_dev2(previous.into()).unwrap(),
+    ));
+
+    node1.process_active(send.clone());
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node1.block_exists(&send.hash()),
+        "send block not found",
+    );
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || node1.active.election(&send.qualified_root()).is_some(),
+        "election not found",
+    );
+
+    let election = node1.active.election(&send.qualified_root()).unwrap();
+    assert!(!node1.active.confirmed(&election));
+    assert_eq!(1, election.mutex.lock().unwrap().last_votes.len());
+
+    let system2 = System::new();
+    let node2 = system.make_disconnected_node();
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+
+    node2
+        .wallets
+        .insert_adhoc2(&wallet_id2, &DEV_GENESIS_KEY.private_key(), true)
+        .unwrap();
+    assert!(node1.balance(&key.account()).is_zero());
+
+    node2
+        .peer_connector
+        .connect_to(node1.tcp_listener.local_address());
+
+    assert_timely_msg(
+        Duration::from_secs(10),
+        || !node1.balance(&key.account()).is_zero(),
+        "balance is still zero",
+    );
+}

@@ -9,9 +9,8 @@ use rsnano_node::{
 };
 use rsnano_store_lmdb::{LmdbEnv, LmdbWalletStore};
 use std::{
-    borrow::Borrow,
     collections::HashSet,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -295,6 +294,38 @@ fn partial_spend() {
     let node = system.make_node();
     node.insert_into_wallet(&DEV_GENESIS_KEY);
     let wallet_id = node.wallets.wallet_ids()[0];
+    let key2 = KeyPair::new();
+    node.wallets
+        .send_action2(
+            &wallet_id,
+            *DEV_GENESIS_ACCOUNT,
+            key2.account(),
+            Amount::raw(500),
+            0,
+            true,
+            None,
+        )
+        .unwrap();
+    assert_eq!(
+        node.balance(&DEV_GENESIS_ACCOUNT),
+        Amount::MAX - Amount::raw(500)
+    );
+}
+
+#[test]
+fn spend_no_previous() {
+    let mut system = System::new();
+    let node = system.make_node();
+    let wallet_id = node.wallets.wallet_ids()[0];
+    {
+        node.insert_into_wallet(&DEV_GENESIS_KEY);
+        for _ in 0..50 {
+            let key = KeyPair::new();
+            node.wallets
+                .insert_adhoc2(&wallet_id, &key.private_key(), false)
+                .unwrap();
+        }
+    }
     let key2 = KeyPair::new();
     node.wallets
         .send_action2(

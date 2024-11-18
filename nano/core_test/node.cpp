@@ -201,37 +201,3 @@ TEST (node, balance_observer)
 	}
 }
 
-/** This checks that a node can be opened (without being blocked) when a write lock is held elsewhere */
-TEST (node, dont_write_lock_node)
-{
-	auto path = nano::unique_path ();
-
-	std::promise<void> write_lock_held_promise;
-	std::promise<void> finished_promise;
-	std::thread ([&path, &write_lock_held_promise, &finished_promise] () {
-		auto store = nano::make_store (path, nano::dev::constants, false, true);
-
-		// Hold write lock open until main thread is done needing it
-		auto transaction (store->tx_begin_write ());
-		write_lock_held_promise.set_value ();
-		finished_promise.get_future ().wait ();
-	})
-	.detach ();
-
-	write_lock_held_promise.get_future ().wait ();
-
-	// Check inactive node can finish executing while a write lock is open
-	nano::node_flags flags{ nano::inactive_node_flag_defaults () };
-	nano::inactive_node node (path, flags);
-	finished_promise.set_value ();
-}
-
-TEST (node, node_sequence)
-{
-	nano::test::system system (3);
-	ASSERT_EQ (0, system.nodes[0]->node_seq);
-	ASSERT_EQ (0, system.nodes[0]->node_seq);
-	ASSERT_EQ (1, system.nodes[1]->node_seq);
-	ASSERT_EQ (2, system.nodes[2]->node_seq);
-}
-

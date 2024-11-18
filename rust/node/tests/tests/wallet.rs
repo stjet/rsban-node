@@ -638,3 +638,22 @@ fn wallet_store_import() {
     node2.wallets.import_replace(wallet_id2, &json, "").unwrap();
     assert!(node2.wallets.exists(&key1.public_key()));
 }
+
+#[test]
+fn wallet_store_fail_import_bad_password() {
+    let mut system = System::new();
+    let node1 = system.make_node();
+    let node2 = system.make_node();
+    let wallet_id1 = node1.wallets.wallet_ids()[0];
+    let wallet_id2 = node2.wallets.wallet_ids()[0];
+    let key1 = KeyPair::new();
+    node1
+        .wallets
+        .insert_adhoc2(&wallet_id1, &key1.private_key(), false)
+        .unwrap();
+    let json = node1.wallets.serialize(wallet_id1).unwrap();
+    node2
+        .wallets
+        .import_replace(wallet_id2, &json, "1")
+        .unwrap_err();
+}

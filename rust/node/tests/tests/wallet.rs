@@ -4,6 +4,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
+    config::NodeFlags,
     unique_path,
     wallets::{WalletsError, WalletsExt},
     Node, DEV_NETWORK_PARAMS,
@@ -1166,6 +1167,103 @@ fn epoch_2_validation() {
             true,
         )
         .unwrap();
+}
+
+/// Receiving from an upgraded account uses the lower threshold and upgrades the receiving account
+#[test]
+fn epoch_2_receive_propagation() {
+    let mut tries = 0;
+    let max_tries = 20;
+    while tries < max_tries {
+        tries += 1;
+        let mut system = System::new();
+        let node = system
+            .build_node()
+            .flags(NodeFlags {
+                disable_request_loop: true,
+                ..Default::default()
+            })
+            .finish();
+        let wallet_id = node.wallets.wallet_ids()[0];
+
+        // Upgrade the genesis account to epoch 1
+        upgrade_genesis_epoch(&node, Epoch::Epoch1);
+
+        let key = KeyPair::new();
+
+        // Send and open the account
+        node.wallets
+            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+            .unwrap();
+        node.wallets
+            .insert_adhoc2(&wallet_id, &key.private_key(), false)
+            .unwrap();
+        let amount = node.config.receive_minimum;
+        let send1 = node
+            .wallets
+            .send_action2(
+                &wallet_id,
+                *DEV_GENESIS_ACCOUNT,
+                key.account(),
+                amount,
+                1,
+                true,
+                None,
+            )
+            .unwrap();
+        node.wallets
+            .receive_action2(
+                &wallet_id,
+                send1.hash(),
+                *DEV_GENESIS_PUB_KEY,
+                amount,
+                key.account(),
+                1,
+                true,
+            )
+            .unwrap();
+
+        // Upgrade the genesis account to epoch 2
+        upgrade_genesis_epoch(&node, Epoch::Epoch2);
+
+        // Send a block
+        let send2 = node
+            .wallets
+            .send_action2(
+                &wallet_id,
+                *DEV_GENESIS_ACCOUNT,
+                key.account(),
+                amount,
+                1,
+                true,
+                None,
+            )
+            .unwrap();
+        let receive2 = node
+            .wallets
+            .receive_action2(
+                &wallet_id,
+                send2.hash(),
+                *DEV_GENESIS_PUB_KEY,
+                amount,
+                key.account(),
+                1,
+                true,
+            )
+            .unwrap()
+            .unwrap();
+        if DEV_NETWORK_PARAMS.work.difficulty_block(&receive2) < DEV_NETWORK_PARAMS.work.base {
+            assert!(
+                DEV_NETWORK_PARAMS.work.difficulty_block(&receive2)
+                    >= DEV_NETWORK_PARAMS.work.epoch_2_receive
+            );
+            let tx = node.ledger.read_txn();
+            assert_eq!(node.ledger.version(&tx, &receive2.hash()), Epoch::Epoch2);
+            assert_eq!(receive2.sideband().unwrap().source_epoch, Epoch::Epoch2);
+            break;
+        }
+    }
+    assert!(tries < max_tries);
 }
 
 fn upgrade_genesis_epoch(node: &Node, epoch: Epoch) {

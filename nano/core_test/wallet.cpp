@@ -18,55 +18,6 @@
 using namespace std::chrono_literals;
 unsigned constexpr nano::wallet_store::version_current;
 
-// Receiving from an upgraded account uses the lower threshold and upgrades the receiving account
-TEST (wallet, epoch_2_receive_propagation)
-{
-	auto tries = 0;
-	auto const max_tries = 20;
-	while (++tries < max_tries)
-	{
-		nano::test::system system;
-		nano::node_flags node_flags;
-		node_flags.set_disable_request_loop (true);
-		auto & node (*system.add_node (node_flags));
-		auto wallet_id = node.wallets.first_wallet_id ();
-
-		// Upgrade the genesis account to epoch 1
-		auto epoch1 = system.upgrade_genesis_epoch (node, nano::epoch::epoch_1);
-		ASSERT_NE (nullptr, epoch1);
-
-		nano::keypair key;
-		nano::state_block_builder builder;
-
-		// Send and open the account
-		(void)node.wallets.insert_adhoc (wallet_id, nano::dev::genesis_key.prv, false);
-		(void)node.wallets.insert_adhoc (wallet_id, key.prv, false);
-		auto amount = node.config->receive_minimum.number ();
-		auto send1 = node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, amount, 1);
-		ASSERT_NE (nullptr, send1);
-		ASSERT_NE (nullptr, node.wallets.receive_action (wallet_id, send1->hash (), nano::dev::genesis_key.pub, amount, send1->destination (), 1));
-
-		// Upgrade the genesis account to epoch 2
-		auto epoch2 = system.upgrade_genesis_epoch (node, nano::epoch::epoch_2);
-		ASSERT_NE (nullptr, epoch2);
-
-		// Send a block
-		auto send2 = node.wallets.send_action (wallet_id, nano::dev::genesis_key.pub, key.pub, amount, 1);
-		ASSERT_NE (nullptr, send2);
-
-		auto receive2 = node.wallets.receive_action (wallet_id, send2->hash (), key.pub, amount, send2->destination (), 1);
-		ASSERT_NE (nullptr, receive2);
-		if (nano::dev::network_params.work.difficulty (*receive2) < node.network_params.work.get_base ())
-		{
-			ASSERT_GE (nano::dev::network_params.work.difficulty (*receive2), node.network_params.work.get_epoch_2_receive ());
-			ASSERT_EQ (nano::epoch::epoch_2, node.ledger.version (*node.store.tx_begin_read (), receive2->hash ()));
-			ASSERT_EQ (nano::epoch::epoch_2, receive2->sideband ().source_epoch ());
-			break;
-		}
-	}
-	ASSERT_LT (tries, max_tries);
-}
-
 // Opening an upgraded account uses the lower threshold
 TEST (wallet, epoch_2_receive_unopened)
 {

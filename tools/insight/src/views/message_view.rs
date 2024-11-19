@@ -1,5 +1,5 @@
 use crate::view_models::MessageViewModel;
-use eframe::egui::{Grid, Label, ScrollArea, Ui};
+use eframe::egui::{Grid, ScrollArea, Ui};
 
 pub(crate) struct MessageView<'a> {
     model: &'a MessageViewModel,

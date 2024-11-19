@@ -1,5 +1,6 @@
 use eframe::egui::Color32;
 
+#[allow(dead_code)]
 pub(crate) enum PaletteColor {
     Red1,
     Red2,

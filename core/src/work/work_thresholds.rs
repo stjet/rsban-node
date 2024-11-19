@@ -282,12 +282,10 @@ impl WorkThresholds {
             < self.threshold_entry(BlockType::State, work_version)
     }
 
-    //todo return true if valid!
     pub fn validate_entry_block(&self, block: &BlockEnum) -> bool {
         let difficulty = self.difficulty_block(block);
         let threshold = self.threshold_entry(block.block_type(), block.work_version());
-        let is_invalid = difficulty < threshold;
-        is_invalid
+        difficulty >= threshold
     }
 
     pub fn is_valid_pow(&self, block: &BlockEnum, details: &BlockDetails) -> bool {
@@ -437,7 +435,7 @@ mod tests {
             block.balance(),
             Amount::raw(337010421085160209006996005437231978653)
         );
-        assert_eq!(thresholds.validate_entry_block(&block), false);
+        assert_eq!(thresholds.validate_entry_block(&block), true);
         assert_eq!(thresholds.difficulty_block(&block), 18446743921403126366);
     }
 }

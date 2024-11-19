@@ -4,8 +4,6 @@ use rsnano_rpc_messages::{WorkValidateArgs, WorkValidateResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn work_validate(&self, args: WorkValidateArgs) -> WorkValidateResponse {
-        let work: u64 = args.work.unwrap_or_default().into();
-
         let default_difficulty = self
             .node
             .network_params

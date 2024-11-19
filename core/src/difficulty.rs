@@ -1,11 +1,10 @@
+use crate::Root;
 use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
 use std::collections::HashMap;
 use std::mem::size_of;
-
-use crate::Root;
 
 #[derive(Clone, Copy, FromPrimitive, PartialEq, Eq)]
 pub enum WorkVersion {
@@ -110,11 +109,8 @@ impl Difficulty for StubDifficulty {
 
 #[cfg(test)]
 mod tests {
-    use num::Float;
-
-    use crate::work::WorkThresholds;
-
     use super::*;
+    use crate::work::WorkThresholds;
 
     #[test]
     fn stub_difficulty() {

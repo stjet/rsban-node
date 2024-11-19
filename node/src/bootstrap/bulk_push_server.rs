@@ -299,7 +299,7 @@ impl BulkPushServerImpl {
             drop(guard);
             match block {
                 Ok(block) => {
-                    if self.work_thresholds.validate_entry_block(&block) {
+                    if !self.work_thresholds.validate_entry_block(&block) {
                         debug!("Insufficient work for bulk push block: {}", block.hash());
                         self.stats.inc_dir(
                             StatType::Error,

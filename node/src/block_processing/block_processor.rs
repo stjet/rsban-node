@@ -435,8 +435,7 @@ impl BlockProcessorLoop {
         channel_id: ChannelId,
         callback: Option<BlockProcessorCallback>,
     ) -> bool {
-        if self.config.work_thresholds.validate_entry_block(&block) {
-            // true => error
+        if !self.config.work_thresholds.validate_entry_block(&block) {
             self.stats
                 .inc(StatType::Blockprocessor, DetailType::InsufficientWork);
             return false; // Not added

@@ -3242,7 +3242,6 @@ fn node_receive_quorum() {
     assert!(!node1.active.confirmed(&election));
     assert_eq!(1, election.mutex.lock().unwrap().last_votes.len());
 
-    let system2 = System::new();
     let node2 = system.make_disconnected_node();
     let wallet_id2 = node2.wallets.wallet_ids()[0];
 

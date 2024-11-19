@@ -8,7 +8,6 @@ use rsnano_node::{
     block_processing::BlockSource,
     config::{FrontiersConfirmationMode, NodeConfig},
 };
-use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely, assert_timely_eq, start_elections, System};
 
@@ -630,14 +629,13 @@ fn unchecked_receive() {
         BlockSource::Live,
         ChannelId::LOOPBACK,
     );
-    let check_block_is_listed = |tx: &LmdbReadTransaction, hash: &BlockHash| {
-        !node1.unchecked.get(&((*hash).into())).is_empty()
-    };
+    let check_block_is_listed =
+        |hash: &BlockHash| !node1.unchecked.get(&((*hash).into())).is_empty();
     // Previous block for receive1 is unknown, signature cannot be validated
 
     // Waits for the last blocks to pass through block_processor and unchecked.put queues
     assert_timely(Duration::from_secs(15), || {
-        check_block_is_listed(&node1.ledger.read_txn(), &receive1.previous())
+        check_block_is_listed(&receive1.previous())
     });
     assert_eq!(node1.unchecked.get(&receive1.previous().into()).len(), 1);
 
@@ -646,7 +644,7 @@ fn unchecked_receive() {
         .block_processor
         .add(open1.clone().into(), BlockSource::Live, ChannelId::LOOPBACK);
     assert_timely(Duration::from_secs(15), || {
-        check_block_is_listed(&node1.ledger.read_txn(), &receive1.source_or_link())
+        check_block_is_listed(&receive1.source_or_link())
     });
     // Previous block for receive1 is known, signature was validated
     assert_eq!(

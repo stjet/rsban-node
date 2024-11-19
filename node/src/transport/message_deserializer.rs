@@ -80,7 +80,7 @@ impl<T: AsyncBufferReader + Send> MessageDeserializer<T> {
         if let Some(block) = block {
             // work is checked multiple times - here and in the block processor and maybe
             // even more... TODO eliminate duplicate work checks
-            if self.work_thresholds.validate_entry_block(block) {
+            if !self.work_thresholds.validate_entry_block(block) {
                 return Err(ParseMessageError::InsufficientWork);
             }
         }

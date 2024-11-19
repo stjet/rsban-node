@@ -62,10 +62,7 @@ impl From<&DaemonConfig> for OpenclToml {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        config::{DaemonConfig, DaemonToml},
-        NetworkParams,
-    };
+    use crate::config::{DaemonConfig, DaemonToml};
     use rsnano_core::Networks;
     use std::path::PathBuf;
 

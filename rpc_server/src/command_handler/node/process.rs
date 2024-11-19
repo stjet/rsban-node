@@ -64,7 +64,7 @@ impl RpcCommandHandler {
             }
         }
 
-        if self.node.network_params.work.validate_entry_block(&block) {
+        if !self.node.network_params.work.validate_entry_block(&block) {
             bail!("Block work is less than threshold");
         }
 

@@ -1,7 +1,7 @@
 use rsnano_core::Networks;
 use rsnano_node::config::{get_rpc_toml_config_path, read_toml_file, NetworkConstants};
 use std::{
-    net::{AddrParseError, IpAddr, Ipv6Addr, SocketAddr, SocketAddrV6},
+    net::{AddrParseError, IpAddr, Ipv6Addr, SocketAddr},
     path::Path,
     str::FromStr,
 };

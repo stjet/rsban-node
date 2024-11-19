@@ -18,7 +18,7 @@ jobs:
 
       - name: Build Tests
         id: build
-        run: cargo build --tests
+        run: cargo build --all-targets
 
       - name: Run Tests
         if: steps.build.outcome == 'success' && (success() || failure())
@@ -42,7 +42,7 @@ jobs:
 
       - name: Build Tests
         id: build
-        run: cargo build --tests
+        run: cargo build --all-targets
 
       - name: Run Tests
         if: steps.build.outcome == 'success' && (success() || failure())

@@ -93,7 +93,7 @@ mod tests {
         };
         assert_eq!(receive.hashables.previous, BlockHash::from(1));
         assert_eq!(receive.hashables.source, BlockHash::from(2));
-        assert_eq!(WORK_THRESHOLDS_STUB.validate_entry_block(&block), false);
+        assert_eq!(WORK_THRESHOLDS_STUB.validate_entry_block(&block), true);
         assert!(receive.sideband().is_some())
     }
 }

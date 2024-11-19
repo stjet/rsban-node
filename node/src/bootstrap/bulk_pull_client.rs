@@ -222,7 +222,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
             return;
         };
 
-        if self.config.work_thresholds.validate_entry_block(&block) {
+        if !self.config.work_thresholds.validate_entry_block(&block) {
             debug!("Insufficient work for bulk pull block: {}", block.hash());
             self.stats
                 .inc(StatType::Error, DetailType::InsufficientWork);

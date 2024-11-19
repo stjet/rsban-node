@@ -68,7 +68,7 @@ fn fetch_locked() {
     );
     let key2 = wallet.deterministic_insert(&mut tx);
     assert!(!key2.is_zero());
-    wallet.set_password(&mut tx, RawKey::from(1));
+    wallet.set_password(RawKey::from(1));
     assert!(wallet.fetch(&tx, &key1.public_key()).is_err());
     assert!(wallet.fetch(&tx, &key2).is_err());
 }
@@ -86,7 +86,7 @@ fn retrieval() {
     wallet.insert_adhoc(&mut tx, &key1.private_key());
     let prv1 = wallet.fetch(&tx, &key1.public_key()).unwrap();
     assert_eq!(prv1, key1.private_key());
-    wallet.set_password(&mut tx, RawKey::from(123));
+    wallet.set_password(RawKey::from(123));
     assert!(wallet.fetch(&tx, &key1.public_key()).is_err());
     assert!(!wallet.valid_password(&tx));
 }
@@ -398,7 +398,7 @@ fn rekey() {
     assert_eq!(password1, password);
     let prv2 = wallet.fetch(&tx, &key1.public_key()).unwrap();
     assert_eq!(prv2, key1.private_key());
-    wallet.set_password(&mut tx, RawKey::from(2));
+    wallet.set_password(RawKey::from(2));
     assert!(wallet.rekey(&mut tx, "2").is_err());
 }
 

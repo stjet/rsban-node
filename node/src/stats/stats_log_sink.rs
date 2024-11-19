@@ -2,7 +2,6 @@ use crate::utils::create_property_tree;
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use rsnano_core::utils::PropertyTree;
-use serde_json::Number;
 use std::{any::Any, fs::File, io::Write, path::PathBuf, time::SystemTime};
 
 pub trait StatsLogSink {

@@ -95,7 +95,7 @@ impl BlockCreateResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{Block, KeyPair, RawKey, StateBlock};
+    use rsnano_core::{BlockBase, KeyPair, RawKey, StateBlock};
     use serde_json::json;
 
     #[test]

@@ -1,4 +1,4 @@
-use super::{Block, BlockSideband, BlockType, BlockVisitor};
+use super::{BlockBase, BlockSideband, BlockType, BlockVisitor};
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, FixedSizeSerialize, PropertyTree, Serialize, Stream},
@@ -201,7 +201,7 @@ impl PartialEq for SendBlock {
 
 impl Eq for SendBlock {}
 
-impl Block for SendBlock {
+impl BlockBase for SendBlock {
     fn sideband(&'_ self) -> Option<&'_ BlockSideband> {
         self.sideband.as_ref()
     }

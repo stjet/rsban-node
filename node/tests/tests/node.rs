@@ -1,5 +1,5 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder,
+    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, BlockBase, BlockBuilder,
     BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
     PublicKey, QualifiedRoot, Root, SendBlock, Signature, StateBlock, UncheckedInfo, Vote,
     VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,

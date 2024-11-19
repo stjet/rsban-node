@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::anyhow;
-use rsnano_core::{Account, Block, BlockEnum, BlockHash};
+use rsnano_core::{Account, BlockBase, BlockEnum, BlockHash};
 use rsnano_ledger::Ledger;
 use rsnano_rpc_messages::{
     unwrap_bool_or_false, unwrap_u64_or_zero, AccountHistoryArgs, AccountHistoryResponse,

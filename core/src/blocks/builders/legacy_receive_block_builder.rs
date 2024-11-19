@@ -1,6 +1,6 @@
 use crate::{
     work::{WorkPool, STUB_WORK_POOL},
-    Account, Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair,
+    Account, Amount, BlockBase, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair,
     ReceiveBlock,
 };
 
@@ -89,7 +89,7 @@ impl Default for LegacyReceiveBlockBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::{work::WORK_THRESHOLDS_STUB, Block, BlockBuilder, BlockEnum, BlockHash};
+    use crate::{work::WORK_THRESHOLDS_STUB, BlockBase, BlockBuilder, BlockEnum, BlockHash};
 
     #[test]
     fn receive_block() {

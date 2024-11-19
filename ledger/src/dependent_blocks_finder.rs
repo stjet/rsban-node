@@ -1,5 +1,5 @@
 use crate::ledger::Ledger;
-use rsnano_core::{Block, BlockEnum, BlockHash, DependentBlocks, StateBlock};
+use rsnano_core::{BlockBase, BlockEnum, BlockHash, DependentBlocks, StateBlock};
 use rsnano_store_lmdb::Transaction;
 
 /// Finds all dependent blocks for a given block.

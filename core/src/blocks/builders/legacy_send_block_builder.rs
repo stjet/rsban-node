@@ -1,6 +1,6 @@
 use crate::{
     work::{WorkPool, STUB_WORK_POOL},
-    Account, Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair,
+    Account, Amount, BlockBase, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair,
     SendBlock,
 };
 

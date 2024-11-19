@@ -6,7 +6,7 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{BufferReader, FixedSizeSerialize},
-    Block, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, BlockWithSideband,
+    BlockBase, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, BlockWithSideband,
     ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
 use rsnano_nullable_lmdb::ConfiguredDatabase;
@@ -201,7 +201,7 @@ impl<'a> BlockPredecessorMdbSet<'a> {
         }
     }
 
-    fn fill_value(&mut self, block: &dyn Block) {
+    fn fill_value(&mut self, block: &dyn BlockBase) {
         let hash = block.hash();
         let value = self
             .block_store

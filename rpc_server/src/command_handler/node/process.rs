@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::{anyhow, bail};
-use rsnano_core::{Block, BlockEnum, BlockType};
+use rsnano_core::{BlockBase, BlockEnum, BlockType};
 use rsnano_ledger::BlockStatus;
 use rsnano_network::ChannelId;
 use rsnano_node::block_processing::BlockSource;

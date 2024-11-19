@@ -285,6 +285,7 @@ impl TryFrom<&RawKey> for PublicKey {
 }
 
 pub trait FullHash {
+    /// Generates a hash that includes the signature an PoW field
     fn full_hash(&self) -> BlockHash;
 }
 

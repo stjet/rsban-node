@@ -1,4 +1,4 @@
-use super::{Block, BlockVisitor};
+use super::{BlockBase, BlockVisitor};
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
@@ -138,7 +138,7 @@ impl PartialEq for ChangeBlock {
 
 impl Eq for ChangeBlock {}
 
-impl Block for ChangeBlock {
+impl BlockBase for ChangeBlock {
     fn sideband(&'_ self) -> Option<&'_ BlockSideband> {
         self.sideband.as_ref()
     }

@@ -1,5 +1,5 @@
 use crate::work::WorkPool;
-use crate::{work::STUB_WORK_POOL, Block, StateBlock};
+use crate::{work::STUB_WORK_POOL, BlockBase, StateBlock};
 use crate::{
     Account, Amount, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair, Link,
     PublicKey, Signature,

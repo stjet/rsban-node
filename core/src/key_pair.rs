@@ -1,5 +1,5 @@
 use super::{PublicKey, RawKey, Signature};
-use crate::{Account, Block, Link, Root, StateBlock};
+use crate::{Account, BlockBase, Link, Root, StateBlock};
 use anyhow::Context;
 use ed25519_dalek::ed25519::signature::SignerMut;
 use ed25519_dalek::Verifier;

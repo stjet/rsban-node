@@ -1,5 +1,5 @@
 use rsnano_core::{
-    AccountInfo, Amount, Block, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch,
+    AccountInfo, Amount, BlockBase, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch,
     PendingInfo, PendingKey, PublicKey, StateBlock,
 };
 

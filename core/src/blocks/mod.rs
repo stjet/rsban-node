@@ -135,7 +135,7 @@ impl std::fmt::Debug for LazyBlockHash {
     }
 }
 
-pub trait Block: FullHash {
+pub trait BlockBase: FullHash {
     fn block_type(&self) -> BlockType;
     fn account_field(&self) -> Option<Account>;
 
@@ -175,7 +175,7 @@ pub trait Block: FullHash {
     fn valid_predecessor(&self, block_type: BlockType) -> bool;
 }
 
-impl<T: Block> FullHash for T {
+impl<T: BlockBase> FullHash for T {
     fn full_hash(&self) -> BlockHash {
         BlockHashBuilder::new()
             .update(self.hash().as_bytes())
@@ -234,7 +234,7 @@ impl BlockEnum {
         self.as_block().block_type()
     }
 
-    pub fn as_block_mut(&mut self) -> &mut dyn Block {
+    pub fn as_block_mut(&mut self) -> &mut dyn BlockBase {
         match self {
             BlockEnum::LegacySend(b) => b,
             BlockEnum::LegacyReceive(b) => b,
@@ -244,7 +244,7 @@ impl BlockEnum {
         }
     }
 
-    pub fn as_block(&self) -> &dyn Block {
+    pub fn as_block(&self) -> &dyn BlockBase {
         match self {
             BlockEnum::LegacySend(b) => b,
             BlockEnum::LegacyReceive(b) => b,
@@ -475,7 +475,7 @@ impl FullHash for BlockEnum {
 }
 
 impl Deref for BlockEnum {
-    type Target = dyn Block;
+    type Target = dyn BlockBase;
 
     fn deref(&self) -> &Self::Target {
         match self {

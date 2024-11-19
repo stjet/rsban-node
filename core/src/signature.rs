@@ -35,15 +35,6 @@ impl Signature {
         &self.bytes
     }
 
-    pub unsafe fn copy_bytes(&self, target: *mut u8) {
-        let bytes = std::slice::from_raw_parts_mut(target, 64);
-        bytes.copy_from_slice(self.as_bytes());
-    }
-
-    pub fn make_invalid(&mut self) {
-        self.bytes[31] ^= 1;
-    }
-
     pub fn encode_hex(&self) -> String {
         let mut result = String::with_capacity(128);
         for byte in self.bytes {
@@ -56,12 +47,6 @@ impl Signature {
         let mut bytes = [0u8; 64];
         hex::decode_to_slice(s.as_ref(), &mut bytes)?;
         Ok(Signature::from_bytes(bytes))
-    }
-
-    pub unsafe fn from_ptr(ptr: *const u8) -> Self {
-        let mut bytes = [0; 64];
-        bytes.copy_from_slice(std::slice::from_raw_parts(ptr, 64));
-        Signature::from_bytes(bytes)
     }
 }
 

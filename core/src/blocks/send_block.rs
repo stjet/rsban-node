@@ -422,7 +422,7 @@ mod tests {
         let hash = block.hash().to_owned();
         assert!(validate_message(&key.public_key(), hash.as_bytes(), &block.signature).is_ok());
 
-        block.signature.make_invalid();
+        block.set_block_signature(&Signature::from_bytes([1; 64]));
         assert!(validate_message(&key.public_key(), hash.as_bytes(), &block.signature).is_err());
     }
 

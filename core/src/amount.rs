@@ -124,12 +124,6 @@ impl Amount {
     pub fn wrapping_sub(&self, other: Amount) -> Amount {
         self.raw.wrapping_sub(other.raw).into()
     }
-
-    pub unsafe fn from_ptr(ptr: *const u8) -> Self {
-        let mut bytes = [0; 16];
-        bytes.copy_from_slice(std::slice::from_raw_parts(ptr, 16));
-        Amount::from_be_bytes(bytes)
-    }
 }
 
 impl From<u128> for Amount {

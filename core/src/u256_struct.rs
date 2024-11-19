@@ -31,11 +31,6 @@ macro_rules! u256_struct {
                 &self.0
             }
 
-            pub unsafe fn copy_bytes(&self, target: *mut u8) {
-                let target_slice = std::slice::from_raw_parts_mut(target, 32);
-                target_slice.copy_from_slice(self.as_bytes());
-            }
-
             pub fn number(&self) -> primitive_types::U256 {
                 primitive_types::U256::from_big_endian(&self.0)
             }
@@ -59,10 +54,6 @@ macro_rules! u256_struct {
                 Ok(Self::from_bytes(crate::u256_struct::decode_32_bytes_hex(
                     s,
                 )?))
-            }
-
-            pub unsafe fn from_ptr(data: *const u8) -> Self {
-                Self(std::slice::from_raw_parts(data, 32).try_into().unwrap())
             }
         }
 

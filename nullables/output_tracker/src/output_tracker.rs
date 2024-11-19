@@ -23,6 +23,15 @@ impl<T: Clone + 'static> OutputTracker<T> {
     }
 }
 
+impl<T> Default for OutputTracker<T>
+where
+    T: Clone + 'static,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct OutputListener<T: Clone + 'static> {
     trackers: RefCell<Vec<Weak<OutputTracker<T>>>>,
 }
@@ -62,6 +71,15 @@ impl<T: Clone + 'static> OutputListener<T> {
 
     pub fn tracker_count(&self) -> usize {
         self.trackers.borrow().len()
+    }
+}
+
+impl<T> Default for OutputListener<T>
+where
+    T: Clone + 'static,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }
 

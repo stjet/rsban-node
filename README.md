@@ -62,14 +62,14 @@ The following diagram shows how the crates are organized. The crates will be spl
 
 ![crate diagram](http://www.plantuml.com/plantuml/proxy?cache=no&fmt=svg&src=https://raw.github.com/rsnano-node/rsnano-node/develop/doc/crates.puml)
 
-* `main`: Contains the pure Rust node executable
-* `ffi`: Contains all the glue code to connect the C++ and the Rust part (ffi = Foreign Function Interface)
-* `node`: Contains the node implementation
-* `rpc`: Contains the implemenation of the RPC server
-* `ledger`: Contains the ledger implementation with. It is responsible for the consinstency of the data stores.
-* `store_lmdb`: LMDB implementation of the data stores
-* `messages`: Message types that nodes use for communication
-* `network`: Manage outbound/inbound TCP channels to/from other nodes
+* `main`: The node executable.
+* `daemon`: Starts the node and optionally the RPC server.
+* `node`:The node implementation.
+* `rpc_server`: Implemenation of the RPC server.
+* `ledger`: Ledger implementation. It is responsible for the consinstency of the data stores.
+* `store_lmdb`: LMDB implementation of the data stores.
+* `messages`: Message types that nodes use for communication.
+* `network`: Manage outbound/inbound TCP channels to/from other nodes.
 * `core`: Contains the basic types like `BlockHash`, `Account`, `KeyPair`,...
-* `nullables`: Nullable wrappers for infrastructure libraries
+* `nullables`: Nullable wrappers for infrastructure libraries.
 

@@ -62,7 +62,8 @@ impl ProcessLiveDispatcherExt for Arc<ProcessLiveDispatcher> {
             if let Some(self_l) = self_w.upgrade() {
                 let tx = self_l.ledger.read_txn();
                 for (result, context) in batch {
-                    self_l.inspect(result, &context.block, &tx);
+                    let block = context.block.lock().unwrap().clone();
+                    self_l.inspect(result, &block, &tx);
                 }
             }
         }));

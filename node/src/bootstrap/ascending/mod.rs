@@ -658,20 +658,15 @@ impl BootstrapAscending {
             let mut guard = self.mutex.lock().unwrap();
             let tx = self.ledger.read_txn();
             for (result, context) in batch {
-                let account = context.block.account_field().unwrap_or_else(|| {
+                let block = context.block.lock().unwrap().clone();
+                let account = block.account_field().unwrap_or_else(|| {
                     self.ledger
                         .any()
-                        .block_account(&tx, &context.block.previous())
+                        .block_account(&tx, &block.previous())
                         .unwrap_or_default()
                 });
 
-                guard.inspect(
-                    &self.stats,
-                    *result,
-                    &context.block,
-                    context.source,
-                    &account,
-                );
+                guard.inspect(&self.stats, *result, &block, context.source, &account);
             }
         }
 

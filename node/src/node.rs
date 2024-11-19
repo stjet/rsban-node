@@ -1240,6 +1240,7 @@ impl Node {
     pub fn process_local(&self, block: BlockEnum) -> Option<BlockStatus> {
         self.block_processor
             .add_blocking(Arc::new(block), BlockSource::Local)
+            .map(|(status, _)| status)
     }
 
     pub fn process(&self, mut block: BlockEnum) -> Result<(), BlockStatus> {

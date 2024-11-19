@@ -1146,7 +1146,8 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
             .add_block_processed_observer(Box::new(move |status, context| {
                 if matches!(status, BlockStatus::Fork) {
                     if let Some(active) = self_w.upgrade() {
-                        active.publish_block(&context.block);
+                        let block = context.block.lock().unwrap().clone();
+                        active.publish_block(&block.into());
                     }
                 }
             }));

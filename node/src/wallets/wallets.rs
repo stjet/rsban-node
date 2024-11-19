@@ -1357,16 +1357,16 @@ impl WalletsExt for Arc<Wallets> {
                 .ok_or_else(|| anyhow!("no work generated"))?;
         }
         let arc_block = Arc::new(block.clone());
-        let result = self
+        let Some((result, block)) = self
             .block_processor
-            .add_blocking(arc_block.clone(), BlockSource::Local);
+            .add_blocking(arc_block.clone(), BlockSource::Local)
+        else {
+            bail!("block processor returned None");
+        };
 
-        if !matches!(result, Some(BlockStatus::Progress)) {
+        if !matches!(result, BlockStatus::Progress) {
             bail!("block processor failed: {:?}", result);
         }
-
-        // copy back, so that we have the sideband!
-        block = (*arc_block).clone();
 
         if generate_work {
             // Pregenerate work for next block based on the block just created

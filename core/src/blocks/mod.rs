@@ -581,18 +581,6 @@ impl crate::utils::Deserialize for BlockWithSideband {
     }
 }
 
-pub trait HackyUnsafeMutBlock {
-    unsafe fn undefined_behavior_mut(&self) -> &mut BlockEnum;
-}
-
-impl HackyUnsafeMutBlock for Arc<BlockEnum> {
-    unsafe fn undefined_behavior_mut(&self) -> &mut BlockEnum {
-        // This is undefined behavior and has to be changed to a proper implementation ASAP
-        let block_ptr = Arc::as_ptr(self) as *mut BlockEnum;
-        &mut *block_ptr
-    }
-}
-
 static DEV_PRIVATE_KEY_DATA: &str =
     "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
 pub static DEV_PUBLIC_KEY_DATA: &str =

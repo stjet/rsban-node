@@ -6,7 +6,7 @@ use crate::{
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     work::WorkThresholds,
-    BlockEnum, BlockType, Epoch, HackyUnsafeMutBlock, HashOrAccount, Networks, UncheckedInfo,
+    BlockEnum, BlockType, Epoch, HashOrAccount, Networks, UncheckedInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
 use rsnano_network::{ChannelId, DeadChannelCleanupStep};
@@ -52,7 +52,7 @@ impl From<BlockSource> for DetailType {
 pub type BlockProcessorCallback = Box<dyn Fn(BlockStatus) + Send + Sync>;
 
 pub struct BlockProcessorContext {
-    pub block: Arc<BlockEnum>,
+    pub block: Mutex<BlockEnum>,
     pub source: BlockSource,
     callback: Option<BlockProcessorCallback>,
     pub arrival: Instant,
@@ -61,12 +61,12 @@ pub struct BlockProcessorContext {
 
 impl BlockProcessorContext {
     pub fn new(
-        block: Arc<BlockEnum>,
+        block: BlockEnum,
         source: BlockSource,
         callback: Option<BlockProcessorCallback>,
     ) -> Self {
         Self {
-            block,
+            block: Mutex::new(block),
             source,
             arrival: Instant::now(),
             callback,
@@ -288,7 +288,11 @@ impl BlockProcessor {
             .add(block, source, channel_id, Some(callback))
     }
 
-    pub fn add_blocking(&self, block: Arc<BlockEnum>, source: BlockSource) -> Option<BlockStatus> {
+    pub fn add_blocking(
+        &self,
+        block: Arc<BlockEnum>,
+        source: BlockSource,
+    ) -> Option<(BlockStatus, BlockEnum)> {
         self.processor_loop.add_blocking(block, source)
     }
 
@@ -451,12 +455,20 @@ impl BlockProcessorLoop {
         );
 
         self.add_impl(
-            Arc::new(BlockProcessorContext::new(block, source, callback)),
+            Arc::new(BlockProcessorContext::new(
+                block.as_ref().clone(),
+                source,
+                callback,
+            )),
             channel_id,
         )
     }
 
-    pub fn add_blocking(&self, block: Arc<BlockEnum>, source: BlockSource) -> Option<BlockStatus> {
+    pub fn add_blocking(
+        &self,
+        block: Arc<BlockEnum>,
+        source: BlockSource,
+    ) -> Option<(BlockStatus, BlockEnum)> {
         self.stats
             .inc(StatType::Blockprocessor, DetailType::ProcessBlocking);
         debug!(
@@ -466,12 +478,16 @@ impl BlockProcessorLoop {
         );
 
         let hash = block.hash();
-        let ctx = Arc::new(BlockProcessorContext::new(block, source, None));
+        let ctx = Arc::new(BlockProcessorContext::new(
+            block.as_ref().clone(),
+            source,
+            None,
+        ));
         let waiter = ctx.get_waiter();
-        self.add_impl(ctx, ChannelId::LOOPBACK);
+        self.add_impl(ctx.clone(), ChannelId::LOOPBACK);
 
         match waiter.wait_result() {
-            Some(status) => Some(status),
+            Some(status) => Some((status, ctx.block.lock().unwrap().clone())),
             None => {
                 self.stats
                     .inc(StatType::Blockprocessor, DetailType::ProcessBlockingTimeout);
@@ -484,7 +500,11 @@ impl BlockProcessorLoop {
     pub fn force(&self, block: Arc<BlockEnum>) {
         self.stats.inc(StatType::Blockprocessor, DetailType::Force);
         debug!("Forcing block: {}", block.hash());
-        let ctx = Arc::new(BlockProcessorContext::new(block, BlockSource::Forced, None));
+        let ctx = Arc::new(BlockProcessorContext::new(
+            block.as_ref().clone(),
+            BlockSource::Forced,
+            None,
+        ));
         self.add_impl(ctx, ChannelId::LOOPBACK);
     }
 
@@ -559,7 +579,8 @@ impl BlockProcessorLoop {
 
             if force {
                 number_of_forced_processed += 1;
-                self.rollback_competitor(&mut tx, &ctx.block);
+                let block = ctx.block.lock().unwrap().clone();
+                self.rollback_competitor(&mut tx, &block);
             }
 
             number_of_blocks_processed += 1;
@@ -584,14 +605,15 @@ impl BlockProcessorLoop {
         txn: &mut LmdbWriteTransaction,
         context: &BlockProcessorContext,
     ) -> BlockStatus {
-        let block = &context.block;
+        let mut block = context.block.lock().unwrap().clone();
         let hash = block.hash();
-        let mutable_block = unsafe { block.undefined_behavior_mut() };
 
-        let result = match self.ledger.process(txn, mutable_block) {
+        let result = match self.ledger.process(txn, &mut block) {
             Ok(()) => BlockStatus::Progress,
             Err(r) => r,
         };
+
+        *context.block.lock().unwrap() = block.clone();
 
         self.stats
             .inc(StatType::BlockprocessorResult, result.into());
@@ -616,10 +638,8 @@ impl BlockProcessorLoop {
                 }
             }
             BlockStatus::GapPrevious => {
-                self.unchecked_map.put(
-                    block.previous().into(),
-                    UncheckedInfo::new(Arc::clone(block)),
-                );
+                self.unchecked_map
+                    .put(block.previous().into(), UncheckedInfo::new(Arc::new(block)));
                 self.stats.inc(StatType::Ledger, DetailType::GapPrevious);
             }
             BlockStatus::GapSource => {
@@ -628,16 +648,14 @@ impl BlockProcessorLoop {
                         .source_field()
                         .unwrap_or(block.link_field().unwrap_or_default().into())
                         .into(),
-                    UncheckedInfo::new(Arc::clone(block)),
+                    UncheckedInfo::new(Arc::new(block)),
                 );
                 self.stats.inc(StatType::Ledger, DetailType::GapSource);
             }
             BlockStatus::GapEpochOpenPending => {
                 // Specific unchecked key starting with epoch open block account public key
-                self.unchecked_map.put(
-                    block.account().into(),
-                    UncheckedInfo::new(Arc::clone(block)),
-                );
+                self.unchecked_map
+                    .put(block.account().into(), UncheckedInfo::new(Arc::new(block)));
                 self.stats.inc(StatType::Ledger, DetailType::GapSource);
             }
             BlockStatus::Old => {
@@ -659,7 +677,7 @@ impl BlockProcessorLoop {
         result
     }
 
-    fn rollback_competitor(&self, transaction: &mut LmdbWriteTransaction, block: &Arc<BlockEnum>) {
+    fn rollback_competitor(&self, transaction: &mut LmdbWriteTransaction, block: &BlockEnum) {
         let hash = block.hash();
         if let Some(successor) = self
             .ledger

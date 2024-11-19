@@ -301,7 +301,7 @@ impl LocalBlockBroadcasterExt for Arc<LocalBlockBroadcaster> {
                     if *result == BlockStatus::Progress && context.source == BlockSource::Local {
                         let mut guard = self_l.mutex.lock().unwrap();
                         guard.local_blocks.push_back(LocalEntry {
-                            block: Arc::clone(&context.block),
+                            block: Arc::new(context.block.lock().unwrap().clone()),
                             last_broadcast: None,
                             next_broadcast: Instant::now(),
                             rebroadcasts: 0,

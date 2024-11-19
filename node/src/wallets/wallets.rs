@@ -1579,27 +1579,19 @@ impl WalletsExt for Arc<Wallets> {
             }
         }
 
-        if let Some(b) = block {
-            let details = BlockDetails::new(epoch, false, false, false);
-            let arc_block = Arc::new(b);
-            if self
-                .action_complete(
-                    Arc::clone(&wallet),
-                    Some(Arc::clone(&arc_block)),
-                    source,
-                    generate_work,
-                    &details,
-                )
-                .is_err()
-            {
-                // Return null block after work generation or ledger process error
-                block = None;
-            } else {
-                // block arc gets changed by block_processor! So we have to copy it back.
-                block = Some(arc_block.deref().clone())
-            }
+        let block = block?;
+
+        let details = BlockDetails::new(epoch, false, false, false);
+        match self.action_complete2(
+            Arc::clone(&wallet),
+            Some(block),
+            source,
+            generate_work,
+            &details,
+        ) {
+            Ok(b) => return b,
+            Err(_) => return None,
         }
-        block
     }
 
     fn change_action2(

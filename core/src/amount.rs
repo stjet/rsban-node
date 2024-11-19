@@ -212,8 +212,6 @@ pub static KXRB_RATIO: LazyLock<u128> =
     LazyLock::new(|| str::parse("1000000000000000000000000000").unwrap()); // 10^27
 pub static MXRB_RATIO: LazyLock<u128> =
     LazyLock::new(|| str::parse("1000000000000000000000000000000").unwrap()); // 10^30
-pub static GXRB_RATIO: LazyLock<u128> =
-    LazyLock::new(|| str::parse("1000000000000000000000000000000000").unwrap()); // 10^33
 
 impl serde::Serialize for Amount {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -256,9 +254,8 @@ impl<'de> Visitor<'de> for AmountVisitor {
 
 #[cfg(test)]
 mod tests {
-    use crate::{KXRB_RATIO, XRB_RATIO};
-
     use super::*;
+    use crate::{KXRB_RATIO, XRB_RATIO};
 
     #[test]
     fn construct_amount_in_nano() {

@@ -16,7 +16,7 @@ use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{get_env_or_default_string, is_sanitizer_build, Peer},
-    Account, Amount, PublicKey, GXRB_RATIO, XRB_RATIO,
+    Account, Amount, PublicKey, XRB_RATIO,
 };
 use rsnano_store_lmdb::LmdbConfig;
 use std::{cmp::max, net::Ipv6Addr, time::Duration};
@@ -258,7 +258,7 @@ impl NodeConfig {
                 as i64,
             allow_local_peers: !(network_params.network.is_live_network()
                 || network_params.network.is_test_network()), // disable by default for live network
-            vote_minimum: Amount::raw(*GXRB_RATIO),
+            vote_minimum: Amount::nano(1000),
             vote_generator_delay_ms: 100,
             vote_generator_threshold: 3,
             unchecked_cutoff_time_s: 4 * 60 * 60, // 4 hours

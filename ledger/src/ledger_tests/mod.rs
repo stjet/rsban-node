@@ -8,7 +8,7 @@ use crate::{
 use rsnano_core::{
     utils::{new_test_timestamp, TEST_ENDPOINT_1},
     Account, Amount, BlockBuilder, BlockHash, PublicKey, QualifiedRoot, Root, TestAccountChain,
-    DEV_GENESIS_KEY, GXRB_RATIO,
+    DEV_GENESIS_KEY,
 };
 
 mod empty_ledger;
@@ -261,7 +261,7 @@ fn state_account() {
     let mut send = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(*DEV_GENESIS_HASH)
-        .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(*GXRB_RATIO))
+        .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::nano(1000))
         .link(*DEV_GENESIS_ACCOUNT)
         .sign(&DEV_GENESIS_KEY)
         .build();

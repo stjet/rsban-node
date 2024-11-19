@@ -15,7 +15,7 @@ mod block_hash;
 mod vote;
 
 pub use account::Account;
-pub use amount::{Amount, GXRB_RATIO, KXRB_RATIO, MXRB_RATIO, XRB_RATIO};
+pub use amount::{Amount, KXRB_RATIO, MXRB_RATIO, XRB_RATIO};
 use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,

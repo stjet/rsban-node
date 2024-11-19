@@ -24,7 +24,7 @@ use test_helpers::{
 
 mod bootstrap_processor {
     use super::*;
-    use rsnano_core::{BlockBuilder, PublicKey, GXRB_RATIO};
+    use rsnano_core::{BlockBuilder, PublicKey};
     use rsnano_ledger::{BlockStatus, DEV_GENESIS_PUB_KEY};
     use rsnano_network::ChannelMode;
     use rsnano_node::config::NodeConfig;
@@ -53,7 +53,7 @@ mod bootstrap_processor {
             .account(*DEV_GENESIS_ACCOUNT)
             .previous(*DEV_GENESIS_HASH)
             .representative(*DEV_GENESIS_PUB_KEY)
-            .balance(Amount::raw(Amount::MAX.number() - *GXRB_RATIO))
+            .balance(Amount::MAX - Amount::nano(1000))
             .link(key1.account())
             .sign(&DEV_GENESIS_KEY)
             .work(node0.work_generate_dev(*DEV_GENESIS_HASH))
@@ -63,7 +63,7 @@ mod bootstrap_processor {
             .account(key1.public_key())
             .previous(BlockHash::zero())
             .representative(key1.public_key())
-            .balance(*GXRB_RATIO)
+            .balance(Amount::nano(1000))
             .link(send1.hash())
             .sign(&key1)
             .work(node0.work_generate_dev(&key1))
@@ -127,7 +127,7 @@ mod bootstrap_processor {
             .account(*DEV_GENESIS_ACCOUNT)
             .previous(*DEV_GENESIS_HASH)
             .representative(*DEV_GENESIS_PUB_KEY)
-            .balance(Amount::raw(Amount::MAX.number() - *GXRB_RATIO))
+            .balance(Amount::MAX - Amount::nano(1000))
             .link(key1.account())
             .sign(&DEV_GENESIS_KEY)
             .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
@@ -143,7 +143,7 @@ mod bootstrap_processor {
             .account(*DEV_GENESIS_ACCOUNT)
             .previous(send1.hash())
             .representative(*DEV_GENESIS_PUB_KEY)
-            .balance(Amount::raw(Amount::MAX.number() - 2 * *GXRB_RATIO))
+            .balance(Amount::MAX - Amount::nano(2000))
             .link(key2.account())
             .sign(&DEV_GENESIS_KEY)
             .work(node1.work_generate_dev(send1.hash()))
@@ -173,7 +173,7 @@ mod bootstrap_processor {
             .account(key2.public_key())
             .previous(BlockHash::zero())
             .representative(key2.public_key())
-            .balance(Amount::raw(*GXRB_RATIO))
+            .balance(Amount::nano(1000))
             .link(send2.hash())
             .sign(&key2)
             .work(node1.work_generate_dev(&key2))
@@ -226,7 +226,7 @@ mod bootstrap_processor {
             .account(*DEV_GENESIS_ACCOUNT)
             .previous(*DEV_GENESIS_HASH)
             .representative(*DEV_GENESIS_PUB_KEY)
-            .balance(Amount::raw(Amount::MAX.number() - *GXRB_RATIO))
+            .balance(Amount::MAX - Amount::nano(1000))
             .link(key.account())
             .sign(&DEV_GENESIS_KEY)
             .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
@@ -316,7 +316,7 @@ mod bootstrap_processor {
             .account(*DEV_GENESIS_ACCOUNT)
             .previous(*DEV_GENESIS_HASH)
             .representative(*DEV_GENESIS_PUB_KEY)
-            .balance(Amount::raw(Amount::MAX.number() - *GXRB_RATIO))
+            .balance(Amount::MAX - Amount::nano(1000))
             .link(key.account())
             .sign(&DEV_GENESIS_KEY)
             .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
@@ -331,7 +331,7 @@ mod bootstrap_processor {
             .account(*DEV_GENESIS_ACCOUNT)
             .previous(send1.hash())
             .representative(*DEV_GENESIS_PUB_KEY)
-            .balance(Amount::raw(Amount::MAX.number() - 2 * *GXRB_RATIO))
+            .balance(Amount::MAX - Amount::nano(2000))
             .link(key.account())
             .sign(&DEV_GENESIS_KEY)
             .work(node1.work_generate_dev(send1.hash()))
@@ -358,7 +358,7 @@ mod bootstrap_processor {
             .account(key.public_key())
             .previous(open.hash())
             .representative(key.public_key())
-            .balance(Amount::raw(2 * *GXRB_RATIO))
+            .balance(Amount::nano(2000))
             .link(send2.hash())
             .sign(&key)
             .work(node1.work_generate_dev(open.hash()))
@@ -423,7 +423,7 @@ mod bootstrap_processor {
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
-            Amount::raw(Amount::MAX.number() - *GXRB_RATIO),
+            Amount::MAX - Amount::nano(1000),
             (*DEV_GENESIS_ACCOUNT).into(),
             &DEV_GENESIS_KEY,
             node0.work_generate_dev(*DEV_GENESIS_HASH),
@@ -467,7 +467,7 @@ mod bootstrap_processor {
             *DEV_GENESIS_ACCOUNT,
             change2.hash(),
             *DEV_GENESIS_PUB_KEY,
-            Amount::raw(Amount::MAX.number() - *GXRB_RATIO),
+            Amount::MAX - Amount::nano(1000),
             key1.account().into(),
             &DEV_GENESIS_KEY,
             node0.work_generate_dev(change2.hash()),
@@ -478,7 +478,7 @@ mod bootstrap_processor {
             key1.account(),
             BlockHash::zero(),
             key1.public_key(),
-            Amount::raw(*GXRB_RATIO),
+            Amount::nano(1000),
             send2.hash().into(),
             &key1,
             node0.work_generate_dev(key1.public_key()),
@@ -500,7 +500,7 @@ mod bootstrap_processor {
             key2.account(),
             BlockHash::zero(),
             key2.public_key(),
-            Amount::raw(*GXRB_RATIO),
+            Amount::nano(1000),
             send3.hash().into(),
             &key2,
             node0.work_generate_dev(&key2),

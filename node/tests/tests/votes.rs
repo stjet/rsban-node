@@ -1,6 +1,6 @@
 use rsnano_core::{
     Amount, BlockEnum, BlockHash, Epoch, KeyPair, Root, Signature, StateBlock, Vote, VoteCode,
-    VoteSource, WalletId, DEV_GENESIS_KEY, GXRB_RATIO,
+    VoteSource, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
@@ -244,7 +244,7 @@ fn vote_generator_multiple_representatives() {
         .insert_adhoc2(&wallet_id, &key3.private_key(), true)
         .unwrap();
 
-    let amount = Amount::raw(100 * *GXRB_RATIO);
+    let amount = Amount::nano(100_000);
     node.wallets.send_sync(
         wallet_id,
         *DEV_GENESIS_ACCOUNT,
@@ -376,7 +376,7 @@ fn vote_spacing_vote_generator() {
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
-        node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO),
+        node.ledger.constants.genesis_amount - Amount::nano(1000),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev(*DEV_GENESIS_HASH),
@@ -386,7 +386,7 @@ fn vote_spacing_vote_generator() {
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
-        node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO) - Amount::raw(1),
+        node.ledger.constants.genesis_amount - Amount::nano(1000) - Amount::raw(1),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev(*DEV_GENESIS_HASH),
@@ -471,7 +471,7 @@ fn vote_spacing_rapid() {
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
-        node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO),
+        node.ledger.constants.genesis_amount - Amount::nano(1000),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev(*DEV_GENESIS_HASH),
@@ -481,7 +481,7 @@ fn vote_spacing_rapid() {
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
-        node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO) - Amount::raw(1),
+        node.ledger.constants.genesis_amount - Amount::nano(1000) - Amount::raw(1),
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
         node.work_generate_dev(*DEV_GENESIS_HASH),

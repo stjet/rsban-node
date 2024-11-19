@@ -2,7 +2,7 @@ use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder,
     BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
     PublicKey, QualifiedRoot, Root, SendBlock, Signature, StateBlock, UncheckedInfo, Vote,
-    VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO,
+    VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY, MXRB_RATIO,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -55,7 +55,7 @@ fn pruning_depth_max_depth() {
     let send1 = LegacySendBlockBuilder::new()
         .previous(latest_hash)
         .destination(key1.account())
-        .balance(Amount::MAX - Amount::raw(1 * *GXRB_RATIO))
+        .balance(Amount::MAX - Amount::nano(1000))
         .sign(DEV_GENESIS_KEY.clone())
         .work(node1.work_generate_dev(latest_hash))
         .build();
@@ -135,7 +135,7 @@ fn pruning_automatic() {
     let send1 = LegacySendBlockBuilder::new()
         .previous(latest_hash)
         .destination(key1.account())
-        .balance(Amount::MAX - Amount::raw(1 * *GXRB_RATIO))
+        .balance(Amount::MAX - Amount::nano(1000))
         .sign(DEV_GENESIS_KEY.clone())
         .work(node1.work_generate_dev(latest_hash))
         .build();
@@ -3209,7 +3209,7 @@ fn node_receive_quorum() {
     let send = BlockEnum::LegacySend(SendBlock::new(
         &previous,
         &key.account(),
-        &(node1.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO)),
+        &(node1.ledger.constants.genesis_amount - Amount::nano(1000)),
         &DEV_GENESIS_KEY.private_key(),
         system.work.generate_dev2(previous.into()).unwrap(),
     ));
@@ -3598,7 +3598,7 @@ fn block_processor_signatures() {
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(latest)
         .representative(*DEV_GENESIS_PUB_KEY)
-        .balance(node.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO))
+        .balance(node.ledger.constants.genesis_amount - Amount::nano(1000))
         .link(key1.account())
         .sign(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(latest))
@@ -3609,7 +3609,7 @@ fn block_processor_signatures() {
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(send1.hash())
         .representative(*DEV_GENESIS_PUB_KEY)
-        .balance(node.ledger.constants.genesis_amount - Amount::raw(2 * *GXRB_RATIO))
+        .balance(node.ledger.constants.genesis_amount - Amount::nano(2000))
         .link(key2.account())
         .sign(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(send1.hash()))
@@ -3619,7 +3619,7 @@ fn block_processor_signatures() {
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(send2.hash())
         .representative(*DEV_GENESIS_PUB_KEY)
-        .balance(node.ledger.constants.genesis_amount - Amount::raw(3 * *GXRB_RATIO))
+        .balance(node.ledger.constants.genesis_amount - Amount::nano(3000))
         .link(key3.account())
         .sign(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(send2.hash()))
@@ -3630,7 +3630,7 @@ fn block_processor_signatures() {
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(send3.hash())
         .representative(*DEV_GENESIS_PUB_KEY)
-        .balance(node.ledger.constants.genesis_amount - Amount::raw(4 * *GXRB_RATIO))
+        .balance(node.ledger.constants.genesis_amount - Amount::nano(4000))
         .link(key3.account())
         .sign(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(send3.hash()))
@@ -3644,7 +3644,7 @@ fn block_processor_signatures() {
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(send3.hash())
         .representative(*DEV_GENESIS_PUB_KEY)
-        .balance(node.ledger.constants.genesis_amount - Amount::raw(5 * *GXRB_RATIO))
+        .balance(node.ledger.constants.genesis_amount - Amount::nano(5000))
         .link(key3.account())
         .sign(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(send3.hash()))
@@ -3662,7 +3662,7 @@ fn block_processor_signatures() {
         .account(key1.account())
         .previous(BlockHash::zero())
         .representative(*DEV_GENESIS_PUB_KEY) // No previous block for the account (open block)
-        .balance(Amount::raw(*GXRB_RATIO))
+        .balance(Amount::nano(1000))
         .link(send1.hash())
         .sign(&key1)
         .work(node.work_generate_dev(key1.account()))
@@ -3672,7 +3672,7 @@ fn block_processor_signatures() {
         .account(key2.account())
         .previous(BlockHash::zero())
         .representative(*DEV_GENESIS_PUB_KEY) // No previous block for the account (open block)
-        .balance(Amount::raw(*GXRB_RATIO))
+        .balance(Amount::nano(1000))
         .link(send2.hash())
         .sign(&key2)
         .work(node.work_generate_dev(key2.account()))
@@ -3683,7 +3683,7 @@ fn block_processor_signatures() {
         .account(key3.account())
         .previous(BlockHash::zero())
         .representative(*DEV_GENESIS_PUB_KEY) // No previous block for the account (open block)
-        .balance(Amount::raw(*GXRB_RATIO))
+        .balance(Amount::nano(1000))
         .link(send3.hash())
         .sign(&key2)
         .work(node.work_generate_dev(key3.account()))
@@ -3720,7 +3720,7 @@ fn block_confirm() {
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(*DEV_GENESIS_HASH)
         .representative(*DEV_GENESIS_ACCOUNT)
-        .balance(node1.ledger.constants.genesis_amount - Amount::raw(*GXRB_RATIO))
+        .balance(node1.ledger.constants.genesis_amount - Amount::nano(1000))
         .link(key.account())
         .sign(&DEV_GENESIS_KEY)
         .work(node1.work_generate_dev(*DEV_GENESIS_HASH))

@@ -14,7 +14,7 @@ impl LmdbDatabase {
         let DatabaseType::Real(db) = &self.0 else {
             panic!("database handle was not a real handle");
         };
-        db.clone()
+        *db
     }
 
     pub fn as_nulled(&self) -> u32 {

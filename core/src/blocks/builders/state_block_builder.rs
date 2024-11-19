@@ -195,6 +195,12 @@ impl StateBlockBuilder {
     }
 }
 
+impl Default for StateBlockBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

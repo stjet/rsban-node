@@ -7,8 +7,7 @@ use std::{
     sync::LazyLock,
 };
 
-pub static WORK_THRESHOLDS_STUB: LazyLock<WorkThresholds> =
-    LazyLock::new(|| WorkThresholds::new_stub());
+pub static WORK_THRESHOLDS_STUB: LazyLock<WorkThresholds> = LazyLock::new(WorkThresholds::new_stub);
 
 pub struct WorkThresholds {
     pub epoch_1: u64,

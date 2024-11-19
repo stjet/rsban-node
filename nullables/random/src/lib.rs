@@ -85,8 +85,8 @@ impl RngCore for RngStub {
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        for i in 0..dest.len() {
-            dest[i] = self.data[self.index];
+        for i in dest {
+            *i = self.data[self.index];
             self.index += 1;
             if self.index >= self.data.len() {
                 self.index = 0;

@@ -160,22 +160,6 @@ pub fn get_env_bool(variable_name: impl AsRef<str>) -> Option<bool> {
         })
 }
 
-pub trait Latch: Send + Sync {
-    fn wait(&self);
-}
-
-pub struct NullLatch {}
-
-impl NullLatch {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Latch for NullLatch {
-    fn wait(&self) {}
-}
-
 pub fn parse_endpoint(s: &str) -> SocketAddrV6 {
     s.parse().unwrap()
 }

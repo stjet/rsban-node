@@ -58,7 +58,7 @@ impl Timestamp {
     }
 
     pub fn checked_sub(&self, rhs: Duration) -> Option<Self> {
-        self.0.checked_sub(rhs.as_millis() as i64).map(|i| Self(i))
+        self.0.checked_sub(rhs.as_millis() as i64).map(Self)
     }
 }
 

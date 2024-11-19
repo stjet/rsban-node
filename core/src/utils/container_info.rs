@@ -14,14 +14,14 @@ pub enum ContainerInfoComponent {
 }
 
 impl ContainerInfoComponent {
-    pub fn into_json(&self) -> serde_json::Value {
+    pub fn into_json(self) -> serde_json::Value {
         let (key, value) = self.into_json_impl();
         let mut data = serde_json::Map::new();
         data.insert(key, value);
         serde_json::Value::Object(data)
     }
 
-    fn into_json_impl(&self) -> (String, serde_json::Value) {
+    fn into_json_impl(self) -> (String, serde_json::Value) {
         match self {
             ContainerInfoComponent::Leaf(leaf) => {
                 let fields = json!({"count": leaf.count.to_string(), "size": leaf.sizeof_element.to_string()});

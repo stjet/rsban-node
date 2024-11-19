@@ -51,7 +51,7 @@ macro_rules! u256_struct {
             }
 
             pub fn decode_hex(s: impl AsRef<str>) -> anyhow::Result<Self> {
-                Ok(Self::from_bytes(crate::u256_struct::decode_32_bytes_hex(
+                Ok(Self::from_bytes($crate::u256_struct::decode_32_bytes_hex(
                     s,
                 )?))
             }
@@ -164,7 +164,7 @@ macro_rules! serialize_32_byte_string {
             where
                 D: serde::Deserializer<'de>,
             {
-                let value = deserializer.deserialize_str(crate::u256_struct::U256Visitor {})?;
+                let value = deserializer.deserialize_str($crate::u256_struct::U256Visitor {})?;
                 Ok(Self::from_bytes(value))
             }
         }

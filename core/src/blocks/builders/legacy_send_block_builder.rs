@@ -115,3 +115,9 @@ impl LegacySendBlockBuilder {
         BlockEnum::LegacySend(block)
     }
 }
+
+impl Default for LegacySendBlockBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}

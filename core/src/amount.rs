@@ -206,7 +206,7 @@ impl std::ops::SubAssign<u128> for Amount {
 
 impl std::cmp::PartialOrd for Amount {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.raw.partial_cmp(&other.raw)
+        Some(self.cmp(other))
     }
 }
 
@@ -231,7 +231,7 @@ impl<'de> serde::Deserialize<'de> for Amount {
         D: serde::Deserializer<'de>,
     {
         let value = deserializer.deserialize_str(AmountVisitor {})?;
-        Ok(Self::from(value))
+        Ok(value)
     }
 }
 
@@ -248,7 +248,7 @@ impl<'de> Visitor<'de> for AmountVisitor {
     where
         E: serde::de::Error,
     {
-        let value = u128::from_str_radix(v, 10).map_err(|_| {
+        let value = v.parse::<u128>().map_err(|_| {
             serde::de::Error::invalid_value(Unexpected::Str(v), &"a 128bit decimal string")
         })?;
         Ok(Amount::from(value))

@@ -62,6 +62,12 @@ impl HttpClient {
     }
 }
 
+impl Default for HttpClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 enum HttpClientStrategy {
     Real(reqwest::Client),
     Nulled(HttpClientStub),

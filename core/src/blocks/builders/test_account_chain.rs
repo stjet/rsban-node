@@ -364,6 +364,12 @@ impl TestAccountChain {
     }
 }
 
+impl Default for TestAccountChain {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,6 +1,5 @@
-use crate::EMPTY_DATABASE;
-
 use super::{ConfiguredDatabase, LmdbDatabase, RoCursor};
+use crate::EMPTY_DATABASE;
 
 pub struct RoTransaction {
     strategy: RoTransactionStrategy,
@@ -78,7 +77,7 @@ impl RoTransactionWrapper {
     }
 
     fn get(&self, database: LmdbDatabase, key: &[u8]) -> lmdb::Result<&[u8]> {
-        lmdb::Transaction::get(&self.0, database.as_real(), &&*key)
+        lmdb::Transaction::get(&self.0, database.as_real(), &key)
     }
 
     fn open_ro_cursor(&self, database: LmdbDatabase) -> lmdb::Result<RoCursor> {
@@ -124,7 +123,7 @@ impl RoTransactionStub {
         }
     }
 
-    fn open_ro_cursor<'txn>(&'txn self, database: LmdbDatabase) -> lmdb::Result<RoCursor<'txn>> {
+    fn open_ro_cursor(&self, database: LmdbDatabase) -> lmdb::Result<RoCursor> {
         match self.get_database(database) {
             Some(db) => Ok(RoCursor::new_null(db)),
             None => Ok(RoCursor::new_null(&EMPTY_DATABASE)),

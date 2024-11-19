@@ -106,7 +106,7 @@ impl WorkPoolImpl {
     }
 
     pub fn work_generation_enabled(&self) -> bool {
-        self.threads.len() > 0
+        !self.threads.is_empty()
     }
 
     pub fn cancel(&self, root: &Root) {

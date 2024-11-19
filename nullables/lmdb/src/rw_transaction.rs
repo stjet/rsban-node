@@ -20,7 +20,7 @@ impl RwTransaction {
 
     pub fn get(&self, database: LmdbDatabase, key: &[u8]) -> lmdb::Result<&[u8]> {
         match &self.strategy {
-            RwTransactionStrategy::Real(s) => s.get(database, &key),
+            RwTransactionStrategy::Real(s) => s.get(database, key),
             RwTransactionStrategy::Nulled(s) => s.get(database, key),
         }
     }
@@ -33,7 +33,7 @@ impl RwTransaction {
         flags: lmdb::WriteFlags,
     ) -> lmdb::Result<()> {
         if let RwTransactionStrategy::Real(s) = &mut self.strategy {
-            s.put(database.as_real(), &key, &data, flags)?;
+            s.put(database.as_real(), key, data, flags)?;
         }
         Ok(())
     }
@@ -45,11 +45,18 @@ impl RwTransaction {
         flags: Option<&[u8]>,
     ) -> lmdb::Result<()> {
         if let RwTransactionStrategy::Real(s) = &mut self.strategy {
-            s.del(database.as_real(), &key, flags)?;
+            s.del(database.as_real(), key, flags)?;
         }
         Ok(())
     }
 
+    /// ## Safety
+    ///
+    /// This function (as well as `Environment::open_db`,
+    /// `Environment::create_db`, and `Database::open`) **must not** be called
+    /// from multiple concurrent transactions in the same environment. A
+    /// transaction which uses this function must finish (either commit or
+    /// abort) before any other transaction may use this function.
     pub unsafe fn create_db(
         &self,
         name: Option<&str>,
@@ -61,6 +68,10 @@ impl RwTransaction {
         }
     }
 
+    /// ## Safety
+    ///
+    /// This method is unsafe in the same ways as `Environment::close_db`, and
+    /// should be used accordingly.
     pub unsafe fn drop_db(&mut self, database: LmdbDatabase) -> lmdb::Result<()> {
         if let RwTransactionStrategy::Real(s) = &mut self.strategy {
             s.drop_db(database.as_real())?;
@@ -136,9 +147,9 @@ impl RwTransactionWrapper {
         lmdb::Transaction::commit(self.0)
     }
 
-    fn open_ro_cursor<'txn>(&'txn self, database: LmdbDatabase) -> lmdb::Result<RoCursor<'txn>> {
+    fn open_ro_cursor(&self, database: LmdbDatabase) -> lmdb::Result<RoCursor> {
         let cursor = lmdb::Transaction::open_ro_cursor(&self.0, database.as_real());
-        cursor.map(|c| RoCursor::new(c))
+        cursor.map(RoCursor::new)
     }
 
     fn count(&self, database: lmdb::Database) -> u64 {
@@ -146,10 +157,21 @@ impl RwTransactionWrapper {
         stat.unwrap().entries() as u64
     }
 
+    /// ## Safety
+    ///
+    /// This method is unsafe in the same ways as `Environment::close_db`, and
+    /// should be used accordingly.
     unsafe fn drop_db(&mut self, database: lmdb::Database) -> lmdb::Result<()> {
         lmdb::RwTransaction::drop_db(&mut self.0, database)
     }
 
+    /// ## Safety
+    ///
+    /// This function (as well as `Environment::open_db`,
+    /// `Environment::create_db`, and `Database::open`) **must not** be called
+    /// from multiple concurrent transactions in the same environment. A
+    /// transaction which uses this function must finish (either commit or
+    /// abort) before any other transaction may use this function.
     unsafe fn create_db(
         &self,
         name: Option<&str>,

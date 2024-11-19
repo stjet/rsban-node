@@ -81,6 +81,12 @@ impl LegacyReceiveBlockBuilder {
     }
 }
 
+impl Default for LegacyReceiveBlockBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{work::WORK_THRESHOLDS_STUB, Block, BlockBuilder, BlockEnum, BlockHash};

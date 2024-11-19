@@ -27,15 +27,14 @@ pub trait PropertyTree {
 
 pub trait PropertyTreeWriter {}
 
+#[derive(Default)]
 pub struct TestPropertyTree {
     properties: HashMap<String, String>,
 }
 
 impl TestPropertyTree {
     pub fn new() -> Self {
-        Self {
-            properties: HashMap::new(),
-        }
+        Self::default()
     }
 }
 
@@ -140,6 +139,12 @@ impl SerdePropertyTree {
             panic!("not an object");
         };
         map.insert(path, value);
+    }
+}
+
+impl Default for SerdePropertyTree {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -26,6 +26,12 @@ impl TcpStreamFactory {
     }
 }
 
+impl Default for TcpStreamFactory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 trait InternalTcpStreamFactory: Send + Sync {
     async fn connect(&self, addr: SocketAddr) -> tokio::io::Result<TcpStream>;

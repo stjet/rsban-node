@@ -103,6 +103,12 @@ impl LegacyOpenBlockBuilder {
     }
 }
 
+impl Default for LegacyOpenBlockBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

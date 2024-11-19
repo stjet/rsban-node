@@ -85,3 +85,9 @@ impl LegacyChangeBlockBuilder {
         BlockEnum::LegacyChange(block)
     }
 }
+
+impl Default for LegacyChangeBlockBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}

@@ -65,7 +65,7 @@ impl Vote {
 
     pub fn new_final(key: &KeyPair, hashes: Vec<BlockHash>) -> Self {
         assert!(hashes.len() <= Self::MAX_HASHES);
-        Self::new(&key, Self::TIMESTAMP_MAX, Self::DURATION_MAX, hashes)
+        Self::new(key, Self::TIMESTAMP_MAX, Self::DURATION_MAX, hashes)
     }
 
     pub fn new(keys: &KeyPair, timestamp: u64, duration: u8, hashes: Vec<BlockHash>) -> Self {
@@ -116,15 +116,6 @@ impl Vote {
 
     pub fn duration(&self) -> Duration {
         Duration::from_millis(1 << (self.duration_bits() + 4))
-    }
-
-    pub fn vote_hashes_string(&self) -> String {
-        let mut result = String::new();
-        for h in self.hashes.iter() {
-            result.push_str(&h.to_string());
-            result.push_str(",");
-        }
-        result
     }
 
     fn serialize_json(&self) -> serde_json::Value {
@@ -186,7 +177,7 @@ impl Vote {
 
     pub fn validate(&self) -> Result<()> {
         validate_message(
-            &self.voting_account.into(),
+            &self.voting_account,
             self.hash().as_bytes(),
             &self.signature,
         )

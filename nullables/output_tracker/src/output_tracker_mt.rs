@@ -28,6 +28,15 @@ impl<T: Clone + 'static> OutputTrackerMt<T> {
     }
 }
 
+impl<T> Default for OutputTrackerMt<T>
+where
+    T: Clone + 'static,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct OutputListenerMt<T: Clone + 'static> {
     trackers: Mutex<Vec<Weak<OutputTrackerMt<T>>>>,
     count: AtomicUsize,
@@ -76,6 +85,15 @@ impl<T: Clone + 'static> OutputListenerMt<T> {
 
     pub fn tracker_count(&self) -> usize {
         self.trackers.lock().unwrap().len()
+    }
+}
+
+impl<T> Default for OutputListenerMt<T>
+where
+    T: Clone + 'static,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }
 

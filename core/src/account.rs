@@ -75,7 +75,7 @@ impl<'de> serde::Deserialize<'de> for Account {
         D: serde::Deserializer<'de>,
     {
         let value = deserializer.deserialize_str(AccountVisitor {})?;
-        Ok(Self::from(value))
+        Ok(value)
     }
 }
 

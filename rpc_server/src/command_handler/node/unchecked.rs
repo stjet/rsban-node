@@ -11,10 +11,8 @@ impl RpcCommandHandler {
         let mut iterations = 0;
         self.node.unchecked.for_each(
             |_key: &UncheckedKey, info: &UncheckedInfo| {
-                if let Some(block) = &info.block {
-                    let json_block = block.json_representation();
-                    blocks.insert(block.hash(), json_block);
-                }
+                let json_block = info.block.json_representation();
+                blocks.insert(info.block.hash(), json_block);
             },
             || {
                 iterations += 1;

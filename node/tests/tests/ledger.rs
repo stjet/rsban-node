@@ -249,10 +249,7 @@ fn epoch_open_pending() {
     // Open block should be inserted into unchecked
     let blocks = node1.unchecked.get(&epoch_open.account().into());
     assert_eq!(blocks.len(), 1);
-    assert_eq!(
-        blocks[0].block.as_ref().unwrap().full_hash(),
-        epoch_open.full_hash()
-    );
+    assert_eq!(blocks[0].block.full_hash(), epoch_open.full_hash());
     // New block to process epoch open
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,

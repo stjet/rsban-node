@@ -35,7 +35,7 @@ fn one_bootstrap() {
     assert_eq!(block1.hash(), hash1);
     let mut blocks = unchecked.get(&hash1.into());
     assert_eq!(blocks.len(), 1);
-    let block2 = blocks.remove(0).block.unwrap();
+    let block2 = blocks.remove(0).block;
     assert_eq!(block2.hash(), block1.hash());
 }
 
@@ -66,10 +66,7 @@ fn simple() {
     let block_listing2 = unchecked.get(&block.previous().into());
     assert_ne!(block_listing2.len(), 0);
     // Asserts the added block is equal to the retrieved one
-    assert_eq!(
-        block_listing2[0].block.as_ref().unwrap().hash(),
-        block.hash()
-    );
+    assert_eq!(block_listing2[0].block.hash(), block.hash());
     // Deletes the block from the database
     unchecked.remove(&UncheckedKey::new(block.previous(), block.hash()));
     // Asserts the block is deleted
@@ -206,7 +203,7 @@ fn multiple_get() {
     let unchecked1_blocks = unchecked.get(&block1.previous().into());
     assert_eq!(unchecked1_blocks.len(), 3);
     for i in unchecked1_blocks {
-        unchecked1.push(i.block.as_ref().unwrap().hash());
+        unchecked1.push(i.block.hash());
     }
     // Asserts the payloads where correclty saved
     assert!(unchecked1.contains(&block1.hash()));
@@ -217,7 +214,7 @@ fn multiple_get() {
     let unchecked2_blocks = unchecked.get(&block1.hash().into());
     assert_eq!(unchecked2_blocks.len(), 2);
     for i in unchecked2_blocks {
-        unchecked2.push(i.block.as_ref().unwrap().hash());
+        unchecked2.push(i.block.hash());
     }
     // Asserts the payloads where correctly saved
     assert!(unchecked2.contains(&block1.hash()));
@@ -225,11 +222,11 @@ fn multiple_get() {
     // Asserts the entry is found by the key and the payload is saved
     let unchecked3 = unchecked.get(&block2.previous().into());
     assert_eq!(unchecked3.len(), 1);
-    assert_eq!(unchecked3[0].block.as_ref().unwrap().hash(), block2.hash());
+    assert_eq!(unchecked3[0].block.hash(), block2.hash());
     // Asserts the entry is found by the key and the payload is saved
     let unchecked4 = unchecked.get(&block3.hash().into());
     assert_eq!(unchecked4.len(), 1);
-    assert_eq!(unchecked4[0].block.as_ref().unwrap().hash(), block3.hash());
+    assert_eq!(unchecked4[0].block.hash(), block3.hash());
     // Asserts no entry is found for a block that wasn't added
     let unchecked5 = unchecked.get(&block2.hash().into());
     assert_eq!(unchecked5.len(), 0);

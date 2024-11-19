@@ -73,7 +73,7 @@ impl UncheckedMap {
 
     pub fn put(&self, dependency: HashOrAccount, info: UncheckedInfo) {
         let mut lock = self.mutable.lock().unwrap();
-        let key = UncheckedKey::new(dependency.into(), info.block.as_ref().unwrap().hash());
+        let key = UncheckedKey::new(dependency.into(), info.block.hash());
         let inserted = lock.entries_container.insert(Entry::new(key, info));
         if lock.entries_container.len() > self.max_unchecked_blocks {
             lock.entries_container.pop_front();
@@ -410,6 +410,8 @@ impl EntriesContainer {
 
 #[cfg(test)]
 mod tests {
+    use rsnano_core::Block;
+
     use super::*;
 
     #[test]
@@ -513,7 +515,7 @@ mod tests {
     fn test_entry<T: Into<BlockHash>>(hash: T) -> Entry {
         Entry::new(
             UncheckedKey::new(hash.into(), BlockHash::default()),
-            UncheckedInfo::default(),
+            UncheckedInfo::new(Arc::new(Block::new_test_instance())),
         )
     }
 }

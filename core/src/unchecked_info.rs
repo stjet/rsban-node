@@ -12,10 +12,9 @@ use crate::{
 };
 
 /// Information on an unchecked block
-#[derive(Default, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct UncheckedInfo {
-    // todo: Remove Option as soon as no C++ code requires the empty constructor
-    pub block: Option<Arc<Block>>,
+    pub block: Arc<Block>,
 
     /// Seconds since posix epoch
     pub modified: u64,
@@ -24,18 +23,11 @@ pub struct UncheckedInfo {
 impl UncheckedInfo {
     pub fn new(block: Arc<Block>) -> Self {
         Self {
-            block: Some(block),
+            block,
             modified: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs(),
-        }
-    }
-
-    pub fn null() -> Self {
-        Self {
-            block: None,
-            modified: 0,
         }
     }
 
@@ -48,7 +40,7 @@ impl UncheckedInfo {
 
 impl Serialize for UncheckedInfo {
     fn serialize(&self, stream: &mut dyn BufferWriter) {
-        self.block.as_ref().unwrap().serialize(stream);
+        self.block.serialize(stream);
         stream.write_u64_ne_safe(self.modified);
     }
 }
@@ -60,7 +52,7 @@ impl Deserialize for UncheckedInfo {
         let block = Block::deserialize(stream)?;
         let modified = stream.read_u64_ne()?;
         Ok(Self {
-            block: Some(Arc::new(block)),
+            block: Arc::new(block),
             modified,
         })
     }

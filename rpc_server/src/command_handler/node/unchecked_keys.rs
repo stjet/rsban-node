@@ -10,15 +10,13 @@ impl RpcCommandHandler {
         self.node.unchecked.for_each_with_dependency(
             &args.key,
             |key, info| {
-                if let Some(block) = info.block.as_ref() {
-                    let key_dto = UncheckedKeyDto {
-                        key: key.previous,
-                        hash: block.hash(),
-                        modified_timestamp: info.modified.into(),
-                        contents: block.json_representation(),
-                    };
-                    unchecked_keys.borrow_mut().push(key_dto);
-                }
+                let key_dto = UncheckedKeyDto {
+                    key: key.previous,
+                    hash: info.block.hash(),
+                    modified_timestamp: info.modified.into(),
+                    contents: info.block.json_representation(),
+                };
+                unchecked_keys.borrow_mut().push(key_dto);
             },
             || (unchecked_keys.borrow().len() as u64) < count,
         );

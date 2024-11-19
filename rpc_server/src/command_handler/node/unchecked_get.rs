@@ -1,9 +1,8 @@
-use std::cell::RefCell;
-
 use crate::command_handler::RpcCommandHandler;
 use anyhow::anyhow;
 use rsnano_core::{UncheckedInfo, UncheckedKey};
 use rsnano_rpc_messages::{HashRpcMessage, UncheckedGetResponse};
+use std::cell::RefCell;
 
 impl RpcCommandHandler {
     pub(crate) fn unchecked_get(
@@ -17,14 +16,12 @@ impl RpcCommandHandler {
             |key: &UncheckedKey, info: &UncheckedInfo| {
                 if key.hash == args.hash {
                     let modified_timestamp = info.modified;
-                    if let Some(block) = info.block.as_ref() {
-                        let contents = block.json_representation();
-                        result = Some(UncheckedGetResponse {
-                            modified_timestamp: modified_timestamp.into(),
-                            contents,
-                        });
-                        *done.borrow_mut() = true;
-                    }
+                    let contents = info.block.json_representation();
+                    result = Some(UncheckedGetResponse {
+                        modified_timestamp: modified_timestamp.into(),
+                        contents,
+                    });
+                    *done.borrow_mut() = true;
                 }
             },
             || !*done.borrow(),

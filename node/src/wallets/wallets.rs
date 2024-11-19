@@ -14,9 +14,8 @@ use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{get_env_or_default_string, ContainerInfo, ContainerInfoComponent},
     work::{WorkPoolImpl, WorkThresholds},
-    Account, Amount, BlockDetails, BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock,
-    KeyDerivationFunction, KeyPair, Link, NoValue, PendingKey, PublicKey, RawKey, Root, StateBlock,
-    WalletId,
+    Account, Amount, BlockDetails, BlockEnum, BlockHash, Epoch, KeyDerivationFunction, KeyPair,
+    Link, NoValue, PendingKey, PublicKey, RawKey, Root, StateBlock, WalletId,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{Message, Publish};
@@ -32,7 +31,6 @@ use std::{
     fmt,
     fs::Permissions,
     mem::size_of,
-    ops::Deref,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     sync::{Arc, Condvar, Mutex},
@@ -960,15 +958,6 @@ pub trait WalletsExt {
     fn action_complete(
         &self,
         wallet: Arc<Wallet>,
-        block: Option<Arc<BlockEnum>>,
-        account: Account,
-        generate_work: bool,
-        details: &BlockDetails,
-    ) -> anyhow::Result<()>;
-
-    fn action_complete2(
-        &self,
-        wallet: Arc<Wallet>,
         block: Option<BlockEnum>,
         account: Account,
         generate_work: bool,
@@ -1342,7 +1331,7 @@ impl WalletsExt for Arc<Wallets> {
         );
     }
 
-    fn action_complete2(
+    fn action_complete(
         &self,
         wallet: Arc<Wallet>,
         block: Option<BlockEnum>,
@@ -1384,45 +1373,6 @@ impl WalletsExt for Arc<Wallets> {
             self.work_ensure(&wallet, account, hash.into());
         }
         Ok(Some(block))
-    }
-
-    fn action_complete(
-        &self,
-        wallet: Arc<Wallet>,
-        block: Option<Arc<BlockEnum>>,
-        account: Account,
-        generate_work: bool,
-        details: &BlockDetails,
-    ) -> anyhow::Result<()> {
-        // Unschedule any work caching for this account
-        self.delayed_work.lock().unwrap().remove(&account);
-        let Some(block) = block else {
-            return Ok(());
-        };
-        let hash = block.hash();
-        let required_difficulty = self.network_params.work.threshold(details);
-        let mut_block = unsafe { block.undefined_behavior_mut() };
-        if self.network_params.work.difficulty_block(mut_block) < required_difficulty {
-            info!(
-                "Cached or provided work for block {} account {} is invalid, regenerating...",
-                block.hash(),
-                account.encode_account()
-            );
-            self.distributed_work
-                .make_blocking_block(mut_block, required_difficulty)
-                .ok_or_else(|| anyhow!("no work generated"))?;
-        }
-        let result = self.block_processor.add_blocking(block, BlockSource::Local);
-
-        if !matches!(result, Some(BlockStatus::Progress)) {
-            bail!("block processor failed: {:?}", result);
-        }
-
-        if generate_work {
-            // Pregenerate work for next block based on the block just created
-            self.work_ensure(&wallet, account, hash.into());
-        }
-        Ok(())
     }
 
     fn ongoing_compute_reps(&self) {
@@ -1522,7 +1472,7 @@ impl WalletsExt for Arc<Wallets> {
         let block = block?;
 
         if !error && !cached_block {
-            match self.action_complete2(
+            match self.action_complete(
                 Arc::clone(wallet),
                 Some(block),
                 source,
@@ -1582,7 +1532,7 @@ impl WalletsExt for Arc<Wallets> {
         let block = block?;
 
         let details = BlockDetails::new(epoch, false, false, false);
-        match self.action_complete2(
+        match self.action_complete(
             Arc::clone(&wallet),
             Some(block),
             source,
@@ -1680,28 +1630,18 @@ impl WalletsExt for Arc<Wallets> {
             // Ledger doesn't have this block anymore.
         }
 
-        if let Some(b) = block {
-            let details = BlockDetails::new(epoch, false, true, false);
-            let arc_block = Arc::new(b);
-            if self
-                .action_complete(
-                    Arc::clone(wallet),
-                    Some(Arc::clone(&arc_block)),
-                    account,
-                    generate_work,
-                    &details,
-                )
-                .is_err()
-            {
-                // Return null block after work generation or ledger process error
-                block = None;
-            } else {
-                // block arc gets changed by block_processor! So we have to copy it back.
-                block = Some(arc_block.deref().clone())
-            }
+        let block = block?;
+        let details = BlockDetails::new(epoch, false, true, false);
+        match self.action_complete(
+            Arc::clone(wallet),
+            Some(block),
+            account,
+            generate_work,
+            &details,
+        ) {
+            Ok(b) => b,
+            Err(_) => None,
         }
-
-        block
     }
 
     fn receive_async_wallet(

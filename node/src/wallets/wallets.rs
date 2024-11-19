@@ -966,6 +966,15 @@ pub trait WalletsExt {
         details: &BlockDetails,
     ) -> anyhow::Result<()>;
 
+    fn action_complete2(
+        &self,
+        wallet: Arc<Wallet>,
+        block: Option<BlockEnum>,
+        account: Account,
+        generate_work: bool,
+        details: &BlockDetails,
+    ) -> anyhow::Result<Option<BlockEnum>>;
+
     fn ongoing_compute_reps(&self);
 
     fn change_seed(
@@ -1333,6 +1342,50 @@ impl WalletsExt for Arc<Wallets> {
         );
     }
 
+    fn action_complete2(
+        &self,
+        wallet: Arc<Wallet>,
+        block: Option<BlockEnum>,
+        account: Account,
+        generate_work: bool,
+        details: &BlockDetails,
+    ) -> anyhow::Result<Option<BlockEnum>> {
+        // Unschedule any work caching for this account
+        self.delayed_work.lock().unwrap().remove(&account);
+        let Some(mut block) = block else {
+            return Ok(None);
+        };
+        let hash = block.hash();
+        let required_difficulty = self.network_params.work.threshold(details);
+        if self.network_params.work.difficulty_block(&block) < required_difficulty {
+            info!(
+                "Cached or provided work for block {} account {} is invalid, regenerating...",
+                block.hash(),
+                account.encode_account()
+            );
+            self.distributed_work
+                .make_blocking_block(&mut block, required_difficulty)
+                .ok_or_else(|| anyhow!("no work generated"))?;
+        }
+        let arc_block = Arc::new(block.clone());
+        let result = self
+            .block_processor
+            .add_blocking(arc_block.clone(), BlockSource::Local);
+
+        if !matches!(result, Some(BlockStatus::Progress)) {
+            bail!("block processor failed: {:?}", result);
+        }
+
+        // copy back, so that we have the sideband!
+        block = (*arc_block).clone();
+
+        if generate_work {
+            // Pregenerate work for next block based on the block just created
+            self.work_ensure(&wallet, account, hash.into());
+        }
+        Ok(Some(block))
+    }
+
     fn action_complete(
         &self,
         wallet: Arc<Wallet>,
@@ -1455,7 +1508,7 @@ impl WalletsExt for Arc<Wallets> {
         generate_work: bool,
         id: Option<String>,
     ) -> Option<BlockEnum> {
-        let (mut block, error, cached_block, details) = match id {
+        let (block, error, cached_block, details) = match id {
             Some(id) => {
                 let mut tx = self.env.tx_begin_write();
                 self.prepare_send_with_id(&mut tx, &id, wallet, source, account, amount, work)
@@ -1466,29 +1519,22 @@ impl WalletsExt for Arc<Wallets> {
             }
         };
 
-        if let Some(b) = &block {
-            if !error && !cached_block {
-                let block_arc = Arc::new(b.clone());
-                if self
-                    .action_complete(
-                        Arc::clone(wallet),
-                        Some(Arc::clone(&block_arc)),
-                        source,
-                        generate_work,
-                        &details,
-                    )
-                    .is_err()
-                {
-                    // Return null block after work generation or ledger process error
-                    block = None;
-                } else {
-                    // block arc gets changed by block_processor! So we have to copy it back.
-                    block = Some(block_arc.deref().clone());
-                }
-            }
-        }
+        let block = block?;
 
-        block
+        if !error && !cached_block {
+            match self.action_complete2(
+                Arc::clone(wallet),
+                Some(block),
+                source,
+                generate_work,
+                &details,
+            ) {
+                Ok(b) => return b,
+                Err(_) => return None,
+            }
+        };
+
+        Some(block)
     }
 
     fn change_action(

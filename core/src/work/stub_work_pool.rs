@@ -1,5 +1,5 @@
 use super::WorkPool;
-use crate::{Root, WorkVersion};
+use crate::Root;
 
 /// The StubWorkPool assumes work == difficulty
 pub struct StubWorkPool {
@@ -21,7 +21,6 @@ impl Default for StubWorkPool {
 impl WorkPool for StubWorkPool {
     fn generate_async(
         &self,
-        _version: WorkVersion,
         _root: Root,
         difficulty: u64,
         done: Option<Box<dyn FnOnce(Option<u64>) + Send>>,
@@ -39,7 +38,7 @@ impl WorkPool for StubWorkPool {
         Some(self.base_difficulty)
     }
 
-    fn generate(&self, _version: WorkVersion, _root: Root, difficulty: u64) -> Option<u64> {
+    fn generate(&self, _root: Root, difficulty: u64) -> Option<u64> {
         Some(difficulty)
     }
 }

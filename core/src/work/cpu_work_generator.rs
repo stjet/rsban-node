@@ -1,6 +1,6 @@
 use crate::{
     difficulty::{Difficulty, DifficultyV1},
-    Root, WorkVersion,
+    Root,
 };
 
 use super::{WorkGenerator, WorkRng, WorkTicket, XorShift1024Star};
@@ -153,7 +153,6 @@ where
 {
     fn create(
         &mut self,
-        _version: WorkVersion,
         item: &Root,
         min_difficulty: u64,
         work_ticket: &WorkTicket,
@@ -240,12 +239,7 @@ mod tests {
         let mut generator =
             create_cpu_work_generator(stub_rng, difficulty_calc, StubSleeper::new(), RATE_LIMIT);
 
-        let result = generator.create(
-            WorkVersion::Work1,
-            &root,
-            difficulty,
-            &WorkTicket::never_expires(),
-        );
+        let result = generator.create(&root, difficulty, &WorkTicket::never_expires());
 
         assert_eq!(result, Some(work))
     }
@@ -264,12 +258,7 @@ mod tests {
         let mut generator =
             create_cpu_work_generator(stub_rng, difficulty_calc, sleeper.clone(), RATE_LIMIT);
 
-        let result = generator.create(
-            WorkVersion::Work1,
-            &root,
-            difficulty,
-            &WorkTicket::never_expires(),
-        );
+        let result = generator.create(&root, difficulty, &WorkTicket::never_expires());
 
         assert_eq!(result, Some(work));
         assert!(sleeper.calls().is_empty());
@@ -290,12 +279,7 @@ mod tests {
             create_cpu_work_generator(stub_rng, difficulty_calc, sleeper.clone(), RATE_LIMIT);
         generator.iteration_size = 2;
 
-        let result = generator.create(
-            WorkVersion::Work1,
-            &root,
-            difficulty,
-            &WorkTicket::never_expires(),
-        );
+        let result = generator.create(&root, difficulty, &WorkTicket::never_expires());
 
         assert_eq!(result, Some(work));
         assert_eq!(sleeper.calls(), vec![RATE_LIMIT, RATE_LIMIT]);
@@ -310,12 +294,7 @@ mod tests {
         let mut generator =
             create_cpu_work_generator(stub_rng, StubDifficulty::new(), sleeper.clone(), RATE_LIMIT);
 
-        let result = generator.create(
-            WorkVersion::Work1,
-            &root,
-            100,
-            &WorkTicket::already_expired(),
-        );
+        let result = generator.create(&root, 100, &WorkTicket::already_expired());
 
         assert_eq!(result, None);
         assert_eq!(sleeper.calls(), vec![]);

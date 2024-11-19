@@ -1,7 +1,7 @@
 use rsnano_core::{
     to_hex_string,
     work::{WorkPool, WorkPoolImpl},
-    Account, BlockEnum, Root, WorkVersion,
+    Account, BlockEnum, Root,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -108,7 +108,6 @@ impl DistributedWorkFactory {
     async fn generate_in_local_work_pool(&self, root: Root, difficulty: u64) -> Option<u64> {
         let (tx, rx) = oneshot::channel::<Option<u64>>();
         self.work_pool.generate_async(
-            WorkVersion::Work1,
             root,
             difficulty,
             Some(Box::new(move |work| {

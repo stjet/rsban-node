@@ -1,7 +1,5 @@
 use anyhow::Context;
-use rsnano_core::{
-    work::WorkThresholds, KeyDerivationFunction, KeyPair, PublicKey, Root, WorkVersion,
-};
+use rsnano_core::{work::WorkThresholds, KeyDerivationFunction, KeyPair, PublicKey, Root};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbWalletStore, LmdbWriteTransaction, Transaction};
 use std::{

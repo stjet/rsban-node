@@ -1,6 +1,6 @@
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    KeyPair, Signature, WorkVersion,
+    KeyPair, Signature,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, TelemetryAck, TelemetryData, TelemetryMaker};

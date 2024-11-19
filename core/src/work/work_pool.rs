@@ -1,3 +1,12 @@
+use super::{
+    CpuWorkGenerator, StubWorkPool, WorkItem, WorkQueueCoordinator, WorkThread, WorkThresholds,
+    WorkTicket, WORK_THRESHOLDS_STUB,
+};
+use crate::{
+    utils::{ContainerInfo, ContainerInfoComponent},
+    Root,
+};
+use once_cell::sync::Lazy;
 use std::{
     mem::size_of,
     sync::{Arc, Condvar, Mutex},
@@ -5,21 +14,9 @@ use std::{
     time::Duration,
 };
 
-use crate::{
-    utils::{ContainerInfo, ContainerInfoComponent},
-    Root, WorkVersion,
-};
-use once_cell::sync::Lazy;
-
-use super::{
-    CpuWorkGenerator, StubWorkPool, WorkItem, WorkQueueCoordinator, WorkThread, WorkThresholds,
-    WorkTicket, WORK_THRESHOLDS_STUB,
-};
-
 pub trait WorkPool: Send + Sync {
     fn generate_async(
         &self,
-        version: WorkVersion,
         root: Root,
         difficulty: u64,
         done: Option<Box<dyn FnOnce(Option<u64>) + Send>>,
@@ -29,7 +26,7 @@ pub trait WorkPool: Send + Sync {
 
     fn generate_dev2(&self, root: Root) -> Option<u64>;
 
-    fn generate(&self, version: WorkVersion, root: Root, difficulty: u64) -> Option<u64>;
+    fn generate(&self, root: Root, difficulty: u64) -> Option<u64>;
 }
 
 pub struct WorkPoolImpl {
@@ -156,7 +153,6 @@ impl WorkPoolImpl {
 impl WorkPool for WorkPoolImpl {
     fn generate_async(
         &self,
-        version: WorkVersion,
         root: Root,
         difficulty: u64,
         done: Option<Box<dyn FnOnce(Option<u64>) + Send>>,
@@ -164,7 +160,6 @@ impl WorkPool for WorkPoolImpl {
         debug_assert!(!root.is_zero());
         if !self.threads.is_empty() {
             self.work_queue.enqueue(WorkItem {
-                version,
                 item: root,
                 min_difficulty: difficulty,
                 callback: done,
@@ -175,14 +170,14 @@ impl WorkPool for WorkPoolImpl {
     }
 
     fn generate_dev(&self, root: Root, difficulty: u64) -> Option<u64> {
-        self.generate(WorkVersion::Work1, root, difficulty)
+        self.generate(root, difficulty)
     }
 
     fn generate_dev2(&self, root: Root) -> Option<u64> {
-        self.generate(WorkVersion::Work1, root, self.work_thresholds.base)
+        self.generate(root, self.work_thresholds.base)
     }
 
-    fn generate(&self, version: WorkVersion, root: Root, difficulty: u64) -> Option<u64> {
+    fn generate(&self, root: Root, difficulty: u64) -> Option<u64> {
         if self.threads.is_empty() {
             return None;
         }
@@ -191,7 +186,6 @@ impl WorkPool for WorkPoolImpl {
         let done_notifier_clone = done_notifier.clone();
 
         self.generate_async(
-            version,
             root,
             difficulty,
             Some(Box::new(move |work| {
@@ -251,13 +245,8 @@ impl Drop for WorkPoolImpl {
 }
 
 pub(crate) trait WorkGenerator {
-    fn create(
-        &mut self,
-        version: WorkVersion,
-        item: &Root,
-        min_difficulty: u64,
-        work_ticket: &WorkTicket,
-    ) -> Option<u64>;
+    fn create(&mut self, item: &Root, min_difficulty: u64, work_ticket: &WorkTicket)
+        -> Option<u64>;
 }
 
 struct StubWorkGenerator(u64);
@@ -265,7 +254,6 @@ struct StubWorkGenerator(u64);
 impl WorkGenerator for StubWorkGenerator {
     fn create(
         &mut self,
-        _version: WorkVersion,
         _item: &Root,
         _min_difficulty: u64,
         _work_ticket: &WorkTicket,
@@ -324,7 +312,6 @@ mod tests {
         let (tx, rx) = mpsc::channel();
         let key = Root::from(12345);
         WORK_POOL.generate_async(
-            WorkVersion::Work1,
             key,
             WorkThresholds::publish_dev().base,
             Some(Box::new(move |_done| {
@@ -344,18 +331,14 @@ mod tests {
         let mut result_difficulty = u64::MAX;
 
         while result_difficulty > difficulty2 {
-            let work = WORK_POOL
-                .generate(WorkVersion::Work1, root, difficulty1)
-                .unwrap();
+            let work = WORK_POOL.generate(root, difficulty1).unwrap();
             result_difficulty = WorkThresholds::publish_dev().difficulty(&root, work);
         }
         assert!(result_difficulty > difficulty1);
 
         result_difficulty = u64::MAX;
         while result_difficulty > difficulty3 {
-            let work = WORK_POOL
-                .generate(WorkVersion::Work1, root, difficulty2)
-                .unwrap();
+            let work = WORK_POOL.generate(root, difficulty2).unwrap();
             result_difficulty = WorkThresholds::publish_dev().difficulty(&root, work);
         }
         assert!(result_difficulty > difficulty2);

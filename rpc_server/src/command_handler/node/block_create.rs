@@ -2,7 +2,7 @@ use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_core::{
     Account, Amount, BlockDetails, BlockEnum, BlockHash, ChangeBlock, Epoch, KeyPair, OpenBlock,
-    PendingKey, PublicKey, RawKey, ReceiveBlock, Root, SendBlock, StateBlock, WorkVersion,
+    PendingKey, PublicKey, RawKey, ReceiveBlock, Root, SendBlock, StateBlock,
 };
 use rsnano_node::Node;
 use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateResponse, BlockTypeDto};

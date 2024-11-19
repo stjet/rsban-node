@@ -1,9 +1,8 @@
+use crate::Root;
 use std::sync::{
     atomic::{AtomicBool, AtomicI32, Ordering},
     Condvar, Mutex, MutexGuard,
 };
-
-use crate::{Root, WorkVersion};
 
 static NEVER_EXPIRES: AtomicI32 = AtomicI32::new(0);
 
@@ -38,7 +37,6 @@ impl<'a> WorkTicket<'a> {
 }
 
 pub(crate) struct WorkItem {
-    pub version: WorkVersion,
     pub item: Root,
     pub min_difficulty: u64,
     pub callback: Option<Box<dyn FnOnce(Option<u64>) + Send>>,

@@ -162,9 +162,6 @@ pub trait Block: FullHash {
         Ok(writer.to_json())
     }
     fn json_representation(&self) -> JsonBlock;
-    fn work_version(&self) -> WorkVersion {
-        WorkVersion::Work1
-    }
     fn root(&self) -> Root;
     fn visit(&self, visitor: &mut dyn BlockVisitor);
     fn visit_mut(&mut self, visitor: &mut dyn MutableBlockVisitor);

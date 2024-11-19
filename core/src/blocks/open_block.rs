@@ -232,10 +232,6 @@ impl Block for OpenBlock {
         false
     }
 
-    fn work_version(&self) -> crate::WorkVersion {
-        crate::WorkVersion::Work1
-    }
-
     fn qualified_root(&self) -> crate::QualifiedRoot {
         crate::QualifiedRoot::new(self.root(), self.previous())
     }

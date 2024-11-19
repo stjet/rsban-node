@@ -1,7 +1,7 @@
 use crate::utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream};
 use anyhow::Result;
 use serde::de::{Unexpected, Visitor};
-use std::{fmt::Debug, sync::LazyLock};
+use std::fmt::Debug;
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub struct Amount {
@@ -15,6 +15,21 @@ impl Amount {
         Self { raw: value }
     }
 
+    /// 10^24 raw
+    pub const fn xrb(value: u128) -> Self {
+        Self {
+            raw: value * 10u128.pow(24),
+        }
+    }
+
+    /// 10^27 raw
+    pub const fn kxrb(value: u128) -> Self {
+        Self {
+            raw: value * 10u128.pow(27),
+        }
+    }
+
+    /// 10^30 raw
     pub const fn nano(value: u128) -> Self {
         Self {
             raw: value * 10u128.pow(30),
@@ -77,9 +92,10 @@ impl Amount {
 
     pub fn format_balance(&self, precision: usize) -> String {
         let precision = std::cmp::min(precision, 30);
-        if self.raw == 0 || self.raw >= *MXRB_RATIO / num_traits::pow(10, precision) {
-            let whole = self.raw / *MXRB_RATIO;
-            let decimals = self.raw % *MXRB_RATIO;
+        let mxrb_ratio = Amount::nano(1).number();
+        if self.raw == 0 || self.raw >= mxrb_ratio / num_traits::pow(10, precision) {
+            let whole = self.raw / mxrb_ratio;
+            let decimals = self.raw % mxrb_ratio;
             let mut buf = num_format::Buffer::default();
             buf.write_formatted(&whole, &num_format::Locale::en);
             let mut result = buf.to_string();
@@ -206,13 +222,6 @@ impl std::cmp::Ord for Amount {
     }
 }
 
-pub static XRB_RATIO: LazyLock<u128> =
-    LazyLock::new(|| str::parse("1000000000000000000000000").unwrap()); // 10^24
-pub static KXRB_RATIO: LazyLock<u128> =
-    LazyLock::new(|| str::parse("1000000000000000000000000000").unwrap()); // 10^27
-pub static MXRB_RATIO: LazyLock<u128> =
-    LazyLock::new(|| str::parse("1000000000000000000000000000000").unwrap()); // 10^30
-
 impl serde::Serialize for Amount {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -255,7 +264,6 @@ impl<'de> Visitor<'de> for AmountVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{KXRB_RATIO, XRB_RATIO};
 
     #[test]
     fn construct_amount_in_nano() {
@@ -356,19 +364,16 @@ mod tests {
                 .unwrap()
                 .format_balance(0)
         );
-        assert_eq!("< 0.01", Amount::raw(*XRB_RATIO * 10).format_balance(2));
-        assert_eq!("< 0.1", Amount::raw(*XRB_RATIO * 10).format_balance(1));
-        assert_eq!("< 1", Amount::raw(*XRB_RATIO * 10).format_balance(0));
-        assert_eq!("< 0.01", Amount::raw(*XRB_RATIO * 9999).format_balance(2));
+        assert_eq!("< 0.01", Amount::xrb(10).format_balance(2));
+        assert_eq!("< 0.1", Amount::xrb(10).format_balance(1));
+        assert_eq!("< 1", Amount::xrb(10).format_balance(0));
+        assert_eq!("< 0.01", Amount::xrb(9999).format_balance(2));
         assert_eq!("< 0.001", Amount::raw(1).format_balance(3));
-        assert_eq!("0.01", Amount::raw(*XRB_RATIO * 10000).format_balance(2));
-        assert_eq!(
-            "123,456,789",
-            Amount::raw(*MXRB_RATIO * 123456789).format_balance(2)
-        );
+        assert_eq!("0.01", Amount::xrb(10000).format_balance(2));
+        assert_eq!("123,456,789", Amount::nano(123456789).format_balance(2));
         assert_eq!(
             "123,456,789.12",
-            Amount::raw(*MXRB_RATIO * 123456789 + *KXRB_RATIO * 123).format_balance(2)
+            (Amount::nano(123456789) + Amount::kxrb(123)).format_balance(2)
         );
     }
 

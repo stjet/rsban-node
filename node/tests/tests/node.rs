@@ -2,7 +2,7 @@ use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder,
     BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
     PublicKey, QualifiedRoot, Root, SendBlock, Signature, StateBlock, UncheckedInfo, Vote,
-    VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY, MXRB_RATIO,
+    VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -783,7 +783,7 @@ fn no_voting() {
             &wallet_id1,
             *DEV_GENESIS_ACCOUNT,
             key1.account(),
-            Amount::raw(*MXRB_RATIO),
+            Amount::nano(1),
             0,
             true,
             None,
@@ -3478,7 +3478,7 @@ fn unconfirmed_send() {
             &wallet_id1,
             *DEV_GENESIS_ACCOUNT,
             key2.account(),
-            Amount::raw(2 * *MXRB_RATIO),
+            Amount::nano(2),
             0,
             true,
             None,
@@ -3512,7 +3512,7 @@ fn unconfirmed_send() {
         1,
     );
 
-    assert_eq!(node2.balance(&key2.account()), Amount::raw(2 * *MXRB_RATIO));
+    assert_eq!(node2.balance(&key2.account()), Amount::nano(2));
 
     let recv1 = {
         let tx = node2.store.tx_begin_read();
@@ -3527,7 +3527,7 @@ fn unconfirmed_send() {
         key2.account(),
         recv1.hash(),
         *DEV_GENESIS_PUB_KEY,
-        Amount::raw(*MXRB_RATIO),
+        Amount::nano(1),
         (*DEV_GENESIS_ACCOUNT).into(),
         &key2,
         system.work.generate_dev2(recv1.hash().into()).unwrap(),
@@ -3543,7 +3543,7 @@ fn unconfirmed_send() {
             &wallet_id2,
             key2.account(),
             *DEV_GENESIS_ACCOUNT,
-            Amount::raw(*MXRB_RATIO),
+            Amount::nano(1),
             0,
             true,
             None,

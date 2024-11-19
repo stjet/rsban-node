@@ -16,7 +16,7 @@ use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{get_env_or_default_string, is_sanitizer_build, Peer},
-    Account, Amount, PublicKey, XRB_RATIO,
+    Account, Amount, PublicKey,
 };
 use rsnano_store_lmdb::LmdbConfig;
 use std::{cmp::max, net::Ipv6Addr, time::Duration};
@@ -238,7 +238,7 @@ impl NodeConfig {
             peering_port,
             default_peering_port: network_params.network.default_node_port,
             bootstrap_fraction_numerator: 1,
-            receive_minimum: Amount::raw(*XRB_RATIO),
+            receive_minimum: Amount::xrb(1),
             online_weight_minimum: Amount::nano(60_000_000),
             representative_vote_weight_minimum: Amount::nano(10),
             password_fanout: 1024,

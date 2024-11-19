@@ -16,7 +16,7 @@ use crate::{
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     work::WorkThresholds,
-    Account, Amount, HashOrAccount, Networks, XRB_RATIO,
+    Account, Amount, HashOrAccount, Networks,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::ProtocolInfo;
@@ -72,7 +72,7 @@ impl BootstrapInitiatorConfig {
             frontier_retry_limit: 16,
             disable_bulk_push_client: false,
             bootstrap_initiator_threads: 1,
-            receive_minimum: Amount::raw(*XRB_RATIO),
+            receive_minimum: Amount::xrb(1),
         }
     }
 }

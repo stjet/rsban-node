@@ -1,11 +1,3 @@
-use std::{
-    sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
-        Arc, Mutex,
-    },
-    time::Duration,
-};
-
 use super::{
     BootstrapClient, BootstrapConnections, BootstrapConnectionsExt, BootstrapInitiator,
     BootstrapStrategy, PullInfo,
@@ -21,6 +13,13 @@ use async_trait::async_trait;
 use rsnano_core::{work::WorkThresholds, Account, Block, BlockHash};
 use rsnano_messages::{BulkPull, Message};
 use rsnano_network::ChannelReader;
+use std::{
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc, Mutex,
+    },
+    time::Duration,
+};
 use tracing::{debug, trace};
 
 pub struct BulkPullClient {
@@ -259,7 +258,6 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
         self.attempt.inc_total_blocks();
 
         self.pull_blocks.fetch_add(1, Ordering::SeqCst);
-        let block = Arc::new(block);
 
         let stop_pull = self.attempt.process_block(
             block,

@@ -1266,7 +1266,7 @@ impl Node {
     }
 
     pub fn process_active(&self, block: Block) {
-        self.block_processor.process_active(Arc::new(block));
+        self.block_processor.process_active(block);
     }
 
     pub fn process_local_multi(&self, blocks: &[Block]) {

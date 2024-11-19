@@ -424,7 +424,7 @@ impl BootstrapAttemptTrait for Arc<BootstrapAttemptLegacy> {
 
     fn process_block(
         &self,
-        block: Arc<Block>,
+        block: Block,
         _known_account: &Account,
         pull_blocks_processed: u64,
         _max_blocks: u32,

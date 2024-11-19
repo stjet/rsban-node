@@ -273,13 +273,13 @@ impl BlockProcessor {
         self.processor_loop.add_rolled_back_observer(observer);
     }
 
-    pub fn add(&self, block: Arc<Block>, source: BlockSource, channel_id: ChannelId) -> bool {
+    pub fn add(&self, block: Block, source: BlockSource, channel_id: ChannelId) -> bool {
         self.processor_loop.add(block, source, channel_id, None)
     }
 
     pub fn add_with_callback(
         &self,
-        block: Arc<Block>,
+        block: Block,
         source: BlockSource,
         channel_id: ChannelId,
         callback: BlockProcessorCallback,
@@ -296,7 +296,7 @@ impl BlockProcessor {
         self.processor_loop.add_blocking(block, source)
     }
 
-    pub fn process_active(&self, block: Arc<Block>) {
+    pub fn process_active(&self, block: Block) {
         self.processor_loop.process_active(block);
     }
 
@@ -428,13 +428,13 @@ impl BlockProcessorLoop {
         *self.blocks_rolled_back.lock().unwrap() = Some(callback);
     }
 
-    pub fn process_active(&self, block: Arc<Block>) {
+    pub fn process_active(&self, block: Block) {
         self.add(block, BlockSource::Live, ChannelId::LOOPBACK, None);
     }
 
     pub fn add(
         &self,
-        block: Arc<Block>,
+        block: Block,
         source: BlockSource,
         channel_id: ChannelId,
         callback: Option<BlockProcessorCallback>,
@@ -455,11 +455,7 @@ impl BlockProcessorLoop {
         );
 
         self.add_impl(
-            Arc::new(BlockProcessorContext::new(
-                block.as_ref().clone(),
-                source,
-                callback,
-            )),
+            Arc::new(BlockProcessorContext::new(block, source, callback)),
             channel_id,
         )
     }
@@ -813,7 +809,7 @@ mod tests {
         let mut block = Block::new_test_instance();
         block.set_work(3);
 
-        block_processor.add(Arc::new(block), BlockSource::Live, ChannelId::LOOPBACK);
+        block_processor.add(block, BlockSource::Live, ChannelId::LOOPBACK);
 
         assert_eq!(
             stats.count(

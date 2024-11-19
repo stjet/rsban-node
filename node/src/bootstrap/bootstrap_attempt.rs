@@ -39,7 +39,7 @@ pub trait BootstrapAttemptTrait {
     fn run(&self);
     fn process_block(
         &self,
-        block: Arc<Block>,
+        block: Block,
         known_account: &Account,
         pull_blocks_processed: u64,
         max_blocks: u32,
@@ -171,7 +171,7 @@ impl BootstrapAttempt {
         }
     }
 
-    pub fn process_block(&self, block: Arc<Block>, pull_blocks_processed: u64) -> bool {
+    pub fn process_block(&self, block: Block, pull_blocks_processed: u64) -> bool {
         let mut stop_pull = false;
         let hash = block.hash();
         // If block already exists in the ledger, then we can avoid next part of long account chain

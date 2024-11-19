@@ -535,7 +535,7 @@ impl BootstrapAscending {
                         let condition = self.condition.clone();
                         let account = tag.account;
                         self.block_processor.add_with_callback(
-                            Arc::new(block),
+                            block,
                             BlockSource::Bootstrap,
                             ChannelId::LOOPBACK,
                             Box::new(move |_| {
@@ -549,7 +549,7 @@ impl BootstrapAscending {
                         );
                     } else {
                         self.block_processor.add(
-                            Arc::new(block),
+                            block,
                             BlockSource::Bootstrap,
                             ChannelId::LOOPBACK,
                         );

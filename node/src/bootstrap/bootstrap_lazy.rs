@@ -20,7 +20,6 @@ use std::{
     cmp::max,
     collections::{hash_map::DefaultHasher, HashMap, HashSet, VecDeque},
     hash::{Hash, Hasher},
-    ops::Deref,
     sync::{atomic::Ordering, Arc, Mutex, MutexGuard, Weak},
     time::{Duration, Instant},
 };
@@ -187,12 +186,12 @@ impl LazyData {
         result
     }
 
-    fn lazy_block_state_backlog_check(&mut self, block: &Arc<Block>, hash: &BlockHash) {
+    fn lazy_block_state_backlog_check(&mut self, block: &Block, hash: &BlockHash) {
         // Search unknown state blocks balances
         if let Some(next_block) = self.lazy_state_backlog.get(hash) {
             let link = next_block.link;
             // Retrieve balance for previous state & send blocks
-            let balance = match block.deref() {
+            let balance = match &block {
                 Block::State(i) => Some(i.balance()),
                 Block::LegacySend(i) => Some(i.balance()),
                 _ => None,
@@ -263,7 +262,7 @@ impl BootstrapAttemptLazy {
 
     fn process_block_lazy(
         &self,
-        block: Arc<Block>,
+        block: Block,
         _known_account: &Account,
         pull_blocks_processed: u64,
         max_blocks: u32,
@@ -291,7 +290,7 @@ impl BootstrapAttemptLazy {
             data.lazy_blocks_insert(&hash);
             // Adding lazy balances for first processed block in pull
             if pull_blocks_processed == 1 {
-                let balance = match block.deref() {
+                let balance = match &block {
                     Block::State(i) => Some(i.balance()),
                     Block::LegacySend(i) => Some(i.balance()),
                     _ => None,
@@ -318,7 +317,7 @@ impl BootstrapAttemptLazy {
         stop_pull
     }
 
-    fn lazy_block_state(&self, data: &mut LazyData, block: &Arc<Block>, retry_limit: u32) {
+    fn lazy_block_state(&self, data: &mut LazyData, block: &Block, retry_limit: u32) {
         let txn = self.ledger.read_txn();
         let balance = block.balance_field().unwrap();
         let link = block.link_field().unwrap();
@@ -678,7 +677,7 @@ impl BootstrapAttemptTrait for BootstrapAttemptLazy {
 
     fn process_block(
         &self,
-        block: Arc<Block>,
+        block: Block,
         known_account: &Account,
         pull_blocks_processed: u64,
         max_blocks: u32,

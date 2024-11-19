@@ -93,9 +93,9 @@ impl RealtimeMessageHandler {
                 } else {
                     BlockSource::Live
                 };
-                let added =
-                    self.block_processor
-                        .add(Arc::new(publish.block), source, channel.channel_id());
+                let added = self
+                    .block_processor
+                    .add(publish.block, source, channel.channel_id());
                 if !added {
                     self.publish_filter.clear(publish.digest);
                     self.stats

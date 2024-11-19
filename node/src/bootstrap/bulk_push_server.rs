@@ -306,7 +306,7 @@ impl BulkPushServerImpl {
                             Direction::In,
                         );
                     } else {
-                        block_processor.process_active(Arc::new(block));
+                        block_processor.process_active(block);
                         self.throttled_receive(server_impl);
                     }
                 }

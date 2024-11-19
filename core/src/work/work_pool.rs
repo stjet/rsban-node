@@ -6,10 +6,9 @@ use crate::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Root,
 };
-use once_cell::sync::Lazy;
 use std::{
     mem::size_of,
-    sync::{Arc, Condvar, Mutex},
+    sync::{Arc, Condvar, LazyLock, Mutex},
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -262,8 +261,8 @@ impl WorkGenerator for StubWorkGenerator {
     }
 }
 
-pub static STUB_WORK_POOL: Lazy<StubWorkPool> =
-    Lazy::new(|| StubWorkPool::new(WorkThresholds::publish_dev().base));
+pub static STUB_WORK_POOL: LazyLock<StubWorkPool> =
+    LazyLock::new(|| StubWorkPool::new(WorkThresholds::publish_dev().base));
 
 #[cfg(test)]
 mod tests {
@@ -271,7 +270,7 @@ mod tests {
     use crate::{BlockBuilder, BlockEnum};
     use std::sync::mpsc;
 
-    pub static WORK_POOL: Lazy<WorkPoolImpl> = Lazy::new(|| {
+    pub static WORK_POOL: LazyLock<WorkPoolImpl> = LazyLock::new(|| {
         WorkPoolImpl::new(
             WorkThresholds::publish_dev().clone(),
             crate::utils::get_cpu_count(),

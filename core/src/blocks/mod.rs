@@ -9,7 +9,6 @@ use change_block::JsonChangeBlock;
 pub use change_block::{valid_change_block_predecessor, ChangeBlock, ChangeHashables};
 
 mod open_block;
-use once_cell::sync::Lazy;
 use open_block::JsonOpenBlock;
 pub use open_block::{OpenBlock, OpenHashables};
 
@@ -32,12 +31,12 @@ pub use builders::*;
 use crate::{
     utils::{BufferReader, BufferWriter, MemoryStream, PropertyTree, SerdePropertyTree, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, Epoch, Epochs, FullHash, KeyPair, Link,
-    PublicKey, QualifiedRoot, Root, Signature, WorkVersion,
+    PublicKey, QualifiedRoot, Root, Signature,
 };
 use num::FromPrimitive;
 use std::{
     ops::{Deref, DerefMut},
-    sync::{Arc, RwLock},
+    sync::{Arc, LazyLock, RwLock},
 };
 
 #[repr(u8)]
@@ -598,8 +597,8 @@ static DEV_PRIVATE_KEY_DATA: &str =
     "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
 pub static DEV_PUBLIC_KEY_DATA: &str =
     "B0311EA55708D6A53C75CDBF88300259C6D018522FE3D4D0A242E431F9E8B6D0"; // xrb_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo
-pub static DEV_GENESIS_KEY: Lazy<KeyPair> =
-    Lazy::new(|| KeyPair::from_priv_key_hex(DEV_PRIVATE_KEY_DATA).unwrap());
+pub static DEV_GENESIS_KEY: LazyLock<KeyPair> =
+    LazyLock::new(|| KeyPair::from_priv_key_hex(DEV_PRIVATE_KEY_DATA).unwrap());
 
 #[derive(Default)]
 pub struct DependentBlocks {

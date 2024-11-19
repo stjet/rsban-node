@@ -1,6 +1,5 @@
-use serde::{Deserialize, Serialize};
-
 use crate::consensus::OptimisticSchedulerConfig;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct OptimisticSchedulerToml {

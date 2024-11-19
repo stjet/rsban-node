@@ -2,10 +2,13 @@ use crate::{
     BlockDetails, BlockEnum, BlockType, Difficulty, DifficultyV1, Epoch, Networks, Root,
     StubDifficulty,
 };
-use once_cell::sync::Lazy;
-use std::cmp::{max, min};
+use std::{
+    cmp::{max, min},
+    sync::LazyLock,
+};
 
-pub static WORK_THRESHOLDS_STUB: Lazy<WorkThresholds> = Lazy::new(|| WorkThresholds::new_stub());
+pub static WORK_THRESHOLDS_STUB: LazyLock<WorkThresholds> =
+    LazyLock::new(|| WorkThresholds::new_stub());
 
 pub struct WorkThresholds {
     pub epoch_1: u64,
@@ -57,7 +60,7 @@ impl std::fmt::Debug for WorkThresholds {
     }
 }
 
-static PUBLISH_FULL: Lazy<WorkThresholds> = Lazy::new(|| {
+static PUBLISH_FULL: LazyLock<WorkThresholds> = LazyLock::new(|| {
     WorkThresholds::new(
         0xffffffc000000000,
         0xfffffff800000000, // 8x higher than epoch_1
@@ -65,7 +68,7 @@ static PUBLISH_FULL: Lazy<WorkThresholds> = Lazy::new(|| {
     )
 });
 
-static PUBLISH_BETA: Lazy<WorkThresholds> = Lazy::new(|| {
+static PUBLISH_BETA: LazyLock<WorkThresholds> = LazyLock::new(|| {
     WorkThresholds::new(
         0xfffff00000000000, // 64x lower than publish_full.epoch_1
         0xfffff00000000000, // same as epoch_1
@@ -73,7 +76,7 @@ static PUBLISH_BETA: Lazy<WorkThresholds> = Lazy::new(|| {
     )
 });
 
-static PUBLISH_DEV: Lazy<WorkThresholds> = Lazy::new(|| {
+static PUBLISH_DEV: LazyLock<WorkThresholds> = LazyLock::new(|| {
     WorkThresholds::new(
         0xfe00000000000000, // Very low for tests
         0xffc0000000000000, // 8x higher than epoch_1
@@ -81,7 +84,7 @@ static PUBLISH_DEV: Lazy<WorkThresholds> = Lazy::new(|| {
     )
 });
 
-static PUBLISH_TEST: Lazy<WorkThresholds> = Lazy::new(|| {
+static PUBLISH_TEST: LazyLock<WorkThresholds> = LazyLock::new(|| {
     WorkThresholds::new(
         get_env_threshold_or_default("NANO_TEST_EPOCH_1", 0xffffffc000000000),
         get_env_threshold_or_default("NANO_TEST_EPOCH_2", 0xfffffff800000000), // 8x higher than epoch_1

@@ -1,8 +1,7 @@
 use crate::utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream};
 use anyhow::Result;
-use once_cell::sync::Lazy;
 use serde::de::{Unexpected, Visitor};
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::LazyLock};
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub struct Amount {
@@ -207,13 +206,14 @@ impl std::cmp::Ord for Amount {
     }
 }
 
-pub static XRB_RATIO: Lazy<u128> = Lazy::new(|| str::parse("1000000000000000000000000").unwrap()); // 10^24
-pub static KXRB_RATIO: Lazy<u128> =
-    Lazy::new(|| str::parse("1000000000000000000000000000").unwrap()); // 10^27
-pub static MXRB_RATIO: Lazy<u128> =
-    Lazy::new(|| str::parse("1000000000000000000000000000000").unwrap()); // 10^30
-pub static GXRB_RATIO: Lazy<u128> =
-    Lazy::new(|| str::parse("1000000000000000000000000000000000").unwrap()); // 10^33
+pub static XRB_RATIO: LazyLock<u128> =
+    LazyLock::new(|| str::parse("1000000000000000000000000").unwrap()); // 10^24
+pub static KXRB_RATIO: LazyLock<u128> =
+    LazyLock::new(|| str::parse("1000000000000000000000000000").unwrap()); // 10^27
+pub static MXRB_RATIO: LazyLock<u128> =
+    LazyLock::new(|| str::parse("1000000000000000000000000000000").unwrap()); // 10^30
+pub static GXRB_RATIO: LazyLock<u128> =
+    LazyLock::new(|| str::parse("1000000000000000000000000000000000").unwrap()); // 10^33
 
 impl serde::Serialize for Amount {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

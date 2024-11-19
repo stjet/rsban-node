@@ -225,7 +225,7 @@ impl BacklogPopulationThread {
             .get(txn, account)
             .unwrap_or_default();
 
-        // If conf info is empty then it means then it means nothing is confirmed yet
+        // If conf info is empty then it means nothing is confirmed yet
         if conf_info.height < account_info.block_count {
             self.stats.inc(StatType::Backlog, DetailType::Activated);
 

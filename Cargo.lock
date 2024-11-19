@@ -3649,7 +3649,6 @@ dependencies = [
  "num-derive 0.4.2",
  "num-format",
  "num-traits",
- "once_cell",
  "primitive-types",
  "rand",
  "rsnano_nullable_random",

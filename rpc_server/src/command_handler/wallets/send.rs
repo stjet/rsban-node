@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::{BlockDetails, WorkVersion};
+use rsnano_core::BlockDetails;
 use rsnano_node::wallets::WalletsExt;
 use rsnano_rpc_messages::{BlockDto, SendArgs};
 
@@ -29,12 +29,8 @@ impl RpcCommandHandler {
                 .node
                 .network_params
                 .work
-                .difficulty(WorkVersion::Work1, &info.head.into(), work)
-                < self
-                    .node
-                    .network_params
-                    .work
-                    .threshold2(WorkVersion::Work1, &details)
+                .difficulty(&info.head.into(), work)
+                < self.node.network_params.work.threshold(&details)
             {
                 bail!("Invalid work")
             }

@@ -37,11 +37,8 @@ impl RpcCommandHandler {
                     (Root::from(args.account), pending_info.epoch)
                 };
             let details = BlockDetails::new(epoch, false, true, false);
-            if self.node.network_params.work.difficulty(
-                rsnano_core::WorkVersion::Work1,
-                &head,
-                work.into(),
-            ) < self.node.network_params.work.threshold(&details)
+            if self.node.network_params.work.difficulty(&head, work.into())
+                < self.node.network_params.work.threshold(&details)
             {
                 bail!("Invalid work")
             }

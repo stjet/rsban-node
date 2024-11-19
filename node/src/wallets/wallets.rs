@@ -16,7 +16,7 @@ use rsnano_core::{
     work::{WorkPoolImpl, WorkThresholds},
     Account, Amount, BlockDetails, BlockEnum, BlockHash, Epoch, HackyUnsafeMutBlock,
     KeyDerivationFunction, KeyPair, Link, NoValue, PendingKey, PublicKey, RawKey, Root, StateBlock,
-    WalletId, WorkVersion,
+    WalletId,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{Message, Publish};
@@ -353,13 +353,11 @@ impl Wallets {
 
     fn work_cache_blocking(&self, wallet: &Wallet, pub_key: &PublicKey, root: &Root) {
         if self.distributed_work.work_generation_enabled() {
-            let difficulty = self.work_thresholds.threshold_base(WorkVersion::Work1);
-            if let Some(work) = self.distributed_work.make_blocking(
-                WorkVersion::Work1,
-                *root,
-                difficulty,
-                Some(pub_key.into()),
-            ) {
+            let difficulty = self.work_thresholds.threshold_base();
+            if let Some(work) =
+                self.distributed_work
+                    .make_blocking(*root, difficulty, Some(pub_key.into()))
+            {
                 let mut tx = self.env.tx_begin_write();
                 if wallet.live() && wallet.store.exists(&tx, pub_key) {
                     wallet.work_update(&mut tx, pub_key, root, work);
@@ -1349,10 +1347,7 @@ impl WalletsExt for Arc<Wallets> {
             return Ok(());
         };
         let hash = block.hash();
-        let required_difficulty = self
-            .network_params
-            .work
-            .threshold2(block.work_version(), details);
+        let required_difficulty = self.network_params.work.threshold(details);
         let mut_block = unsafe { block.undefined_behavior_mut() };
         if self.network_params.work.difficulty_block(mut_block) < required_difficulty {
             info!(

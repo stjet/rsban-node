@@ -78,7 +78,6 @@ impl DistributedWorkFactory {
 
     pub fn make_blocking(
         &self,
-        _version: WorkVersion,
         root: Root,
         difficulty: u64,
         account: Option<Account>,

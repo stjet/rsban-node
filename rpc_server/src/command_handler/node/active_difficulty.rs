@@ -1,15 +1,11 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::{DifficultyV1, WorkVersion};
+use rsnano_core::DifficultyV1;
 use rsnano_rpc_messages::ActiveDifficultyResponse;
 
 impl RpcCommandHandler {
     pub(crate) fn active_difficulty(&self) -> ActiveDifficultyResponse {
         let multiplier_active = 1.0;
-        let default_difficutly = self
-            .node
-            .network_params
-            .work
-            .threshold_base(WorkVersion::Work1);
+        let default_difficutly = self.node.network_params.work.threshold_base();
 
         let default_receive_difficulty = self.node.network_params.work.epoch_2_receive;
         let receive_current_denormalized = self.node.network_params.work.denormalized_multiplier(

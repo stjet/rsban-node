@@ -133,12 +133,12 @@ impl WorkPoolImpl {
         self.threads.len()
     }
 
-    pub fn threshold_base(&self, version: WorkVersion) -> u64 {
-        self.work_thresholds.threshold_base(version)
+    pub fn threshold_base(&self) -> u64 {
+        self.work_thresholds.threshold_base()
     }
 
-    pub fn difficulty(&self, version: WorkVersion, root: &Root, work: u64) -> u64 {
-        self.work_thresholds.difficulty(version, root, work)
+    pub fn difficulty(&self, root: &Root, work: u64) -> u64 {
+        self.work_thresholds.difficulty(root, work)
     }
 
     pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
@@ -304,19 +304,19 @@ mod tests {
         let mut block = BlockBuilder::state().build();
         let root = block.root();
         block.set_work(pool.generate_dev2(root).unwrap());
-        assert!(pool.threshold_base(block.work_version()) < difficulty(&block));
+        assert!(pool.threshold_base() < difficulty(&block));
     }
 
     #[test]
     fn work_validate() {
         let pool = &WORK_POOL;
         let mut block = BlockBuilder::legacy_send().work(6).build();
-        assert!(difficulty(&block) < pool.threshold_base(block.work_version()));
+        assert!(difficulty(&block) < pool.threshold_base());
         let root = block.root();
         block
             .as_block_mut()
             .set_work(pool.generate_dev2(root).unwrap());
-        assert!(difficulty(&block) > pool.threshold_base(block.work_version()));
+        assert!(difficulty(&block) > pool.threshold_base());
     }
 
     #[test]
@@ -347,8 +347,7 @@ mod tests {
             let work = WORK_POOL
                 .generate(WorkVersion::Work1, root, difficulty1)
                 .unwrap();
-            result_difficulty =
-                WorkThresholds::publish_dev().difficulty(WorkVersion::Work1, &root, work);
+            result_difficulty = WorkThresholds::publish_dev().difficulty(&root, work);
         }
         assert!(result_difficulty > difficulty1);
 
@@ -357,8 +356,7 @@ mod tests {
             let work = WORK_POOL
                 .generate(WorkVersion::Work1, root, difficulty2)
                 .unwrap();
-            result_difficulty =
-                WorkThresholds::publish_dev().difficulty(WorkVersion::Work1, &root, work);
+            result_difficulty = WorkThresholds::publish_dev().difficulty(&root, work);
         }
         assert!(result_difficulty > difficulty2);
     }

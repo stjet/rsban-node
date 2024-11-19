@@ -106,7 +106,6 @@ struct WorkResult {
 }
 
 pub fn work_generation_message(
-    version: WorkVersion,
     root: &BlockHash,
     work: u64,
     difficulty: u64,
@@ -119,16 +118,14 @@ pub fn work_generation_message(
 ) -> OutgoingMessageEnvelope {
     let request_multiplier = DifficultyV1::to_multiplier(difficulty, publish_threshold);
     let request = WorkRequest {
-        version: version.as_str(),
+        version: WorkVersion::Work1.as_str(),
         hash: root.to_string(),
         difficulty: format!("{:016x}", difficulty),
         multiplier: format!("{:.10}", request_multiplier),
     };
 
     let result = if completed {
-        let result_difficulty = DEV_NETWORK_PARAMS
-            .work
-            .difficulty(version, &root.into(), work);
+        let result_difficulty = DEV_NETWORK_PARAMS.work.difficulty(&root.into(), work);
 
         let result_multiplier = DifficultyV1::to_multiplier(result_difficulty, publish_threshold);
 

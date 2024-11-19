@@ -5,7 +5,7 @@ use rsnano_core::{
     PendingKey, PublicKey, RawKey, ReceiveBlock, Root, SendBlock, StateBlock, WorkVersion,
 };
 use rsnano_node::Node;
-use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateResponse, BlockTypeDto, WorkVersionDto};
+use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateResponse, BlockTypeDto};
 use std::sync::Arc;
 
 impl RpcCommandHandler {
@@ -13,17 +13,9 @@ impl RpcCommandHandler {
         &self,
         args: BlockCreateArgs,
     ) -> anyhow::Result<BlockCreateResponse> {
-        let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
         let difficulty = args
             .difficulty
-            .unwrap_or_else(|| {
-                self.node
-                    .ledger
-                    .constants
-                    .work
-                    .threshold_base(work_version)
-                    .into()
-            })
+            .unwrap_or_else(|| self.node.ledger.constants.work.threshold_base().into())
             .inner();
 
         let wallet_id = args.wallet.unwrap_or_default();
@@ -222,7 +214,6 @@ impl RpcCommandHandler {
             };
 
             let work = match self.node.distributed_work.make_blocking(
-                WorkVersion::Work1,
                 root.into(),
                 difficulty,
                 Some(account),
@@ -299,8 +290,6 @@ pub fn difficulty_ledger(node: Arc<Node>, block: &BlockEnum) -> u64 {
     if details_found {
         node.network_params.work.threshold(&details)
     } else {
-        node.network_params
-            .work
-            .threshold_base(block.work_version())
+        node.network_params.work.threshold_base()
     }
 }

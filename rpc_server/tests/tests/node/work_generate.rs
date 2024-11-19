@@ -1,4 +1,4 @@
-use rsnano_core::{BlockHash, DifficultyV1, WorkVersion};
+use rsnano_core::{BlockHash, DifficultyV1};
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -17,19 +17,13 @@ fn work_generate() {
     assert_eq!(hash, work_generate_dto.hash);
 
     let work: u64 = work_generate_dto.work.into();
-    let result_difficulty =
-        node.network_params
-            .work
-            .difficulty(WorkVersion::Work1, &hash.into(), work);
+    let result_difficulty = node.network_params.work.difficulty(&hash.into(), work);
 
     assert_eq!(result_difficulty, work_generate_dto.difficulty.inner());
 
     let expected_multiplier = DifficultyV1::to_multiplier(
         result_difficulty,
-        node.ledger
-            .constants
-            .work
-            .threshold_base(WorkVersion::Work1),
+        node.ledger.constants.work.threshold_base(),
     );
     assert!((expected_multiplier - work_generate_dto.multiplier.unwrap().inner()).abs() < 1e-6);
 }

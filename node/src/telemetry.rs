@@ -368,7 +368,7 @@ impl Telemetry {
             pre_release_version: PRE_RELEASE_VERSION,
             maker: TelemetryMaker::RsNano as u8,
             timestamp: SystemTime::now(),
-            active_difficulty: self.network_params.work.threshold_base(WorkVersion::Work1),
+            active_difficulty: self.network_params.work.threshold_base(),
             unknown_data: Vec::new(),
             signature: Signature::default(),
         };

@@ -1,13 +1,12 @@
 use super::difficulty_ledger;
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::{BlockEnum, BlockType, DifficultyV1, WorkVersion};
-use rsnano_rpc_messages::{WorkGenerateArgs, WorkGenerateDto, WorkVersionDto};
+use rsnano_core::{BlockEnum, BlockType, DifficultyV1};
+use rsnano_rpc_messages::{WorkGenerateArgs, WorkGenerateDto};
 
 impl RpcCommandHandler {
     pub(crate) fn work_generate(&self, args: WorkGenerateArgs) -> anyhow::Result<WorkGenerateDto> {
-        let work_version = args.version.unwrap_or(WorkVersionDto::Work1).into();
-        let default_difficulty = self.node.ledger.constants.work.threshold_base(work_version);
+        let default_difficulty = self.node.ledger.constants.work.threshold_base();
         let mut difficulty = args
             .difficulty
             .unwrap_or_else(|| default_difficulty.into())
@@ -25,7 +24,7 @@ impl RpcCommandHandler {
                     .node
                     .network_params
                     .work
-                    .threshold_entry(BlockType::State, work_version)
+                    .threshold_entry(BlockType::State)
         {
             bail!("Difficulty out of range");
         }
@@ -35,9 +34,6 @@ impl RpcCommandHandler {
             let block_enum: BlockEnum = block.into();
             if args.hash != block_enum.root().into() {
                 bail!("Block root mismatch");
-            }
-            if args.version.is_some() && work_version != block_enum.work_version() {
-                bail!("Block work version mismatch");
             }
             // Recalculate difficulty if not provided
             if args.difficulty.is_none() && args.multiplier.is_none() {
@@ -54,12 +50,9 @@ impl RpcCommandHandler {
 
         let work = if !use_peers {
             if self.node.work.work_generation_enabled() {
-                self.node.distributed_work.make_blocking(
-                    work_version,
-                    args.hash.into(),
-                    difficulty,
-                    None,
-                )
+                self.node
+                    .distributed_work
+                    .make_blocking(args.hash.into(), difficulty, None)
             } else {
                 bail!("Local work generation is disabled");
             }
@@ -84,11 +77,11 @@ impl RpcCommandHandler {
             bail!("Work generation cancelled")
         };
 
-        let result_difficulty =
-            self.node
-                .network_params
-                .work
-                .difficulty(WorkVersion::Work1, &args.hash.into(), work);
+        let result_difficulty = self
+            .node
+            .network_params
+            .work
+            .difficulty(&args.hash.into(), work);
         let result_multiplier = DifficultyV1::to_multiplier(result_difficulty, default_difficulty);
 
         Ok(WorkGenerateDto {

@@ -1,6 +1,6 @@
 use rsnano_core::{
     deterministic_key, Account, Amount, BlockEnum, BlockHash, Epoch, KeyDerivationFunction,
-    KeyPair, PublicKey, RawKey, StateBlock, WorkVersion, DEV_GENESIS_KEY,
+    KeyPair, PublicKey, RawKey, StateBlock, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
@@ -692,8 +692,8 @@ fn work() {
         let work = node1.wallets.work_get(&wallet_id1, &DEV_GENESIS_PUB_KEY);
         if DEV_NETWORK_PARAMS
             .work
-            .difficulty(WorkVersion::Work1, &(*DEV_GENESIS_HASH).into(), work)
-            >= DEV_NETWORK_PARAMS.work.threshold_base(WorkVersion::Work1)
+            .difficulty(&(*DEV_GENESIS_HASH).into(), work)
+            >= DEV_NETWORK_PARAMS.work.threshold_base()
         {
             break;
         }
@@ -741,10 +741,8 @@ fn work_generate() {
         let tx = node1.ledger.read_txn();
         let work1 = node1.wallets.work_get(&wallet_id, &account1.into());
         let root = node1.ledger.latest_root(&tx, &account1);
-        if DEV_NETWORK_PARAMS
-            .work
-            .difficulty(WorkVersion::Work1, &root, work1)
-            >= DEV_NETWORK_PARAMS.work.threshold_base(WorkVersion::Work1)
+        if DEV_NETWORK_PARAMS.work.difficulty(&root, work1)
+            >= DEV_NETWORK_PARAMS.work.threshold_base()
         {
             break;
         }
@@ -799,14 +797,14 @@ fn work_cache_delayed() {
             .unwrap(),
         &block2.hash().into()
     );
-    let threshold = node1.network_params.work.threshold_base(WorkVersion::Work1);
+    let threshold = node1.network_params.work.threshold_base();
     let start = Instant::now();
     loop {
         let work1 = node1.wallets.work_get(&wallet_id, &account1.into());
 
         if DEV_NETWORK_PARAMS
             .work
-            .difficulty(WorkVersion::Work1, &block2.hash().into(), work1)
+            .difficulty(&block2.hash().into(), work1)
             >= threshold
         {
             break;

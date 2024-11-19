@@ -1,14 +1,10 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::{BlockDetails, DifficultyV1, WorkVersion};
+use rsnano_core::{BlockDetails, DifficultyV1};
 use rsnano_rpc_messages::{WorkValidateArgs, WorkValidateResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn work_validate(&self, args: WorkValidateArgs) -> WorkValidateResponse {
-        let default_difficulty = self
-            .node
-            .network_params
-            .work
-            .threshold_base(WorkVersion::Work1);
+        let default_difficulty = self.node.network_params.work.threshold_base();
 
         let difficulty = if let Some(multiplier) = args.multiplier {
             DifficultyV1::from_multiplier(multiplier.inner(), default_difficulty)
@@ -24,11 +20,11 @@ impl RpcCommandHandler {
          * * valid_receive: the work is valid for a receive block in an epoch_2 upgraded account
          */
 
-        let result_difficulty = self.node.network_params.work.difficulty(
-            WorkVersion::Work1,
-            &args.hash.into(),
-            args.work.unwrap_or_default().into(),
-        );
+        let result_difficulty = self
+            .node
+            .network_params
+            .work
+            .difficulty(&args.hash.into(), args.work.unwrap_or_default().into());
 
         let valid = if args.difficulty.is_some() {
             if result_difficulty >= difficulty {

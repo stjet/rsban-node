@@ -2,7 +2,7 @@ use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBuilder,
     BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
     PublicKey, QualifiedRoot, Root, SendBlock, Signature, StateBlock, UncheckedInfo, Vote,
-    VoteSource, VoteWithWeightInfo, WorkVersion, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO,
+    VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY, GXRB_RATIO, MXRB_RATIO,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -2009,47 +2009,37 @@ fn work_generate() {
     let mut system = System::new();
     let node = system.make_node();
     let root = Root::from(1);
-    let version = WorkVersion::Work1;
 
     // Test with higher difficulty
     {
         let difficulty =
-            DifficultyV1::from_multiplier(1.5, node.network_params.work.threshold_base(version));
-        let work = node
-            .distributed_work
-            .make_blocking(version, root, difficulty, None);
+            DifficultyV1::from_multiplier(1.5, node.network_params.work.threshold_base());
+        let work = node.distributed_work.make_blocking(root, difficulty, None);
         assert!(work.is_some());
         let work = work.unwrap();
-        assert!(node.network_params.work.difficulty(version, &root, work) >= difficulty);
+        assert!(node.network_params.work.difficulty(&root, work) >= difficulty);
     }
 
     // Test with lower difficulty
     {
-        let difficulty = DifficultyV1::from_multiplier(
-            0.5,
-            node.network_params.work.threshold_base(WorkVersion::Work1),
-        );
+        let difficulty =
+            DifficultyV1::from_multiplier(0.5, node.network_params.work.threshold_base());
         let mut work;
         loop {
-            work = node
-                .distributed_work
-                .make_blocking(version, root, difficulty, None);
+            work = node.distributed_work.make_blocking(root, difficulty, None);
             if let Some(work_value) = work {
-                if node
-                    .network_params
-                    .work
-                    .difficulty(version, &root, work_value)
-                    < node.network_params.work.threshold_base(version)
+                if node.network_params.work.difficulty(&root, work_value)
+                    < node.network_params.work.threshold_base()
                 {
                     break;
                 }
             }
         }
         let work = work.unwrap();
-        assert!(node.network_params.work.difficulty(version, &root, work) >= difficulty);
+        assert!(node.network_params.work.difficulty(&root, work) >= difficulty);
         assert!(
-            node.network_params.work.difficulty(version, &root, work)
-                < node.network_params.work.threshold_base(version)
+            node.network_params.work.difficulty(&root, work)
+                < node.network_params.work.threshold_base()
         );
     }
 }

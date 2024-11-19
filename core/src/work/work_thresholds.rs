@@ -1,6 +1,6 @@
 use crate::{
     BlockDetails, BlockEnum, BlockType, Difficulty, DifficultyV1, Epoch, Networks, Root,
-    StubDifficulty, WorkVersion,
+    StubDifficulty,
 };
 use once_cell::sync::Lazy;
 use std::cmp::{max, min};
@@ -167,15 +167,9 @@ impl WorkThresholds {
         }
     }
 
-    pub fn threshold_entry(&self, block_type: BlockType, work_version: WorkVersion) -> u64 {
+    pub fn threshold_entry(&self, block_type: BlockType) -> u64 {
         match block_type {
-            BlockType::State => match work_version {
-                WorkVersion::Work1 => self.entry,
-                _ => {
-                    debug_assert!(false, "Invalid version specified to work_threshold_entry");
-                    u64::MAX
-                }
-            },
+            BlockType::State => self.entry,
             _ => self.epoch_1,
         }
     }
@@ -200,25 +194,8 @@ impl WorkThresholds {
         }
     }
 
-    pub fn threshold2(&self, work_version: WorkVersion, details: &BlockDetails) -> u64 {
-        match work_version {
-            WorkVersion::Work1 => self.threshold(details),
-            _ => {
-                // Invalid version specified to ledger work_threshold
-                debug_assert!(false);
-                u64::MAX
-            }
-        }
-    }
-
-    pub fn threshold_base(&self, work_version: WorkVersion) -> u64 {
-        match work_version {
-            WorkVersion::Work1 => self.base,
-            _ => {
-                debug_assert!(false, "Invalid version specified to work_threshold_base");
-                u64::MAX
-            }
-        }
+    pub fn threshold_base(&self) -> u64 {
+        self.base
     }
 
     pub fn normalized_multiplier(&self, multiplier: f64, threshold: u64) -> f64 {
@@ -262,34 +239,26 @@ impl WorkThresholds {
         }
     }
 
-    pub fn difficulty(&self, work_version: WorkVersion, root: &Root, work: u64) -> u64 {
-        match work_version {
-            WorkVersion::Work1 => self.difficulty.get_difficulty(root, work),
-            _ => {
-                debug_assert!(false, "Invalid version specified to work_difficulty");
-                0
-            }
-        }
+    pub fn difficulty(&self, root: &Root, work: u64) -> u64 {
+        self.difficulty.get_difficulty(root, work)
     }
 
     pub fn difficulty_block(&self, block: &BlockEnum) -> u64 {
-        self.difficulty(block.work_version(), &block.root(), block.work())
+        self.difficulty(&block.root(), block.work())
     }
 
-    //todo return true if valid!
-    pub fn validate_entry(&self, work_version: WorkVersion, root: &Root, work: u64) -> bool {
-        self.difficulty(work_version, root, work)
-            < self.threshold_entry(BlockType::State, work_version)
+    pub fn validate_entry(&self, root: &Root, work: u64) -> bool {
+        self.difficulty(root, work) >= self.threshold_entry(BlockType::State)
     }
 
     pub fn validate_entry_block(&self, block: &BlockEnum) -> bool {
         let difficulty = self.difficulty_block(block);
-        let threshold = self.threshold_entry(block.block_type(), block.work_version());
+        let threshold = self.threshold_entry(block.block_type());
         difficulty >= threshold
     }
 
     pub fn is_valid_pow(&self, block: &BlockEnum, details: &BlockDetails) -> bool {
-        self.difficulty_block(block) >= self.threshold2(block.work_version(), details)
+        self.difficulty_block(block) >= self.threshold(details)
     }
 }
 
@@ -317,15 +286,12 @@ mod tests {
     #[test]
     fn threshold_epoch0_send() {
         assert_eq!(
-            WorkThresholds::publish_full().threshold2(
-                WorkVersion::Work1,
-                &BlockDetails {
-                    epoch: Epoch::Epoch0,
-                    is_send: true,
-                    is_receive: false,
-                    is_epoch: false
-                }
-            ),
+            WorkThresholds::publish_full().threshold(&BlockDetails {
+                epoch: Epoch::Epoch0,
+                is_send: true,
+                is_receive: false,
+                is_epoch: false
+            }),
             0xffffffc000000000
         );
     }
@@ -333,15 +299,12 @@ mod tests {
     #[test]
     fn threshold_epoch0_receive() {
         assert_eq!(
-            WorkThresholds::publish_full().threshold2(
-                WorkVersion::Work1,
-                &BlockDetails {
-                    epoch: Epoch::Epoch0,
-                    is_send: false,
-                    is_receive: true,
-                    is_epoch: false
-                }
-            ),
+            WorkThresholds::publish_full().threshold(&BlockDetails {
+                epoch: Epoch::Epoch0,
+                is_send: false,
+                is_receive: true,
+                is_epoch: false
+            }),
             0xffffffc000000000
         );
     }
@@ -349,15 +312,12 @@ mod tests {
     #[test]
     fn threshold_epoch1_send() {
         assert_eq!(
-            WorkThresholds::publish_full().threshold2(
-                WorkVersion::Work1,
-                &BlockDetails {
-                    epoch: Epoch::Epoch1,
-                    is_send: true,
-                    is_receive: false,
-                    is_epoch: false
-                }
-            ),
+            WorkThresholds::publish_full().threshold(&BlockDetails {
+                epoch: Epoch::Epoch1,
+                is_send: true,
+                is_receive: false,
+                is_epoch: false
+            }),
             0xffffffc000000000
         );
     }
@@ -365,15 +325,12 @@ mod tests {
     #[test]
     fn threshold_epoch1_receive() {
         assert_eq!(
-            WorkThresholds::publish_full().threshold2(
-                WorkVersion::Work1,
-                &BlockDetails {
-                    epoch: Epoch::Epoch1,
-                    is_send: false,
-                    is_receive: true,
-                    is_epoch: false
-                }
-            ),
+            WorkThresholds::publish_full().threshold(&BlockDetails {
+                epoch: Epoch::Epoch1,
+                is_send: false,
+                is_receive: true,
+                is_epoch: false
+            }),
             0xffffffc000000000
         );
     }
@@ -381,15 +338,12 @@ mod tests {
     #[test]
     fn threshold_epoch2_send() {
         assert_eq!(
-            WorkThresholds::publish_full().threshold2(
-                WorkVersion::Work1,
-                &BlockDetails {
-                    epoch: Epoch::Epoch2,
-                    is_send: true,
-                    is_receive: false,
-                    is_epoch: false
-                }
-            ),
+            WorkThresholds::publish_full().threshold(&BlockDetails {
+                epoch: Epoch::Epoch2,
+                is_send: true,
+                is_receive: false,
+                is_epoch: false
+            }),
             0xfffffff800000000
         );
     }
@@ -397,15 +351,12 @@ mod tests {
     #[test]
     fn threshold_epoch2_receive() {
         assert_eq!(
-            WorkThresholds::publish_full().threshold2(
-                WorkVersion::Work1,
-                &BlockDetails {
-                    epoch: Epoch::Epoch2,
-                    is_send: false,
-                    is_receive: true,
-                    is_epoch: false
-                }
-            ),
+            WorkThresholds::publish_full().threshold(&BlockDetails {
+                epoch: Epoch::Epoch2,
+                is_send: false,
+                is_receive: true,
+                is_epoch: false
+            }),
             0xfffffe0000000000
         );
     }

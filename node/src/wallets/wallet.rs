@@ -66,9 +66,7 @@ impl Wallet {
         root: &Root,
         work: u64,
     ) {
-        debug_assert!(!self
-            .work_thresholds
-            .validate_entry(WorkVersion::Work1, root, work));
+        debug_assert!(self.work_thresholds.validate_entry(root, work));
         debug_assert!(self.store.exists(txn, pub_key));
         let block_txn = self.ledger.read_txn();
         let latest = self.ledger.latest_root(&block_txn, &pub_key.into());

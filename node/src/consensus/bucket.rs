@@ -120,7 +120,7 @@ impl Bucket {
         }
     }
 
-    pub fn push(&self, time: u64, block: Arc<Block>) -> bool {
+    pub fn push(&self, time: u64, block: Block) -> bool {
         let hash = block.hash();
         let mut guard = self.data.lock().unwrap();
         let inserted = guard.queue.insert(BlockEntry { time, block });
@@ -143,7 +143,7 @@ impl Bucket {
         self.data.lock().unwrap().elections.len()
     }
 
-    pub fn blocks(&self) -> Vec<Arc<Block>> {
+    pub fn blocks(&self) -> Vec<Block> {
         let guard = self.data.lock().unwrap();
         guard.queue.iter().map(|i| i.block.clone()).collect()
     }
@@ -155,7 +155,7 @@ pub(crate) trait BucketExt {
 
 impl BucketExt for Arc<Bucket> {
     fn activate(&self) -> bool {
-        let block: Arc<Block>;
+        let block: Block;
         let priority: u64;
 
         {
@@ -180,7 +180,7 @@ impl BucketExt for Arc<Bucket> {
 
         let (inserted, election) =
             self.active
-                .insert(&block, ElectionBehavior::Priority, Some(erase_callback));
+                .insert(block, ElectionBehavior::Priority, Some(erase_callback));
 
         if inserted {
             let election = election.unwrap();
@@ -215,7 +215,7 @@ impl BucketData {
 
 struct BlockEntry {
     time: u64,
-    block: Arc<Block>,
+    block: Block,
 }
 
 impl Ord for BlockEntry {

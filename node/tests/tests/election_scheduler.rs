@@ -5,7 +5,6 @@ use test_helpers::System;
 mod bucket {
     use super::*;
     use rsnano_core::Block;
-    use std::sync::Arc;
 
     #[test]
     fn construction() {
@@ -37,7 +36,7 @@ mod bucket {
             node.stats.clone(),
         );
 
-        assert!(bucket.push(1000, Arc::new(Block::new_test_instance())));
+        assert!(bucket.push(1000, Block::new_test_instance()));
         assert_eq!(bucket.len(), 1);
     }
 
@@ -53,7 +52,7 @@ mod bucket {
             node.stats.clone(),
         );
 
-        let block = Arc::new(Block::new_test_instance());
+        let block = Block::new_test_instance();
         assert_eq!(bucket.push(1000, block.clone()), true);
         assert_eq!(bucket.push(1000, block), false);
     }
@@ -70,10 +69,10 @@ mod bucket {
             node.stats.clone(),
         );
 
-        let block0 = Arc::new(Block::new_test_instance_with_key(1));
-        let block1 = Arc::new(Block::new_test_instance_with_key(2));
-        let block2 = Arc::new(Block::new_test_instance_with_key(3));
-        let block3 = Arc::new(Block::new_test_instance_with_key(3));
+        let block0 = Block::new_test_instance_with_key(1);
+        let block1 = Block::new_test_instance_with_key(2);
+        let block2 = Block::new_test_instance_with_key(3);
+        let block3 = Block::new_test_instance_with_key(3);
         assert!(bucket.push(2000, block0.clone()));
         assert!(bucket.push(1001, block1.clone()));
         assert!(bucket.push(1000, block2.clone()));
@@ -105,10 +104,10 @@ mod bucket {
             node.stats.clone(),
         );
 
-        let block0 = Arc::new(Block::new_test_instance_with_key(1));
-        let block1 = Arc::new(Block::new_test_instance_with_key(2));
-        let block2 = Arc::new(Block::new_test_instance_with_key(3));
-        let block3 = Arc::new(Block::new_test_instance_with_key(3));
+        let block0 = Block::new_test_instance_with_key(1);
+        let block1 = Block::new_test_instance_with_key(2);
+        let block2 = Block::new_test_instance_with_key(3);
+        let block3 = Block::new_test_instance_with_key(3);
 
         assert_eq!(bucket.push(2000, block0.clone()), true);
         assert_eq!(bucket.push(900, block1.clone()), true);
@@ -131,7 +130,7 @@ mod election_scheduler {
         config::{FrontiersConfirmationMode, NodeConfig},
         consensus::ActiveElectionsExt,
     };
-    use std::{sync::Arc, time::Duration};
+    use std::time::Duration;
     use test_helpers::{assert_timely, assert_timely_eq, System};
 
     #[test]
@@ -239,7 +238,7 @@ mod election_scheduler {
         node.process(send.clone()).unwrap();
         node.active.process_confirmed(
             rsnano_node::consensus::ElectionStatus {
-                winner: Some(Arc::new(send.clone())),
+                winner: Some(send.clone()),
                 ..Default::default()
             },
             0,
@@ -257,7 +256,7 @@ mod election_scheduler {
         node.process(receive.clone()).unwrap();
         node.active.process_confirmed(
             rsnano_node::consensus::ElectionStatus {
-                winner: Some(Arc::new(receive.clone())),
+                winner: Some(receive.clone()),
                 ..Default::default()
             },
             0,

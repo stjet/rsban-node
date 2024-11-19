@@ -46,7 +46,7 @@ impl ManualScheduler {
         self.condition.notify_all();
     }
 
-    pub fn push(&self, block: Arc<Block>, previous_balance: Option<Amount>) {
+    pub fn push(&self, block: Block, previous_balance: Option<Amount>) {
         let mut guard = self.mutex.lock().unwrap();
         guard
             .queue
@@ -75,7 +75,7 @@ impl ManualScheduler {
                     self.stats
                         .inc(StatType::ElectionScheduler, DetailType::InsertManual);
 
-                    let (_inserted, election) = self.active.insert(&block, election_behavior, None);
+                    let (_inserted, election) = self.active.insert(block, election_behavior, None);
                     if let Some(election) = election {
                         election.transition_active();
                     }
@@ -130,7 +130,7 @@ impl ManualSchedulerExt for Arc<ManualScheduler> {
 }
 
 struct ManualSchedulerImpl {
-    queue: VecDeque<(Arc<Block>, Option<Amount>, ElectionBehavior)>,
+    queue: VecDeque<(Block, Option<Amount>, ElectionBehavior)>,
     stopped: bool,
 }
 

@@ -101,10 +101,7 @@ impl VoteApplier {
         }
     }
 
-    pub fn tally_impl(
-        &self,
-        guard: &mut MutexGuard<ElectionData>,
-    ) -> BTreeMap<TallyKey, Arc<Block>> {
+    pub fn tally_impl(&self, guard: &mut MutexGuard<ElectionData>) -> BTreeMap<TallyKey, Block> {
         let mut block_weights: HashMap<BlockHash, Amount> = HashMap::new();
         let mut final_weights: HashMap<BlockHash, Amount> = HashMap::new();
         for (account, info) in &guard.last_votes {
@@ -121,7 +118,7 @@ impl VoteApplier {
         let mut result = BTreeMap::new();
         for (hash, weight) in &block_weights {
             if let Some(block) = guard.last_blocks.get(hash) {
-                result.insert(TallyKey(*weight), Arc::clone(block));
+                result.insert(TallyKey(*weight), block.clone());
             }
         }
         // Calculate final votes sum for winner
@@ -151,7 +148,7 @@ impl VoteApplier {
         }
     }
 
-    pub fn have_quorum(&self, tally: &BTreeMap<TallyKey, Arc<Block>>) -> bool {
+    pub fn have_quorum(&self, tally: &BTreeMap<TallyKey, Block>) -> bool {
         let mut it = tally.keys();
         let first = it.next().map(|i| i.amount()).unwrap_or_default();
         let second = it.next().map(|i| i.amount()).unwrap_or_default();
@@ -298,9 +295,9 @@ impl VoteApplierExt for Arc<VoteApplier> {
         if sum >= self.online_reps.lock().unwrap().quorum_delta()
             && winner_hash != status_winner_hash
         {
-            election_lock.status.winner = Some(Arc::clone(block));
+            election_lock.status.winner = Some(block.clone());
             self.remove_votes(election, &mut election_lock, &status_winner_hash);
-            self.block_processor.force(Arc::clone(block));
+            self.block_processor.force(block.clone());
         }
 
         if self.have_quorum(&tally) {
@@ -346,7 +343,7 @@ impl VoteApplierExt for Arc<VoteApplier> {
             let self_l = Arc::clone(&self);
             let election = Arc::clone(election);
             self.workers.push_task(Box::new(move || {
-                let block = Arc::clone(status.winner.as_ref().unwrap());
+                let block = status.winner.as_ref().unwrap().clone();
                 self_l.process_confirmed(status, 0);
                 (election.confirmation_action)(block);
             }));

@@ -452,10 +452,8 @@ fn rollback_gap_source() {
         node.process_local(fork1a.clone()).unwrap()
     );
 
-    let fork1_b_arc = Arc::new(fork1b.clone());
-
     assert!(node.block(&send2.hash()).is_none());
-    node.block_processor.force(fork1_b_arc.clone());
+    node.block_processor.force(fork1b.clone());
 
     assert_timely_eq(
         Duration::from_secs(5),
@@ -485,7 +483,7 @@ fn rollback_gap_source() {
         BlockStatus::Progress,
         node.process_local(send2.clone()).unwrap()
     );
-    node.block_processor.force(fork1_b_arc.clone());
+    node.block_processor.force(fork1b.clone());
 
     assert_timely_eq(
         Duration::from_secs(5),
@@ -3373,10 +3371,7 @@ fn fork_open_flip() {
         || node1.block_exists(&open1.hash()),
         "open1 not found on node1",
     );
-    node1
-        .election_schedulers
-        .manual
-        .push(Arc::new(open1.clone()), None);
+    node1.election_schedulers.manual.push(open1.clone(), None);
     assert_timely_msg(
         Duration::from_secs(5),
         || node1.active.election(&open1.qualified_root()).is_some(),
@@ -3398,10 +3393,7 @@ fn fork_open_flip() {
         || node2.block_exists(&open2.hash()),
         "open2 not found on node2",
     );
-    node2
-        .election_schedulers
-        .manual
-        .push(Arc::new(open2.clone()), None);
+    node2.election_schedulers.manual.push(open2.clone(), None);
     assert_timely_msg(
         Duration::from_secs(5),
         || node2.active.election(&open2.qualified_root()).is_some(),

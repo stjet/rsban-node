@@ -686,7 +686,7 @@ fn cannot_vote() {
     );
 
     // With an ongoing election
-    node.election_schedulers.add_manual(Arc::new(send2.clone()));
+    node.election_schedulers.add_manual(send2.clone());
     assert_timely_msg(
         Duration::from_secs(5),
         || node.active.election(&send2.qualified_root()).is_some(),

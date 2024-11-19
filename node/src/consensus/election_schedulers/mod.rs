@@ -104,7 +104,7 @@ impl ElectionSchedulers {
         self.optimistic.notify();
     }
 
-    pub fn add_manual(&self, block: Arc<Block>) {
+    pub fn add_manual(&self, block: Block) {
         self.manual.push(block, None);
     }
 

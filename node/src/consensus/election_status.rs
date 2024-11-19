@@ -1,11 +1,6 @@
-use rsnano_core::{Amount, Block};
-
-use std::{
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
-
 use crate::stats::DetailType;
+use rsnano_core::{Amount, Block};
+use std::time::{Duration, SystemTime};
 
 /**
  * Tag for the type of the election status
@@ -49,7 +44,7 @@ impl From<ElectionStatusType> for DetailType {
 /// Information on the status of an election
 #[derive(Clone)]
 pub struct ElectionStatus {
-    pub winner: Option<Arc<Block>>,
+    pub winner: Option<Block>,
     pub tally: Amount,
     pub final_tally: Amount,
     pub confirmation_request_count: u32,

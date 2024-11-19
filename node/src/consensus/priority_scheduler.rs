@@ -148,7 +148,7 @@ impl PriorityScheduler {
 
         let added = self
             .find_bucket(balance_priority)
-            .push(account_info.modified, Arc::new(block));
+            .push(account_info.modified, block);
 
         if added {
             self.stats

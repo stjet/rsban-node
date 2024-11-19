@@ -503,7 +503,7 @@ impl ActiveElections {
         (replaced, election_guard)
     }
 
-    fn publish(&self, block: &Arc<Block>, election: &Election) -> bool {
+    fn publish(&self, block: &Block, election: &Election) -> bool {
         let mut election_guard = election.mutex.lock().unwrap();
 
         // Do not insert new blocks if already confirmed
@@ -524,17 +524,17 @@ impl ActiveElections {
                 result = true;
                 election_guard
                     .last_blocks
-                    .insert(block.hash(), Arc::clone(block));
+                    .insert(block.hash(), block.clone());
                 if election_guard.status.winner.as_ref().unwrap().hash() == block.hash() {
-                    election_guard.status.winner = Some(Arc::clone(block));
-                    let message = Message::Publish(Publish::new_forward(block.as_ref().clone()));
+                    election_guard.status.winner = Some(block.clone());
+                    let message = Message::Publish(Publish::new_forward(block.clone()));
                     let mut publisher = self.message_publisher.lock().unwrap();
                     publisher.flood(&message, DropPolicy::ShouldNotDrop, 1.0);
                 }
             } else {
                 election_guard
                     .last_blocks
-                    .insert(block.hash(), Arc::clone(block));
+                    .insert(block.hash(), block.clone());
             }
         }
         /*
@@ -1115,7 +1115,7 @@ pub trait ActiveElectionsExt {
     fn publish_block(&self, block: &Arc<Block>) -> bool;
     fn insert(
         &self,
-        block: &Arc<Block>,
+        block: Block,
         election_behavior: ElectionBehavior,
         erased_callback: Option<ErasedCallback>,
     ) -> (bool, Option<Arc<Election>>);
@@ -1217,7 +1217,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
             votes = self.votes_with_weight(election);
         } else {
             status = ElectionStatus {
-                winner: Some(Arc::new(block.clone())),
+                winner: Some(block.clone()),
                 ..Default::default()
             };
             votes = Vec::new();
@@ -1283,7 +1283,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
 
     fn insert(
         &self,
-        block: &Arc<Block>,
+        block: Block,
         election_behavior: ElectionBehavior,
         erased_callback: Option<ErasedCallback>,
     ) -> (bool, Option<Arc<Election>>) {
@@ -1315,7 +1315,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
                 let id = NEXT_ELECTION_ID.fetch_add(1, Ordering::Relaxed);
                 let election = Arc::new(Election::new(
                     id,
-                    Arc::clone(block),
+                    block,
                     election_behavior,
                     Box::new(|_| {}),
                     observer_rep_cb,

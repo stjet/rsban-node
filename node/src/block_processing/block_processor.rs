@@ -311,7 +311,7 @@ impl BlockProcessor {
         self.processor_loop
             .set_blocks_rolled_back_callback(callback);
     }
-    pub fn force(&self, block: Arc<Block>) {
+    pub fn force(&self, block: Block) {
         self.processor_loop.force(block);
     }
 
@@ -493,14 +493,10 @@ impl BlockProcessorLoop {
         }
     }
 
-    pub fn force(&self, block: Arc<Block>) {
+    pub fn force(&self, block: Block) {
         self.stats.inc(StatType::Blockprocessor, DetailType::Force);
         debug!("Forcing block: {}", block.hash());
-        let ctx = Arc::new(BlockProcessorContext::new(
-            block.as_ref().clone(),
-            BlockSource::Forced,
-            None,
-        ));
+        let ctx = Arc::new(BlockProcessorContext::new(block, BlockSource::Forced, None));
         self.add_impl(ctx, ChannelId::LOOPBACK);
     }
 

@@ -9,7 +9,7 @@ use std::{
     fmt::Debug,
     sync::{
         atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering},
-        Arc, Mutex, RwLock,
+        Mutex, RwLock,
     },
     time::{Duration, Instant, SystemTime},
 };
@@ -29,7 +29,7 @@ pub struct Election {
     pub last_req: RwLock<Option<Instant>>,
     pub behavior: ElectionBehavior,
     pub election_start: Instant,
-    pub confirmation_action: Box<dyn Fn(Arc<Block>) + Send + Sync>,
+    pub confirmation_action: Box<dyn Fn(Block) + Send + Sync>,
     pub live_vote_action: Box<dyn Fn(PublicKey) + Send + Sync>,
     height: u64,
 }
@@ -39,9 +39,9 @@ impl Election {
 
     pub fn new(
         id: usize,
-        block: Arc<Block>,
+        block: Block,
         behavior: ElectionBehavior,
-        confirmation_action: Box<dyn Fn(Arc<Block>) + Send + Sync>,
+        confirmation_action: Box<dyn Fn(Block) + Send + Sync>,
         live_vote_action: Box<dyn Fn(PublicKey) + Send + Sync>,
     ) -> Self {
         let root = block.root();
@@ -50,7 +50,7 @@ impl Election {
 
         let data = ElectionData {
             status: ElectionStatus {
-                winner: Some(Arc::clone(&block)),
+                winner: Some(block.clone()),
                 election_end: SystemTime::now(),
                 block_count: 1,
                 election_status_type: super::ElectionStatusType::Ongoing,
@@ -176,7 +176,7 @@ pub struct ElectionData {
     pub status: ElectionStatus,
     pub state: ElectionState,
     pub state_start: Instant,
-    pub last_blocks: HashMap<BlockHash, Arc<Block>>,
+    pub last_blocks: HashMap<BlockHash, Block>,
     pub last_votes: HashMap<PublicKey, VoteInfo>,
     pub final_weight: Amount,
     pub last_tally: HashMap<BlockHash, Amount>,

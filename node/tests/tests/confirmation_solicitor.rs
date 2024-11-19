@@ -36,7 +36,7 @@ fn batches() {
     );
     solicitor.prepare(&representatives);
 
-    let send = Arc::new(Block::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -44,7 +44,7 @@ fn batches() {
         Account::from(123).into(),
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
-    )));
+    ));
 
     {
         for i in 0..ConfirmReq::HASHES_MAX {
@@ -117,7 +117,7 @@ fn different_hashes() {
     );
     solicitor.prepare(&representatives);
 
-    let send = Arc::new(Block::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -125,7 +125,7 @@ fn different_hashes() {
         Account::from(123).into(),
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
-    )));
+    ));
 
     let election = Election::new(
         100,
@@ -187,7 +187,7 @@ fn bypass_max_requests_cap() {
     assert_eq!(representatives.len(), MAX_REPRESENTATIVES + 1);
     solicitor.prepare(&representatives);
 
-    let send = Arc::new(Block::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -195,7 +195,7 @@ fn bypass_max_requests_cap() {
         Account::from(123).into(),
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
-    )));
+    ));
 
     let election = Election::new(
         100,

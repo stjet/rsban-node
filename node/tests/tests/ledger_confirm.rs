@@ -803,7 +803,7 @@ fn observers() {
 fn election_winner_details_clearing_node_process_confirmed() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let send = Arc::new(Block::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -811,7 +811,7 @@ fn election_winner_details_clearing_node_process_confirmed() {
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
-    )));
+    ));
     // Add to election_winner_details. Use an unrealistic iteration so that it should fall into the else case and do a cleanup
     let election = Arc::new(Election::new(
         1,

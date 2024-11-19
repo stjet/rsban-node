@@ -320,7 +320,7 @@ pub fn start_election(node: &Node, hash: &BlockHash) -> Arc<Election> {
     );
 
     let block = node.block(hash).unwrap();
-    node.election_schedulers.add_manual(Arc::new(block.clone()));
+    node.election_schedulers.add_manual(block.clone());
     // wait for the election to appear
     assert_timely_msg(
         Duration::from_secs(5),
@@ -344,7 +344,7 @@ pub fn start_elections(node: &Node, hashes: &[BlockHash], forced: bool) {
 pub fn activate_hashes(node: &Node, hashes: &[BlockHash]) {
     for hash in hashes {
         let block = node.block(hash).unwrap();
-        node.election_schedulers.add_manual(Arc::new(block));
+        node.election_schedulers.add_manual(block);
     }
 }
 

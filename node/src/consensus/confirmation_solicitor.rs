@@ -6,7 +6,6 @@ use rsnano_network::{ChannelId, DropPolicy, NetworkInfo, TrafficType};
 use std::{
     cmp::max,
     collections::{HashMap, HashSet},
-    ops::Deref,
     sync::{atomic::Ordering, MutexGuard, RwLock},
 };
 
@@ -74,7 +73,7 @@ impl<'a> ConfirmationSolicitor<'a> {
 
         let winner_block = guard.status.winner.as_ref().unwrap();
         let hash = winner_block.hash();
-        let winner = Message::Publish(Publish::new_forward(winner_block.deref().clone()));
+        let winner = Message::Publish(Publish::new_forward(winner_block.clone()));
         let mut count = 0;
         // Directed broadcasting to principal representatives
         for i in &self.representative_broadcasts {

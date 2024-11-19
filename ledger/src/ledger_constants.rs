@@ -1,7 +1,4 @@
-use std::sync::Arc;
-
 use anyhow::Result;
-use once_cell::sync::Lazy;
 use rsnano_core::{
     deserialize_block_json, epoch_v1_link, epoch_v2_link,
     utils::{get_env_or_default_string, seconds_since_epoch, SerdePropertyTree},
@@ -9,12 +6,13 @@ use rsnano_core::{
     Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, Epochs, KeyPair,
     Networks, PublicKey, DEV_GENESIS_KEY,
 };
+use std::sync::{Arc, LazyLock};
 
 static BETA_PUBLIC_KEY_DATA: &str =
     "259A438A8F9F9226130C84D902C237AF3E57C0981C7D709C288046B110D8C8AC";
 static LIVE_PUBLIC_KEY_DATA: &str =
     "E89208DD038FBB269987689621D52292AE9C35941A7484756ECCED92A65093BA"; // xrb_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3
-static TEST_PUBLIC_KEY_DATA: Lazy<String> = Lazy::new(|| {
+static TEST_PUBLIC_KEY_DATA: LazyLock<String> = LazyLock::new(|| {
     get_env_or_default_string(
         "NANO_TEST_GENESIS_PUB",
         "45C6FF9D1706D61F0821327752671BDA9F9ED2DA40326B01935AB566FB9E08ED",
@@ -48,7 +46,7 @@ static LIVE_GENESIS_DATA: &str = r###"{
 	"signature": "9F0C933C8ADE004D808EA1985FA746A7E95BA2A38F867640F53EC8F180BDFE9E2C1268DEAD7C2664F356E37ABA362BC58E46DBA03E523A7B5A19E4B6EB12BB02"
     }"###;
 
-static TEST_GENESIS_DATA: Lazy<String> = Lazy::new(|| {
+static TEST_GENESIS_DATA: LazyLock<String> = LazyLock::new(|| {
     get_env_or_default_string(
         "NANO_TEST_GENESIS_BLOCK",
         r###"{
@@ -62,15 +60,17 @@ static TEST_GENESIS_DATA: Lazy<String> = Lazy::new(|| {
     )
 });
 
-pub static LEDGER_CONSTANTS_STUB: Lazy<LedgerConstants> =
-    Lazy::new(|| LedgerConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork));
+pub static LEDGER_CONSTANTS_STUB: LazyLock<LedgerConstants> =
+    LazyLock::new(|| LedgerConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork));
 
-pub static DEV_GENESIS: Lazy<Arc<Block>> = Lazy::new(|| LEDGER_CONSTANTS_STUB.genesis.clone());
-pub static DEV_GENESIS_ACCOUNT: Lazy<Account> = Lazy::new(|| DEV_GENESIS.account_field().unwrap());
+pub static DEV_GENESIS: LazyLock<Arc<Block>> =
+    LazyLock::new(|| LEDGER_CONSTANTS_STUB.genesis.clone());
+pub static DEV_GENESIS_ACCOUNT: LazyLock<Account> =
+    LazyLock::new(|| DEV_GENESIS.account_field().unwrap());
 #[allow(dead_code)]
-pub static DEV_GENESIS_PUB_KEY: Lazy<PublicKey> =
-    Lazy::new(|| DEV_GENESIS.account_field().unwrap().into());
-pub static DEV_GENESIS_HASH: Lazy<BlockHash> = Lazy::new(|| DEV_GENESIS.hash());
+pub static DEV_GENESIS_PUB_KEY: LazyLock<PublicKey> =
+    LazyLock::new(|| DEV_GENESIS.account_field().unwrap().into());
+pub static DEV_GENESIS_HASH: LazyLock<BlockHash> = LazyLock::new(|| DEV_GENESIS.hash());
 
 fn parse_block_from_genesis_data(genesis_data: &str) -> Result<Block> {
     let ptree = SerdePropertyTree::parse(genesis_data)?;

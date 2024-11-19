@@ -91,7 +91,7 @@ pub struct Wallets {
     pub representative_wallets: Mutex<WalletRepresentatives>,
     online_reps: Arc<Mutex<OnlineReps>>,
     pub kdf: KeyDerivationFunction,
-    start_election: Mutex<Option<Box<dyn Fn(Arc<Block>) + Send + Sync>>>,
+    start_election: Mutex<Option<Box<dyn Fn(Block) + Send + Sync>>>,
     confirming_set: Arc<ConfirmingSet>,
     message_publisher: Mutex<MessagePublisher>,
 }
@@ -175,7 +175,7 @@ impl Wallets {
         self.wallet_actions.stop();
     }
 
-    pub fn set_start_election_callback(&self, callback: Box<dyn Fn(Arc<Block>) + Send + Sync>) {
+    pub fn set_start_election_callback(&self, callback: Box<dyn Fn(Block) + Send + Sync>) {
         *self.start_election.lock().unwrap() = Some(callback);
     }
 
@@ -1898,7 +1898,7 @@ impl WalletsExt for Arc<Wallets> {
                                 // Request confirmation for block which is not being processed yet
                                 let guard = self.start_election.lock().unwrap();
                                 if let Some(callback) = guard.as_ref() {
-                                    callback(Arc::new(block));
+                                    callback(block);
                                 }
                             }
                         }

@@ -9,7 +9,7 @@ use crate::{
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{seconds_since_epoch, ContainerInfoComponent},
-    Account, AccountInfo, Amount, BlockEnum, BlockHash, BlockSubType, ConfirmationHeightInfo,
+    Account, AccountInfo, Amount, Block, BlockHash, BlockSubType, ConfirmationHeightInfo,
     DependentBlocks, Epoch, Link, PendingInfo, PendingKey, PublicKey, Root,
 };
 use rsnano_store_lmdb::{
@@ -76,8 +76,8 @@ impl BlockStatus {
 pub trait LedgerObserver: Send + Sync {
     fn blocks_cemented(&self, _cemented_count: u64) {}
     fn block_rolled_back(&self, _block_type: BlockSubType) {}
-    fn block_rolled_back2(&self, _block: &BlockEnum, _is_epoch: bool) {}
-    fn block_added(&self, _block: &BlockEnum, _is_epoch: bool) {}
+    fn block_rolled_back2(&self, _block: &Block, _is_epoch: bool) {}
+    fn block_added(&self, _block: &Block, _is_epoch: bool) {}
     fn dependent_unconfirmed(&self) {}
 }
 
@@ -124,12 +124,12 @@ impl NullLedgerBuilder {
         }
     }
 
-    pub fn block(mut self, block: &BlockEnum) -> Self {
+    pub fn block(mut self, block: &Block) -> Self {
         self.blocks = self.blocks.block(block);
         self
     }
 
-    pub fn blocks<'a>(mut self, blocks: impl IntoIterator<Item = &'a BlockEnum>) -> Self {
+    pub fn blocks<'a>(mut self, blocks: impl IntoIterator<Item = &'a Block>) -> Self {
         for b in blocks.into_iter() {
             self.blocks = self.blocks.block(b);
         }
@@ -478,7 +478,7 @@ impl Ledger {
         txn: &dyn Transaction,
         destination: &Account,
         send_block_hash: &BlockHash,
-    ) -> Option<BlockEnum> {
+    ) -> Option<Block> {
         // get the cemented frontier
         let info = self.store.confirmation_height.get(txn, destination)?;
         let mut possible_receive_block = self.any().get_block(txn, &info.frontier);
@@ -562,11 +562,11 @@ impl Ledger {
         pruned_count
     }
 
-    pub fn dependent_blocks(&self, txn: &dyn Transaction, block: &BlockEnum) -> DependentBlocks {
+    pub fn dependent_blocks(&self, txn: &dyn Transaction, block: &Block) -> DependentBlocks {
         DependentBlocksFinder::new(self, txn).find_dependent_blocks(block)
     }
 
-    pub fn dependents_confirmed(&self, txn: &dyn Transaction, block: &BlockEnum) -> bool {
+    pub fn dependents_confirmed(&self, txn: &dyn Transaction, block: &Block) -> bool {
         self.dependent_blocks(txn, block)
             .iter()
             .all(|hash| self.confirmed().block_exists_or_pruned(txn, hash))
@@ -577,7 +577,7 @@ impl Ledger {
         &self,
         txn: &mut LmdbWriteTransaction,
         block: &BlockHash,
-    ) -> anyhow::Result<Vec<BlockEnum>> {
+    ) -> anyhow::Result<Vec<Block>> {
         BlockRollbackPerformer::new(self, txn).roll_back(block)
     }
 
@@ -591,7 +591,7 @@ impl Ledger {
     pub fn process(
         &self,
         txn: &mut LmdbWriteTransaction,
-        block: &mut BlockEnum,
+        block: &mut Block,
     ) -> Result<(), BlockStatus> {
         let validator = BlockValidatorFactory::new(self, txn, block).create_validator();
         let instructions = validator.validate()?;
@@ -599,7 +599,7 @@ impl Ledger {
         Ok(())
     }
 
-    pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+    pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
         self.store.block.get(txn, hash)
     }
 
@@ -619,7 +619,7 @@ impl Ledger {
         self.store.confirmation_height.get(txn, account)
     }
 
-    pub fn confirm(&self, txn: &mut LmdbWriteTransaction, hash: BlockHash) -> VecDeque<BlockEnum> {
+    pub fn confirm(&self, txn: &mut LmdbWriteTransaction, hash: BlockHash) -> VecDeque<Block> {
         self.confirm_max(txn, hash, 1024 * 128)
     }
 
@@ -630,7 +630,7 @@ impl Ledger {
         txn: &mut LmdbWriteTransaction,
         target_hash: BlockHash,
         max_blocks: usize,
-    ) -> VecDeque<BlockEnum> {
+    ) -> VecDeque<Block> {
         BlockCementer::new(&self.store, self.observer.as_ref(), &self.constants).confirm(
             txn,
             target_hash,

@@ -1,5 +1,5 @@
 use rsnano_core::{
-    Account, Amount, BlockEnum, PublicKey, RawKey, StateBlock, WalletId, DEV_GENESIS_KEY,
+    Account, Amount, Block, PublicKey, RawKey, StateBlock, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
@@ -8,7 +8,7 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
 fn send_block(node: Arc<Node>, account: Account) {
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

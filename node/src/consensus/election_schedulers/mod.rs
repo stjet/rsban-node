@@ -11,7 +11,7 @@ use super::{
     VoteCache,
 };
 use rsnano_core::{
-    utils::ContainerInfoComponent, Account, AccountInfo, BlockEnum, ConfirmationHeightInfo,
+    utils::ContainerInfoComponent, Account, AccountInfo, Block, ConfirmationHeightInfo,
 };
 use rsnano_ledger::Ledger;
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
@@ -77,7 +77,7 @@ impl ElectionSchedulers {
         }
     }
 
-    pub fn activate_successors(&self, tx: &LmdbReadTransaction, block: &BlockEnum) {
+    pub fn activate_successors(&self, tx: &LmdbReadTransaction, block: &Block) {
         self.priority.activate_successors(tx, block);
     }
 
@@ -104,7 +104,7 @@ impl ElectionSchedulers {
         self.optimistic.notify();
     }
 
-    pub fn add_manual(&self, block: Arc<BlockEnum>) {
+    pub fn add_manual(&self, block: Arc<Block>) {
         self.manual.push(block, None);
     }
 

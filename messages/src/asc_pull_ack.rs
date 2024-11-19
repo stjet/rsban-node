@@ -2,7 +2,7 @@ use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{BufferWriter, Deserialize, Serialize, Stream, StreamExt},
-    Account, BlockEnum, BlockHash, BlockType, Frontier,
+    Account, Block, BlockHash, BlockType, Frontier,
 };
 use serde::ser::SerializeStruct;
 use serde_derive::Serialize;
@@ -30,7 +30,7 @@ impl AscPullAck {
         Self {
             id: 12345,
             pull_type: AscPullAckType::Blocks(BlocksAckPayload(VecDeque::from([
-                BlockEnum::new_test_instance(),
+                Block::new_test_instance(),
             ]))),
         }
     }
@@ -146,10 +146,10 @@ impl Display for AscPullAck {
 }
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
-pub struct BlocksAckPayload(VecDeque<BlockEnum>);
+pub struct BlocksAckPayload(VecDeque<Block>);
 
 impl BlocksAckPayload {
-    pub fn new(blocks: VecDeque<BlockEnum>) -> Self {
+    pub fn new(blocks: VecDeque<Block>) -> Self {
         if blocks.len() > Self::MAX_BLOCKS {
             panic!(
                 "too many blocks for BlocksAckPayload. Maximum is {}, but was {}",
@@ -163,12 +163,12 @@ impl BlocksAckPayload {
     /* Header allows for 16 bit extensions; 65535 bytes / 500 bytes (block size with some future margin) ~ 131 */
     pub const MAX_BLOCKS: usize = 128;
 
-    pub fn blocks(&self) -> &VecDeque<BlockEnum> {
+    pub fn blocks(&self) -> &VecDeque<Block> {
         &self.0
     }
 
     pub fn deserialize(&mut self, stream: &mut dyn Stream) -> anyhow::Result<()> {
-        while let Ok(current) = BlockEnum::deserialize(stream) {
+        while let Ok(current) = Block::deserialize(stream) {
             if self.0.len() >= Self::MAX_BLOCKS {
                 bail!("too many blocks")
             }

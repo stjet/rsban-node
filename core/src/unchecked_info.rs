@@ -8,21 +8,21 @@ use crate::{
     utils::{
         BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
     },
-    BlockEnum,
+    Block,
 };
 
 /// Information on an unchecked block
 #[derive(Default, Clone, Debug)]
 pub struct UncheckedInfo {
     // todo: Remove Option as soon as no C++ code requires the empty constructor
-    pub block: Option<Arc<BlockEnum>>,
+    pub block: Option<Arc<Block>>,
 
     /// Seconds since posix epoch
     pub modified: u64,
 }
 
 impl UncheckedInfo {
-    pub fn new(block: Arc<BlockEnum>) -> Self {
+    pub fn new(block: Arc<Block>) -> Self {
         Self {
             block: Some(block),
             modified: SystemTime::now()
@@ -57,7 +57,7 @@ impl Deserialize for UncheckedInfo {
     type Target = Self;
 
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
-        let block = BlockEnum::deserialize(stream)?;
+        let block = Block::deserialize(stream)?;
         let modified = stream.read_u64_ne()?;
         Ok(Self {
             block: Some(Arc::new(block)),

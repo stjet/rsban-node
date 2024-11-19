@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Account, Amount, Block, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::Node;
 use rsnano_rpc_messages::UnopenedArgs;
@@ -7,7 +7,7 @@ use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
 fn send_block(node: Arc<Node>) {
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

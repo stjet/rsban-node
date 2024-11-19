@@ -6,7 +6,7 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{BufferReader, FixedSizeSerialize},
-    BlockBase, BlockEnum, BlockHash, BlockSideband, BlockType, BlockVisitor, BlockWithSideband,
+    Block, BlockBase, BlockHash, BlockSideband, BlockType, BlockVisitor, BlockWithSideband,
     ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
 };
 use rsnano_nullable_lmdb::ConfiguredDatabase;
@@ -20,7 +20,7 @@ pub struct LmdbBlockStore {
     _env: Arc<LmdbEnv>,
     database: LmdbDatabase,
     #[cfg(feature = "output_tracking")]
-    put_listener: OutputListenerMt<BlockEnum>,
+    put_listener: OutputListenerMt<Block>,
 }
 
 pub struct ConfiguredBlockDatabaseBuilder {
@@ -34,7 +34,7 @@ impl ConfiguredBlockDatabaseBuilder {
         }
     }
 
-    pub fn block(mut self, block: &BlockEnum) -> Self {
+    pub fn block(mut self, block: &Block) -> Self {
         self.database.entries.insert(
             block.hash().as_bytes().to_vec(),
             block.serialize_with_sideband(),
@@ -69,11 +69,11 @@ impl LmdbBlockStore {
     }
 
     #[cfg(feature = "output_tracking")]
-    pub fn track_puts(&self) -> Arc<OutputTrackerMt<BlockEnum>> {
+    pub fn track_puts(&self) -> Arc<OutputTrackerMt<Block>> {
         self.put_listener.track()
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction, block: &BlockEnum) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, block: &Block) {
         #[cfg(feature = "output_tracking")]
         self.put_listener.emit(block.clone());
 
@@ -118,19 +118,19 @@ impl LmdbBlockStore {
         self.raw_put(txn, &data, hash)
     }
 
-    pub fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+    pub fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
         self.block_raw_get(txn, hash).map(|bytes| {
-            BlockEnum::deserialize_with_sideband(bytes)
+            Block::deserialize_with_sideband(bytes)
                 .unwrap_or_else(|_| panic!("Could not deserialize block {}!", hash))
         })
     }
 
-    pub fn get_no_sideband(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+    pub fn get_no_sideband(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
         match self.block_raw_get(txn, hash) {
             None => None,
             Some(bytes) => {
                 let mut stream = BufferReader::new(bytes);
-                Some(BlockEnum::deserialize(&mut stream).unwrap())
+                Some(Block::deserialize(&mut stream).unwrap())
             }
         }
     }
@@ -159,7 +159,7 @@ impl LmdbBlockStore {
         LmdbIteratorImpl::null_iterator()
     }
 
-    pub fn random(&self, transaction: &dyn Transaction) -> Option<BlockEnum> {
+    pub fn random(&self, transaction: &dyn Transaction) -> Option<Block> {
         let hash = BlockHash::random();
         let mut existing = self.begin_at_hash(transaction, &hash);
         if existing.is_end() {

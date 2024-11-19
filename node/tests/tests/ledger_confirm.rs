@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use rsnano_core::{
-    Amount, BlockEnum, BlockHash, ChangeBlock, Epoch, KeyPair, Link, OpenBlock, PublicKey,
+    Amount, Block, BlockHash, ChangeBlock, Epoch, KeyPair, Link, OpenBlock, PublicKey,
     ReceiveBlock, SendBlock, StateBlock, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
@@ -20,7 +20,7 @@ fn single() {
     let key1 = KeyPair::new();
     node.insert_into_wallet(&DEV_GENESIS_KEY);
     let latest1 = node.latest(&DEV_GENESIS_ACCOUNT);
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         latest1,
         *DEV_GENESIS_PUB_KEY,
@@ -77,7 +77,7 @@ fn multiple_accounts() {
     let quorum_delta = node.online_reps.lock().unwrap().quorum_delta();
 
     // Send to all accounts
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         latest1,
         *DEV_GENESIS_PUB_KEY,
@@ -86,7 +86,7 @@ fn multiple_accounts() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(latest1),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -95,7 +95,7 @@ fn multiple_accounts() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(send1.hash()),
     ));
-    let send3 = BlockEnum::State(StateBlock::new(
+    let send3 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send2.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -106,7 +106,7 @@ fn multiple_accounts() {
     ));
 
     // Open all accounts
-    let open1 = BlockEnum::State(StateBlock::new(
+    let open1 = Block::State(StateBlock::new(
         key1.public_key().as_account(),
         BlockHash::zero(),
         *DEV_GENESIS_PUB_KEY,
@@ -115,7 +115,7 @@ fn multiple_accounts() {
         &key1,
         node.work_generate_dev(&key1),
     ));
-    let open2 = BlockEnum::State(StateBlock::new(
+    let open2 = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         BlockHash::zero(),
         *DEV_GENESIS_PUB_KEY,
@@ -124,7 +124,7 @@ fn multiple_accounts() {
         &key2,
         node.work_generate_dev(&key2),
     ));
-    let open3 = BlockEnum::State(StateBlock::new(
+    let open3 = Block::State(StateBlock::new(
         key3.public_key().as_account(),
         BlockHash::zero(),
         *DEV_GENESIS_PUB_KEY,
@@ -135,7 +135,7 @@ fn multiple_accounts() {
     ));
 
     // Send and receive various blocks to these accounts
-    let send4 = BlockEnum::State(StateBlock::new(
+    let send4 = Block::State(StateBlock::new(
         key1.public_key().as_account(),
         open1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -144,7 +144,7 @@ fn multiple_accounts() {
         &key1,
         node.work_generate_dev(open1.hash()),
     ));
-    let send5 = BlockEnum::State(StateBlock::new(
+    let send5 = Block::State(StateBlock::new(
         key1.public_key().as_account(),
         send4.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -153,7 +153,7 @@ fn multiple_accounts() {
         &key1,
         node.work_generate_dev(send4.hash()),
     ));
-    let receive1 = BlockEnum::State(StateBlock::new(
+    let receive1 = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         open2.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -162,7 +162,7 @@ fn multiple_accounts() {
         &key2,
         node.work_generate_dev(open2.hash()),
     ));
-    let send6 = BlockEnum::State(StateBlock::new(
+    let send6 = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         receive1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -171,7 +171,7 @@ fn multiple_accounts() {
         &key2,
         node.work_generate_dev(receive1.hash()),
     ));
-    let receive2 = BlockEnum::State(StateBlock::new(
+    let receive2 = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         send6.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -218,7 +218,7 @@ fn multiple_accounts() {
         .is_none());
 
     // The nodes process a live receive which propagates across to all accounts
-    let mut receive3 = BlockEnum::State(StateBlock::new(
+    let mut receive3 = Block::State(StateBlock::new(
         key3.public_key().as_account(),
         open3.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -308,7 +308,7 @@ fn send_receive_between_2_accounts() {
 
     let quorum_delta = node.online_reps.lock().unwrap().quorum_delta();
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         latest,
         *DEV_GENESIS_PUB_KEY,
@@ -317,7 +317,7 @@ fn send_receive_between_2_accounts() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(latest),
     ));
-    let open1 = BlockEnum::State(StateBlock::new(
+    let open1 = Block::State(StateBlock::new(
         key1_acc,
         BlockHash::zero(),
         *DEV_GENESIS_PUB_KEY,
@@ -326,7 +326,7 @@ fn send_receive_between_2_accounts() {
         &key1,
         node.work_generate_dev(key1_acc),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         key1_acc,
         open1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -335,7 +335,7 @@ fn send_receive_between_2_accounts() {
         &key1,
         node.work_generate_dev(open1.hash()),
     ));
-    let send3 = BlockEnum::State(StateBlock::new(
+    let send3 = Block::State(StateBlock::new(
         key1_acc,
         send2.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -344,7 +344,7 @@ fn send_receive_between_2_accounts() {
         &key1,
         node.work_generate_dev(send2.hash()),
     ));
-    let send4 = BlockEnum::State(StateBlock::new(
+    let send4 = Block::State(StateBlock::new(
         key1_acc,
         send3.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -353,7 +353,7 @@ fn send_receive_between_2_accounts() {
         &key1,
         node.work_generate_dev(send3.hash()),
     ));
-    let receive1 = BlockEnum::State(StateBlock::new(
+    let receive1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -362,7 +362,7 @@ fn send_receive_between_2_accounts() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(send1.hash()),
     ));
-    let receive2 = BlockEnum::State(StateBlock::new(
+    let receive2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         receive1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -371,7 +371,7 @@ fn send_receive_between_2_accounts() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(receive1.hash()),
     ));
-    let receive3 = BlockEnum::State(StateBlock::new(
+    let receive3 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         receive2.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -380,7 +380,7 @@ fn send_receive_between_2_accounts() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(receive2.hash()),
     ));
-    let send5 = BlockEnum::State(StateBlock::new(
+    let send5 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         receive3.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -389,7 +389,7 @@ fn send_receive_between_2_accounts() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(receive3.hash()),
     ));
-    let receive4 = BlockEnum::State(StateBlock::new(
+    let receive4 = Block::State(StateBlock::new(
         key1_acc,
         send4.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -399,7 +399,7 @@ fn send_receive_between_2_accounts() {
         node.work_generate_dev(send4.hash()),
     ));
     let key2 = KeyPair::new();
-    let send6 = BlockEnum::State(StateBlock::new(
+    let send6 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send5.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -448,7 +448,7 @@ fn send_receive_self() {
     let node = system.build_node().config(cfg).finish();
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         latest,
         *DEV_GENESIS_PUB_KEY,
@@ -457,7 +457,7 @@ fn send_receive_self() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(latest),
     ));
-    let receive1 = BlockEnum::State(StateBlock::new(
+    let receive1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -466,7 +466,7 @@ fn send_receive_self() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(send1.hash()),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         receive1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -475,7 +475,7 @@ fn send_receive_self() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(receive1.hash()),
     ));
-    let send3 = BlockEnum::State(StateBlock::new(
+    let send3 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send2.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -484,7 +484,7 @@ fn send_receive_self() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(send2.hash()),
     ));
-    let receive2 = BlockEnum::State(StateBlock::new(
+    let receive2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send3.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -493,7 +493,7 @@ fn send_receive_self() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(send3.hash()),
     ));
-    let receive3 = BlockEnum::State(StateBlock::new(
+    let receive3 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         receive2.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -505,7 +505,7 @@ fn send_receive_self() {
 
     // Send to another account to prevent automatic receiving on the genesis account
     let key1 = KeyPair::new();
-    let send4 = BlockEnum::State(StateBlock::new(
+    let send4 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         receive3.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -552,28 +552,28 @@ fn all_block_types() {
     let key1 = KeyPair::new();
     let key2 = KeyPair::new();
 
-    let send = BlockEnum::LegacySend(SendBlock::new(
+    let send = Block::LegacySend(SendBlock::new(
         &latest,
         &key1.public_key().as_account(),
         &(Amount::MAX - Amount::nano(1000)),
         &DEV_GENESIS_KEY.private_key(),
         node.work_generate_dev(latest),
     ));
-    let send1 = BlockEnum::LegacySend(SendBlock::new(
+    let send1 = Block::LegacySend(SendBlock::new(
         &send.hash(),
         &key2.public_key().as_account(),
         &(Amount::MAX - Amount::nano(2000)),
         &DEV_GENESIS_KEY.private_key(),
         node.work_generate_dev(send.hash()),
     ));
-    let open = BlockEnum::LegacyOpen(OpenBlock::new(
+    let open = Block::LegacyOpen(OpenBlock::new(
         send.hash(),
         *DEV_GENESIS_PUB_KEY,
         key1.public_key().as_account(),
         &key1.private_key(),
         node.work_generate_dev(&key1),
     ));
-    let state_open = BlockEnum::State(StateBlock::new(
+    let state_open = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         BlockHash::zero(),
         PublicKey::zero(),
@@ -582,14 +582,14 @@ fn all_block_types() {
         &key2,
         node.work_generate_dev(&key2),
     ));
-    let send2 = BlockEnum::LegacySend(SendBlock::new(
+    let send2 = Block::LegacySend(SendBlock::new(
         &open.hash(),
         &key2.public_key().as_account(),
         &Amount::zero(),
         &key1.private_key(),
         node.work_generate_dev(open.hash()),
     ));
-    let state_receive = BlockEnum::State(StateBlock::new(
+    let state_receive = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         state_open.hash(),
         PublicKey::zero(),
@@ -598,7 +598,7 @@ fn all_block_types() {
         &key2,
         node.work_generate_dev(state_open.hash()),
     ));
-    let state_send = BlockEnum::State(StateBlock::new(
+    let state_send = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         state_receive.hash(),
         PublicKey::zero(),
@@ -607,19 +607,19 @@ fn all_block_types() {
         &key2,
         node.work_generate_dev(state_receive.hash()),
     ));
-    let receive = BlockEnum::LegacyReceive(ReceiveBlock::new(
+    let receive = Block::LegacyReceive(ReceiveBlock::new(
         send2.hash(),
         state_send.hash(),
         &key1.private_key(),
         node.work_generate_dev(send2.hash()),
     ));
-    let change = BlockEnum::LegacyChange(ChangeBlock::new(
+    let change = Block::LegacyChange(ChangeBlock::new(
         receive.hash(),
         key2.public_key(),
         &key1.private_key(),
         node.work_generate_dev(receive.hash()),
     ));
-    let state_change = BlockEnum::State(StateBlock::new(
+    let state_change = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         state_send.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -628,7 +628,7 @@ fn all_block_types() {
         &key2,
         node.work_generate_dev(state_send.hash()),
     ));
-    let epoch = BlockEnum::State(StateBlock::new(
+    let epoch = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         state_change.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -637,7 +637,7 @@ fn all_block_types() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(state_change.hash()),
     ));
-    let epoch1 = BlockEnum::State(StateBlock::new(
+    let epoch1 = Block::State(StateBlock::new(
         key1.public_key().as_account(),
         change.hash(),
         key2.public_key(),
@@ -646,7 +646,7 @@ fn all_block_types() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(change.hash()),
     ));
-    let state_send1 = BlockEnum::State(StateBlock::new(
+    let state_send1 = Block::State(StateBlock::new(
         key1.public_key().as_account(),
         epoch1.hash(),
         PublicKey::zero(),
@@ -655,7 +655,7 @@ fn all_block_types() {
         &key1,
         node.work_generate_dev(epoch1.hash()),
     ));
-    let state_receive2 = BlockEnum::State(StateBlock::new(
+    let state_receive2 = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         epoch.hash(),
         PublicKey::zero(),
@@ -664,7 +664,7 @@ fn all_block_types() {
         &key2,
         node.work_generate_dev(epoch.hash()),
     ));
-    let state_send2 = BlockEnum::State(StateBlock::new(
+    let state_send2 = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         state_receive2.hash(),
         PublicKey::zero(),
@@ -673,7 +673,7 @@ fn all_block_types() {
         &key2,
         node.work_generate_dev(state_receive2.hash()),
     ));
-    let state_send3 = BlockEnum::State(StateBlock::new(
+    let state_send3 = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         state_send2.hash(),
         PublicKey::zero(),
@@ -682,7 +682,7 @@ fn all_block_types() {
         &key2,
         node.work_generate_dev(state_send2.hash()),
     ));
-    let state_send4 = BlockEnum::State(StateBlock::new(
+    let state_send4 = Block::State(StateBlock::new(
         key1.public_key().as_account(),
         state_send1.hash(),
         PublicKey::zero(),
@@ -691,7 +691,7 @@ fn all_block_types() {
         &key1,
         node.work_generate_dev(state_send1.hash()),
     ));
-    let state_receive3 = BlockEnum::State(StateBlock::new(
+    let state_receive3 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -734,7 +734,7 @@ fn conflict_rollback_cemented() {
     let node1 = system.make_node();
     let key1 = KeyPair::new();
     // create one side of a forked transaction on node1
-    let fork1a = BlockEnum::State(StateBlock::new(
+    let fork1a = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -748,7 +748,7 @@ fn conflict_rollback_cemented() {
 
     // create the other side of the fork on node2
     let key2 = KeyPair::new();
-    let fork1b = BlockEnum::State(StateBlock::new(
+    let fork1b = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -778,7 +778,7 @@ fn observers() {
     let mut system = System::new();
     let node1 = system.make_node();
     let key1 = KeyPair::new();
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -803,7 +803,7 @@ fn observers() {
 fn election_winner_details_clearing_node_process_confirmed() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let send = Arc::new(BlockEnum::State(StateBlock::new(
+    let send = Arc::new(Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

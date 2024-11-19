@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, BlockEnum, KeyPair, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, KeyPair, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::config::{FrontiersConfirmationMode, NodeConfig};
 use std::{thread::sleep, time::Duration};
@@ -15,7 +15,7 @@ fn frontiers_confirmation_mode() {
             ..System::default_config()
         };
         let node = system.build_node().config(config).finish();
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -35,7 +35,7 @@ fn frontiers_confirmation_mode() {
             ..System::default_config()
         };
         let node = system.build_node().config(config).finish();
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -55,7 +55,7 @@ fn frontiers_confirmation_mode() {
             ..System::default_config()
         };
         let node = system.build_node().config(config).finish();
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,

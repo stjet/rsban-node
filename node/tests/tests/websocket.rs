@@ -1,8 +1,8 @@
 use core::panic;
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::{
-    Account, Amount, BlockEnum, JsonBlock, KeyPair, Networks, SendBlock, StateBlock, Vote,
-    VoteCode, DEV_GENESIS_KEY,
+    Account, Amount, Block, JsonBlock, KeyPair, Networks, SendBlock, StateBlock, Vote, VoteCode,
+    DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{Message, Publish};
@@ -49,7 +49,7 @@ fn started_election() {
 
         // Create election, causing a websocket message to be emitted
         let key1 = KeyPair::new();
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -105,7 +105,7 @@ fn stopped_election() {
 
         // Create election, then erase it, causing a websocket message to be emitted
         let key1 = KeyPair::new();
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -208,7 +208,7 @@ fn confirmation() {
         // Quick-confirm a block, legacy blocks should work without filtering
         let mut previous = node1.latest(&DEV_GENESIS_ACCOUNT);
         balance = balance - send_amount;
-        let send = BlockEnum::LegacySend(SendBlock::new(
+        let send = Block::LegacySend(SendBlock::new(
             &previous,
             &key.public_key().as_account(),
             &balance,
@@ -236,7 +236,7 @@ fn confirmation() {
 
         // Quick confirm a state block
         balance = balance - send_amount;
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             previous,
             *DEV_GENESIS_PUB_KEY,
@@ -276,7 +276,7 @@ fn confirmation_options() {
         let send_amount = node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1);
         let mut previous = node1.latest(&DEV_GENESIS_ACCOUNT);
         balance = balance - send_amount;
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             previous,
             *DEV_GENESIS_PUB_KEY,
@@ -303,7 +303,7 @@ fn confirmation_options() {
 
         // Quick-confirm another block
         balance = balance - send_amount;
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             previous,
             *DEV_GENESIS_PUB_KEY,
@@ -341,7 +341,7 @@ fn confirmation_options() {
         // Confirm a legacy block
         // When filtering options are enabled, legacy blocks are always filtered
         balance = balance - send_amount;
-        let send = BlockEnum::LegacySend(SendBlock::new(&previous, &key.public_key().as_account(), &balance, &DEV_GENESIS_KEY.private_key(),
+        let send = Block::LegacySend(SendBlock::new(&previous, &key.public_key().as_account(), &balance, &DEV_GENESIS_KEY.private_key(),
                 node1.work_generate_dev(previous)));
         node1.process_active(send);
         timeout(Duration::from_secs(1), ws_stream.next())
@@ -372,7 +372,7 @@ fn confirmation_options_votes() {
         let send_amount = node1.config.online_weight_minimum + Amount::raw(1);
         let previous = *DEV_GENESIS_HASH;
         let balance = balance - send_amount;
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             previous,
             *DEV_GENESIS_PUB_KEY,
@@ -426,7 +426,7 @@ fn confirmation_options_sideband() {
         let send_amount = node1.config.online_weight_minimum + Amount::raw(1);
         let previous = *DEV_GENESIS_HASH;
         let balance = balance - send_amount;
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             previous,
             *DEV_GENESIS_PUB_KEY,
@@ -482,7 +482,7 @@ fn confirmation_options_update() {
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
         let key = KeyPair::new();
         let previous = *DEV_GENESIS_HASH;
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             previous,
             *DEV_GENESIS_PUB_KEY,
@@ -510,7 +510,7 @@ fn confirmation_options_update() {
         ws_stream.next().await.unwrap().unwrap();
 
 	    // Confirm another block
-        let send2 = BlockEnum::State(StateBlock::new(
+        let send2 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             previous,
             *DEV_GENESIS_PUB_KEY,
@@ -547,7 +547,7 @@ fn vote() {
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
         let key = KeyPair::new();
         let previous = *DEV_GENESIS_HASH;
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             previous,
             *DEV_GENESIS_PUB_KEY,
@@ -623,7 +623,7 @@ fn vote_options_representatives() {
         let key = KeyPair::new();
         let mut previous = *DEV_GENESIS_HASH;
         let send_amount = node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1);
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             previous,
             *DEV_GENESIS_PUB_KEY,
@@ -653,7 +653,7 @@ fn vote_options_representatives() {
         //await ack
         ws_stream.next().await.unwrap().unwrap();
 
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             previous,
             *DEV_GENESIS_PUB_KEY,
@@ -814,7 +814,7 @@ fn new_unconfirmed_block() {
         ws_stream.next().await.unwrap().unwrap();
 
         // Process a new block
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,

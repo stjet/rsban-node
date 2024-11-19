@@ -2,7 +2,7 @@ use super::{ActiveElections, ActiveElectionsExt, ElectionBehavior};
 use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Amount, BlockEnum,
+    Amount, Block,
 };
 use std::{
     collections::VecDeque,
@@ -46,7 +46,7 @@ impl ManualScheduler {
         self.condition.notify_all();
     }
 
-    pub fn push(&self, block: Arc<BlockEnum>, previous_balance: Option<Amount>) {
+    pub fn push(&self, block: Arc<Block>, previous_balance: Option<Amount>) {
         let mut guard = self.mutex.lock().unwrap();
         guard
             .queue
@@ -95,7 +95,7 @@ impl ManualScheduler {
             vec![ContainerInfoComponent::Leaf(ContainerInfo {
                 name: "queue".to_string(),
                 count: guard.queue.len(),
-                sizeof_element: size_of::<Arc<BlockEnum>>()
+                sizeof_element: size_of::<Arc<Block>>()
                     + size_of::<Option<Amount>>()
                     + size_of::<ElectionBehavior>(),
             })],
@@ -130,7 +130,7 @@ impl ManualSchedulerExt for Arc<ManualScheduler> {
 }
 
 struct ManualSchedulerImpl {
-    queue: VecDeque<(Arc<BlockEnum>, Option<Amount>, ElectionBehavior)>,
+    queue: VecDeque<(Arc<Block>, Option<Amount>, ElectionBehavior)>,
     stopped: bool,
 }
 

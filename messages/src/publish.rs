@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 use rsnano_core::{
     serialized_block_size,
     utils::{BufferWriter, Serialize, Stream},
-    BlockEnum, BlockType,
+    Block, BlockType,
 };
 use serde_derive::Serialize;
 use std::fmt::{Debug, Display};
@@ -12,7 +12,7 @@ use std::fmt::{Debug, Display};
 #[derive(Clone, Eq, Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct Publish {
-    pub block: BlockEnum,
+    pub block: Block,
     #[serde(skip_serializing)]
     pub digest: u128,
     pub is_originator: bool,
@@ -22,7 +22,7 @@ impl Publish {
     const BLOCK_TYPE_MASK: u16 = 0x0f00;
     const ORIGINATOR_FLAG: u16 = 1 << 2;
 
-    pub fn new_from_originator(block: BlockEnum) -> Self {
+    pub fn new_from_originator(block: Block) -> Self {
         Self {
             block,
             digest: 0,
@@ -30,7 +30,7 @@ impl Publish {
         }
     }
 
-    pub fn new_forward(block: BlockEnum) -> Self {
+    pub fn new_forward(block: Block) -> Self {
         Self {
             block,
             digest: 0,
@@ -40,7 +40,7 @@ impl Publish {
 
     pub fn new_test_instance() -> Self {
         Self {
-            block: BlockEnum::new_test_instance(),
+            block: Block::new_test_instance(),
             digest: 0,
             is_originator: true,
         }
@@ -52,7 +52,7 @@ impl Publish {
         digest: u128,
     ) -> Option<Self> {
         let payload = Publish {
-            block: BlockEnum::deserialize_block_type(Self::block_type(extensions), stream).ok()?,
+            block: Block::deserialize_block_type(Self::block_type(extensions), stream).ok()?,
             digest,
             is_originator: extensions.data & Self::ORIGINATOR_FLAG > 0,
         };
@@ -110,26 +110,26 @@ mod tests {
 
     #[test]
     fn create_from_originator() {
-        let publish = Publish::new_from_originator(BlockEnum::new_test_instance());
+        let publish = Publish::new_from_originator(Block::new_test_instance());
         assert_eq!(publish.is_originator, true)
     }
 
     #[test]
     fn create_forward() {
-        let publish = Publish::new_forward(BlockEnum::new_test_instance());
+        let publish = Publish::new_forward(Block::new_test_instance());
         assert_eq!(publish.is_originator, false);
     }
 
     #[test]
     fn originator_flag_in_header() {
-        let publish = Publish::new_from_originator(BlockEnum::new_test_instance());
+        let publish = Publish::new_from_originator(Block::new_test_instance());
         let flags = publish.header_extensions(0);
         assert!(flags.data & Publish::ORIGINATOR_FLAG > 0);
     }
 
     #[test]
     fn originator_flag_not_in_header() {
-        let publish = Publish::new_forward(BlockEnum::new_test_instance());
+        let publish = Publish::new_forward(Block::new_test_instance());
         let flags = publish.header_extensions(0);
         assert_eq!(flags.data & Publish::ORIGINATOR_FLAG, 0);
     }

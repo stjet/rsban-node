@@ -1,5 +1,5 @@
 use rsnano_core::{
-    Amount, BlockEnum, BlockHash, KeyPair, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
+    Amount, Block, BlockHash, KeyPair, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
@@ -33,7 +33,7 @@ fn quorum_minimum_update_weight_before_quorum_checks() {
         * node1.online_reps.lock().unwrap().quorum_percent() as u128)
         - Amount::raw(1);
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -47,7 +47,7 @@ fn quorum_minimum_update_weight_before_quorum_checks() {
         node1.block(&send1.hash()).is_some()
     });
 
-    let open1 = BlockEnum::State(StateBlock::new(
+    let open1 = Block::State(StateBlock::new(
         key1.account(),
         BlockHash::zero(),
         key1.public_key(),
@@ -59,7 +59,7 @@ fn quorum_minimum_update_weight_before_quorum_checks() {
     node1.process(open1.clone()).unwrap();
 
     let key2 = KeyPair::new();
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         key1.account(),
         open1.hash(),
         key1.public_key(),
@@ -129,7 +129,7 @@ fn continuous_voting() {
 
     // We want genesis to have just enough voting weight to be a principal rep, but not enough to confirm blocks on their own
     let key1 = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -144,7 +144,7 @@ fn continuous_voting() {
     node1.stats.clear();
 
     // Create a block that should be staying in AEC but not get confirmed
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -183,7 +183,7 @@ fn quorum_minimum_confirm_fail() {
         .unwrap();
 
     let key = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -228,7 +228,7 @@ fn quorum_minimum_confirm_success() {
         .unwrap();
 
     let key1 = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -263,7 +263,7 @@ fn quorum_minimum_flip_fail() {
     let node1 = system.build_node().config(config).finish();
 
     let key1 = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -274,7 +274,7 @@ fn quorum_minimum_flip_fail() {
     ));
 
     let key2 = KeyPair::new();
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -322,7 +322,7 @@ fn quorum_minimum_flip_success() {
     let node1 = system.build_node().config(config).finish();
 
     let key1 = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -333,7 +333,7 @@ fn quorum_minimum_flip_success() {
     ));
 
     let key2 = KeyPair::new();
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

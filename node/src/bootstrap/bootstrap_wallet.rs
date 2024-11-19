@@ -5,7 +5,7 @@ use super::{
 use crate::{
     block_processing::BlockProcessor, stats::Stats, utils::ThreadPool, websocket::WebsocketListener,
 };
-use rsnano_core::{utils::PropertyTree, Account, Amount, BlockEnum};
+use rsnano_core::{utils::PropertyTree, Account, Amount, Block};
 use rsnano_ledger::Ledger;
 use std::{
     collections::VecDeque,
@@ -241,7 +241,7 @@ impl BootstrapAttemptTrait for Arc<BootstrapAttemptWallet> {
 
     fn process_block(
         &self,
-        block: Arc<BlockEnum>,
+        block: Arc<Block>,
         _known_account: &Account,
         pull_blocks_processed: u64,
         _max_blocks: u32,

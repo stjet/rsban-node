@@ -5,7 +5,7 @@ use super::{
 use crate::{consensus::ElectionStatus, wallets::Wallets, websocket::WebsocketSession};
 use rsnano_core::{
     utils::{PropertyTree, SerdePropertyTree},
-    Account, Amount, BlockEnum, BlockSideband, VoteWithWeightInfo,
+    Account, Amount, Block, BlockSideband, VoteWithWeightInfo,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -108,7 +108,7 @@ impl WebsocketListener {
     /// Broadcast block confirmation. The content of the message depends on subscription options (such as "include_block")
     pub fn broadcast_confirmation(
         &self,
-        block_a: &Arc<BlockEnum>,
+        block_a: &Arc<Block>,
         account_a: &Account,
         amount_a: &Amount,
         subtype: &str,
@@ -261,7 +261,7 @@ async fn accept_connection(
 }
 
 fn block_confirmed_message(
-    block: &Arc<BlockEnum>,
+    block: &Arc<Block>,
     account: &Account,
     amount: &Amount,
     subtype: String,

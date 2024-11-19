@@ -1,7 +1,7 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_core::{
-    Account, Amount, BlockDetails, BlockEnum, BlockHash, ChangeBlock, Epoch, KeyPair, OpenBlock,
+    Account, Amount, Block, BlockDetails, BlockHash, ChangeBlock, Epoch, KeyPair, OpenBlock,
     PendingKey, PublicKey, RawKey, ReceiveBlock, Root, SendBlock, StateBlock,
 };
 use rsnano_node::Node;
@@ -116,7 +116,7 @@ impl RpcCommandHandler {
                     && !representative.is_zero()
                     && (!link.is_zero() || args.link.is_some())
                 {
-                    let block = BlockEnum::State(StateBlock::new(
+                    let block = Block::State(StateBlock::new(
                         account,
                         previous,
                         representative,
@@ -137,7 +137,7 @@ impl RpcCommandHandler {
             }
             BlockTypeDto::Open => {
                 if !representative.is_zero() && !source.is_zero() {
-                    let block = BlockEnum::LegacyOpen(OpenBlock::new(
+                    let block = Block::LegacyOpen(OpenBlock::new(
                         source,
                         representative,
                         account,
@@ -152,9 +152,8 @@ impl RpcCommandHandler {
             }
             BlockTypeDto::Receive => {
                 if !source.is_zero() && !previous.is_zero() {
-                    let block = BlockEnum::LegacyReceive(ReceiveBlock::new(
-                        previous, source, &prv_key, work,
-                    ));
+                    let block =
+                        Block::LegacyReceive(ReceiveBlock::new(previous, source, &prv_key, work));
                     root = previous.into();
                     block
                 } else {
@@ -163,7 +162,7 @@ impl RpcCommandHandler {
             }
             BlockTypeDto::Change => {
                 if !representative.is_zero() && !previous.is_zero() {
-                    let block = BlockEnum::LegacyChange(ChangeBlock::new(
+                    let block = Block::LegacyChange(ChangeBlock::new(
                         previous,
                         representative,
                         &prv_key,
@@ -182,7 +181,7 @@ impl RpcCommandHandler {
                     && !amount.is_zero()
                 {
                     if balance >= amount {
-                        let block = BlockEnum::LegacySend(SendBlock::new(
+                        let block = Block::LegacySend(SendBlock::new(
                             &previous,
                             &destination,
                             &(balance - amount),
@@ -237,13 +236,13 @@ impl RpcCommandHandler {
     }
 }
 
-pub fn difficulty_ledger(node: Arc<Node>, block: &BlockEnum) -> u64 {
+pub fn difficulty_ledger(node: Arc<Node>, block: &Block) -> u64 {
     let mut details = BlockDetails::new(Epoch::Epoch0, false, false, false);
     let mut details_found = false;
     let tx = node.store.tx_begin_read();
 
     // Previous block find
-    let mut block_previous: Option<BlockEnum> = None;
+    let mut block_previous: Option<Block> = None;
     let previous = block.previous();
     if !previous.is_zero() {
         block_previous = node.ledger.any().get_block(&tx, &previous);

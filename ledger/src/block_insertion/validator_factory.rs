@@ -1,4 +1,4 @@
-use rsnano_core::{utils::seconds_since_epoch, Account, BlockEnum, PendingKey};
+use rsnano_core::{utils::seconds_since_epoch, Account, Block, PendingKey};
 use rsnano_store_lmdb::Transaction;
 
 use crate::Ledger;
@@ -8,11 +8,11 @@ use super::BlockValidator;
 pub(crate) struct BlockValidatorFactory<'a> {
     ledger: &'a Ledger,
     txn: &'a dyn Transaction,
-    block: &'a BlockEnum,
+    block: &'a Block,
 }
 
 impl<'a> BlockValidatorFactory<'a> {
-    pub(crate) fn new(ledger: &'a Ledger, txn: &'a dyn Transaction, block: &'a BlockEnum) -> Self {
+    pub(crate) fn new(ledger: &'a Ledger, txn: &'a dyn Transaction, block: &'a Block) -> Self {
         Self { ledger, txn, block }
     }
 
@@ -53,7 +53,7 @@ impl<'a> BlockValidatorFactory<'a> {
         }
     }
 
-    fn get_account(&self, previous: &Option<BlockEnum>) -> Option<Account> {
+    fn get_account(&self, previous: &Option<Block>) -> Option<Account> {
         match self.block.account_field() {
             Some(account) => Some(account),
             None => match previous {
@@ -63,7 +63,7 @@ impl<'a> BlockValidatorFactory<'a> {
         }
     }
 
-    fn load_previous_block(&self) -> Option<BlockEnum> {
+    fn load_previous_block(&self) -> Option<Block> {
         if !self.block.previous().is_zero() {
             self.ledger
                 .any()

@@ -1,6 +1,6 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, BlockBase, BlockBuilder,
-    BlockEnum, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
+    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBase,
+    BlockBuilder, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
     PublicKey, QualifiedRoot, Root, SendBlock, Signature, StateBlock, UncheckedInfo, Vote,
     VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
 };
@@ -235,7 +235,7 @@ fn deferred_dependent_elections() {
         .build();
 
     let send1_state_block = match &send1 {
-        BlockEnum::State(state_block) => state_block,
+        Block::State(state_block) => state_block,
         _ => panic!("Expected a StateBlock"),
     };
 
@@ -250,7 +250,7 @@ fn deferred_dependent_elections() {
         .build();
 
     let open_state_block = match &open {
-        BlockEnum::State(state_block) => state_block,
+        Block::State(state_block) => state_block,
         _ => panic!("Expected a StateBlock"),
     };
 
@@ -265,7 +265,7 @@ fn deferred_dependent_elections() {
         .build();
 
     let receive_state_block = match &receive {
-        BlockEnum::State(state_block) => state_block,
+        Block::State(state_block) => state_block,
         _ => panic!("Expected a StateBlock"),
     };
 
@@ -417,7 +417,7 @@ fn rollback_gap_source() {
         .build();
 
     let send1_state_block = match &send1 {
-        BlockEnum::State(state_block) => state_block,
+        Block::State(state_block) => state_block,
         _ => panic!("Expected a StateBlock"),
     };
 
@@ -432,7 +432,7 @@ fn rollback_gap_source() {
         .build();
 
     let fork1a_state_block = match &fork1a {
-        BlockEnum::State(state_block) => state_block,
+        Block::State(state_block) => state_block,
         _ => panic!("Expected a StateBlock"),
     };
 
@@ -532,7 +532,7 @@ fn vote_by_hash_bundle() {
     // Create a chain of blocks
     for i in 2..10 {
         let prev_block = match blocks.last().unwrap() {
-            BlockEnum::State(state_block) => state_block,
+            Block::State(state_block) => state_block,
             _ => panic!("Expected a StateBlock"),
         };
         let hash: BlockHash = prev_block.hash();
@@ -815,7 +815,7 @@ fn bootstrap_confirm_frontiers() {
     let key0 = KeyPair::new();
 
     // create block to send 500 raw from genesis to key0 and save into node0 ledger without immediately triggering an election
-    let send0 = BlockEnum::LegacySend(SendBlock::new(
+    let send0 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
         &key0.account(),
         &(Amount::MAX - Amount::raw(500)),
@@ -868,7 +868,7 @@ fn bootstrap_fork_open() {
     let node1 = system.build_node().config(node_config).finish();
     let key0 = KeyPair::new();
 
-    let send0 = BlockEnum::LegacySend(SendBlock::new(
+    let send0 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
         &key0.account(),
         &(Amount::MAX - Amount::raw(500)),
@@ -879,7 +879,7 @@ fn bootstrap_fork_open() {
             .unwrap(),
     ));
 
-    let open0 = BlockEnum::LegacyOpen(OpenBlock::new(
+    let open0 = Block::LegacyOpen(OpenBlock::new(
         send0.hash(),
         PublicKey::from_bytes([1; 32]),
         key0.account(),
@@ -887,7 +887,7 @@ fn bootstrap_fork_open() {
         system.work.generate_dev2(key0.public_key().into()).unwrap(),
     ));
 
-    let open1 = BlockEnum::LegacyOpen(OpenBlock::new(
+    let open1 = Block::LegacyOpen(OpenBlock::new(
         send0.hash(),
         PublicKey::from_bytes([2; 32]),
         key0.account(),
@@ -975,7 +975,7 @@ fn rep_self_vote() {
     let wallet_id = node0.wallets.wallet_ids()[0];
     let rep_big = KeyPair::new();
 
-    let fund_big = BlockEnum::LegacySend(SendBlock::new(
+    let fund_big = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
         &rep_big.account(),
         &Amount::raw(0xb000_0000_0000_0000_0000_0000_0000_0000),
@@ -986,7 +986,7 @@ fn rep_self_vote() {
             .unwrap(),
     ));
 
-    let open_big = BlockEnum::LegacyOpen(OpenBlock::new(
+    let open_big = Block::LegacyOpen(OpenBlock::new(
         fund_big.hash(),
         rep_big.public_key(),
         rep_big.account(),
@@ -1026,7 +1026,7 @@ fn rep_self_vote() {
         .unwrap();
     assert_eq!(node0.wallets.voting_reps_count(), 2);
 
-    let block0 = BlockEnum::LegacySend(SendBlock::new(
+    let block0 = Block::LegacySend(SendBlock::new(
         &fund_big.hash(),
         &rep_big.account(),
         &Amount::raw(0x6000_0000_0000_0000_0000_0000_0000_0000),
@@ -1080,7 +1080,7 @@ fn fork_bootstrap_flip() {
 
     let latest = node1.latest(&DEV_GENESIS_ACCOUNT);
     let key1 = KeyPair::new();
-    let send1 = BlockEnum::LegacySend(SendBlock::new(
+    let send1 = Block::LegacySend(SendBlock::new(
         &latest,
         &key1.account(),
         &(Amount::MAX - Amount::raw(1_000_000)),
@@ -1089,7 +1089,7 @@ fn fork_bootstrap_flip() {
     ));
 
     let key2 = KeyPair::new();
-    let send2 = BlockEnum::LegacySend(SendBlock::new(
+    let send2 = Block::LegacySend(SendBlock::new(
         &latest,
         &key2.account(),
         &(Amount::MAX - Amount::raw(1_000_000)),
@@ -1146,7 +1146,7 @@ fn fork_multi_flip() {
     let node2 = system.build_node().config(config).flags(flags).finish();
 
     let key1 = KeyPair::new();
-    let send1 = BlockEnum::LegacySend(SendBlock::new(
+    let send1 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
         &key1.account(),
         &(Amount::MAX - Amount::raw(100)),
@@ -1158,7 +1158,7 @@ fn fork_multi_flip() {
     ));
 
     let key2 = KeyPair::new();
-    let send2 = BlockEnum::LegacySend(SendBlock::new(
+    let send2 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
         &key2.account(),
         &(Amount::MAX - Amount::raw(100)),
@@ -1169,7 +1169,7 @@ fn fork_multi_flip() {
             .unwrap(),
     ));
 
-    let send3 = BlockEnum::LegacySend(SendBlock::new(
+    let send3 = Block::LegacySend(SendBlock::new(
         &send2.hash(),
         &key2.account(),
         &(Amount::MAX - Amount::raw(100)),
@@ -1260,7 +1260,7 @@ fn fork_publish_inactive() {
     let key1 = KeyPair::new();
     let key2 = KeyPair::new();
 
-    let send1 = BlockEnum::LegacySend(SendBlock::new(
+    let send1 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
         &key1.account(),
         &(Amount::MAX - Amount::raw(100)),
@@ -1271,7 +1271,7 @@ fn fork_publish_inactive() {
             .unwrap(),
     ));
 
-    let send2 = BlockEnum::LegacySend(SendBlock::new(
+    let send2 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
         &key2.account(),
         &(Amount::MAX - Amount::raw(100)),
@@ -1782,7 +1782,7 @@ fn quick_confirm() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
-    let send = BlockEnum::LegacySend(SendBlock::new(
+    let send = Block::LegacySend(SendBlock::new(
         &previous,
         &key.account(),
         &(node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1)),
@@ -1815,7 +1815,7 @@ fn send_out_of_order() {
     let node1 = system.make_node();
     let key2 = KeyPair::new();
 
-    let send1 = BlockEnum::LegacySend(SendBlock::new(
+    let send1 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
         &key2.account(),
         &(Amount::MAX - node1.config.receive_minimum),
@@ -1826,7 +1826,7 @@ fn send_out_of_order() {
             .unwrap(),
     ));
 
-    let send2 = BlockEnum::LegacySend(SendBlock::new(
+    let send2 = Block::LegacySend(SendBlock::new(
         &send1.hash(),
         &key2.account(),
         &(Amount::MAX - node1.config.receive_minimum * 2),
@@ -1834,7 +1834,7 @@ fn send_out_of_order() {
         system.work.generate_dev2(send1.hash().into()).unwrap(),
     ));
 
-    let send3 = BlockEnum::LegacySend(SendBlock::new(
+    let send3 = Block::LegacySend(SendBlock::new(
         &send2.hash(),
         &key2.account(),
         &(Amount::MAX - node1.config.receive_minimum * 3),
@@ -2060,7 +2060,7 @@ fn local_block_broadcast() {
     let key1 = KeyPair::new();
     let latest_hash = *DEV_GENESIS_HASH;
 
-    let send1 = BlockEnum::LegacySend(SendBlock::new(
+    let send1 = Block::LegacySend(SendBlock::new(
         &latest_hash,
         &key1.account(),
         &(Amount::MAX - Amount::nano(1000)),
@@ -2184,7 +2184,7 @@ fn fork_no_vote_quorum() {
     assert_eq!(node1.config.receive_minimum, node2.ledger.weight(&key1));
     assert_eq!(node1.config.receive_minimum, node3.ledger.weight(&key1));
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         block.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -2203,7 +2203,7 @@ fn fork_no_vote_quorum() {
         .deterministic_insert2(&wallet_id3, true)
         .unwrap();
 
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         block.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -2252,7 +2252,7 @@ fn fork_open() {
     // create block send1, to send all the balance from genesis to key1
     // this is done to ensure that the open block(s) cannot be voted on and confirmed
     let key1 = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2285,7 +2285,7 @@ fn fork_open() {
         .unwrap();
 
     // create the 1st open block to receive send1, which should be regarded as the winner just because it is first
-    let open1 = BlockEnum::State(StateBlock::new(
+    let open1 = Block::State(StateBlock::new(
         key1.account(),
         BlockHash::zero(),
         1.into(),
@@ -2302,7 +2302,7 @@ fn fork_open() {
 
     // create 2nd open block, which is a fork of open1 block
     // create the 1st open block to receive send1, which should be regarded as the winner just because it is first
-    let open2 = BlockEnum::State(StateBlock::new(
+    let open2 = Block::State(StateBlock::new(
         key1.account(),
         BlockHash::zero(),
         2.into(),
@@ -2389,7 +2389,7 @@ fn online_reps_election() {
 
     // Start election
     let key = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2438,7 +2438,7 @@ fn vote_republish() {
         .unwrap();
 
     // send1 and send2 are forks of each other
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2447,7 +2447,7 @@ fn vote_republish() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2542,7 +2542,7 @@ fn vote_by_hash_republish() {
         .unwrap();
 
     // send1 and send2 are forks of each other
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2551,7 +2551,7 @@ fn vote_by_hash_republish() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2610,7 +2610,7 @@ fn fork_election_invalid_block_signature() {
     let node1 = system.make_node();
 
     // send1 and send2 are forks of each other
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2619,7 +2619,7 @@ fn fork_election_invalid_block_signature() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2628,7 +2628,7 @@ fn fork_election_invalid_block_signature() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let mut send3 = BlockEnum::State(StateBlock::new(
+    let mut send3 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2684,7 +2684,7 @@ fn confirm_back() {
     let node = system.make_node();
     let key = KeyPair::new();
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2693,7 +2693,7 @@ fn confirm_back() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let open = BlockEnum::State(StateBlock::new(
+    let open = Block::State(StateBlock::new(
         key.account(),
         BlockHash::zero(),
         key.public_key(),
@@ -2702,7 +2702,7 @@ fn confirm_back() {
         &key,
         node.work_generate_dev(&key),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         key.account(),
         open.hash(),
         key.public_key(),
@@ -2742,7 +2742,7 @@ fn rollback_vote_self() {
     let key = KeyPair::new();
 
     // send half the voting weight to a non voting rep to ensure quorum cannot be reached
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2752,7 +2752,7 @@ fn rollback_vote_self() {
         node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
-    let open = BlockEnum::State(StateBlock::new(
+    let open = Block::State(StateBlock::new(
         key.account(),
         BlockHash::zero(),
         key.public_key(),
@@ -2763,7 +2763,7 @@ fn rollback_vote_self() {
     ));
 
     // send 1 raw
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         key.account(),
         open.hash(),
         key.public_key(),
@@ -2774,7 +2774,7 @@ fn rollback_vote_self() {
     ));
 
     // fork of send2 block
-    let fork = BlockEnum::State(StateBlock::new(
+    let fork = Block::State(StateBlock::new(
         key.account(),
         open.hash(),
         key.public_key(),
@@ -2886,7 +2886,7 @@ fn rep_crawler_rep_remove() {
         .minimum_principal_weight();
 
     // Send enough nanos to Rep1 to make it a principal representative
-    let send_to_rep1 = BlockEnum::State(StateBlock::new(
+    let send_to_rep1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2900,7 +2900,7 @@ fn rep_crawler_rep_remove() {
     ));
 
     // Receive by Rep1
-    let receive_rep1 = BlockEnum::State(StateBlock::new(
+    let receive_rep1 = Block::State(StateBlock::new(
         keys_rep1.account(),
         BlockHash::zero(),
         keys_rep1.public_key(),
@@ -2914,7 +2914,7 @@ fn rep_crawler_rep_remove() {
     ));
 
     // Send enough nanos to Rep2 to make it a principal representative
-    let send_to_rep2 = BlockEnum::State(StateBlock::new(
+    let send_to_rep2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send_to_rep1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -2928,7 +2928,7 @@ fn rep_crawler_rep_remove() {
     ));
 
     // Receive by Rep2
-    let receive_rep2 = BlockEnum::State(StateBlock::new(
+    let receive_rep2 = Block::State(StateBlock::new(
         keys_rep2.account(),
         BlockHash::zero(),
         keys_rep2.public_key(),
@@ -3085,7 +3085,7 @@ fn epoch_conflict_confirm() {
     let key = KeyPair::new();
     let epoch_signer = DEV_GENESIS_KEY.clone();
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -3098,7 +3098,7 @@ fn epoch_conflict_confirm() {
             .unwrap(),
     ));
 
-    let open = BlockEnum::State(StateBlock::new(
+    let open = Block::State(StateBlock::new(
         key.account(),
         BlockHash::zero(),
         key.public_key(),
@@ -3108,7 +3108,7 @@ fn epoch_conflict_confirm() {
         system.work.generate_dev2(key.public_key().into()).unwrap(),
     ));
 
-    let change = BlockEnum::State(StateBlock::new(
+    let change = Block::State(StateBlock::new(
         key.account(),
         open.hash(),
         key.public_key(),
@@ -3118,7 +3118,7 @@ fn epoch_conflict_confirm() {
         system.work.generate_dev2(open.hash().into()).unwrap(),
     ));
 
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -3128,7 +3128,7 @@ fn epoch_conflict_confirm() {
         system.work.generate_dev2(send.hash().into()).unwrap(),
     ));
 
-    let epoch_open = BlockEnum::State(StateBlock::new(
+    let epoch_open = Block::State(StateBlock::new(
         change.root().into(),
         BlockHash::zero(),
         PublicKey::zero(),
@@ -3206,7 +3206,7 @@ fn node_receive_quorum() {
         .insert_adhoc2(&wallet_id, &key.private_key(), true)
         .unwrap();
 
-    let send = BlockEnum::LegacySend(SendBlock::new(
+    let send = Block::LegacySend(SendBlock::new(
         &previous,
         &key.account(),
         &(node1.ledger.constants.genesis_amount - Amount::nano(1000)),
@@ -3335,7 +3335,7 @@ fn fork_open_flip() {
     let rep2 = KeyPair::new();
 
     // send 1 raw from genesis to key1 on both node1 and node2
-    let send1 = BlockEnum::LegacySend(SendBlock::new(
+    let send1 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
         &key1.account(),
         &(Amount::MAX - Amount::raw(1)),
@@ -3348,7 +3348,7 @@ fn fork_open_flip() {
     node1.process_active(send1.clone());
 
     // We should be keeping this block
-    let open1 = BlockEnum::LegacyOpen(OpenBlock::new(
+    let open1 = Block::LegacyOpen(OpenBlock::new(
         send1.hash(),
         rep1.public_key(),
         key1.account(),
@@ -3357,7 +3357,7 @@ fn fork_open_flip() {
     ));
 
     // create a fork of block open1, this block will lose the election
-    let open2 = BlockEnum::LegacyOpen(OpenBlock::new(
+    let open2 = Block::LegacyOpen(OpenBlock::new(
         send1.hash(),
         rep2.public_key(),
         key1.account(),
@@ -3523,7 +3523,7 @@ fn unconfirmed_send() {
     };
 
     // create send2 to send from node2 to node1 and save it to node2's ledger without triggering an election (node1 does not hear about it)
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         key2.account(),
         recv1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -3807,7 +3807,7 @@ fn dependency_graph_frontier() {
     let key3 = KeyPair::new();
 
     // Send to key1
-    let gen_send1 = BlockEnum::State(StateBlock::new(
+    let gen_send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -3818,7 +3818,7 @@ fn dependency_graph_frontier() {
     ));
 
     // Receive from genesis
-    let key1_open = BlockEnum::State(StateBlock::new(
+    let key1_open = Block::State(StateBlock::new(
         key1.account(),
         BlockHash::zero(),
         key1.public_key(),
@@ -3828,7 +3828,7 @@ fn dependency_graph_frontier() {
         node1.work_generate_dev(&key1),
     ));
     // Send to genesis
-    let key1_send1 = BlockEnum::State(StateBlock::new(
+    let key1_send1 = Block::State(StateBlock::new(
         key1.account(),
         key1_open.hash(),
         key1.public_key(),
@@ -3838,7 +3838,7 @@ fn dependency_graph_frontier() {
         node1.work_generate_dev(key1_open.hash()),
     ));
     // Receive from key1
-    let gen_receive = BlockEnum::State(StateBlock::new(
+    let gen_receive = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         gen_send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -3848,7 +3848,7 @@ fn dependency_graph_frontier() {
         node1.work_generate_dev(gen_send1.hash()),
     ));
     // Send to key2
-    let gen_send2 = BlockEnum::State(StateBlock::new(
+    let gen_send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         gen_receive.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -3858,7 +3858,7 @@ fn dependency_graph_frontier() {
         node1.work_generate_dev(gen_receive.hash()),
     ));
     // Receive from genesis
-    let key2_open = BlockEnum::State(StateBlock::new(
+    let key2_open = Block::State(StateBlock::new(
         key2.account(),
         BlockHash::zero(),
         key2.public_key(),
@@ -3868,7 +3868,7 @@ fn dependency_graph_frontier() {
         node1.work_generate_dev(&key2),
     ));
     // Send to key3
-    let key2_send1 = BlockEnum::State(StateBlock::new(
+    let key2_send1 = Block::State(StateBlock::new(
         key2.account(),
         key2_open.hash(),
         key2.public_key(),
@@ -3878,7 +3878,7 @@ fn dependency_graph_frontier() {
         node1.work_generate_dev(key2_open.hash()),
     ));
     // Receive from key2
-    let key3_open = BlockEnum::State(StateBlock::new(
+    let key3_open = Block::State(StateBlock::new(
         key3.account(),
         BlockHash::zero(),
         key3.public_key(),
@@ -3888,7 +3888,7 @@ fn dependency_graph_frontier() {
         node1.work_generate_dev(&key3),
     ));
     // Send to key1
-    let key2_send2 = BlockEnum::State(StateBlock::new(
+    let key2_send2 = Block::State(StateBlock::new(
         key2.account(),
         key2_send1.hash(),
         key2.public_key(),
@@ -3898,7 +3898,7 @@ fn dependency_graph_frontier() {
         node1.work_generate_dev(key2_send1.hash()),
     ));
     // Receive from key2
-    let key1_receive = BlockEnum::State(StateBlock::new(
+    let key1_receive = Block::State(StateBlock::new(
         key1.account(),
         key1_send1.hash(),
         key1.public_key(),
@@ -3908,7 +3908,7 @@ fn dependency_graph_frontier() {
         node1.work_generate_dev(key1_send1.hash()),
     ));
     // Send to key3
-    let key1_send2 = BlockEnum::State(StateBlock::new(
+    let key1_send2 = Block::State(StateBlock::new(
         key1.account(),
         key1_receive.hash(),
         key1.public_key(),
@@ -3918,7 +3918,7 @@ fn dependency_graph_frontier() {
         node1.work_generate_dev(key1_receive.hash()),
     ));
     // Receive from key1
-    let key3_receive = BlockEnum::State(StateBlock::new(
+    let key3_receive = Block::State(StateBlock::new(
         key3.account(),
         key3_open.hash(),
         key3.public_key(),
@@ -3928,7 +3928,7 @@ fn dependency_graph_frontier() {
         node1.work_generate_dev(key3_open.hash()),
     ));
     // Upgrade key3
-    let key3_epoch = BlockEnum::State(StateBlock::new(
+    let key3_epoch = Block::State(StateBlock::new(
         key3.account(),
         key3_receive.hash(),
         key3.public_key(),
@@ -3990,7 +3990,7 @@ fn dependency_graph() {
     let key3 = KeyPair::new();
 
     // Send to key1
-    let gen_send1 = BlockEnum::State(StateBlock::new(
+    let gen_send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -4001,7 +4001,7 @@ fn dependency_graph() {
     ));
 
     // Receive from genesis
-    let key1_open = BlockEnum::State(StateBlock::new(
+    let key1_open = Block::State(StateBlock::new(
         key1.account(),
         BlockHash::zero(),
         key1.public_key(),
@@ -4011,7 +4011,7 @@ fn dependency_graph() {
         node.work_generate_dev(&key1),
     ));
     // Send to genesis
-    let key1_send1 = BlockEnum::State(StateBlock::new(
+    let key1_send1 = Block::State(StateBlock::new(
         key1.account(),
         key1_open.hash(),
         key1.public_key(),
@@ -4021,7 +4021,7 @@ fn dependency_graph() {
         node.work_generate_dev(key1_open.hash()),
     ));
     // Receive from key1
-    let gen_receive = BlockEnum::State(StateBlock::new(
+    let gen_receive = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         gen_send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -4031,7 +4031,7 @@ fn dependency_graph() {
         node.work_generate_dev(gen_send1.hash()),
     ));
     // Send to key2
-    let gen_send2 = BlockEnum::State(StateBlock::new(
+    let gen_send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         gen_receive.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -4041,7 +4041,7 @@ fn dependency_graph() {
         node.work_generate_dev(gen_receive.hash()),
     ));
     // Receive from genesis
-    let key2_open = BlockEnum::State(StateBlock::new(
+    let key2_open = Block::State(StateBlock::new(
         key2.account(),
         BlockHash::zero(),
         key2.public_key(),
@@ -4051,7 +4051,7 @@ fn dependency_graph() {
         node.work_generate_dev(&key2),
     ));
     // Send to key3
-    let key2_send1 = BlockEnum::State(StateBlock::new(
+    let key2_send1 = Block::State(StateBlock::new(
         key2.account(),
         key2_open.hash(),
         key2.public_key(),
@@ -4061,7 +4061,7 @@ fn dependency_graph() {
         node.work_generate_dev(key2_open.hash()),
     ));
     // Receive from key2
-    let key3_open = BlockEnum::State(StateBlock::new(
+    let key3_open = Block::State(StateBlock::new(
         key3.account(),
         BlockHash::zero(),
         key3.public_key(),
@@ -4071,7 +4071,7 @@ fn dependency_graph() {
         node.work_generate_dev(&key3),
     ));
     // Send to key1
-    let key2_send2 = BlockEnum::State(StateBlock::new(
+    let key2_send2 = Block::State(StateBlock::new(
         key2.account(),
         key2_send1.hash(),
         key2.public_key(),
@@ -4081,7 +4081,7 @@ fn dependency_graph() {
         node.work_generate_dev(key2_send1.hash()),
     ));
     // Receive from key2
-    let key1_receive = BlockEnum::State(StateBlock::new(
+    let key1_receive = Block::State(StateBlock::new(
         key1.account(),
         key1_send1.hash(),
         key1.public_key(),
@@ -4091,7 +4091,7 @@ fn dependency_graph() {
         node.work_generate_dev(key1_send1.hash()),
     ));
     // Send to key3
-    let key1_send2 = BlockEnum::State(StateBlock::new(
+    let key1_send2 = Block::State(StateBlock::new(
         key1.account(),
         key1_receive.hash(),
         key1.public_key(),
@@ -4101,7 +4101,7 @@ fn dependency_graph() {
         node.work_generate_dev(key1_receive.hash()),
     ));
     // Receive from key1
-    let key3_receive = BlockEnum::State(StateBlock::new(
+    let key3_receive = Block::State(StateBlock::new(
         key3.account(),
         key3_open.hash(),
         key3.public_key(),
@@ -4111,7 +4111,7 @@ fn dependency_graph() {
         node.work_generate_dev(key3_open.hash()),
     ));
     // Upgrade key3
-    let key3_epoch = BlockEnum::State(StateBlock::new(
+    let key3_epoch = Block::State(StateBlock::new(
         key3.account(),
         key3_receive.hash(),
         key3.public_key(),
@@ -4196,7 +4196,7 @@ fn fork_keep() {
     let key1 = KeyPair::new();
     let key2 = KeyPair::new();
     // send1 and send2 fork to different accounts
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -4205,7 +4205,7 @@ fn fork_keep() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

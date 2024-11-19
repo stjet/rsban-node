@@ -1,6 +1,5 @@
 use crate::{
-    BlockDetails, BlockEnum, BlockType, Difficulty, DifficultyV1, Epoch, Networks, Root,
-    StubDifficulty,
+    Block, BlockDetails, BlockType, Difficulty, DifficultyV1, Epoch, Networks, Root, StubDifficulty,
 };
 use std::{
     cmp::{max, min},
@@ -245,7 +244,7 @@ impl WorkThresholds {
         self.difficulty.get_difficulty(root, work)
     }
 
-    pub fn difficulty_block(&self, block: &BlockEnum) -> u64 {
+    pub fn difficulty_block(&self, block: &Block) -> u64 {
         self.difficulty(&block.root(), block.work())
     }
 
@@ -253,13 +252,13 @@ impl WorkThresholds {
         self.difficulty(root, work) >= self.threshold_entry(BlockType::State)
     }
 
-    pub fn validate_entry_block(&self, block: &BlockEnum) -> bool {
+    pub fn validate_entry_block(&self, block: &Block) -> bool {
         let difficulty = self.difficulty_block(block);
         let threshold = self.threshold_entry(block.block_type());
         difficulty >= threshold
     }
 
-    pub fn is_valid_pow(&self, block: &BlockEnum, details: &BlockDetails) -> bool {
+    pub fn is_valid_pow(&self, block: &Block, details: &BlockDetails) -> bool {
         self.difficulty_block(block) >= self.threshold(details)
     }
 }
@@ -278,7 +277,7 @@ mod tests {
 
     #[test]
     fn difficulty_block() {
-        let block = BlockEnum::new_test_instance();
+        let block = Block::new_test_instance();
         assert_eq!(
             WorkThresholds::publish_full().difficulty_block(&block),
             9665579333895977632
@@ -373,7 +372,7 @@ mod tests {
   "signature": "5B11B17DB9C8FE0CC58CAC6A6EECEF9CB122DA8A81C6D3DB1B5EE3AB065AA8F8CB1D6765C8EB91B58530C5FF5987AD95E6D34BB57F44257E20795EE412E61600",
   "work": "3c82cc724905ee95"
 }"###;
-        let block: BlockEnum = serde_json::from_str::<JsonBlock>(json_block)
+        let block: Block = serde_json::from_str::<JsonBlock>(json_block)
             .unwrap()
             .into();
         let thresholds = WorkThresholds::publish_full();

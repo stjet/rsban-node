@@ -3,7 +3,7 @@ use crate::{
     stats::{DetailType, StatType},
     utils::HardenedConstants,
 };
-use rsnano_core::{Amount, BlockEnum, BlockHash, PublicKey, QualifiedRoot, Root};
+use rsnano_core::{Amount, Block, BlockHash, PublicKey, QualifiedRoot, Root};
 use std::{
     collections::HashMap,
     fmt::Debug,
@@ -29,7 +29,7 @@ pub struct Election {
     pub last_req: RwLock<Option<Instant>>,
     pub behavior: ElectionBehavior,
     pub election_start: Instant,
-    pub confirmation_action: Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>,
+    pub confirmation_action: Box<dyn Fn(Arc<Block>) + Send + Sync>,
     pub live_vote_action: Box<dyn Fn(PublicKey) + Send + Sync>,
     height: u64,
 }
@@ -39,9 +39,9 @@ impl Election {
 
     pub fn new(
         id: usize,
-        block: Arc<BlockEnum>,
+        block: Arc<Block>,
         behavior: ElectionBehavior,
-        confirmation_action: Box<dyn Fn(Arc<BlockEnum>) + Send + Sync>,
+        confirmation_action: Box<dyn Fn(Arc<Block>) + Send + Sync>,
         live_vote_action: Box<dyn Fn(PublicKey) + Send + Sync>,
     ) -> Self {
         let root = block.root();
@@ -176,7 +176,7 @@ pub struct ElectionData {
     pub status: ElectionStatus,
     pub state: ElectionState,
     pub state_start: Instant,
-    pub last_blocks: HashMap<BlockHash, Arc<BlockEnum>>,
+    pub last_blocks: HashMap<BlockHash, Arc<Block>>,
     pub last_votes: HashMap<PublicKey, VoteInfo>,
     pub final_weight: Amount,
     pub last_tally: HashMap<BlockHash, Amount>,

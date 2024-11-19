@@ -1,7 +1,7 @@
 use crate::work::WorkPool;
 use crate::{work::STUB_WORK_POOL, BlockBase, StateBlock};
 use crate::{
-    Account, Amount, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair, Link,
+    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, Link,
     PublicKey, Signature,
 };
 use anyhow::Result;
@@ -147,7 +147,7 @@ impl StateBlockBuilder {
         self
     }
 
-    pub fn build(self) -> BlockEnum {
+    pub fn build(self) -> Block {
         let work = self.work.unwrap_or_else(|| {
             let root = if self.previous.is_zero() {
                 self.account.into()
@@ -191,7 +191,7 @@ impl StateBlockBuilder {
             ));
         }
 
-        BlockEnum::State(state)
+        Block::State(state)
     }
 }
 
@@ -208,7 +208,7 @@ mod tests {
 
     #[test]
     fn state_block() {
-        let BlockEnum::State(block1) = BlockBuilder::state()
+        let Block::State(block1) = BlockBuilder::state()
             .account(3)
             .previous(1)
             .representative(6)
@@ -245,7 +245,7 @@ mod tests {
             "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F"
         );
 
-        let BlockEnum::State(b) = &block else {
+        let Block::State(b) = &block else {
             panic!("not a state block")
         };
         let block2 = BlockBuilder::state().from(&b).build();

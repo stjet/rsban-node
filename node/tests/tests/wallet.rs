@@ -1,6 +1,6 @@
 use rsnano_core::{
-    deterministic_key, Account, Amount, BlockEnum, BlockHash, Epoch, KeyDerivationFunction,
-    KeyPair, PublicKey, RawKey, StateBlock, DEV_GENESIS_KEY,
+    deterministic_key, Account, Amount, Block, BlockHash, Epoch, KeyDerivationFunction, KeyPair,
+    PublicKey, RawKey, StateBlock, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
@@ -1307,7 +1307,7 @@ fn epoch_2_receive_unopened() {
             .unwrap();
 
         // Upgrade unopened account to epoch_2
-        let epoch2_unopened = BlockEnum::State(StateBlock::new(
+        let epoch2_unopened = Block::State(StateBlock::new(
             key.account(),
             BlockHash::zero(),
             PublicKey::zero(),
@@ -1401,7 +1401,7 @@ fn search_receivable() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
         .unwrap();
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -1568,7 +1568,7 @@ fn upgrade_genesis_epoch(node: &Node, epoch: Epoch) {
         .account_balance(&tx, &DEV_GENESIS_ACCOUNT)
         .unwrap();
 
-    let mut epoch = BlockEnum::State(StateBlock::new(
+    let mut epoch = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         latest,
         *DEV_GENESIS_PUB_KEY,

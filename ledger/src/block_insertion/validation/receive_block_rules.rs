@@ -1,6 +1,6 @@
 use super::BlockValidator;
 use crate::BlockStatus;
-use rsnano_core::{BlockEnum, Epoch};
+use rsnano_core::{Block, Epoch};
 
 impl<'a> BlockValidator<'a> {
     pub fn ensure_pending_receive_is_correct(&self) -> Result<(), BlockStatus> {
@@ -35,10 +35,8 @@ impl<'a> BlockValidator<'a> {
     }
 
     fn ensure_legacy_source_is_epoch_0(&self) -> Result<(), BlockStatus> {
-        let is_legacy_receive = matches!(
-            self.block,
-            BlockEnum::LegacyReceive(_) | BlockEnum::LegacyOpen(_)
-        );
+        let is_legacy_receive =
+            matches!(self.block, Block::LegacyReceive(_) | Block::LegacyOpen(_));
 
         if is_legacy_receive
             && self

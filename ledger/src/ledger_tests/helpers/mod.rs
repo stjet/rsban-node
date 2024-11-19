@@ -2,13 +2,13 @@ mod account_block_factory;
 
 use crate::LedgerContext;
 pub(crate) use account_block_factory::AccountBlockFactory;
-use rsnano_core::{Amount, BlockEnum};
+use rsnano_core::{Amount, Block};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 
 pub(crate) fn upgrade_genesis_to_epoch_v1(
     ctx: &LedgerContext,
     txn: &mut LmdbWriteTransaction,
-) -> BlockEnum {
+) -> Block {
     let mut epoch = ctx.genesis_block_factory().epoch_v1(txn).build();
     ctx.ledger.process(txn, &mut epoch).unwrap();
     epoch
@@ -16,7 +16,7 @@ pub(crate) fn upgrade_genesis_to_epoch_v1(
 
 pub(crate) struct LegacySendBlockResult<'a> {
     pub destination: AccountBlockFactory<'a>,
-    pub send_block: BlockEnum,
+    pub send_block: Block,
     pub amount_sent: Amount,
 }
 pub(crate) fn setup_legacy_send_block<'a>(
@@ -42,8 +42,8 @@ pub(crate) fn setup_legacy_send_block<'a>(
 
 pub(crate) struct LegacyOpenBlockResult<'a> {
     pub destination: AccountBlockFactory<'a>,
-    pub send_block: BlockEnum,
-    pub open_block: BlockEnum,
+    pub send_block: Block,
+    pub open_block: Block,
     pub expected_balance: Amount,
 }
 
@@ -66,9 +66,9 @@ pub(crate) fn setup_legacy_open_block<'a>(
 
 pub(crate) struct LegacyReceiveBlockResult<'a> {
     pub destination: AccountBlockFactory<'a>,
-    pub open_block: BlockEnum,
-    pub send_block: BlockEnum,
-    pub receive_block: BlockEnum,
+    pub open_block: Block,
+    pub send_block: Block,
+    pub receive_block: Block,
     pub expected_balance: Amount,
     pub amount_received: Amount,
 }
@@ -103,7 +103,7 @@ pub(crate) fn setup_legacy_receive_block<'a>(
 
 pub(crate) struct SendBlockResult<'a> {
     pub destination: AccountBlockFactory<'a>,
-    pub send_block: BlockEnum,
+    pub send_block: Block,
 }
 pub(crate) fn setup_send_block<'a>(
     ctx: &'a LedgerContext,
@@ -127,8 +127,8 @@ pub(crate) fn setup_send_block<'a>(
 }
 
 pub(crate) struct OpenBlockResult {
-    pub send_block: BlockEnum,
-    pub open_block: BlockEnum,
+    pub send_block: Block,
+    pub open_block: Block,
 }
 pub(crate) fn setup_open_block(
     ctx: &LedgerContext,

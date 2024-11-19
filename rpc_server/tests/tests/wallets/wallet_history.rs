@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
 use rsnano_rpc_messages::BlockTypeDto;
@@ -6,7 +6,7 @@ use std::sync::Arc;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 fn setup_test_environment(node: Arc<Node>, keys: KeyPair, send_amount: Amount) -> BlockHash {
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -18,7 +18,7 @@ fn setup_test_environment(node: Arc<Node>, keys: KeyPair, send_amount: Amount) -
 
     node.process(send1.clone()).unwrap();
 
-    let open_block = BlockEnum::State(StateBlock::new(
+    let open_block = Block::State(StateBlock::new(
         keys.account(),
         BlockHash::zero(),
         keys.public_key(),

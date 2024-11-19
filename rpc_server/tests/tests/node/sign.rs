@@ -1,6 +1,6 @@
 use rsnano_core::PublicKey;
 use rsnano_core::{
-    validate_block_signature, Account, Amount, BlockEnum, StateBlock, WalletId, DEV_GENESIS_KEY,
+    validate_block_signature, Account, Amount, Block, StateBlock, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::wallets::WalletsExt;
@@ -22,7 +22,7 @@ fn sign() {
         .insert_adhoc2(&wallet_id, &key.private_key(), false)
         .unwrap();
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -44,9 +44,9 @@ fn sign() {
         .runtime
         .block_on(async { server.client.sign(args).await.unwrap() });
 
-    let signed_block: BlockEnum = result.block.unwrap().into();
+    let signed_block: Block = result.block.unwrap().into();
 
-    if let BlockEnum::State(ref state_block) = signed_block {
+    if let Block::State(ref state_block) = signed_block {
         assert!(validate_block_signature(&state_block).is_ok());
     } else {
         panic!("Expected a state block");
@@ -63,7 +63,7 @@ fn sign_without_key() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

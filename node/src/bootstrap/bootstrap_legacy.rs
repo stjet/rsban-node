@@ -11,7 +11,7 @@ use crate::{
     websocket::WebsocketListener,
 };
 use rand::{thread_rng, Rng};
-use rsnano_core::{utils::PropertyTree, Account, BlockEnum, BlockHash};
+use rsnano_core::{utils::PropertyTree, Account, Block, BlockHash};
 use rsnano_ledger::Ledger;
 use std::{
     collections::VecDeque,
@@ -424,7 +424,7 @@ impl BootstrapAttemptTrait for Arc<BootstrapAttemptLegacy> {
 
     fn process_block(
         &self,
-        block: Arc<BlockEnum>,
+        block: Arc<Block>,
         _known_account: &Account,
         pull_blocks_processed: u64,
         _max_blocks: u32,

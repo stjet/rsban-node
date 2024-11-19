@@ -1,4 +1,4 @@
-use crate::{validate_message, Account, BlockEnum, Link, PublicKey};
+use crate::{validate_message, Account, Block, Link, PublicKey};
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
 
@@ -89,7 +89,7 @@ impl Epochs {
         epoch_id >= Epoch::Epoch0 as u8 && new_epoch_id == epoch_id + 1
     }
 
-    pub fn validate_epoch_signature(&self, block: &BlockEnum) -> anyhow::Result<()> {
+    pub fn validate_epoch_signature(&self, block: &Block) -> anyhow::Result<()> {
         validate_message(
             &self
                 .epoch_signer(&block.link_field().unwrap_or_default())

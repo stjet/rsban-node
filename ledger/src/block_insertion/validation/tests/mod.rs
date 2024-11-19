@@ -13,7 +13,7 @@ use crate::{
     block_insertion::BlockInsertInstructions, ledger_constants::LEDGER_CONSTANTS_STUB, BlockStatus,
 };
 use rsnano_core::{
-    work::WORK_THRESHOLDS_STUB, Account, Amount, BlockEnum, Epoch, PendingInfo, TestAccountChain,
+    work::WORK_THRESHOLDS_STUB, Account, Amount, Block, Epoch, PendingInfo, TestAccountChain,
 };
 
 use super::BlockValidator;
@@ -21,7 +21,7 @@ use super::BlockValidator;
 pub(crate) struct BlockValidationTest {
     pub seconds_since_epoch: u64,
     pub chain: TestAccountChain,
-    block: Option<BlockEnum>,
+    block: Option<Block>,
     pending_receive: Option<PendingInfo>,
     block_already_exists: bool,
     source_block_missing: bool,
@@ -70,7 +70,7 @@ impl BlockValidationTest {
 
     pub fn block_to_validate(
         mut self,
-        create_block: impl FnOnce(&TestAccountChain) -> BlockEnum,
+        create_block: impl FnOnce(&TestAccountChain) -> Block,
     ) -> Self {
         self.block = Some(create_block(&self.chain));
         self
@@ -100,7 +100,7 @@ impl BlockValidationTest {
         self
     }
 
-    pub fn block(&self) -> &BlockEnum {
+    pub fn block(&self) -> &Block {
         self.block.as_ref().unwrap()
     }
 
@@ -133,7 +133,7 @@ impl BlockValidationTest {
     }
 }
 
-fn new_test_validator<'a>(block: &'a BlockEnum, account: Account) -> BlockValidator {
+fn new_test_validator<'a>(block: &'a Block, account: Account) -> BlockValidator {
     BlockValidator {
         block,
         epochs: &LEDGER_CONSTANTS_STUB.epochs,

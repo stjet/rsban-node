@@ -19,7 +19,7 @@ use crate::{
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent, MemoryStream},
-    Account, Amount, BlockEnum, BlockHash, BlockType, QualifiedRoot, Vote, VoteWithWeightInfo,
+    Account, Amount, Block, BlockHash, BlockType, QualifiedRoot, Vote, VoteWithWeightInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
@@ -224,7 +224,7 @@ impl ActiveElections {
         self.recently_confirmed.back()
     }
 
-    pub fn insert_recently_confirmed(&self, block: &BlockEnum) {
+    pub fn insert_recently_confirmed(&self, block: &Block) {
         self.recently_confirmed
             .put(block.qualified_root(), block.hash());
     }
@@ -360,7 +360,7 @@ impl ActiveElections {
         }
     }
 
-    fn clear_publish_filter(&self, block: &BlockEnum) {
+    fn clear_publish_filter(&self, block: &Block) {
         let mut buf = MemoryStream::new();
         block.serialize_without_block_type(&mut buf);
         self.publish_filter.clear_bytes(buf.as_bytes());
@@ -438,7 +438,7 @@ impl ActiveElections {
         guard.roots.get(root).is_some()
     }
 
-    pub fn active(&self, block: &BlockEnum) -> bool {
+    pub fn active(&self, block: &Block) -> bool {
         let guard = self.mutex.lock().unwrap();
         guard.roots.get(&block.qualified_root()).is_some()
     }
@@ -503,7 +503,7 @@ impl ActiveElections {
         (replaced, election_guard)
     }
 
-    fn publish(&self, block: &Arc<BlockEnum>, election: &Election) -> bool {
+    fn publish(&self, block: &Arc<Block>, election: &Election) -> bool {
         let mut election_guard = election.mutex.lock().unwrap();
 
         // Do not insert new blocks if already confirmed
@@ -1109,13 +1109,13 @@ pub trait ActiveElectionsExt {
     fn block_cemented_callback(
         &self,
         tx: &LmdbReadTransaction,
-        block: &BlockEnum,
+        block: &Block,
         confirmation_root: &BlockHash,
     );
-    fn publish_block(&self, block: &Arc<BlockEnum>) -> bool;
+    fn publish_block(&self, block: &Arc<Block>) -> bool;
     fn insert(
         &self,
-        block: &Arc<BlockEnum>,
+        block: &Arc<Block>,
         election_behavior: ElectionBehavior,
         erased_callback: Option<ErasedCallback>,
     ) -> (bool, Option<Arc<Election>>);
@@ -1201,7 +1201,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
     fn block_cemented_callback(
         &self,
         tx: &LmdbReadTransaction,
-        block: &BlockEnum,
+        block: &Block,
         confirmation_root: &BlockHash,
     ) {
         if let Some(election) = self.election(&block.qualified_root()) {
@@ -1256,7 +1256,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         }
     }
 
-    fn publish_block(&self, block: &Arc<BlockEnum>) -> bool {
+    fn publish_block(&self, block: &Arc<Block>) -> bool {
         let mut guard = self.mutex.lock().unwrap();
         let root = block.qualified_root();
         let mut result = true;
@@ -1283,7 +1283,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
 
     fn insert(
         &self,
-        block: &Arc<BlockEnum>,
+        block: &Arc<Block>,
         election_behavior: ElectionBehavior,
         erased_callback: Option<ErasedCallback>,
     ) -> (bool, Option<Arc<Election>>) {

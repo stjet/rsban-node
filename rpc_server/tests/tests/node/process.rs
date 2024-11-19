@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, BlockEnum, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_rpc_messages::{BlockSubTypeDto, ProcessArgs};
 use test_helpers::{setup_rpc_client_and_server, System};
@@ -10,7 +10,7 @@ fn process() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -39,7 +39,7 @@ fn process_fails_with_low_work() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

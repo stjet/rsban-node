@@ -1,5 +1,5 @@
 use crate::ledger::Ledger;
-use rsnano_core::{BlockBase, BlockEnum, BlockHash, DependentBlocks, StateBlock};
+use rsnano_core::{Block, BlockBase, BlockHash, DependentBlocks, StateBlock};
 use rsnano_store_lmdb::Transaction;
 
 /// Finds all dependent blocks for a given block.
@@ -14,10 +14,10 @@ impl<'a> DependentBlocksFinder<'a> {
         Self { ledger, txn }
     }
 
-    pub fn find_dependent_blocks(&self, block: &BlockEnum) -> DependentBlocks {
+    pub fn find_dependent_blocks(&self, block: &Block) -> DependentBlocks {
         if block.sideband().is_none() {
             // a ledger lookup is needed if there is no sideband and it is a state block!
-            if let BlockEnum::State(state) = block {
+            if let Block::State(state) = block {
                 let linked_block = if self.link_refers_to_block(state) {
                     state.link().into()
                 } else {

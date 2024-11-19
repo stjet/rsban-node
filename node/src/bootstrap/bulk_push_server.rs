@@ -7,7 +7,7 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use rsnano_core::{
-    utils::BufferReader, work::WorkThresholds, BlockEnum, BlockType, ChangeBlock, OpenBlock,
+    utils::BufferReader, work::WorkThresholds, Block, BlockType, ChangeBlock, OpenBlock,
     ReceiveBlock, SendBlock, StateBlock,
 };
 use rsnano_network::AsyncBufferReader;
@@ -294,8 +294,7 @@ impl BulkPushServerImpl {
 
         if ec.is_ok() {
             let guard = self.receive_buffer.lock().unwrap();
-            let block =
-                BlockEnum::deserialize_block_type(block_type, &mut BufferReader::new(&guard));
+            let block = Block::deserialize_block_type(block_type, &mut BufferReader::new(&guard));
             drop(guard);
             match block {
                 Ok(block) => {

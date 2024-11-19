@@ -1,5 +1,5 @@
 use crate::{LedgerConstants, LedgerObserver, LedgerSetAny, LedgerSetConfirmed};
-use rsnano_core::{BlockEnum, BlockHash, ConfirmationHeightInfo};
+use rsnano_core::{Block, BlockHash, ConfirmationHeightInfo};
 use rsnano_store_lmdb::{LmdbStore, LmdbWriteTransaction, Transaction};
 use std::{collections::VecDeque, sync::atomic::Ordering};
 
@@ -32,7 +32,7 @@ impl<'a> BlockCementer<'a> {
         txn: &mut LmdbWriteTransaction,
         target_hash: BlockHash,
         max_blocks: usize,
-    ) -> VecDeque<BlockEnum> {
+    ) -> VecDeque<Block> {
         let mut result = VecDeque::new();
 
         let mut stack = VecDeque::new();

@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount, BlockEnum, PublicKey, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Account, Amount, Block, PublicKey, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::ConfirmReq;
 use rsnano_network::ChannelId;
@@ -36,7 +36,7 @@ fn batches() {
     );
     solicitor.prepare(&representatives);
 
-    let send = Arc::new(BlockEnum::State(StateBlock::new(
+    let send = Arc::new(Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -117,7 +117,7 @@ fn different_hashes() {
     );
     solicitor.prepare(&representatives);
 
-    let send = Arc::new(BlockEnum::State(StateBlock::new(
+    let send = Arc::new(Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -187,7 +187,7 @@ fn bypass_max_requests_cap() {
     assert_eq!(representatives.len(), MAX_REPRESENTATIVES + 1);
     solicitor.prepare(&representatives);
 
-    let send = Arc::new(BlockEnum::State(StateBlock::new(
+    let send = Arc::new(Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

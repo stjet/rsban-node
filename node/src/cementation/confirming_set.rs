@@ -5,7 +5,7 @@ use crate::{
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    BlockEnum, BlockHash,
+    Block, BlockHash,
 };
 use rsnano_ledger::{Ledger, WriteGuard, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
@@ -210,7 +210,7 @@ impl ConfirmingSetThread {
 
     fn notify(
         &self,
-        cemented: &mut VecDeque<(BlockEnum, BlockHash)>,
+        cemented: &mut VecDeque<(Block, BlockHash)>,
         already_cemented: &mut VecDeque<BlockHash>,
     ) {
         let mut notification = CementedNotification {
@@ -251,7 +251,7 @@ impl ConfirmingSetThread {
         &self,
         mut write_guard: WriteGuard,
         mut tx: LmdbWriteTransaction,
-        cemented: &mut VecDeque<(BlockEnum, BlockHash)>,
+        cemented: &mut VecDeque<(Block, BlockHash)>,
         already_cemented: &mut VecDeque<BlockHash>,
     ) -> (WriteGuard, LmdbWriteTransaction) {
         if cemented.len() >= self.config.max_blocks {
@@ -348,7 +348,7 @@ impl ConfirmingSetImpl {
 }
 
 pub(crate) struct CementedNotification {
-    pub cemented: VecDeque<(BlockEnum, BlockHash)>, // block + confirmation root
+    pub cemented: VecDeque<(Block, BlockHash)>, // block + confirmation root
     pub already_cemented: VecDeque<BlockHash>,
 }
 

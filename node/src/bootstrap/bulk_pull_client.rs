@@ -18,7 +18,7 @@ use crate::{
     utils::ThreadPool,
 };
 use async_trait::async_trait;
-use rsnano_core::{work::WorkThresholds, Account, BlockEnum, BlockHash};
+use rsnano_core::{work::WorkThresholds, Account, Block, BlockHash};
 use rsnano_messages::{BulkPull, Message};
 use rsnano_network::ChannelReader;
 use tracing::{debug, trace};
@@ -122,7 +122,7 @@ impl Drop for BulkPullClient {
 pub trait BulkPullClientExt {
     fn request(&self);
     async fn throttled_receive_block(&self);
-    fn received_block(&self, block: Option<BlockEnum>);
+    fn received_block(&self, block: Option<Block>);
 }
 
 #[async_trait]
@@ -208,7 +208,7 @@ impl BulkPullClientExt for Arc<BulkPullClient> {
         }
     }
 
-    fn received_block(&self, block: Option<BlockEnum>) {
+    fn received_block(&self, block: Option<Block>) {
         let Some(block) = block else {
             // Avoid re-using slow peers, or peers that sent the wrong blocks.
             if !self.connection.pending_stop()

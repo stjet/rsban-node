@@ -1,4 +1,4 @@
-use rsnano_core::{BlockEnum, Epochs, PublicKey, Signature};
+use rsnano_core::{Block, Epochs, PublicKey, Signature};
 use rsnano_ledger::LedgerConstants;
 use rsnano_store_lmdb::LmdbStore;
 use std::{
@@ -33,7 +33,7 @@ fn check_ledger_file(ledger_file: impl AsRef<Path>) {
     let cpus = available_parallelism().unwrap();
 
     thread::scope(|s| {
-        let mut queues: Vec<SyncSender<BlockEnum>> = Vec::new();
+        let mut queues: Vec<SyncSender<Block>> = Vec::new();
 
         for _ in 0..cpus.into() {
             let (tx, rx) = mpsc::sync_channel(1024);
@@ -76,12 +76,12 @@ fn check_ledger_file(ledger_file: impl AsRef<Path>) {
     }
 }
 
-fn is_problematic(block: &BlockEnum, epochs: &Epochs) -> bool {
+fn is_problematic(block: &Block, epochs: &Epochs) -> bool {
     let signer = get_signer(block, epochs);
     validate_message(&signer, block.hash().as_bytes(), block.block_signature()).is_err()
 }
 
-fn get_signer(block: &BlockEnum, epochs: &Epochs) -> PublicKey {
+fn get_signer(block: &Block, epochs: &Epochs) -> PublicKey {
     if block.sideband().unwrap().details.is_epoch {
         epochs
             .epoch_signer(&block.link_field().unwrap())

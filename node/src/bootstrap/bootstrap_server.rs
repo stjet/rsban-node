@@ -2,7 +2,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::{FairQueue, MessagePublisher},
 };
-use rsnano_core::{BlockEnum, BlockHash, Frontier};
+use rsnano_core::{Block, BlockHash, Frontier};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{
     AccountInfoAckPayload, AccountInfoReqPayload, AscPullAck, AscPullAckType, AscPullReq,
@@ -352,7 +352,7 @@ impl BootstrapServerImpl {
         tx: &LmdbReadTransaction,
         start_block: BlockHash,
         count: usize,
-    ) -> VecDeque<BlockEnum> {
+    ) -> VecDeque<Block> {
         let mut result = VecDeque::new();
         if !start_block.is_zero() {
             let mut current = self.ledger.any().get_block(tx, &start_block);

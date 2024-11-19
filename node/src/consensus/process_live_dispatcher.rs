@@ -5,7 +5,7 @@ use crate::{
 };
 use rsnano_core::{
     utils::{PropertyTree, SerdePropertyTree},
-    BlockEnum,
+    Block,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_store_lmdb::LmdbReadTransaction;
@@ -31,13 +31,13 @@ impl ProcessLiveDispatcher {
         }
     }
 
-    fn inspect(&self, result: &BlockStatus, block: &BlockEnum, tx: &LmdbReadTransaction) {
+    fn inspect(&self, result: &BlockStatus, block: &Block, tx: &LmdbReadTransaction) {
         if *result == BlockStatus::Progress {
             self.process_live(block, tx);
         }
     }
 
-    fn process_live(&self, block: &BlockEnum, tx: &LmdbReadTransaction) {
+    fn process_live(&self, block: &Block, tx: &LmdbReadTransaction) {
         // Start collecting quorum on block
         if self.ledger.dependents_confirmed(tx, block) {
             self.election_schedulers.activate(tx, &block.account());
@@ -70,7 +70,7 @@ impl ProcessLiveDispatcherExt for Arc<ProcessLiveDispatcher> {
     }
 }
 
-fn new_block_arrived_message(block: &BlockEnum) -> OutgoingMessageEnvelope {
+fn new_block_arrived_message(block: &Block) -> OutgoingMessageEnvelope {
     let mut json_block = SerdePropertyTree::new();
     block.serialize_json(&mut json_block).unwrap();
     let subtype = block.sideband().unwrap().details.subtype_str();

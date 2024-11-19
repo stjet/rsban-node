@@ -6,7 +6,7 @@ use crate::{
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     work::WorkThresholds,
-    BlockEnum, BlockType, Epoch, HashOrAccount, Networks, UncheckedInfo,
+    Block, BlockType, Epoch, HashOrAccount, Networks, UncheckedInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
 use rsnano_network::{ChannelId, DeadChannelCleanupStep};
@@ -52,7 +52,7 @@ impl From<BlockSource> for DetailType {
 pub type BlockProcessorCallback = Box<dyn Fn(BlockStatus) + Send + Sync>;
 
 pub struct BlockProcessorContext {
-    pub block: Mutex<BlockEnum>,
+    pub block: Mutex<Block>,
     pub source: BlockSource,
     callback: Option<BlockProcessorCallback>,
     pub arrival: Instant,
@@ -61,7 +61,7 @@ pub struct BlockProcessorContext {
 
 impl BlockProcessorContext {
     pub fn new(
-        block: BlockEnum,
+        block: Block,
         source: BlockSource,
         callback: Option<BlockProcessorCallback>,
     ) -> Self {
@@ -269,17 +269,17 @@ impl BlockProcessor {
         self.processor_loop.add_batch_processed_observer(observer);
     }
 
-    pub fn add_rolled_back_observer(&self, observer: Box<dyn Fn(&BlockEnum) + Send + Sync>) {
+    pub fn add_rolled_back_observer(&self, observer: Box<dyn Fn(&Block) + Send + Sync>) {
         self.processor_loop.add_rolled_back_observer(observer);
     }
 
-    pub fn add(&self, block: Arc<BlockEnum>, source: BlockSource, channel_id: ChannelId) -> bool {
+    pub fn add(&self, block: Arc<Block>, source: BlockSource, channel_id: ChannelId) -> bool {
         self.processor_loop.add(block, source, channel_id, None)
     }
 
     pub fn add_with_callback(
         &self,
-        block: Arc<BlockEnum>,
+        block: Arc<Block>,
         source: BlockSource,
         channel_id: ChannelId,
         callback: BlockProcessorCallback,
@@ -290,28 +290,28 @@ impl BlockProcessor {
 
     pub fn add_blocking(
         &self,
-        block: Arc<BlockEnum>,
+        block: Arc<Block>,
         source: BlockSource,
-    ) -> Option<(BlockStatus, BlockEnum)> {
+    ) -> Option<(BlockStatus, Block)> {
         self.processor_loop.add_blocking(block, source)
     }
 
-    pub fn process_active(&self, block: Arc<BlockEnum>) {
+    pub fn process_active(&self, block: Arc<Block>) {
         self.processor_loop.process_active(block);
     }
 
-    pub fn notify_block_rolled_back(&self, block: &BlockEnum) {
+    pub fn notify_block_rolled_back(&self, block: &Block) {
         self.processor_loop.notify_block_rolled_back(block)
     }
 
     pub fn set_blocks_rolled_back_callback(
         &self,
-        callback: Box<dyn Fn(Vec<BlockEnum>, BlockEnum) + Send + Sync>,
+        callback: Box<dyn Fn(Vec<Block>, Block) + Send + Sync>,
     ) {
         self.processor_loop
             .set_blocks_rolled_back_callback(callback);
     }
-    pub fn force(&self, block: Arc<BlockEnum>) {
+    pub fn force(&self, block: Arc<Block>) {
         self.processor_loop.force(block);
     }
 
@@ -338,8 +338,8 @@ pub(crate) struct BlockProcessorLoop {
     unchecked_map: Arc<UncheckedMap>,
     config: BlockProcessorConfig,
     stats: Arc<Stats>,
-    blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<BlockEnum>, BlockEnum) + Send + Sync>>>,
-    block_rolled_back: Mutex<Vec<Box<dyn Fn(&BlockEnum) + Send + Sync>>>,
+    blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<Block>, Block) + Send + Sync>>>,
+    block_rolled_back: Mutex<Vec<Box<dyn Fn(&Block) + Send + Sync>>>,
     block_processed: Mutex<Vec<Box<dyn Fn(BlockStatus, &BlockProcessorContext) + Send + Sync>>>,
     batch_processed:
         Mutex<Vec<Box<dyn Fn(&[(BlockStatus, Arc<BlockProcessorContext>)]) + Send + Sync>>>,
@@ -411,11 +411,11 @@ impl BlockProcessorLoop {
         self.batch_processed.lock().unwrap().push(observer);
     }
 
-    pub fn add_rolled_back_observer(&self, observer: Box<dyn Fn(&BlockEnum) + Send + Sync>) {
+    pub fn add_rolled_back_observer(&self, observer: Box<dyn Fn(&Block) + Send + Sync>) {
         self.block_rolled_back.lock().unwrap().push(observer);
     }
 
-    pub fn notify_block_rolled_back(&self, block: &BlockEnum) {
+    pub fn notify_block_rolled_back(&self, block: &Block) {
         for observer in self.block_rolled_back.lock().unwrap().iter() {
             observer(block)
         }
@@ -423,18 +423,18 @@ impl BlockProcessorLoop {
 
     pub fn set_blocks_rolled_back_callback(
         &self,
-        callback: Box<dyn Fn(Vec<BlockEnum>, BlockEnum) + Send + Sync>,
+        callback: Box<dyn Fn(Vec<Block>, Block) + Send + Sync>,
     ) {
         *self.blocks_rolled_back.lock().unwrap() = Some(callback);
     }
 
-    pub fn process_active(&self, block: Arc<BlockEnum>) {
+    pub fn process_active(&self, block: Arc<Block>) {
         self.add(block, BlockSource::Live, ChannelId::LOOPBACK, None);
     }
 
     pub fn add(
         &self,
-        block: Arc<BlockEnum>,
+        block: Arc<Block>,
         source: BlockSource,
         channel_id: ChannelId,
         callback: Option<BlockProcessorCallback>,
@@ -466,9 +466,9 @@ impl BlockProcessorLoop {
 
     pub fn add_blocking(
         &self,
-        block: Arc<BlockEnum>,
+        block: Arc<Block>,
         source: BlockSource,
-    ) -> Option<(BlockStatus, BlockEnum)> {
+    ) -> Option<(BlockStatus, Block)> {
         self.stats
             .inc(StatType::Blockprocessor, DetailType::ProcessBlocking);
         debug!(
@@ -497,7 +497,7 @@ impl BlockProcessorLoop {
         }
     }
 
-    pub fn force(&self, block: Arc<BlockEnum>) {
+    pub fn force(&self, block: Arc<Block>) {
         self.stats.inc(StatType::Blockprocessor, DetailType::Force);
         debug!("Forcing block: {}", block.hash());
         let ctx = Arc::new(BlockProcessorContext::new(
@@ -677,7 +677,7 @@ impl BlockProcessorLoop {
         result
     }
 
-    fn rollback_competitor(&self, transaction: &mut LmdbWriteTransaction, block: &BlockEnum) {
+    fn rollback_competitor(&self, transaction: &mut LmdbWriteTransaction, block: &Block) {
         let hash = block.hash();
         if let Some(successor) = self
             .ledger
@@ -729,14 +729,14 @@ impl BlockProcessorLoop {
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "blocks".to_owned(),
                     count: guard.queue.len(),
-                    sizeof_element: size_of::<Arc<BlockEnum>>(),
+                    sizeof_element: size_of::<Arc<Block>>(),
                 }),
                 ContainerInfoComponent::Leaf(ContainerInfo {
                     name: "forced".to_owned(),
                     count: guard
                         .queue
                         .queue_len(&(BlockSource::Forced, ChannelId::LOOPBACK)),
-                    sizeof_element: size_of::<Arc<BlockEnum>>(),
+                    sizeof_element: size_of::<Arc<Block>>(),
                 }),
                 guard.queue.collect_container_info("queue"),
             ],
@@ -810,7 +810,7 @@ mod tests {
         let stats = Arc::new(Stats::default());
         let block_processor = BlockProcessor::new(config, ledger, unchecked, stats.clone());
 
-        let mut block = BlockEnum::new_test_instance();
+        let mut block = Block::new_test_instance();
         block.set_work(3);
 
         block_processor.add(Arc::new(block), BlockSource::Live, ChannelId::LOOPBACK);

@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::{anyhow, bail};
-use rsnano_core::{BlockBase, BlockEnum, BlockType};
+use rsnano_core::{Block, BlockBase, BlockType};
 use rsnano_ledger::BlockStatus;
 use rsnano_network::ChannelId;
 use rsnano_node::block_processing::BlockSource;
@@ -9,10 +9,10 @@ use rsnano_rpc_messages::{BlockSubTypeDto, HashRpcMessage, ProcessArgs, StartedR
 impl RpcCommandHandler {
     pub(crate) fn process(&self, args: ProcessArgs) -> anyhow::Result<serde_json::Value> {
         let is_async = args.is_async.unwrap_or_default().inner();
-        let block: BlockEnum = args.block.into();
+        let block: Block = args.block.into();
 
         // State blocks subtype check
-        if let BlockEnum::State(state) = &block {
+        if let Block::State(state) = &block {
             if let Some(subtype) = args.subtype {
                 let tx = self.node.ledger.read_txn();
                 if !state.previous().is_zero()

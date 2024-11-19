@@ -405,7 +405,7 @@ pub struct JsonStateBlock {
 mod tests {
     use crate::{
         utils::{MemoryStream, TestPropertyTree},
-        BlockBuilder, BlockEnum, StateBlockBuilder,
+        Block, BlockBuilder, StateBlockBuilder,
     };
 
     use super::*;
@@ -420,7 +420,7 @@ mod tests {
         assert_eq!(stream.byte_at(215), 0x5); // Ensure work is serialized big-endian
 
         let block2 = StateBlock::deserialize(&mut stream).unwrap();
-        assert_eq!(block1, BlockEnum::State(block2));
+        assert_eq!(block1, Block::State(block2));
     }
 
     // original test: state_block.serialization
@@ -432,7 +432,7 @@ mod tests {
         block1.serialize_json(&mut ptree).unwrap();
 
         let block2 = StateBlock::deserialize_json(&ptree).unwrap();
-        assert_eq!(block1, BlockEnum::State(block2));
+        assert_eq!(block1, Block::State(block2));
     }
 
     // original test: state_block.hashing
@@ -456,7 +456,7 @@ mod tests {
 
     #[test]
     fn serialize_serde() {
-        let block = BlockEnum::State(StateBlock::new_test_instance());
+        let block = Block::State(StateBlock::new_test_instance());
         let serialized = serde_json::to_string_pretty(&block).unwrap();
         assert_eq!(
             serialized,

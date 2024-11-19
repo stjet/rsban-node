@@ -4,7 +4,7 @@ use test_helpers::System;
 
 mod bucket {
     use super::*;
-    use rsnano_core::BlockEnum;
+    use rsnano_core::Block;
     use std::sync::Arc;
 
     #[test]
@@ -37,7 +37,7 @@ mod bucket {
             node.stats.clone(),
         );
 
-        assert!(bucket.push(1000, Arc::new(BlockEnum::new_test_instance())));
+        assert!(bucket.push(1000, Arc::new(Block::new_test_instance())));
         assert_eq!(bucket.len(), 1);
     }
 
@@ -53,7 +53,7 @@ mod bucket {
             node.stats.clone(),
         );
 
-        let block = Arc::new(BlockEnum::new_test_instance());
+        let block = Arc::new(Block::new_test_instance());
         assert_eq!(bucket.push(1000, block.clone()), true);
         assert_eq!(bucket.push(1000, block), false);
     }
@@ -70,10 +70,10 @@ mod bucket {
             node.stats.clone(),
         );
 
-        let block0 = Arc::new(BlockEnum::new_test_instance_with_key(1));
-        let block1 = Arc::new(BlockEnum::new_test_instance_with_key(2));
-        let block2 = Arc::new(BlockEnum::new_test_instance_with_key(3));
-        let block3 = Arc::new(BlockEnum::new_test_instance_with_key(3));
+        let block0 = Arc::new(Block::new_test_instance_with_key(1));
+        let block1 = Arc::new(Block::new_test_instance_with_key(2));
+        let block2 = Arc::new(Block::new_test_instance_with_key(3));
+        let block3 = Arc::new(Block::new_test_instance_with_key(3));
         assert!(bucket.push(2000, block0.clone()));
         assert!(bucket.push(1001, block1.clone()));
         assert!(bucket.push(1000, block2.clone()));
@@ -105,10 +105,10 @@ mod bucket {
             node.stats.clone(),
         );
 
-        let block0 = Arc::new(BlockEnum::new_test_instance_with_key(1));
-        let block1 = Arc::new(BlockEnum::new_test_instance_with_key(2));
-        let block2 = Arc::new(BlockEnum::new_test_instance_with_key(3));
-        let block3 = Arc::new(BlockEnum::new_test_instance_with_key(3));
+        let block0 = Arc::new(Block::new_test_instance_with_key(1));
+        let block1 = Arc::new(Block::new_test_instance_with_key(2));
+        let block2 = Arc::new(Block::new_test_instance_with_key(3));
+        let block3 = Arc::new(Block::new_test_instance_with_key(3));
 
         assert_eq!(bucket.push(2000, block0.clone()), true);
         assert_eq!(bucket.push(900, block1.clone()), true);
@@ -125,7 +125,7 @@ mod bucket {
 }
 
 mod election_scheduler {
-    use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
+    use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use rsnano_node::{
         config::{FrontiersConfirmationMode, NodeConfig},
@@ -139,7 +139,7 @@ mod election_scheduler {
         let mut system = System::new();
         let node = system.make_node();
 
-        let mut send1 = BlockEnum::State(StateBlock::new(
+        let mut send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -168,7 +168,7 @@ mod election_scheduler {
         let node = system.make_node();
 
         // Create a send block
-        let mut send1 = BlockEnum::State(StateBlock::new(
+        let mut send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -227,7 +227,7 @@ mod election_scheduler {
         let key = KeyPair::new();
 
         // Activating accounts depends on confirmed dependencies. First, prepare 2 accounts
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -245,7 +245,7 @@ mod election_scheduler {
             0,
         );
 
-        let receive = BlockEnum::State(StateBlock::new(
+        let receive = Block::State(StateBlock::new(
             key.account(),
             BlockHash::zero(),
             key.public_key(),
@@ -268,7 +268,7 @@ mod election_scheduler {
         });
 
         // Second, process two eligible transactions
-        let block1 = BlockEnum::State(StateBlock::new(
+        let block1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             send.hash(),
             *DEV_GENESIS_PUB_KEY,
@@ -294,7 +294,7 @@ mod election_scheduler {
             }
         });
 
-        let block2 = BlockEnum::State(StateBlock::new(
+        let block2 = Block::State(StateBlock::new(
             key.account(),
             receive.hash(),
             key.public_key(),

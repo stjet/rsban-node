@@ -3,7 +3,7 @@ use crate::{
     consensus::ActiveElectionsExt,
     stats::{DetailType, StatType, Stats},
 };
-use rsnano_core::{Amount, BlockEnum, QualifiedRoot};
+use rsnano_core::{Amount, Block, QualifiedRoot};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet, HashMap},
@@ -120,7 +120,7 @@ impl Bucket {
         }
     }
 
-    pub fn push(&self, time: u64, block: Arc<BlockEnum>) -> bool {
+    pub fn push(&self, time: u64, block: Arc<Block>) -> bool {
         let hash = block.hash();
         let mut guard = self.data.lock().unwrap();
         let inserted = guard.queue.insert(BlockEntry { time, block });
@@ -143,7 +143,7 @@ impl Bucket {
         self.data.lock().unwrap().elections.len()
     }
 
-    pub fn blocks(&self) -> Vec<Arc<BlockEnum>> {
+    pub fn blocks(&self) -> Vec<Arc<Block>> {
         let guard = self.data.lock().unwrap();
         guard.queue.iter().map(|i| i.block.clone()).collect()
     }
@@ -155,7 +155,7 @@ pub(crate) trait BucketExt {
 
 impl BucketExt for Arc<Bucket> {
     fn activate(&self) -> bool {
-        let block: Arc<BlockEnum>;
+        let block: Arc<Block>;
         let priority: u64;
 
         {
@@ -215,7 +215,7 @@ impl BucketData {
 
 struct BlockEntry {
     time: u64,
-    block: Arc<BlockEnum>,
+    block: Arc<Block>,
 }
 
 impl Ord for BlockEntry {

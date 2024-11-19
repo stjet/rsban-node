@@ -6,7 +6,7 @@ use rsnano_core::{
     deserialize_block_json, epoch_v1_link, epoch_v2_link,
     utils::{get_env_or_default_string, seconds_since_epoch, SerdePropertyTree},
     work::{WorkThresholds, WORK_THRESHOLDS_STUB},
-    Account, Amount, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, Epochs, KeyPair,
+    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, Epochs, KeyPair,
     Networks, PublicKey, DEV_GENESIS_KEY,
 };
 
@@ -65,14 +65,14 @@ static TEST_GENESIS_DATA: Lazy<String> = Lazy::new(|| {
 pub static LEDGER_CONSTANTS_STUB: Lazy<LedgerConstants> =
     Lazy::new(|| LedgerConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork));
 
-pub static DEV_GENESIS: Lazy<Arc<BlockEnum>> = Lazy::new(|| LEDGER_CONSTANTS_STUB.genesis.clone());
+pub static DEV_GENESIS: Lazy<Arc<Block>> = Lazy::new(|| LEDGER_CONSTANTS_STUB.genesis.clone());
 pub static DEV_GENESIS_ACCOUNT: Lazy<Account> = Lazy::new(|| DEV_GENESIS.account_field().unwrap());
 #[allow(dead_code)]
 pub static DEV_GENESIS_PUB_KEY: Lazy<PublicKey> =
     Lazy::new(|| DEV_GENESIS.account_field().unwrap().into());
 pub static DEV_GENESIS_HASH: Lazy<BlockHash> = Lazy::new(|| DEV_GENESIS.hash());
 
-fn parse_block_from_genesis_data(genesis_data: &str) -> Result<BlockEnum> {
+fn parse_block_from_genesis_data(genesis_data: &str) -> Result<Block> {
     let ptree = SerdePropertyTree::parse(genesis_data)?;
     deserialize_block_json(&ptree)
 }
@@ -98,11 +98,11 @@ pub struct LedgerConstants {
     pub nano_beta_account: Account,
     pub nano_live_account: Account,
     pub nano_test_account: Account,
-    pub nano_dev_genesis: Arc<BlockEnum>,
-    pub nano_beta_genesis: Arc<BlockEnum>,
-    pub nano_live_genesis: Arc<BlockEnum>,
-    pub nano_test_genesis: Arc<BlockEnum>,
-    pub genesis: Arc<BlockEnum>,
+    pub nano_dev_genesis: Arc<Block>,
+    pub nano_beta_genesis: Arc<Block>,
+    pub nano_live_genesis: Arc<Block>,
+    pub nano_test_genesis: Arc<Block>,
+    pub genesis: Arc<Block>,
     pub genesis_account: Account,
     pub genesis_amount: Amount,
     pub burn_account: Account,

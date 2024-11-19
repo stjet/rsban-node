@@ -1,5 +1,5 @@
 use rsnano_core::{
-    work::WorkPoolImpl, Account, Amount, BlockEnum, BlockHash, Epoch, KeyPair, Networks, PublicKey,
+    work::WorkPoolImpl, Account, Amount, Block, BlockHash, Epoch, KeyPair, Networks, PublicKey,
     StateBlock, StateBlockBuilder, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
@@ -31,7 +31,7 @@ pub struct System {
     network_params: NetworkParams,
     pub work: Arc<WorkPoolImpl>,
     pub nodes: Vec<Arc<Node>>,
-    pub initialization_blocks: Vec<BlockEnum>,
+    pub initialization_blocks: Vec<Block>,
 }
 
 impl System {
@@ -348,7 +348,7 @@ pub fn activate_hashes(node: &Node, hashes: &[BlockHash]) {
     }
 }
 
-pub fn setup_chain(node: &Node, count: usize, target: &KeyPair, confirm: bool) -> Vec<BlockEnum> {
+pub fn setup_chain(node: &Node, count: usize, target: &KeyPair, confirm: bool) -> Vec<Block> {
     let mut latest = node.latest(&target.account());
     let mut balance = node.balance(&target.account());
 
@@ -357,7 +357,7 @@ pub fn setup_chain(node: &Node, count: usize, target: &KeyPair, confirm: bool) -
     for _ in 0..count {
         let throwaway = KeyPair::new();
         balance = balance - Amount::raw(1);
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             target.account(),
             latest,
             target.public_key(),
@@ -390,7 +390,7 @@ pub fn setup_chains(
     block_count: usize,
     source: &KeyPair,
     confirm: bool,
-) -> Vec<(Account, Vec<BlockEnum>)> {
+) -> Vec<(Account, Vec<Block>)> {
     let mut latest = node.latest(&source.account());
     let mut balance = node.balance(&source.account());
 
@@ -399,7 +399,7 @@ pub fn setup_chains(
         let key = KeyPair::new();
         let amount_sent = Amount::raw(block_count as u128 * 2);
         balance = balance - amount_sent; // Send enough to later create `block_count` blocks
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             source.account(),
             latest,
             source.public_key(),
@@ -409,7 +409,7 @@ pub fn setup_chains(
             node.work_generate_dev(latest),
         ));
 
-        let open = BlockEnum::State(StateBlock::new(
+        let open = Block::State(StateBlock::new(
             key.account(),
             BlockHash::zero(),
             key.public_key(),
@@ -437,7 +437,7 @@ pub fn setup_chains(
     chains
 }
 
-pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> Vec<BlockEnum> {
+pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> Vec<Block> {
     let mut blocks = Vec::new();
     let account: Account = source.public_key().into();
     let mut latest = node.latest(&account);
@@ -448,7 +448,7 @@ pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> 
 
         balance -= 1;
 
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             account,
             latest,
             source.public_key(),
@@ -460,7 +460,7 @@ pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> 
 
         latest = send.hash();
 
-        let open = BlockEnum::State(StateBlock::new(
+        let open = Block::State(StateBlock::new(
             key.public_key().into(),
             BlockHash::zero(),
             key.public_key(),
@@ -539,7 +539,7 @@ pub fn send_block(node: Arc<Node>) -> BlockHash {
     send1.hash()
 }
 
-pub fn send_block_to(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
+pub fn send_block_to(node: Arc<Node>, account: Account, amount: Amount) -> Block {
     let transaction = node.ledger.read_txn();
 
     let previous = node
@@ -554,7 +554,7 @@ pub fn send_block_to(node: Arc<Node>, account: Account, amount: Amount) -> Block
         .account_balance(&transaction, &*DEV_GENESIS_ACCOUNT)
         .unwrap_or(Amount::MAX);
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         previous,
         *DEV_GENESIS_PUB_KEY,
@@ -574,7 +574,7 @@ pub fn send_block_to(node: Arc<Node>, account: Account, amount: Amount) -> Block
     send
 }
 
-pub fn process_block_local(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
+pub fn process_block_local(node: Arc<Node>, account: Account, amount: Amount) -> Block {
     let transaction = node.ledger.read_txn();
 
     let previous = node
@@ -589,7 +589,7 @@ pub fn process_block_local(node: Arc<Node>, account: Account, amount: Amount) ->
         .account_balance(&transaction, &*DEV_GENESIS_ACCOUNT)
         .unwrap_or(Amount::MAX);
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         previous,
         *DEV_GENESIS_PUB_KEY,
@@ -604,7 +604,7 @@ pub fn process_block_local(node: Arc<Node>, account: Account, amount: Amount) ->
     send
 }
 
-pub fn process_send_block(node: Arc<Node>, account: Account, amount: Amount) -> BlockEnum {
+pub fn process_send_block(node: Arc<Node>, account: Account, amount: Amount) -> Block {
     let transaction = node.ledger.read_txn();
 
     let previous = node
@@ -619,7 +619,7 @@ pub fn process_send_block(node: Arc<Node>, account: Account, amount: Amount) -> 
         .account_balance(&transaction, &*DEV_GENESIS_ACCOUNT)
         .unwrap_or(Amount::MAX);
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         previous,
         *DEV_GENESIS_PUB_KEY,
@@ -634,7 +634,7 @@ pub fn process_send_block(node: Arc<Node>, account: Account, amount: Amount) -> 
     send
 }
 
-pub fn process_open_block(node: Arc<Node>, keys: KeyPair) -> BlockEnum {
+pub fn process_open_block(node: Arc<Node>, keys: KeyPair) -> Block {
     let transaction = node.ledger.read_txn();
     let account = keys.account();
 
@@ -645,7 +645,7 @@ pub fn process_open_block(node: Arc<Node>, keys: KeyPair) -> BlockEnum {
         .next()
         .unwrap();
 
-    let open = BlockEnum::State(StateBlock::new(
+    let open = Block::State(StateBlock::new(
         account,
         BlockHash::zero(),
         keys.public_key(),
@@ -664,7 +664,7 @@ pub fn upgrade_epoch(
     node: Arc<Node>,
     //pool: &mut WorkPoolImpl,
     epoch: Epoch,
-) -> BlockEnum {
+) -> Block {
     let transaction = node.ledger.read_txn();
     let account = *DEV_GENESIS_ACCOUNT;
     let latest = node
@@ -704,13 +704,13 @@ pub fn setup_new_account(
     dest: &KeyPair,
     dest_rep: PublicKey,
     force_confirm: bool,
-) -> (BlockEnum, BlockEnum) {
+) -> (Block, Block) {
     let source_account = source.public_key().as_account();
     let dest_account = dest.public_key().as_account();
     let latest = node.latest(&source_account);
     let balance = node.balance(&source_account);
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         source_account,
         latest,
         source.public_key(),
@@ -720,7 +720,7 @@ pub fn setup_new_account(
         node.work_generate_dev(latest),
     ));
 
-    let open = BlockEnum::State(StateBlock::new(
+    let open = Block::State(StateBlock::new(
         dest_account,
         BlockHash::zero(),
         dest_rep,

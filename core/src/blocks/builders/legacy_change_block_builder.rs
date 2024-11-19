@@ -1,5 +1,5 @@
 use crate::work::WorkPool;
-use crate::{Account, Amount, BlockDetails, BlockEnum, BlockSideband, Epoch, KeyPair, PublicKey};
+use crate::{Account, Amount, Block, BlockDetails, BlockSideband, Epoch, KeyPair, PublicKey};
 
 use crate::{work::STUB_WORK_POOL, BlockBase, BlockHash, ChangeBlock};
 
@@ -54,7 +54,7 @@ impl LegacyChangeBlockBuilder {
         self
     }
 
-    pub fn build(self) -> BlockEnum {
+    pub fn build(self) -> Block {
         let previous = self.previous.unwrap_or(BlockHash::from(1));
         let key_pair = self.keypair.unwrap_or_default();
         let representative = self.representative.unwrap_or(PublicKey::from(2));
@@ -82,7 +82,7 @@ impl LegacyChangeBlockBuilder {
             ));
         }
 
-        BlockEnum::LegacyChange(block)
+        Block::LegacyChange(block)
     }
 }
 

@@ -1,7 +1,7 @@
 use super::difficulty_ledger;
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::{BlockEnum, BlockType, DifficultyV1};
+use rsnano_core::{Block, BlockType, DifficultyV1};
 use rsnano_rpc_messages::{WorkGenerateArgs, WorkGenerateDto};
 
 impl RpcCommandHandler {
@@ -31,7 +31,7 @@ impl RpcCommandHandler {
 
         // Retrieving optional block
         if let Some(block) = args.block {
-            let block_enum: BlockEnum = block.into();
+            let block_enum: Block = block.into();
             if args.hash != block_enum.root().into() {
                 bail!("Block root mismatch");
             }

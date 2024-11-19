@@ -213,7 +213,7 @@ pub fn serialized_block_size(block_type: BlockType) -> usize {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum BlockEnum {
+pub enum Block {
     LegacySend(SendBlock),
     LegacyReceive(ReceiveBlock),
     LegacyOpen(OpenBlock),
@@ -221,7 +221,7 @@ pub enum BlockEnum {
     State(StateBlock),
 }
 
-impl BlockEnum {
+impl Block {
     pub fn new_test_instance() -> Self {
         Self::State(StateBlock::new_test_instance())
     }
@@ -236,82 +236,82 @@ impl BlockEnum {
 
     pub fn as_block_mut(&mut self) -> &mut dyn BlockBase {
         match self {
-            BlockEnum::LegacySend(b) => b,
-            BlockEnum::LegacyReceive(b) => b,
-            BlockEnum::LegacyOpen(b) => b,
-            BlockEnum::LegacyChange(b) => b,
-            BlockEnum::State(b) => b,
+            Block::LegacySend(b) => b,
+            Block::LegacyReceive(b) => b,
+            Block::LegacyOpen(b) => b,
+            Block::LegacyChange(b) => b,
+            Block::State(b) => b,
         }
     }
 
     pub fn as_block(&self) -> &dyn BlockBase {
         match self {
-            BlockEnum::LegacySend(b) => b,
-            BlockEnum::LegacyReceive(b) => b,
-            BlockEnum::LegacyOpen(b) => b,
-            BlockEnum::LegacyChange(b) => b,
-            BlockEnum::State(b) => b,
+            Block::LegacySend(b) => b,
+            Block::LegacyReceive(b) => b,
+            Block::LegacyOpen(b) => b,
+            Block::LegacyChange(b) => b,
+            Block::State(b) => b,
         }
     }
 
     pub fn balance(&self) -> Amount {
         match self {
-            BlockEnum::LegacySend(b) => b.balance(),
-            BlockEnum::LegacyReceive(b) => b.sideband().unwrap().balance,
-            BlockEnum::LegacyOpen(b) => b.sideband().unwrap().balance,
-            BlockEnum::LegacyChange(b) => b.sideband().unwrap().balance,
-            BlockEnum::State(b) => b.balance(),
+            Block::LegacySend(b) => b.balance(),
+            Block::LegacyReceive(b) => b.sideband().unwrap().balance,
+            Block::LegacyOpen(b) => b.sideband().unwrap().balance,
+            Block::LegacyChange(b) => b.sideband().unwrap().balance,
+            Block::State(b) => b.balance(),
         }
     }
 
     pub fn is_open(&self) -> bool {
         match &self {
-            BlockEnum::LegacyOpen(_) => true,
-            BlockEnum::State(state) => state.previous().is_zero(),
+            Block::LegacyOpen(_) => true,
+            Block::State(state) => state.previous().is_zero(),
             _ => false,
         }
     }
 
     pub fn is_legacy(&self) -> bool {
-        !matches!(self, BlockEnum::State(_))
+        !matches!(self, Block::State(_))
     }
 
     pub fn is_epoch(&self) -> bool {
         match self {
-            BlockEnum::State(_) => self.sideband().unwrap().details.is_epoch,
+            Block::State(_) => self.sideband().unwrap().details.is_epoch,
             _ => false,
         }
     }
 
     pub fn is_send(&self) -> bool {
         match self {
-            BlockEnum::LegacySend(_) => true,
-            BlockEnum::State(_) => self.sideband().unwrap().details.is_send,
+            Block::LegacySend(_) => true,
+            Block::State(_) => self.sideband().unwrap().details.is_send,
             _ => false,
         }
     }
 
     pub fn is_receive(&self) -> bool {
         match self {
-            BlockEnum::LegacyReceive(_) | BlockEnum::LegacyOpen(_) => true,
-            BlockEnum::State(_) => self.sideband().unwrap().details.is_receive,
+            Block::LegacyReceive(_) | Block::LegacyOpen(_) => true,
+            Block::State(_) => self.sideband().unwrap().details.is_receive,
             _ => false,
         }
     }
 
     pub fn is_change(&self) -> bool {
         match self {
-            BlockEnum::LegacyChange(_) => true,
-            BlockEnum::State(state) => state.link().is_zero(),
+            Block::LegacyChange(_) => true,
+            Block::State(state) => state.link().is_zero(),
             _ => false,
         }
     }
 
     pub fn source(&self) -> Option<BlockHash> {
         match self {
-            BlockEnum::LegacyOpen(i) => Some(i.source()),
-            BlockEnum::LegacyReceive(i) => Some(i.source()),
-            BlockEnum::State(i) => {
+            Block::LegacyOpen(i) => Some(i.source()),
+            Block::LegacyReceive(i) => Some(i.source()),
+            Block::State(i) => {
                 if i.sideband().unwrap().details.is_receive {
                     Some(i.link().into())
                 } else {
@@ -324,8 +324,8 @@ impl BlockEnum {
 
     pub fn destination(&self) -> Option<Account> {
         match self {
-            BlockEnum::LegacySend(i) => Some(*i.destination()),
-            BlockEnum::State(i) => {
+            Block::LegacySend(i) => Some(*i.destination()),
+            Block::State(i) => {
                 if i.sideband().unwrap().details.is_send {
                     Some(i.link().into())
                 } else {
@@ -388,28 +388,28 @@ impl BlockEnum {
         stream.to_vec()
     }
 
-    pub fn deserialize_with_sideband(bytes: &[u8]) -> anyhow::Result<BlockEnum> {
+    pub fn deserialize_with_sideband(bytes: &[u8]) -> anyhow::Result<Block> {
         let mut stream = BufferReader::new(bytes);
-        let mut block = BlockEnum::deserialize(&mut stream)?;
+        let mut block = Block::deserialize(&mut stream)?;
         let mut sideband = BlockSideband::from_stream(&mut stream, block.block_type())?;
         // BlockSideband does not serialize all data depending on the block type.
         // That's why we fill in the missing data here:
         match &block {
-            BlockEnum::LegacySend(i) => {
+            Block::LegacySend(i) => {
                 sideband.balance = i.balance();
                 sideband.details = BlockDetails::new(Epoch::Epoch0, true, false, false)
             }
-            BlockEnum::LegacyOpen(open) => {
+            Block::LegacyOpen(open) => {
                 sideband.account = open.account();
                 sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
             }
-            BlockEnum::LegacyReceive(_) => {
+            Block::LegacyReceive(_) => {
                 sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
             }
-            BlockEnum::LegacyChange(_) => {
+            Block::LegacyChange(_) => {
                 sideband.details = BlockDetails::new(Epoch::Epoch0, false, false, false)
             }
-            BlockEnum::State(state) => {
+            Block::State(state) => {
                 sideband.account = state.account();
                 sideband.balance = state.balance();
             }
@@ -433,7 +433,7 @@ impl BlockEnum {
         Ok(block)
     }
 
-    pub fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<BlockEnum> {
+    pub fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Block> {
         let block_type =
             BlockType::from_u8(stream.read_u8()?).ok_or_else(|| anyhow!("invalid block type"))?;
         Self::deserialize_block_type(block_type, stream)
@@ -442,20 +442,20 @@ impl BlockEnum {
     /// There can be at most two dependencies per block, namely "previous" and "link/source".
     pub fn dependent_blocks(&self, epochs: &Epochs, genensis_account: &Account) -> DependentBlocks {
         match self {
-            BlockEnum::LegacySend(_) | BlockEnum::LegacyChange(_) => {
+            Block::LegacySend(_) | Block::LegacyChange(_) => {
                 DependentBlocks::new(self.previous(), BlockHash::zero())
             }
-            BlockEnum::LegacyReceive(receive) => {
+            Block::LegacyReceive(receive) => {
                 DependentBlocks::new(receive.previous(), receive.source())
             }
-            BlockEnum::LegacyOpen(open) => {
+            Block::LegacyOpen(open) => {
                 if &open.account() == genensis_account {
                     DependentBlocks::none()
                 } else {
                     DependentBlocks::new(open.source(), BlockHash::zero())
                 }
             }
-            BlockEnum::State(state) => {
+            Block::State(state) => {
                 let link_refers_to_block = !self.is_send() && !epochs.is_epoch_link(&state.link());
                 let linked_block = if link_refers_to_block {
                     state.link().into()
@@ -468,39 +468,39 @@ impl BlockEnum {
     }
 }
 
-impl FullHash for BlockEnum {
+impl FullHash for Block {
     fn full_hash(&self) -> BlockHash {
         self.as_block().full_hash()
     }
 }
 
-impl Deref for BlockEnum {
+impl Deref for Block {
     type Target = dyn BlockBase;
 
     fn deref(&self) -> &Self::Target {
         match self {
-            BlockEnum::LegacySend(b) => b,
-            BlockEnum::LegacyReceive(b) => b,
-            BlockEnum::LegacyOpen(b) => b,
-            BlockEnum::LegacyChange(b) => b,
-            BlockEnum::State(b) => b,
+            Block::LegacySend(b) => b,
+            Block::LegacyReceive(b) => b,
+            Block::LegacyOpen(b) => b,
+            Block::LegacyChange(b) => b,
+            Block::State(b) => b,
         }
     }
 }
 
-impl DerefMut for BlockEnum {
+impl DerefMut for Block {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
-            BlockEnum::LegacySend(b) => b,
-            BlockEnum::LegacyReceive(b) => b,
-            BlockEnum::LegacyOpen(b) => b,
-            BlockEnum::LegacyChange(b) => b,
-            BlockEnum::State(b) => b,
+            Block::LegacySend(b) => b,
+            Block::LegacyReceive(b) => b,
+            Block::LegacyOpen(b) => b,
+            Block::LegacyChange(b) => b,
+            Block::State(b) => b,
         }
     }
 }
 
-impl serde::Serialize for BlockEnum {
+impl serde::Serialize for Block {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -520,7 +520,7 @@ pub enum JsonBlock {
     State(JsonStateBlock),
 }
 
-impl<'de> serde::Deserialize<'de> for BlockEnum {
+impl<'de> serde::Deserialize<'de> for Block {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -530,51 +530,51 @@ impl<'de> serde::Deserialize<'de> for BlockEnum {
     }
 }
 
-impl From<JsonBlock> for BlockEnum {
+impl From<JsonBlock> for Block {
     fn from(value: JsonBlock) -> Self {
         match value {
-            JsonBlock::Open(open) => BlockEnum::LegacyOpen(open.into()),
-            JsonBlock::Change(change) => BlockEnum::LegacyChange(change.into()),
-            JsonBlock::Receive(receive) => BlockEnum::LegacyReceive(receive.into()),
-            JsonBlock::Send(send) => BlockEnum::LegacySend(send.into()),
-            JsonBlock::State(state) => BlockEnum::State(state.into()),
+            JsonBlock::Open(open) => Block::LegacyOpen(open.into()),
+            JsonBlock::Change(change) => Block::LegacyChange(change.into()),
+            JsonBlock::Receive(receive) => Block::LegacyReceive(receive.into()),
+            JsonBlock::Send(send) => Block::LegacySend(send.into()),
+            JsonBlock::State(state) => Block::State(state.into()),
         }
     }
 }
 
-impl From<BlockEnum> for JsonBlock {
-    fn from(value: BlockEnum) -> Self {
+impl From<Block> for JsonBlock {
+    fn from(value: Block) -> Self {
         value.as_block().json_representation()
     }
 }
 
-impl From<&BlockEnum> for JsonBlock {
-    fn from(value: &BlockEnum) -> Self {
+impl From<&Block> for JsonBlock {
+    fn from(value: &Block) -> Self {
         value.as_block().json_representation()
     }
 }
 
-pub fn deserialize_block_json(ptree: &impl PropertyTree) -> anyhow::Result<BlockEnum> {
+pub fn deserialize_block_json(ptree: &impl PropertyTree) -> anyhow::Result<Block> {
     let block_type = ptree.get_string("type")?;
     match block_type.as_str() {
-        "receive" => ReceiveBlock::deserialize_json(ptree).map(BlockEnum::LegacyReceive),
-        "send" => SendBlock::deserialize_json(ptree).map(BlockEnum::LegacySend),
-        "open" => OpenBlock::deserialize_json(ptree).map(BlockEnum::LegacyOpen),
-        "change" => ChangeBlock::deserialize_json(ptree).map(BlockEnum::LegacyChange),
-        "state" => StateBlock::deserialize_json(ptree).map(BlockEnum::State),
+        "receive" => ReceiveBlock::deserialize_json(ptree).map(Block::LegacyReceive),
+        "send" => SendBlock::deserialize_json(ptree).map(Block::LegacySend),
+        "open" => OpenBlock::deserialize_json(ptree).map(Block::LegacyOpen),
+        "change" => ChangeBlock::deserialize_json(ptree).map(Block::LegacyChange),
+        "state" => StateBlock::deserialize_json(ptree).map(Block::State),
         _ => Err(anyhow!("unsupported block type")),
     }
 }
 
 pub struct BlockWithSideband {
-    pub block: BlockEnum,
+    pub block: Block,
     pub sideband: BlockSideband,
 }
 
 impl crate::utils::Deserialize for BlockWithSideband {
     type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
-        let mut block = BlockEnum::deserialize(stream)?;
+        let mut block = Block::deserialize(stream)?;
         let sideband = BlockSideband::from_stream(stream, block.block_type())?;
         block.as_block_mut().set_sideband(sideband.clone());
         Ok(BlockWithSideband { block, sideband })
@@ -661,9 +661,9 @@ mod tests {
         assert_serializable(block);
     }
 
-    fn assert_serializable(block: BlockEnum) {
+    fn assert_serializable(block: Block) {
         let bytes = block.serialize_with_sideband();
-        let deserialized = BlockEnum::deserialize_with_sideband(&bytes).unwrap();
+        let deserialized = Block::deserialize_with_sideband(&bytes).unwrap();
 
         assert_eq!(deserialized, block);
     }

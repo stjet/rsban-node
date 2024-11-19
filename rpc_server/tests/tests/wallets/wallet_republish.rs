@@ -1,11 +1,11 @@
-use rsnano_core::{Amount, BlockEnum, StateBlock, WalletId, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, StateBlock, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
-fn send_block(node: Arc<Node>) -> BlockEnum {
-    let send1 = BlockEnum::State(StateBlock::new(
+fn send_block(node: Arc<Node>) -> Block {
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

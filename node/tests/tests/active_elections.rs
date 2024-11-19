@@ -1,6 +1,6 @@
 use rsnano_core::{
-    utils::MemoryStream, work::WorkPool, Account, Amount, BlockEnum, BlockHash, KeyPair,
-    StateBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
+    utils::MemoryStream, work::WorkPool, Account, Amount, Block, BlockHash, KeyPair, StateBlock,
+    Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -91,7 +91,7 @@ fn inactive_votes_cache_basic() {
     let mut system = System::new();
     let node = system.make_node();
     let key = KeyPair::new();
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -127,7 +127,7 @@ fn non_final() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -187,7 +187,7 @@ fn inactive_votes_cache_fork() {
     let node = system.make_node();
     let key = KeyPair::new();
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -197,7 +197,7 @@ fn inactive_votes_cache_fork() {
         node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -256,7 +256,7 @@ fn inactive_votes_cache_existing_vote() {
     let key = KeyPair::new();
     let rep_weight = Amount::nano(100_000);
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -266,7 +266,7 @@ fn inactive_votes_cache_existing_vote() {
         node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
-    let open = BlockEnum::State(StateBlock::new(
+    let open = Block::State(StateBlock::new(
         key.account(),
         BlockHash::zero(),
         key.public_key(),
@@ -345,7 +345,7 @@ fn inactive_votes_cache_multiple_votes() {
     let node = system.build_node().config(config).finish();
     let key = KeyPair::new();
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -355,7 +355,7 @@ fn inactive_votes_cache_multiple_votes() {
         node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -365,7 +365,7 @@ fn inactive_votes_cache_multiple_votes() {
         node.work_generate_dev(send1.hash()),
     ));
 
-    let open = BlockEnum::State(StateBlock::new(
+    let open = Block::State(StateBlock::new(
         key.account(),
         BlockHash::zero(),
         key.public_key(),
@@ -426,7 +426,7 @@ fn inactive_votes_cache_election_start() {
         / 2
         + Amount::nano(1_000_000);
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -435,7 +435,7 @@ fn inactive_votes_cache_election_start() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -444,7 +444,7 @@ fn inactive_votes_cache_election_start() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(send1.hash()),
     ));
-    let open1 = BlockEnum::State(StateBlock::new(
+    let open1 = Block::State(StateBlock::new(
         key1.account(),
         BlockHash::zero(),
         key1.public_key(),
@@ -453,7 +453,7 @@ fn inactive_votes_cache_election_start() {
         &key1,
         node.work_generate_dev(&key1),
     ));
-    let open2 = BlockEnum::State(StateBlock::new(
+    let open2 = Block::State(StateBlock::new(
         key2.account(),
         BlockHash::zero(),
         key2.public_key(),
@@ -468,7 +468,7 @@ fn inactive_votes_cache_election_start() {
     node.process(open2.clone()).unwrap();
 
     // These blocks will be processed later
-    let send3 = BlockEnum::State(StateBlock::new(
+    let send3 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send2.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -477,7 +477,7 @@ fn inactive_votes_cache_election_start() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(send2.hash()),
     ));
-    let send4 = BlockEnum::State(StateBlock::new(
+    let send4 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send3.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -557,7 +557,7 @@ fn republish_winner() {
     let node2 = system.build_node().config(config).finish();
 
     let key = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -582,7 +582,7 @@ fn republish_winner() {
 
     // Several forks
     for i in 0..5 {
-        let fork = BlockEnum::State(StateBlock::new(
+        let fork = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -604,7 +604,7 @@ fn republish_winner() {
     );
 
     // Process new fork with vote to change winner
-    let fork = BlockEnum::State(StateBlock::new(
+    let fork = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -646,7 +646,7 @@ fn confirm_election_by_request() {
     let mut system = System::new();
     let node1 = system.make_node();
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -743,7 +743,7 @@ fn confirm_frontier() {
     let mut system = System::new();
 
     // send 100 raw from genesis to a random account
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -821,7 +821,7 @@ fn vacancy() {
     let node = system.build_node().config(config).finish();
     let notify_tracker = node.election_schedulers.track_notify();
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -925,7 +925,7 @@ fn broadcast_block_on_activation() {
         .finish();
     let node2 = system.build_node().config(config2).flags(flags).finish();
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -1076,7 +1076,7 @@ fn fork_filter_cleanup() {
     let key = KeyPair::new();
     let latest_hash = *DEV_GENESIS_HASH;
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         latest_hash,
         *DEV_GENESIS_PUB_KEY,
@@ -1092,7 +1092,7 @@ fn fork_filter_cleanup() {
 
     // Generate 10 forks to prevent new block insertion to election
     for i in 0..10 {
-        let fork = BlockEnum::State(StateBlock::new(
+        let fork = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             latest_hash,
             *DEV_GENESIS_PUB_KEY,
@@ -1158,7 +1158,7 @@ fn conflicting_block_vote_existing_election() {
     let node = system.build_node().config(config).flags(flags).finish();
     let key = KeyPair::new();
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -1168,7 +1168,7 @@ fn conflicting_block_vote_existing_election() {
         node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
-    let fork = BlockEnum::State(StateBlock::new(
+    let fork = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -1209,7 +1209,7 @@ fn activate_account_chain() {
     let node = system.build_node().config(config).finish();
 
     let key = KeyPair::new();
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -1218,7 +1218,7 @@ fn activate_account_chain() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -1227,7 +1227,7 @@ fn activate_account_chain() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(send.hash()),
     ));
-    let send3 = BlockEnum::State(StateBlock::new(
+    let send3 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send2.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -1236,7 +1236,7 @@ fn activate_account_chain() {
         &DEV_GENESIS_KEY,
         node.work_generate_dev(send2.hash()),
     ));
-    let open = BlockEnum::State(StateBlock::new(
+    let open = Block::State(StateBlock::new(
         key.account(),
         BlockHash::zero(),
         key.public_key(),
@@ -1245,7 +1245,7 @@ fn activate_account_chain() {
         &key,
         node.work_generate_dev(&key),
     ));
-    let receive = BlockEnum::State(StateBlock::new(
+    let receive = Block::State(StateBlock::new(
         key.account(),
         open.hash(),
         key.public_key(),
@@ -1383,7 +1383,7 @@ fn vote_replays() {
     let key = KeyPair::new();
 
     // send Gxrb_ratio raw from genesis to key
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -1394,7 +1394,7 @@ fn vote_replays() {
     ));
 
     // create open block for key receing Gxrb_ratio raw
-    let open1 = BlockEnum::State(StateBlock::new(
+    let open1 = Block::State(StateBlock::new(
         key.public_key().as_account(),
         BlockHash::zero(),
         key.public_key(),
@@ -1466,7 +1466,7 @@ fn vote_replays() {
     assert_eq!(node.ledger.weight(&key.public_key()), Amount::nano(1000));
 
     // send 1 raw to key to key
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         key.public_key().as_account(),
         open1.hash(),
         key.public_key(),
@@ -1562,7 +1562,7 @@ fn vote_replays() {
 fn confirm_new() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -1606,7 +1606,7 @@ fn active_inactive() {
 
     let key = KeyPair::new();
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -1616,7 +1616,7 @@ fn active_inactive() {
         node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -1626,7 +1626,7 @@ fn active_inactive() {
         node.work_generate_dev(send.hash()),
     ));
 
-    let open = BlockEnum::State(StateBlock::new(
+    let open = Block::State(StateBlock::new(
         (&key).into(),
         BlockHash::zero(),
         key.public_key(),

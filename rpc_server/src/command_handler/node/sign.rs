@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::{sign_message, BlockEnum, RawKey};
+use rsnano_core::{sign_message, Block, RawKey};
 use rsnano_rpc_messages::{SignArgs, SignResponse};
 
 impl RpcCommandHandler {
@@ -8,7 +8,7 @@ impl RpcCommandHandler {
         // Retrieving hash
         let mut hash = args.hash.unwrap_or_default();
         // Retrieving block
-        let block = args.block.map(|b| BlockEnum::from(b));
+        let block = args.block.map(|b| Block::from(b));
         if let Some(b) = &block {
             hash = b.hash();
         }

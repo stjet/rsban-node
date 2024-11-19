@@ -1,6 +1,6 @@
 use crate::{
     work::{WorkPool, STUB_WORK_POOL},
-    Account, Amount, BlockBase, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch, KeyPair,
+    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair,
     ReceiveBlock,
 };
 
@@ -48,7 +48,7 @@ impl LegacyReceiveBlockBuilder {
         self
     }
 
-    pub fn build(self) -> BlockEnum {
+    pub fn build(self) -> Block {
         let key_pair = self.key_pair.unwrap_or_default();
         let previous = self.previous.unwrap_or(BlockHash::from(1));
         let source = self.source.unwrap_or(BlockHash::from(2));
@@ -77,7 +77,7 @@ impl LegacyReceiveBlockBuilder {
             ));
         }
 
-        BlockEnum::LegacyReceive(block)
+        Block::LegacyReceive(block)
     }
 }
 
@@ -89,12 +89,12 @@ impl Default for LegacyReceiveBlockBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::{work::WORK_THRESHOLDS_STUB, BlockBase, BlockBuilder, BlockEnum, BlockHash};
+    use crate::{work::WORK_THRESHOLDS_STUB, Block, BlockBase, BlockBuilder, BlockHash};
 
     #[test]
     fn receive_block() {
         let block = BlockBuilder::legacy_receive().with_sideband().build();
-        let BlockEnum::LegacyReceive(receive) = &block else {
+        let Block::LegacyReceive(receive) = &block else {
             panic!("not a receive block!")
         };
         assert_eq!(receive.hashables.previous, BlockHash::from(1));

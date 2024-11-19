@@ -43,7 +43,7 @@ use crate::{
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfoComponent, SerdePropertyTree},
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, BlockEnum, BlockHash, BlockType, KeyPair, Networks, PublicKey, Root, VoteCode,
+    Account, Amount, Block, BlockHash, BlockType, KeyPair, Networks, PublicKey, Root, VoteCode,
     VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
@@ -1237,18 +1237,18 @@ impl Node {
             .ledger_pruning(batch_size, bootstrap_weight_reached)
     }
 
-    pub fn process_local(&self, block: BlockEnum) -> Option<BlockStatus> {
+    pub fn process_local(&self, block: Block) -> Option<BlockStatus> {
         self.block_processor
             .add_blocking(Arc::new(block), BlockSource::Local)
             .map(|(status, _)| status)
     }
 
-    pub fn process(&self, mut block: BlockEnum) -> Result<(), BlockStatus> {
+    pub fn process(&self, mut block: Block) -> Result<(), BlockStatus> {
         let mut tx = self.ledger.rw_txn();
         self.ledger.process(&mut tx, &mut block)
     }
 
-    pub fn process_multi(&self, blocks: &[BlockEnum]) {
+    pub fn process_multi(&self, blocks: &[Block]) {
         let mut tx = self.ledger.rw_txn();
         for (i, block) in blocks.iter().enumerate() {
             self.ledger
@@ -1265,11 +1265,11 @@ impl Node {
             .unwrap();
     }
 
-    pub fn process_active(&self, block: BlockEnum) {
+    pub fn process_active(&self, block: Block) {
         self.block_processor.process_active(Arc::new(block));
     }
 
-    pub fn process_local_multi(&self, blocks: &[BlockEnum]) {
+    pub fn process_local_multi(&self, blocks: &[Block]) {
         for block in blocks {
             let status = self.process_local(block.clone()).unwrap();
             if !matches!(status, BlockStatus::Progress | BlockStatus::Old) {
@@ -1278,7 +1278,7 @@ impl Node {
         }
     }
 
-    pub fn block(&self, hash: &BlockHash) -> Option<BlockEnum> {
+    pub fn block(&self, hash: &BlockHash) -> Option<Block> {
         let tx = self.ledger.read_txn();
         self.ledger.any().get_block(&tx, hash)
     }
@@ -1304,7 +1304,7 @@ impl Node {
         self.ledger.any().block_exists(&tx, hash)
     }
 
-    pub fn blocks_exist(&self, hashes: &[BlockEnum]) -> bool {
+    pub fn blocks_exist(&self, hashes: &[Block]) -> bool {
         self.block_hashes_exist(hashes.iter().map(|b| b.hash()))
     }
 
@@ -1323,7 +1323,7 @@ impl Node {
             .unwrap_or_default()
     }
 
-    pub fn confirm_multi(&self, blocks: &[BlockEnum]) {
+    pub fn confirm_multi(&self, blocks: &[Block]) {
         for block in blocks {
             self.confirm(block.hash());
         }
@@ -1339,7 +1339,7 @@ impl Node {
         self.ledger.confirmed().block_exists(&tx, hash)
     }
 
-    pub fn blocks_confirmed(&self, blocks: &[BlockEnum]) -> bool {
+    pub fn blocks_confirmed(&self, blocks: &[Block]) -> bool {
         let tx = self.ledger.read_txn();
         blocks
             .iter()
@@ -1357,7 +1357,7 @@ pub trait NodeExt {
     fn bootstrap_wallet(&self);
     fn flood_block_many(
         &self,
-        blocks: VecDeque<BlockEnum>,
+        blocks: VecDeque<Block>,
         callback: Box<dyn FnOnce() + Send + Sync>,
         delay: Duration,
     );
@@ -1591,7 +1591,7 @@ impl NodeExt for Arc<Node> {
 
     fn flood_block_many(
         &self,
-        mut blocks: VecDeque<BlockEnum>,
+        mut blocks: VecDeque<Block>,
         callback: Box<dyn FnOnce() + Send + Sync>,
         delay: Duration,
     ) {

@@ -1,6 +1,6 @@
 use super::BlockValidator;
 use crate::BlockStatus;
-use rsnano_core::{validate_block_signature, BlockEnum, Epoch, Epochs};
+use rsnano_core::{validate_block_signature, Block, Epoch, Epochs};
 
 impl<'a> BlockValidator<'a> {
     pub(crate) fn ensure_valid_epoch_block(&self) -> Result<(), BlockStatus> {
@@ -13,7 +13,7 @@ impl<'a> BlockValidator<'a> {
     }
 
     fn ensure_epoch_block_does_not_change_representative(&self) -> Result<(), BlockStatus> {
-        if let BlockEnum::State(state) = self.block {
+        if let Block::State(state) = self.block {
             if self.is_epoch_block() {
                 if let Some(info) = &self.old_account_info {
                     if state.mandatory_representative() != info.representative {
@@ -26,7 +26,7 @@ impl<'a> BlockValidator<'a> {
     }
 
     fn ensure_epoch_open_has_burn_account_as_rep(&self) -> Result<(), BlockStatus> {
-        if let BlockEnum::State(state) = self.block {
+        if let Block::State(state) = self.block {
             if self.is_epoch_block()
                 && self.block.is_open()
                 && !state.mandatory_representative().is_zero()
@@ -91,7 +91,7 @@ impl<'a> BlockValidator<'a> {
     pub fn ensure_epoch_block_candidate_is_signed_by_owner_or_epoch_account(
         &self,
     ) -> Result<(), BlockStatus> {
-        if let BlockEnum::State(state_block) = self.block {
+        if let Block::State(state_block) = self.block {
             // Check for possible regular state blocks with epoch link (send subtype)
             if self.has_epoch_link(state_block)
                 && (validate_block_signature(state_block).is_err()
@@ -106,7 +106,7 @@ impl<'a> BlockValidator<'a> {
     pub fn ensure_previous_block_exists_for_epoch_block_candidate(
         &self,
     ) -> Result<(), BlockStatus> {
-        if let BlockEnum::State(state_block) = self.block {
+        if let Block::State(state_block) = self.block {
             if self.has_epoch_link(state_block)
                 && !self.block.previous().is_zero()
                 && self.previous_block.is_none()

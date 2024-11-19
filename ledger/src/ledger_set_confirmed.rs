@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount, BlockEnum, BlockHash, PendingInfo, PendingKey};
+use rsnano_core::{Account, Amount, Block, BlockHash, PendingInfo, PendingKey};
 use rsnano_store_lmdb::{LmdbStore, Transaction};
 
 pub struct LedgerSetConfirmed<'a> {
@@ -10,7 +10,7 @@ impl<'a> LedgerSetConfirmed<'a> {
         Self { store }
     }
 
-    pub fn get_block(&self, tx: &dyn Transaction, hash: &BlockHash) -> Option<BlockEnum> {
+    pub fn get_block(&self, tx: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
         let block = self.store.block.get(tx, hash)?;
         let info = self.store.confirmation_height.get(tx, &block.account())?;
         if block.sideband().unwrap().height <= info.height {
@@ -137,19 +137,18 @@ impl<'a> Iterator for ConfirmedReceivableIterator<'a> {
 mod tests {
     use crate::Ledger;
     use rsnano_core::{
-        Account, BlockEnum, BlockHash, BlockSideband, ConfirmationHeightInfo, PendingInfo,
-        PendingKey,
+        Account, Block, BlockHash, BlockSideband, ConfirmationHeightInfo, PendingInfo, PendingKey,
     };
 
     #[test]
     fn iter_receivables() {
         let account = Account::from(1);
 
-        let mut block1 = BlockEnum::new_test_instance_with_key(42);
+        let mut block1 = Block::new_test_instance_with_key(42);
         block1.set_sideband(BlockSideband::new_test_instance());
-        let mut block2 = BlockEnum::new_test_instance_with_key(43);
+        let mut block2 = Block::new_test_instance_with_key(43);
         block2.set_sideband(BlockSideband::new_test_instance());
-        let mut block3 = BlockEnum::new_test_instance_with_key(44);
+        let mut block3 = Block::new_test_instance_with_key(44);
         block3.set_sideband(BlockSideband::new_test_instance());
 
         let ledger = Ledger::new_null_builder()

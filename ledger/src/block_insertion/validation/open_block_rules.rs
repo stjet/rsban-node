@@ -1,6 +1,6 @@
 use super::BlockValidator;
 use crate::BlockStatus;
-use rsnano_core::BlockEnum;
+use rsnano_core::Block;
 
 impl<'a> BlockValidator<'a> {
     pub(crate) fn ensure_block_is_not_for_burn_account(&self) -> Result<(), BlockStatus> {
@@ -20,7 +20,7 @@ impl<'a> BlockValidator<'a> {
     }
 
     pub(crate) fn ensure_open_block_has_link(&self) -> Result<(), BlockStatus> {
-        if let BlockEnum::State(state) = self.block {
+        if let Block::State(state) = self.block {
             if self.block.is_open() && state.link().is_zero() {
                 return Err(BlockStatus::GapSource);
             }

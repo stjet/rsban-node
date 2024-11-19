@@ -1,5 +1,5 @@
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::{BlockEnum, BlockHash, Root};
+use rsnano_core::{Block, BlockHash, Root};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::sync::Arc;
@@ -9,8 +9,8 @@ pub(super) struct RequestAggregatorImpl<'a> {
     stats: &'a Stats,
     tx: &'a LmdbReadTransaction,
 
-    pub to_generate: Vec<Arc<BlockEnum>>,
-    pub to_generate_final: Vec<Arc<BlockEnum>>,
+    pub to_generate: Vec<Arc<Block>>,
+    pub to_generate_final: Vec<Arc<Block>>,
 }
 
 impl<'a> RequestAggregatorImpl<'a> {
@@ -106,6 +106,6 @@ impl<'a> RequestAggregatorImpl<'a> {
 }
 
 pub(super) struct AggregateResult {
-    pub remaining_normal: Vec<Arc<BlockEnum>>,
-    pub remaining_final: Vec<Arc<BlockEnum>>,
+    pub remaining_normal: Vec<Arc<Block>>,
+    pub remaining_final: Vec<Arc<Block>>,
 }

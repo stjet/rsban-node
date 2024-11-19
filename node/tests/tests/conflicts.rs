@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, BlockEnum, BlockSideband, KeyPair, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, BlockSideband, KeyPair, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
 use rsnano_node::block_processing::BlockSource;
@@ -12,7 +12,7 @@ fn start_stop() {
     let mut system = System::new();
     let node1 = system.make_node();
     let key1 = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -35,7 +35,7 @@ fn add_existing() {
     let key1 = KeyPair::new();
 
     // create a send block to send all of the nano supply to key1
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -55,7 +55,7 @@ fn add_existing() {
     assert_timely(Duration::from_secs(5), || node1.active.active(&send1));
 
     let key2 = KeyPair::new();
-    let mut send2 = BlockEnum::State(StateBlock::new(
+    let mut send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -93,7 +93,7 @@ fn add_two() {
     assert_eq!(node.ledger.cemented_count(), 5);
 
     // send 1 raw to account key3 from key1
-    let send_a = BlockEnum::State(StateBlock::new(
+    let send_a = Block::State(StateBlock::new(
         key1.public_key().as_account(),
         open1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -104,7 +104,7 @@ fn add_two() {
     ));
 
     // send 1 raw to account key3 from key2
-    let send_b = BlockEnum::State(StateBlock::new(
+    let send_b = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         open2.hash(),
         *DEV_GENESIS_PUB_KEY,

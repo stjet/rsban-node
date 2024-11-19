@@ -1,6 +1,6 @@
 use super::{BootstrapAttemptLegacy, BootstrapClient};
 use crate::utils::ThreadPool;
-use rsnano_core::{utils::MemoryStream, BlockEnum, BlockHash, BlockType};
+use rsnano_core::{utils::MemoryStream, Block, BlockHash, BlockType};
 use rsnano_ledger::Ledger;
 use rsnano_messages::Message;
 use rsnano_network::TrafficType;
@@ -75,7 +75,7 @@ pub trait BulkPushClientExt {
     fn start(&self);
     fn send_finished(&self);
     fn push(&self);
-    fn push_block(&self, block: &BlockEnum);
+    fn push_block(&self, block: &Block);
 }
 
 impl BulkPushClientExt for Arc<BulkPushClient> {
@@ -161,7 +161,7 @@ impl BulkPushClientExt for Arc<BulkPushClient> {
         }
     }
 
-    fn push_block(&self, block: &BlockEnum) {
+    fn push_block(&self, block: &Block) {
         let mut stream = MemoryStream::new();
         block.serialize(&mut stream);
         let buffer = Arc::new(stream.to_vec());

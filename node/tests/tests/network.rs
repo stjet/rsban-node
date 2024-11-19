@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount, BlockEnum, KeyPair, Root, StateBlock, Vote, DEV_GENESIS_KEY};
+use rsnano_core::{Account, Amount, Block, KeyPair, Root, StateBlock, Vote, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{ConfirmAck, Keepalive, Message, Publish};
 use rsnano_network::{ChannelMode, DropPolicy, TrafficType};
@@ -118,7 +118,7 @@ fn send_discarded_publish() {
     let node1 = system.make_node();
     let node2 = system.make_node();
 
-    let block = BlockEnum::State(StateBlock::new(
+    let block = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         2.into(),
         3.into(),
@@ -154,7 +154,7 @@ fn send_discarded_publish() {
 fn receivable_processor_confirm_insufficient_pos() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -184,7 +184,7 @@ fn receivable_processor_confirm_insufficient_pos() {
 fn receivable_processor_confirm_sufficient_pos() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -230,7 +230,7 @@ fn send_valid_confirm_ack() {
     let key2 = KeyPair::new();
     node1.insert_into_wallet(&DEV_GENESIS_KEY);
     node2.insert_into_wallet(&key2);
-    let block2 = BlockEnum::State(StateBlock::new(
+    let block2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -258,7 +258,7 @@ fn send_valid_publish() {
     node1.insert_into_wallet(&DEV_GENESIS_KEY);
     let key2 = KeyPair::new();
     node2.insert_into_wallet(&key2);
-    let block2 = BlockEnum::State(StateBlock::new(
+    let block2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -290,7 +290,7 @@ fn send_with_receive() {
     let node2 = system.make_node();
     let key2 = KeyPair::new();
     node1.insert_into_wallet(&DEV_GENESIS_KEY);
-    let block1 = BlockEnum::State(StateBlock::new(
+    let block1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

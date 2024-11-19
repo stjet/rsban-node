@@ -6,7 +6,7 @@ use crate::{
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    BlockEnum, BlockHash, Networks,
+    Block, BlockHash, Networks,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
@@ -259,7 +259,7 @@ impl LocalBlockBroadcaster {
     }
 
     /// Flood block to all PRs and a random selection of non-PRs
-    fn flood_block_initial(&self, block: BlockEnum) {
+    fn flood_block_initial(&self, block: Block) {
         let message = Message::Publish(Publish::new_from_originator(block));
         let mut publisher = self.message_publisher.lock().unwrap();
         publisher.flood_prs_and_some_non_prs(
@@ -383,7 +383,7 @@ struct LocalBlockBroadcasterData {
 
 #[derive(Clone)]
 struct LocalEntry {
-    block: Arc<BlockEnum>,
+    block: Arc<Block>,
     last_broadcast: Option<Instant>,
     next_broadcast: Instant,
     rebroadcasts: u32,

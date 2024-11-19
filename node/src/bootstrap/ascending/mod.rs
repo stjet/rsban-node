@@ -27,7 +27,7 @@ use priority::Priority;
 use rand::{thread_rng, RngCore};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Account, AccountInfo, BlockEnum, BlockHash, BlockType, HashOrAccount,
+    Account, AccountInfo, Block, BlockHash, BlockType, HashOrAccount,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{
@@ -787,7 +787,7 @@ impl BootstrapAscendingLogic {
         &mut self,
         stats: &Stats,
         status: BlockStatus,
-        block: &BlockEnum,
+        block: &Block,
         source: BlockSource,
         account: &Account,
     ) {

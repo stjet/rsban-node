@@ -74,12 +74,12 @@ impl ProcessArgsBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::BlockEnum;
+    use rsnano_core::Block;
     use serde_json::json;
 
     #[test]
     fn test_process_command_serialize() {
-        let process_args = ProcessArgs::build(BlockEnum::new_test_instance().json_representation())
+        let process_args = ProcessArgs::build(Block::new_test_instance().json_representation())
             .subtype(BlockSubTypeDto::Send)
             .force()
             .as_async()
@@ -135,10 +135,7 @@ mod tests {
         let deserialized: RpcCommand = serde_json::from_value(json).unwrap();
         if let RpcCommand::Process(args) = deserialized {
             assert_eq!(args.subtype, Some(BlockSubTypeDto::Receive));
-            assert_eq!(
-                args.block,
-                BlockEnum::new_test_instance().json_representation()
-            );
+            assert_eq!(args.block, Block::new_test_instance().json_representation());
             assert_eq!(args.force, Some(false.into()));
             assert_eq!(args.watch_work, Some(true.into()));
             assert_eq!(args.is_async, Some(false.into()));

@@ -1,7 +1,7 @@
 use rsnano_core::{
     to_hex_string,
     work::{WorkPool, WorkPoolImpl},
-    Account, BlockEnum, Root,
+    Account, Block, Root,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -61,7 +61,7 @@ impl DistributedWorkFactory {
         Self { work_pool, tokio }
     }
 
-    pub fn make_blocking_block(&self, block: &mut BlockEnum, difficulty: u64) -> Option<u64> {
+    pub fn make_blocking_block(&self, block: &mut Block, difficulty: u64) -> Option<u64> {
         let work = self.tokio.block_on(self.generate_work(WorkRequest {
             root: block.root(),
             difficulty,

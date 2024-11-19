@@ -1,4 +1,4 @@
-use rsnano_core::{BlockEnum, BlockHash};
+use rsnano_core::{Block, BlockHash};
 use rsnano_store_lmdb::{LmdbStore, Transaction};
 
 /// Goes back in the block history until it finds a block with representative information
@@ -20,11 +20,11 @@ impl<'a> RepresentativeBlockFinder<'a> {
                 return BlockHash::zero();
             };
             (current, result) = match &block {
-                BlockEnum::LegacySend(_) => (block.previous(), BlockHash::zero()),
-                BlockEnum::LegacyReceive(_) => (block.previous(), BlockHash::zero()),
-                BlockEnum::LegacyOpen(_) => (BlockHash::zero(), block.hash()),
-                BlockEnum::LegacyChange(_) => (BlockHash::zero(), block.hash()),
-                BlockEnum::State(_) => (BlockHash::zero(), block.hash()),
+                Block::LegacySend(_) => (block.previous(), BlockHash::zero()),
+                Block::LegacyReceive(_) => (block.previous(), BlockHash::zero()),
+                Block::LegacyOpen(_) => (BlockHash::zero(), block.hash()),
+                Block::LegacyChange(_) => (BlockHash::zero(), block.hash()),
+                Block::State(_) => (BlockHash::zero(), block.hash()),
             };
         }
 

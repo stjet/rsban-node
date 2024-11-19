@@ -1,5 +1,5 @@
 use rsnano_core::{
-    Amount, BlockEnum, KeyPair, StateBlock, UncheckedInfo, UncheckedKey, DEV_GENESIS_KEY,
+    Amount, Block, KeyPair, StateBlock, UncheckedInfo, UncheckedKey, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{block_processing::UncheckedMap, stats::Stats};
@@ -9,7 +9,7 @@ use test_helpers::{assert_timely, assert_timely_eq};
 #[test]
 fn one_bootstrap() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
-    let block1 = Arc::new(BlockEnum::State(StateBlock::new(
+    let block1 = Arc::new(Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -44,7 +44,7 @@ fn one_bootstrap() {
 #[test]
 fn simple() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
-    let block = Arc::new(BlockEnum::State(StateBlock::new(
+    let block = Arc::new(Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -81,7 +81,7 @@ fn simple() {
 #[test]
 fn multiple() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
-    let block = Arc::new(BlockEnum::State(StateBlock::new(
+    let block = Arc::new(Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -112,7 +112,7 @@ fn multiple() {
 #[test]
 fn double_put() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
-    let block = Arc::new(BlockEnum::State(StateBlock::new(
+    let block = Arc::new(Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -145,7 +145,7 @@ fn multiple_get() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
     // Instantiates three blocks
     let key1 = KeyPair::new();
-    let block1 = Arc::new(BlockEnum::State(StateBlock::new(
+    let block1 = Arc::new(Block::State(StateBlock::new(
         key1.account(),
         1.into(),
         *DEV_GENESIS_PUB_KEY,
@@ -155,7 +155,7 @@ fn multiple_get() {
         0,
     )));
     let key2 = KeyPair::new();
-    let block2 = Arc::new(BlockEnum::State(StateBlock::new(
+    let block2 = Arc::new(Block::State(StateBlock::new(
         key2.account(),
         2.into(),
         *DEV_GENESIS_PUB_KEY,
@@ -165,7 +165,7 @@ fn multiple_get() {
         0,
     )));
     let key3 = KeyPair::new();
-    let block3 = Arc::new(BlockEnum::State(StateBlock::new(
+    let block3 = Arc::new(Block::State(StateBlock::new(
         key3.account(),
         3.into(),
         *DEV_GENESIS_PUB_KEY,

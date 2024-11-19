@@ -267,7 +267,7 @@ pub static STUB_WORK_POOL: LazyLock<StubWorkPool> =
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BlockBuilder, BlockEnum};
+    use crate::{Block, BlockBuilder};
     use std::sync::mpsc;
 
     pub static WORK_POOL: LazyLock<WorkPoolImpl> = LazyLock::new(|| {
@@ -343,7 +343,7 @@ mod tests {
         assert!(result_difficulty > difficulty2);
     }
 
-    fn difficulty(block: &BlockEnum) -> u64 {
+    fn difficulty(block: &Block) -> u64 {
         WorkThresholds::publish_dev().difficulty_block(block)
     }
 }

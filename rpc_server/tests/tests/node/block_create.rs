@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, BlockEnum, BlockType, KeyPair, WalletId, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, BlockType, KeyPair, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_node::wallets::WalletsExt;
 use rsnano_rpc_messages::{BlockCreateArgs, BlockTypeDto};
@@ -43,7 +43,7 @@ fn block_create_state() {
     });
 
     let block_hash = result.hash;
-    let block: BlockEnum = result.block.into();
+    let block: Block = result.block.into();
 
     assert_eq!(block.block_type(), BlockType::State);
     assert_eq!(block.hash(), block_hash);

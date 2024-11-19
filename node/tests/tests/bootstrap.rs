@@ -1,5 +1,5 @@
 use rsnano_core::{
-    Account, Amount, BlockEnum, BlockHash, KeyPair, Link, StateBlock, UncheckedKey, WalletId,
+    Account, Amount, Block, BlockHash, KeyPair, Link, StateBlock, UncheckedKey, WalletId,
     DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
@@ -419,7 +419,7 @@ mod bootstrap_processor {
         let key2 = KeyPair::new();
 
         // send Gxrb_ratio raw from genesis to genesis
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -430,7 +430,7 @@ mod bootstrap_processor {
         ));
 
         // receive send1
-        let receive1 = BlockEnum::State(StateBlock::new(
+        let receive1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             send1.hash(),
             *DEV_GENESIS_PUB_KEY,
@@ -441,7 +441,7 @@ mod bootstrap_processor {
         ));
 
         // change rep of genesis account to be key1
-        let change1 = BlockEnum::State(StateBlock::new(
+        let change1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             receive1.hash(),
             key1.public_key(),
@@ -452,7 +452,7 @@ mod bootstrap_processor {
         ));
 
         // change rep of genesis account to be key2
-        let change2 = BlockEnum::State(StateBlock::new(
+        let change2 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             change1.hash(),
             key2.public_key(),
@@ -463,7 +463,7 @@ mod bootstrap_processor {
         ));
 
         // send Gxrb_ratio from genesis to key1 and genesis rep back to genesis account
-        let send2 = BlockEnum::State(StateBlock::new(
+        let send2 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             change2.hash(),
             *DEV_GENESIS_PUB_KEY,
@@ -474,7 +474,7 @@ mod bootstrap_processor {
         ));
 
         // receive send2 and rep of key1 to be itself
-        let receive2 = BlockEnum::State(StateBlock::new(
+        let receive2 = Block::State(StateBlock::new(
             key1.account(),
             BlockHash::zero(),
             key1.public_key(),
@@ -485,7 +485,7 @@ mod bootstrap_processor {
         ));
 
         // send Gxrb_ratio raw, all available balance, from key1 to key2
-        let send3 = BlockEnum::State(StateBlock::new(
+        let send3 = Block::State(StateBlock::new(
             key1.account(),
             receive2.hash(),
             key1.public_key(),
@@ -496,7 +496,7 @@ mod bootstrap_processor {
         ));
 
         // receive send3 on key2, set rep of key2 to be itself
-        let receive3 = BlockEnum::State(StateBlock::new(
+        let receive3 = Block::State(StateBlock::new(
             key2.account(),
             BlockHash::zero(),
             key2.public_key(),
@@ -665,7 +665,7 @@ mod bootstrap_processor {
 
         node0.insert_into_wallet(&DEV_GENESIS_KEY);
 
-        let block1 = BlockEnum::State(StateBlock::new(
+        let block1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -675,7 +675,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
-        let block2 = BlockEnum::State(StateBlock::new(
+        let block2 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             block1.hash(),
             *DEV_GENESIS_PUB_KEY,
@@ -949,7 +949,7 @@ mod bootstrap_processor {
         let key1 = KeyPair::new();
         let key2 = KeyPair::new();
 
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -959,7 +959,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
-        let receive1 = BlockEnum::State(StateBlock::new(
+        let receive1 = Block::State(StateBlock::new(
             key1.account(),
             BlockHash::zero(),
             key1.public_key(),
@@ -969,7 +969,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(&key1),
         ));
 
-        let send2 = BlockEnum::State(StateBlock::new(
+        let send2 = Block::State(StateBlock::new(
             key1.account(),
             receive1.hash(),
             key1.public_key(),
@@ -979,7 +979,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(receive1.hash()),
         ));
 
-        let receive2 = BlockEnum::State(StateBlock::new(
+        let receive2 = Block::State(StateBlock::new(
             key2.account(),
             BlockHash::zero(),
             key2.public_key(),
@@ -1039,7 +1039,7 @@ mod bootstrap_processor {
         let key2 = KeyPair::new();
         // Generating test chain
 
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -1049,7 +1049,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
-        let receive1 = BlockEnum::State(StateBlock::new(
+        let receive1 = Block::State(StateBlock::new(
             key1.account(),
             BlockHash::zero(),
             key1.public_key(),
@@ -1059,7 +1059,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(&key1),
         ));
 
-        let send2 = BlockEnum::State(StateBlock::new(
+        let send2 = Block::State(StateBlock::new(
             key1.account(),
             receive1.hash(),
             key1.public_key(),
@@ -1069,7 +1069,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(receive1.hash()),
         ));
 
-        let receive2 = BlockEnum::State(StateBlock::new(
+        let receive2 = Block::State(StateBlock::new(
             key2.account(),
             BlockHash::zero(),
             key2.public_key(),
@@ -1143,7 +1143,7 @@ mod bootstrap_processor {
         let key2 = KeyPair::new();
 
         // send from genesis to key1
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -1154,7 +1154,7 @@ mod bootstrap_processor {
         ));
 
         // send from genesis to key2
-        let send2 = BlockEnum::State(StateBlock::new(
+        let send2 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             send1.hash(),
             *DEV_GENESIS_PUB_KEY,
@@ -1165,7 +1165,7 @@ mod bootstrap_processor {
         ));
 
         // open account key1
-        let receive1 = BlockEnum::State(StateBlock::new(
+        let receive1 = Block::State(StateBlock::new(
             key1.account(),
             BlockHash::zero(),
             key1.public_key(),
@@ -1176,7 +1176,7 @@ mod bootstrap_processor {
         ));
 
         //  open account key2
-        let receive2 = BlockEnum::State(StateBlock::new(
+        let receive2 = Block::State(StateBlock::new(
             key2.account(),
             BlockHash::zero(),
             key2.public_key(),
@@ -1272,7 +1272,7 @@ mod bootstrap_processor {
 
         let key1 = KeyPair::new();
 
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -1317,7 +1317,7 @@ mod bootstrap_processor {
         let key2 = KeyPair::new();
         // Generating test chain
 
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -1327,7 +1327,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
-        let receive1 = BlockEnum::State(StateBlock::new(
+        let receive1 = Block::State(StateBlock::new(
             key1.account(),
             BlockHash::zero(),
             key1.public_key(),
@@ -1337,7 +1337,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(&key1),
         ));
 
-        let send2 = BlockEnum::State(StateBlock::new(
+        let send2 = Block::State(StateBlock::new(
             key1.account(),
             receive1.hash(),
             key1.public_key(),
@@ -1347,7 +1347,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(receive1.hash()),
         ));
 
-        let receive2 = BlockEnum::State(StateBlock::new(
+        let receive2 = Block::State(StateBlock::new(
             key2.account(),
             BlockHash::zero(),
             key2.public_key(),
@@ -1421,7 +1421,7 @@ mod bootstrap_processor {
         let key2 = KeyPair::new();
         // Generating test chain
 
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -1431,7 +1431,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(*DEV_GENESIS_HASH),
         ));
 
-        let receive1 = BlockEnum::State(StateBlock::new(
+        let receive1 = Block::State(StateBlock::new(
             key1.account(),
             BlockHash::zero(),
             key1.public_key(),
@@ -1441,7 +1441,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(&key1),
         ));
 
-        let send2 = BlockEnum::State(StateBlock::new(
+        let send2 = Block::State(StateBlock::new(
             key1.account(),
             receive1.hash(),
             key1.public_key(),
@@ -1451,7 +1451,7 @@ mod bootstrap_processor {
             node0.work_generate_dev(receive1.hash()),
         ));
 
-        let receive2 = BlockEnum::State(StateBlock::new(
+        let receive2 = Block::State(StateBlock::new(
             key2.account(),
             BlockHash::zero(),
             key2.public_key(),
@@ -1512,7 +1512,7 @@ mod bootstrap_processor {
             .unwrap();
 
         // send all balance from genesis to key
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -1524,7 +1524,7 @@ mod bootstrap_processor {
         node1.process(send1.clone()).unwrap();
 
         // open key account receiving all balance of genesis
-        let open = BlockEnum::State(StateBlock::new(
+        let open = Block::State(StateBlock::new(
             key.account(),
             BlockHash::zero(),
             key.public_key(),
@@ -1536,7 +1536,7 @@ mod bootstrap_processor {
         node1.process(open.clone()).unwrap();
 
         // send from key to genesis 100 raw
-        let send2 = BlockEnum::State(StateBlock::new(
+        let send2 = Block::State(StateBlock::new(
             key.account(),
             open.hash(),
             key.public_key(),
@@ -1548,7 +1548,7 @@ mod bootstrap_processor {
         node1.process(send2.clone()).unwrap();
 
         // receive the 100 raw on genesis
-        let receive = BlockEnum::State(StateBlock::new(
+        let receive = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             send1.hash(),
             *DEV_GENESIS_PUB_KEY,
@@ -1672,7 +1672,7 @@ mod bulk_pull {
             )
             .unwrap();
         let latest = node.latest(&DEV_GENESIS_ACCOUNT);
-        let open = BlockEnum::State(StateBlock::new(
+        let open = Block::State(StateBlock::new(
             key2.account(),
             BlockHash::zero(),
             key2.public_key(),
@@ -1728,7 +1728,7 @@ mod bulk_pull {
         let mut system = System::new();
         let node = system.make_node();
 
-        let block1 = BlockEnum::State(StateBlock::new(
+        let block1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -1757,7 +1757,7 @@ mod bulk_pull {
         let mut system = System::new();
         let node = system.make_node();
 
-        let block1 = BlockEnum::State(StateBlock::new(
+        let block1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -1788,7 +1788,7 @@ mod bulk_pull {
         let mut system = System::new();
         let node = system.make_node();
 
-        let block1 = BlockEnum::State(StateBlock::new(
+        let block1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -1850,7 +1850,7 @@ mod bulk_pull {
         let mut system = System::new();
         let node = system.make_node();
 
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -1861,7 +1861,7 @@ mod bulk_pull {
         ));
         node.process(send1.clone()).unwrap();
 
-        let receive1 = BlockEnum::State(StateBlock::new(
+        let receive1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             send1.hash(),
             *DEV_GENESIS_PUB_KEY,
@@ -1954,7 +1954,7 @@ mod frontier_req {
         )
         .unwrap();
 
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -1965,7 +1965,7 @@ mod frontier_req {
         ));
         node.process(send1.clone()).unwrap();
 
-        let receive1 = BlockEnum::State(StateBlock::new(
+        let receive1 = Block::State(StateBlock::new(
             key1.account(),
             BlockHash::zero(),
             *DEV_GENESIS_PUB_KEY,
@@ -2044,7 +2044,7 @@ mod frontier_req {
             key_after_genesis = KeyPair::new();
         }
 
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,
@@ -2055,7 +2055,7 @@ mod frontier_req {
         ));
         node.process(send1.clone()).unwrap();
 
-        let send2 = BlockEnum::State(StateBlock::new(
+        let send2 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             send1.hash(),
             *DEV_GENESIS_PUB_KEY,
@@ -2066,7 +2066,7 @@ mod frontier_req {
         ));
         node.process(send2.clone()).unwrap();
 
-        let receive1 = BlockEnum::State(StateBlock::new(
+        let receive1 = Block::State(StateBlock::new(
             key_before_genesis.account(),
             BlockHash::zero(),
             *DEV_GENESIS_PUB_KEY,
@@ -2077,7 +2077,7 @@ mod frontier_req {
         ));
         node.process(receive1.clone()).unwrap();
 
-        let receive2 = BlockEnum::State(StateBlock::new(
+        let receive2 = Block::State(StateBlock::new(
             key_after_genesis.account(),
             BlockHash::zero(),
             *DEV_GENESIS_PUB_KEY,
@@ -2554,7 +2554,7 @@ fn push_diamond_pruning() {
     let key = KeyPair::new();
 
     // send all balance from genesis to key
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2566,7 +2566,7 @@ fn push_diamond_pruning() {
     node1.process(send1.clone()).unwrap();
 
     // receive all balance on key
-    let open = BlockEnum::State(StateBlock::new(
+    let open = Block::State(StateBlock::new(
         key.public_key().as_account(),
         BlockHash::zero(),
         1.into(),
@@ -2595,7 +2595,7 @@ fn push_diamond_pruning() {
     // Process more blocks & prune old
 
     // send 100 raw from key to genesis
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         key.public_key().as_account(),
         open.hash(),
         1.into(),
@@ -2607,7 +2607,7 @@ fn push_diamond_pruning() {
     node1.process(send2.clone()).unwrap();
 
     // receive the 100 raw from key on genesis
-    let receive = BlockEnum::State(StateBlock::new(
+    let receive = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         1.into(),
@@ -2709,7 +2709,7 @@ fn lazy_max_pull_count() {
     let key2 = KeyPair::new();
 
     // Generating test chain
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -2718,7 +2718,7 @@ fn lazy_max_pull_count() {
         &DEV_GENESIS_KEY,
         node0.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let receive1 = BlockEnum::State(StateBlock::new(
+    let receive1 = Block::State(StateBlock::new(
         key1.public_key().as_account(),
         BlockHash::zero(),
         key1.public_key(),
@@ -2727,7 +2727,7 @@ fn lazy_max_pull_count() {
         &key1,
         node0.work_generate_dev(&key1),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         key1.public_key().as_account(),
         receive1.hash(),
         key1.public_key(),
@@ -2736,7 +2736,7 @@ fn lazy_max_pull_count() {
         &key1,
         node0.work_generate_dev(receive1.hash()),
     ));
-    let receive2 = BlockEnum::State(StateBlock::new(
+    let receive2 = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         BlockHash::zero(),
         key2.public_key(),
@@ -2745,7 +2745,7 @@ fn lazy_max_pull_count() {
         &key2,
         node0.work_generate_dev(&key2),
     ));
-    let change1 = BlockEnum::State(StateBlock::new(
+    let change1 = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         receive2.hash(),
         key1.public_key(),
@@ -2754,7 +2754,7 @@ fn lazy_max_pull_count() {
         &key2,
         node0.work_generate_dev(receive2.hash()),
     ));
-    let change2 = BlockEnum::State(StateBlock::new(
+    let change2 = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         change1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -2763,7 +2763,7 @@ fn lazy_max_pull_count() {
         &key2,
         node0.work_generate_dev(change1.hash()),
     ));
-    let change3 = BlockEnum::State(StateBlock::new(
+    let change3 = Block::State(StateBlock::new(
         key2.public_key().as_account(),
         change2.hash(),
         key2.public_key(),

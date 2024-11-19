@@ -8,7 +8,7 @@ use crate::{
 };
 use rsnano_core::{
     utils::{milliseconds_since_epoch, ContainerInfo, ContainerInfoComponent},
-    BlockEnum, BlockHash, Root, Vote,
+    Block, BlockHash, Root, Vote,
 };
 use rsnano_ledger::{Ledger, Writer};
 use rsnano_messages::{ConfirmAck, Message};
@@ -112,7 +112,7 @@ impl VoteGenerator {
     }
 
     /// Queue blocks for vote generation, returning the number of successful candidates.
-    pub(crate) fn generate(&self, blocks: &[Arc<BlockEnum>], channel_id: ChannelId) -> usize {
+    pub(crate) fn generate(&self, blocks: &[Arc<Block>], channel_id: ChannelId) -> usize {
         let req_candidates = {
             let txn = self.ledger.read_txn();
             blocks

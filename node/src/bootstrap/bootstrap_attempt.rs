@@ -5,7 +5,7 @@ use crate::{
     websocket::{OutgoingMessageEnvelope, Topic, WebsocketListener},
 };
 use anyhow::Result;
-use rsnano_core::{encode_hex, utils::PropertyTree, Account, BlockEnum};
+use rsnano_core::{encode_hex, utils::PropertyTree, Account, Block};
 use rsnano_ledger::Ledger;
 use rsnano_network::ChannelId;
 use serde::{Deserialize, Serialize};
@@ -39,7 +39,7 @@ pub trait BootstrapAttemptTrait {
     fn run(&self);
     fn process_block(
         &self,
-        block: Arc<BlockEnum>,
+        block: Arc<Block>,
         known_account: &Account,
         pull_blocks_processed: u64,
         max_blocks: u32,
@@ -171,7 +171,7 @@ impl BootstrapAttempt {
         }
     }
 
-    pub fn process_block(&self, block: Arc<BlockEnum>, pull_blocks_processed: u64) -> bool {
+    pub fn process_block(&self, block: Arc<Block>, pull_blocks_processed: u64) -> bool {
         let mut stop_pull = false;
         let hash = block.hash();
         // If block already exists in the ledger, then we can avoid next part of long account chain

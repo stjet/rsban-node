@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use test_helpers::{assert_timely, System};
 
@@ -11,7 +11,7 @@ use test_helpers::{assert_timely, System};
 fn account_base() {
     let mut system = System::new();
     let node0 = system.make_node();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -32,7 +32,7 @@ fn account_base() {
 fn account_inductive() {
     let mut system = System::new();
     let node0 = system.make_node();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -41,7 +41,7 @@ fn account_inductive() {
         &DEV_GENESIS_KEY,
         node0.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -67,7 +67,7 @@ fn trace_base() {
     let mut system = System::new();
     let node0 = system.make_node();
     let key = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -76,7 +76,7 @@ fn trace_base() {
         &DEV_GENESIS_KEY,
         node0.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let receive1 = BlockEnum::State(StateBlock::new(
+    let receive1 = Block::State(StateBlock::new(
         key.public_key().as_account(),
         BlockHash::zero(),
         *DEV_GENESIS_PUB_KEY,

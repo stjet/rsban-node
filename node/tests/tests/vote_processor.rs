@@ -1,6 +1,6 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, Amount, BlockEnum, KeyPair, Signature, StateBlock, Vote,
-    VoteCode, VoteSource, DEV_GENESIS_KEY,
+    utils::milliseconds_since_epoch, Amount, Block, KeyPair, Signature, StateBlock, Vote, VoteCode,
+    VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
@@ -308,7 +308,7 @@ fn no_broadcast_local() {
 
     // Reduce the weight of genesis to 2x default min voting weight
     let key = KeyPair::new();
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -385,7 +385,7 @@ fn local_broadcast_without_a_representative() {
         .finish();
     // Reduce the weight of genesis to 2x default min voting weight
     let key = KeyPair::new();
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -465,7 +465,7 @@ fn no_broadcast_local_with_a_principal_representative() {
         .finish();
     // Reduce the weight of genesis to 2x default min voting weight
     let key = KeyPair::new();
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

@@ -1,5 +1,5 @@
 use rsnano_core::{
-    Amount, BlockEnum, BlockHash, Epoch, KeyPair, Root, Signature, StateBlock, Vote, VoteCode,
+    Amount, Block, BlockHash, Epoch, KeyPair, Root, Signature, StateBlock, Vote, VoteCode,
     VoteSource, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
@@ -22,7 +22,7 @@ fn check_signature() {
     config.online_weight_minimum = Amount::MAX;
     let node = system.build_node().config(config).finish();
     let key1 = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -72,7 +72,7 @@ fn add_old() {
     let mut system = System::new();
     let node = system.make_node();
     let key1 = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -98,7 +98,7 @@ fn add_old() {
         .vote_blocking(&vote1, channel.channel_id(), VoteSource::Live);
 
     let key2 = KeyPair::new();
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -137,7 +137,7 @@ fn add_cooldown() {
     let mut system = System::new();
     let node = system.make_node();
     let key1 = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -163,7 +163,7 @@ fn add_cooldown() {
         .vote_blocking(&vote1, channel.channel_id(), VoteSource::Live);
 
     let key2 = KeyPair::new();
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -372,7 +372,7 @@ fn vote_spacing_vote_generator() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
-    let mut send1 = BlockEnum::State(StateBlock::new(
+    let mut send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -382,7 +382,7 @@ fn vote_spacing_vote_generator() {
         node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
-    let mut send2 = BlockEnum::State(StateBlock::new(
+    let mut send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -467,7 +467,7 @@ fn vote_spacing_rapid() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
-    let mut send1 = BlockEnum::State(StateBlock::new(
+    let mut send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -477,7 +477,7 @@ fn vote_spacing_rapid() {
         node.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
-    let mut send2 = BlockEnum::State(StateBlock::new(
+    let mut send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

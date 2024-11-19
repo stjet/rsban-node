@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, BlockEnum};
+use rsnano_core::{Amount, Block};
 
 use std::{
     sync::Arc,
@@ -49,7 +49,7 @@ impl From<ElectionStatusType> for DetailType {
 /// Information on the status of an election
 #[derive(Clone)]
 pub struct ElectionStatus {
-    pub winner: Option<Arc<BlockEnum>>,
+    pub winner: Option<Arc<Block>>,
     pub tally: Amount,
     pub final_tally: Amount,
     pub confirmation_request_count: u32,

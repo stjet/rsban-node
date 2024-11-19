@@ -16,7 +16,7 @@ use super::{
 };
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Amount, BlockEnum, BlockHash, PublicKey, VoteCode, VoteSource,
+    Amount, Block, BlockHash, PublicKey, VoteCode, VoteSource,
 };
 use rsnano_ledger::Ledger;
 use std::{
@@ -104,7 +104,7 @@ impl VoteApplier {
     pub fn tally_impl(
         &self,
         guard: &mut MutexGuard<ElectionData>,
-    ) -> BTreeMap<TallyKey, Arc<BlockEnum>> {
+    ) -> BTreeMap<TallyKey, Arc<Block>> {
         let mut block_weights: HashMap<BlockHash, Amount> = HashMap::new();
         let mut final_weights: HashMap<BlockHash, Amount> = HashMap::new();
         for (account, info) in &guard.last_votes {
@@ -151,7 +151,7 @@ impl VoteApplier {
         }
     }
 
-    pub fn have_quorum(&self, tally: &BTreeMap<TallyKey, Arc<BlockEnum>>) -> bool {
+    pub fn have_quorum(&self, tally: &BTreeMap<TallyKey, Arc<Block>>) -> bool {
         let mut it = tally.keys();
         let first = it.next().map(|i| i.amount()).unwrap_or_default();
         let second = it.next().map(|i| i.amount()).unwrap_or_default();

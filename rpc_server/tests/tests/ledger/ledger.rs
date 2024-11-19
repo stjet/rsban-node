@@ -1,15 +1,15 @@
-use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::Node;
 use rsnano_rpc_messages::LedgerArgs;
 use std::sync::Arc;
 use test_helpers::{setup_rpc_client_and_server, System};
 
-fn setup_test_environment(node: Arc<Node>) -> (KeyPair, BlockEnum, BlockEnum) {
+fn setup_test_environment(node: Arc<Node>) -> (KeyPair, Block, Block) {
     let keys = KeyPair::new();
     let rep_weight = Amount::MAX - Amount::raw(100);
 
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -22,7 +22,7 @@ fn setup_test_environment(node: Arc<Node>) -> (KeyPair, BlockEnum, BlockEnum) {
     let status = node.process_local(send.clone()).unwrap();
     assert_eq!(status, BlockStatus::Progress);
 
-    let open = BlockEnum::State(StateBlock::new(
+    let open = Block::State(StateBlock::new(
         keys.account(),
         BlockHash::zero(),
         *DEV_GENESIS_PUB_KEY,
@@ -120,7 +120,7 @@ fn test_ledger_pending() {
     );
 
     let status = node
-        .process_local(BlockEnum::State(send2_block.clone()))
+        .process_local(Block::State(send2_block.clone()))
         .unwrap();
     assert_eq!(status, BlockStatus::Progress);
 

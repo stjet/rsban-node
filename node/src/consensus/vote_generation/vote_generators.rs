@@ -3,7 +3,7 @@ use crate::{
     config::NodeConfig, consensus::VoteBroadcaster, stats::Stats, transport::MessagePublisher,
     wallets::Wallets, NetworkParams,
 };
-use rsnano_core::{utils::ContainerInfoComponent, BlockEnum, BlockHash, Root};
+use rsnano_core::{utils::ContainerInfoComponent, Block, BlockHash, Root};
 use rsnano_ledger::Ledger;
 use rsnano_network::ChannelId;
 use std::{sync::Arc, time::Duration};
@@ -72,7 +72,7 @@ impl VoteGenerators {
 
     pub(crate) fn generate_final_votes(
         &self,
-        blocks: &[Arc<BlockEnum>],
+        blocks: &[Arc<Block>],
         channel_id: ChannelId,
     ) -> usize {
         self.final_vote_generator.generate(blocks, channel_id)
@@ -82,11 +82,7 @@ impl VoteGenerators {
         self.non_final_vote_generator.add(root, hash);
     }
 
-    pub fn generate_non_final_votes(
-        &self,
-        blocks: &[Arc<BlockEnum>],
-        channel_id: ChannelId,
-    ) -> usize {
+    pub fn generate_non_final_votes(&self, blocks: &[Arc<Block>], channel_id: ChannelId) -> usize {
         self.non_final_vote_generator.generate(blocks, channel_id)
     }
 

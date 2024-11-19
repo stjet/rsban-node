@@ -1,6 +1,6 @@
 use rsnano_core::{
-    Account, Amount, BlockEnum, BlockHash, Epoch, KeyPair, PublicKey, SendBlock, Signature,
-    StateBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
+    Account, Amount, Block, BlockHash, Epoch, KeyPair, PublicKey, SendBlock, Signature, StateBlock,
+    Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
@@ -29,7 +29,7 @@ mod votes {
         let mut system = System::new();
         let node1 = system.make_node();
         let key1 = KeyPair::new();
-        let send1 = BlockEnum::LegacySend(SendBlock::new(
+        let send1 = Block::LegacySend(SendBlock::new(
             &DEV_GENESIS_HASH,
             &key1.public_key().as_account(),
             &(Amount::MAX - Amount::raw(100)),
@@ -110,7 +110,7 @@ mod votes {
         };
         let node1 = system.build_node().config(config).finish();
         let key1 = KeyPair::new();
-        let send1 = BlockEnum::State(StateBlock::new(
+        let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY, // No representative, blocks can't confirm
@@ -142,7 +142,7 @@ mod votes {
             Vote::TIMESTAMP_MIN
         );
         let key2 = KeyPair::new();
-        let send2 = BlockEnum::State(StateBlock::new(
+        let send2 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY, // No representative, blocks can't confirm
@@ -228,7 +228,7 @@ fn epoch_open_pending() {
     let mut system = System::new();
     let node1 = system.make_node();
     let key1 = KeyPair::new();
-    let epoch_open = BlockEnum::State(StateBlock::new(
+    let epoch_open = Block::State(StateBlock::new(
         key1.account(),
         BlockHash::zero(),
         PublicKey::zero(),
@@ -254,7 +254,7 @@ fn epoch_open_pending() {
         epoch_open.full_hash()
     );
     // New block to process epoch open
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -281,7 +281,7 @@ fn block_hash_account_conflict() {
      * Generate a send block whose destination is a block hash already
      * in the ledger and not an account
      */
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -291,7 +291,7 @@ fn block_hash_account_conflict() {
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
-    let receive1 = BlockEnum::State(StateBlock::new(
+    let receive1 = Block::State(StateBlock::new(
         key1.account(),
         BlockHash::zero(),
         *DEV_GENESIS_PUB_KEY,
@@ -307,7 +307,7 @@ fn block_hash_account_conflict() {
      * received , except by epoch blocks, which can sign an open block
      * for arbitrary accounts.
      */
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         key1.account(),
         receive1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -320,7 +320,7 @@ fn block_hash_account_conflict() {
     /*
      * Generate an epoch open for the account with the same value as the block hash
      */
-    let open_epoch1 = BlockEnum::State(StateBlock::new(
+    let open_epoch1 = Block::State(StateBlock::new(
         Account::from_bytes(*receive1.hash().as_bytes()),
         BlockHash::zero(),
         PublicKey::zero(),
@@ -367,7 +367,7 @@ fn unchecked_epoch() {
     let node1 = system.make_node();
     let destination = KeyPair::new();
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -377,7 +377,7 @@ fn unchecked_epoch() {
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
-    let open1 = BlockEnum::State(StateBlock::new(
+    let open1 = Block::State(StateBlock::new(
         destination.account(),
         BlockHash::zero(),
         destination.public_key(),
@@ -387,7 +387,7 @@ fn unchecked_epoch() {
         node1.work_generate_dev(&destination),
     ));
 
-    let epoch1 = BlockEnum::State(StateBlock::new(
+    let epoch1 = Block::State(StateBlock::new(
         destination.account(),
         open1.hash(),
         destination.public_key(),
@@ -440,7 +440,7 @@ fn unchecked_epoch_invalid() {
         .finish();
 
     let destination = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -449,7 +449,7 @@ fn unchecked_epoch_invalid() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let open1 = BlockEnum::State(StateBlock::new(
+    let open1 = Block::State(StateBlock::new(
         destination.account(),
         BlockHash::zero(),
         destination.public_key(),
@@ -460,7 +460,7 @@ fn unchecked_epoch_invalid() {
     ));
 
     // Epoch block with account own signature
-    let epoch1 = BlockEnum::State(StateBlock::new(
+    let epoch1 = Block::State(StateBlock::new(
         destination.account(),
         open1.hash(),
         destination.public_key(),
@@ -470,7 +470,7 @@ fn unchecked_epoch_invalid() {
         node1.work_generate_dev(open1.hash()),
     ));
     // Pseudo epoch block (send subtype, destination - epoch link)
-    let epoch2 = BlockEnum::State(StateBlock::new(
+    let epoch2 = Block::State(StateBlock::new(
         destination.account(),
         open1.hash(),
         destination.public_key(),
@@ -531,7 +531,7 @@ fn unchecked_open() {
     let mut system = System::new();
     let node1 = system.make_node();
     let destination = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -540,7 +540,7 @@ fn unchecked_open() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let open1 = BlockEnum::State(StateBlock::new(
+    let open1 = Block::State(StateBlock::new(
         destination.account(),
         BlockHash::zero(),
         destination.public_key(),
@@ -550,7 +550,7 @@ fn unchecked_open() {
         node1.work_generate_dev(&destination),
     ));
     // Invalid signature for open block
-    let mut open2 = BlockEnum::State(StateBlock::new(
+    let mut open2 = Block::State(StateBlock::new(
         destination.account(),
         BlockHash::zero(),
         destination.public_key(),
@@ -585,7 +585,7 @@ fn unchecked_receive() {
     let mut system = System::new();
     let node1 = system.make_node();
     let destination = KeyPair::new();
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -594,7 +594,7 @@ fn unchecked_receive() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -603,7 +603,7 @@ fn unchecked_receive() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(send1.hash()),
     ));
-    let open1 = BlockEnum::State(StateBlock::new(
+    let open1 = Block::State(StateBlock::new(
         destination.account(),
         BlockHash::zero(),
         destination.public_key(),
@@ -612,7 +612,7 @@ fn unchecked_receive() {
         &destination,
         node1.work_generate_dev(&destination),
     ));
-    let receive1 = BlockEnum::State(StateBlock::new(
+    let receive1 = Block::State(StateBlock::new(
         destination.account(),
         open1.hash(),
         destination.public_key(),

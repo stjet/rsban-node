@@ -22,11 +22,11 @@ impl BlockHashArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{BlockEnum, StateBlock};
+    use rsnano_core::{Block, StateBlock};
 
     #[test]
     fn serialize_block_hash_args() {
-        let block = BlockEnum::State(StateBlock::new_test_instance());
+        let block = Block::State(StateBlock::new_test_instance());
         let block_hash_args = BlockHashArgs::new(block.json_representation());
         let serialized = serde_json::to_string_pretty(&block_hash_args).unwrap();
 
@@ -66,7 +66,7 @@ mod tests {
 
         let deserialized: BlockHashArgs = serde_json::from_str(json).unwrap();
 
-        let block = BlockEnum::State(StateBlock::new_test_instance());
+        let block = Block::State(StateBlock::new_test_instance());
 
         assert_eq!(
             deserialized,
@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn serialize_block_hash_command() {
-        let block = BlockEnum::State(StateBlock::new_test_instance());
+        let block = Block::State(StateBlock::new_test_instance());
         let block_hash_command = RpcCommand::block_hash(block.json_representation());
         let serialized = serde_json::to_string_pretty(&block_hash_command).unwrap();
 
@@ -118,7 +118,7 @@ mod tests {
 
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();
 
-        let block = BlockEnum::State(StateBlock::new_test_instance());
+        let block = Block::State(StateBlock::new_test_instance());
         let block_hash_command = RpcCommand::block_hash(block.json_representation());
 
         assert_eq!(deserialized, block_hash_command);

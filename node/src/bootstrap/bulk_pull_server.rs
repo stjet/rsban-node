@@ -2,7 +2,7 @@ use crate::{
     transport::{ResponseServer, ResponseServerExt},
     utils::ThreadPool,
 };
-use rsnano_core::{utils::MemoryStream, Account, BlockEnum, BlockHash, BlockType};
+use rsnano_core::{utils::MemoryStream, Account, Block, BlockHash, BlockType};
 use rsnano_ledger::Ledger;
 use rsnano_messages::BulkPull;
 use rsnano_network::TrafficType;
@@ -90,7 +90,7 @@ impl BulkPullServer {
         self.server_impl.lock().unwrap().include_start = value
     }
 
-    pub fn get_next(&self) -> Option<BlockEnum> {
+    pub fn get_next(&self) -> Option<Block> {
         self.server_impl.lock().unwrap().get_next()
     }
 
@@ -187,7 +187,7 @@ impl BulkPullServerImpl {
         self.max_count = self.request.count;
     }
 
-    pub fn get_next(&mut self) -> Option<BlockEnum> {
+    pub fn get_next(&mut self) -> Option<Block> {
         let mut send_current = false;
         let mut set_current_to_end = false;
 

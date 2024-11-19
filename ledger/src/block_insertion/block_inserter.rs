@@ -1,7 +1,5 @@
 use crate::Ledger;
-use rsnano_core::{
-    Account, AccountInfo, Amount, BlockEnum, BlockSideband, PendingInfo, PendingKey,
-};
+use rsnano_core::{Account, AccountInfo, Amount, Block, BlockSideband, PendingInfo, PendingKey};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::sync::atomic::Ordering;
 
@@ -20,7 +18,7 @@ pub(crate) struct BlockInsertInstructions {
 pub(crate) struct BlockInserter<'a> {
     ledger: &'a Ledger,
     txn: &'a mut LmdbWriteTransaction,
-    block: &'a mut BlockEnum,
+    block: &'a mut Block,
     instructions: &'a BlockInsertInstructions,
 }
 
@@ -28,7 +26,7 @@ impl<'a> BlockInserter<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
         txn: &'a mut LmdbWriteTransaction,
-        block: &'a mut BlockEnum,
+        block: &'a mut Block,
         instructions: &'a BlockInsertInstructions,
     ) -> Self {
         Self {
@@ -186,7 +184,7 @@ mod tests {
 
     fn insert(
         ledger: &Ledger,
-        block: &mut BlockEnum,
+        block: &mut Block,
         instructions: &BlockInsertInstructions,
     ) -> InsertResult {
         let mut txn = ledger.rw_txn();
@@ -207,13 +205,13 @@ mod tests {
     }
 
     struct InsertResult {
-        saved_blocks: Vec<BlockEnum>,
+        saved_blocks: Vec<Block>,
         saved_accounts: Vec<(Account, AccountInfo)>,
         saved_pending: Vec<(PendingKey, PendingInfo)>,
         deleted_pending: Vec<PendingKey>,
     }
 
-    fn legacy_open_block_instructions() -> (BlockEnum, BlockInsertInstructions) {
+    fn legacy_open_block_instructions() -> (Block, BlockInsertInstructions) {
         let block = BlockBuilder::legacy_open().build();
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
@@ -237,7 +235,7 @@ mod tests {
         (block, instructions)
     }
 
-    fn open_state_block_instructions() -> (BlockEnum, BlockInsertInstructions) {
+    fn open_state_block_instructions() -> (Block, BlockInsertInstructions) {
         let block = BlockBuilder::state().previous(BlockHash::zero()).build();
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
@@ -262,9 +260,9 @@ mod tests {
     }
 
     fn state_block_instructions_for(
-        previous: &BlockEnum,
-        block: BlockEnum,
-    ) -> (BlockEnum, BlockInsertInstructions) {
+        previous: &Block,
+        block: Block,
+    ) -> (Block, BlockInsertInstructions) {
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
             balance: block.balance(),

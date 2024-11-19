@@ -1,5 +1,5 @@
 use rsnano_core::{
-    AccountInfo, Amount, BlockBase, BlockDetails, BlockEnum, BlockHash, BlockSideband, Epoch,
+    AccountInfo, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch,
     PendingInfo, PendingKey, PublicKey, StateBlock,
 };
 
@@ -23,8 +23,8 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn is_send(&self) -> bool {
         match self.block {
-            BlockEnum::LegacySend(_) => true,
-            BlockEnum::State(state) => match &self.old_account_info {
+            Block::LegacySend(_) => true,
+            Block::State(state) => match &self.old_account_info {
                 Some(info) => state.balance() < info.balance,
                 None => false,
             },
@@ -34,8 +34,8 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn is_receive(&self) -> bool {
         match self.block {
-            BlockEnum::LegacyReceive(_) | BlockEnum::LegacyOpen(_) => true,
-            BlockEnum::State(state_block) => {
+            Block::LegacyReceive(_) | Block::LegacyOpen(_) => true,
+            Block::State(state_block) => {
                 // receives from the epoch account are forbidden
                 if self.has_epoch_link(state_block) {
                     return false;
@@ -61,8 +61,8 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn amount_received(&self) -> Amount {
         match &self.block {
-            BlockEnum::LegacyReceive(_) | BlockEnum::LegacyOpen(_) => self.pending_amount(),
-            BlockEnum::State(state) => {
+            Block::LegacyReceive(_) | Block::LegacyOpen(_) => self.pending_amount(),
+            Block::State(state) => {
                 let previous = self.previous_balance();
                 if previous < state.balance() {
                     state.balance() - previous
@@ -84,8 +84,8 @@ impl<'a> BlockValidator<'a> {
     pub(crate) fn amount_sent(&self) -> Amount {
         if let Some(info) = &self.old_account_info {
             let balance = match self.block {
-                BlockEnum::LegacySend(i) => Some(i.balance()),
-                BlockEnum::State(i) => Some(i.balance()),
+                Block::LegacySend(i) => Some(i.balance()),
+                Block::State(i) => Some(i.balance()),
                 _ => None,
             };
             if let Some(balance) = balance {
@@ -116,7 +116,7 @@ impl<'a> BlockValidator<'a> {
     /// because we need the previous block for the balance change check!
     pub(crate) fn is_epoch_block(&self) -> bool {
         match self.block {
-            BlockEnum::State(state_block) => {
+            Block::State(state_block) => {
                 self.has_epoch_link(state_block) && self.previous_balance() == state_block.balance()
             }
             _ => false,
@@ -125,7 +125,7 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn block_epoch_version(&self) -> Epoch {
         match self.block {
-            BlockEnum::State(state) => self.epochs.epoch(&state.link()).unwrap_or(Epoch::Invalid),
+            Block::State(state) => self.epochs.epoch(&state.link()).unwrap_or(Epoch::Invalid),
             _ => Epoch::Epoch0,
         }
     }
@@ -186,7 +186,7 @@ impl<'a> BlockValidator<'a> {
 
     pub(crate) fn new_pending_info(&self) -> Option<(PendingKey, PendingInfo)> {
         match self.block {
-            BlockEnum::State(_) => {
+            Block::State(_) => {
                 if self.is_send() {
                     let key = PendingKey::for_send_block(self.block);
                     let info = PendingInfo::new(self.account, self.amount(), self.epoch());
@@ -195,7 +195,7 @@ impl<'a> BlockValidator<'a> {
                     None
                 }
             }
-            BlockEnum::LegacySend(send) => {
+            Block::LegacySend(send) => {
                 let amount_sent = self.amount_sent();
                 Some((
                     PendingKey::new(send.hashables.destination, send.hash()),

@@ -1,8 +1,8 @@
 use num_traits::FromPrimitive;
-use rsnano_core::{serialized_block_size, utils::BufferReader, BlockEnum, BlockType};
+use rsnano_core::{serialized_block_size, utils::BufferReader, Block, BlockType};
 use rsnano_network::AsyncBufferReader;
 
-pub async fn read_block(input: &impl AsyncBufferReader) -> anyhow::Result<Option<BlockEnum>> {
+pub async fn read_block(input: &impl AsyncBufferReader) -> anyhow::Result<Option<Block>> {
     let mut buf = [0; 1];
     input.read(&mut buf, 1).await?;
     received_type(buf[0], input).await
@@ -11,7 +11,7 @@ pub async fn read_block(input: &impl AsyncBufferReader) -> anyhow::Result<Option
 async fn received_type(
     block_type_byte: u8,
     input: &impl AsyncBufferReader,
-) -> anyhow::Result<Option<BlockEnum>> {
+) -> anyhow::Result<Option<Block>> {
     match BlockType::from_u8(block_type_byte) {
         None | Some(BlockType::Invalid) => Err(anyhow!("Invalid block type: {block_type_byte}")),
         Some(BlockType::NotABlock) => Ok(None),
@@ -20,7 +20,7 @@ async fn received_type(
             let mut buffer = [0; 256];
             input.read(&mut buffer, block_size).await?;
             let mut stream = BufferReader::new(&buffer[..block_size]);
-            let block = BlockEnum::deserialize_block_type(block_type, &mut stream)?;
+            let block = Block::deserialize_block_type(block_type, &mut stream)?;
             Ok(Some(block))
         }
     }

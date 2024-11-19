@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
@@ -27,7 +27,7 @@ fn vote_minimum() {
     let key1 = KeyPair::new();
     let key2 = KeyPair::new();
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -38,7 +38,7 @@ fn vote_minimum() {
     ));
     node.process(send1.clone()).unwrap();
 
-    let open1 = BlockEnum::State(StateBlock::new(
+    let open1 = Block::State(StateBlock::new(
         key1.account(),
         BlockHash::zero(),
         key1.public_key(),
@@ -50,7 +50,7 @@ fn vote_minimum() {
     node.process(open1.clone()).unwrap();
 
     // send2 with amount vote_minimum - 1 (not voting representative)
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -61,7 +61,7 @@ fn vote_minimum() {
     ));
     node.process(send2.clone()).unwrap();
 
-    let open2 = BlockEnum::State(StateBlock::new(
+    let open2 = Block::State(StateBlock::new(
         key2.account(),
         BlockHash::zero(),
         key2.public_key(),
@@ -158,7 +158,7 @@ fn search_receivable() {
             .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
             .unwrap();
 
-        let send = BlockEnum::State(StateBlock::new(
+        let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
             *DEV_GENESIS_PUB_KEY,

@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, BlockEnum, KeyPair, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, KeyPair, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
@@ -20,7 +20,7 @@ fn observer_callbacks() {
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
     let key1 = KeyPair::new();
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         latest,
         *DEV_GENESIS_PUB_KEY,
@@ -30,7 +30,7 @@ fn observer_callbacks() {
         node.work_generate_dev(latest),
     ));
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -83,7 +83,7 @@ fn confirmed_history() {
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
     let key1 = KeyPair::new();
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         latest,
         *DEV_GENESIS_PUB_KEY,
@@ -93,7 +93,7 @@ fn confirmed_history() {
         node.work_generate_dev(latest),
     ));
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -218,7 +218,7 @@ fn dependent_election() {
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
     let key1 = KeyPair::new();
-    let send = BlockEnum::State(StateBlock::new(
+    let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         latest,
         *DEV_GENESIS_PUB_KEY,
@@ -228,7 +228,7 @@ fn dependent_election() {
         node.work_generate_dev(latest),
     ));
 
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -238,7 +238,7 @@ fn dependent_election() {
         node.work_generate_dev(send.hash()),
     ));
 
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         *DEV_GENESIS_PUB_KEY,
@@ -316,7 +316,7 @@ fn election_winner_details_clearing_node_process_confirmed() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let send = Arc::new(BlockEnum::State(StateBlock::new(
+    let send = Arc::new(Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,

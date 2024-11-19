@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, BlockEnum, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelMode;
 use rsnano_node::{
@@ -28,7 +28,7 @@ fn bootstrap_id_none() {
         .unwrap();
 
     // send all balance from genesis to key
-    let send1 = BlockEnum::State(StateBlock::new(
+    let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -40,7 +40,7 @@ fn bootstrap_id_none() {
     node1.process(send1.clone()).unwrap();
 
     // open key account receiving all balance of genesis
-    let open = BlockEnum::State(StateBlock::new(
+    let open = Block::State(StateBlock::new(
         key.account(),
         BlockHash::zero(),
         key.public_key(),
@@ -52,7 +52,7 @@ fn bootstrap_id_none() {
     node1.process(open.clone()).unwrap();
 
     // send from key to genesis 100 raw
-    let send2 = BlockEnum::State(StateBlock::new(
+    let send2 = Block::State(StateBlock::new(
         key.account(),
         open.hash(),
         key.public_key(),
@@ -64,7 +64,7 @@ fn bootstrap_id_none() {
     node1.process(send2.clone()).unwrap();
 
     // receive the 100 raw on genesis
-    let receive = BlockEnum::State(StateBlock::new(
+    let receive = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send1.hash(),
         *DEV_GENESIS_PUB_KEY,

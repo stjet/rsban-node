@@ -32,7 +32,7 @@ pub struct BlockInfoResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::BlockEnum;
+    use rsnano_core::Block;
     use serde_json::json;
 
     #[test]
@@ -51,7 +51,7 @@ mod tests {
             )
             .unwrap(),
             confirmed: true.into(),
-            contents: BlockEnum::new_test_instance().json_representation(),
+            contents: Block::new_test_instance().json_representation(),
             subtype: Some(BlockSubTypeDto::Send),
             receivable: None,
             receive_hash: None,
@@ -137,7 +137,7 @@ mod tests {
         assert_eq!(deserialized.subtype, Some(BlockSubTypeDto::Send));
         assert_eq!(
             deserialized.contents,
-            BlockEnum::new_test_instance().json_representation()
+            Block::new_test_instance().json_representation()
         );
     }
 }

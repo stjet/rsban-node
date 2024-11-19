@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::anyhow;
-use rsnano_core::{Account, BlockBase, BlockEnum, BlockHash};
+use rsnano_core::{Account, Block, BlockBase, BlockHash};
 use rsnano_ledger::Ledger;
 use rsnano_rpc_messages::{
     unwrap_bool_or_false, unwrap_u64_or_zero, AccountHistoryArgs, AccountHistoryResponse,
@@ -107,11 +107,7 @@ impl<'a> AccountHistoryHelper<'a> {
         Ok(self.create_response(history))
     }
 
-    fn go_to_next_block(
-        &mut self,
-        tx: &LmdbReadTransaction,
-        block: &BlockEnum,
-    ) -> Option<BlockEnum> {
+    fn go_to_next_block(&mut self, tx: &LmdbReadTransaction, block: &Block) -> Option<Block> {
         self.current_block_hash = if self.reverse {
             self.ledger
                 .any()
@@ -132,11 +128,11 @@ impl<'a> AccountHistoryHelper<'a> {
 
     pub(crate) fn entry_for(
         &self,
-        block: &BlockEnum,
+        block: &Block,
         tx: &LmdbReadTransaction,
     ) -> Option<HistoryEntry> {
         let mut entry = match &block {
-            BlockEnum::LegacySend(b) => {
+            Block::LegacySend(b) => {
                 let mut entry = empty_entry();
                 entry.block_type = Some(BlockTypeDto::Send);
                 entry.account = Some(self.account);
@@ -149,7 +145,7 @@ impl<'a> AccountHistoryHelper<'a> {
                 }
                 Some(entry)
             }
-            BlockEnum::LegacyReceive(b) => {
+            Block::LegacyReceive(b) => {
                 let mut entry = empty_entry();
                 entry.block_type = Some(BlockTypeDto::Receive);
                 if let Some(amount) = self.ledger.any().block_amount_for(tx, block) {
@@ -164,7 +160,7 @@ impl<'a> AccountHistoryHelper<'a> {
                 }
                 Some(entry)
             }
-            BlockEnum::LegacyOpen(b) => {
+            Block::LegacyOpen(b) => {
                 let mut entry = empty_entry();
                 if self.output_raw {
                     entry.block_type = Some(BlockTypeDto::Open);
@@ -187,7 +183,7 @@ impl<'a> AccountHistoryHelper<'a> {
                 }
                 Some(entry)
             }
-            BlockEnum::LegacyChange(b) => {
+            Block::LegacyChange(b) => {
                 if self.output_raw {
                     let mut entry = empty_entry();
                     entry.block_type = Some(BlockTypeDto::Change);
@@ -198,7 +194,7 @@ impl<'a> AccountHistoryHelper<'a> {
                     None
                 }
             }
-            BlockEnum::State(b) => {
+            Block::State(b) => {
                 let mut entry = empty_entry();
                 if self.output_raw {
                     entry.block_type = Some(BlockTypeDto::State);
@@ -280,12 +276,7 @@ impl<'a> AccountHistoryHelper<'a> {
         entry
     }
 
-    fn set_common_fields(
-        &self,
-        entry: &mut HistoryEntry,
-        block: &BlockEnum,
-        tx: &LmdbReadTransaction,
-    ) {
+    fn set_common_fields(&self, entry: &mut HistoryEntry, block: &Block, tx: &LmdbReadTransaction) {
         let sideband = block.sideband().unwrap();
         entry.local_timestamp = sideband.timestamp.into();
         entry.height = sideband.height.into();

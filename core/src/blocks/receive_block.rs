@@ -258,7 +258,7 @@ mod tests {
     use super::*;
     use crate::{
         utils::{MemoryStream, TestPropertyTree},
-        BlockEnum, KeyPair,
+        Block, KeyPair,
     };
 
     #[test]
@@ -302,7 +302,7 @@ mod tests {
 
     #[test]
     fn serialize_serde() {
-        let block = BlockEnum::LegacyReceive(ReceiveBlock::new_test_instance());
+        let block = Block::LegacyReceive(ReceiveBlock::new_test_instance());
         let serialized = serde_json::to_string_pretty(&block).unwrap();
         assert_eq!(
             serialized,

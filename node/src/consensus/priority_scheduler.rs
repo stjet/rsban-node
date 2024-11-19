@@ -2,7 +2,7 @@ use super::{ActiveElections, Bucket, BucketExt, PriorityBucketConfig};
 use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
-    Account, AccountInfo, Amount, BlockEnum, ConfirmationHeightInfo,
+    Account, AccountInfo, Amount, Block, ConfirmationHeightInfo,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
@@ -237,7 +237,7 @@ impl PriorityScheduler {
         }
     }
 
-    pub fn activate_successors(&self, tx: &LmdbReadTransaction, block: &BlockEnum) {
+    pub fn activate_successors(&self, tx: &LmdbReadTransaction, block: &Block) {
         self.activate(tx, &block.account());
 
         // Start or vote for the next unconfirmed block in the destination account

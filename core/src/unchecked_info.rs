@@ -1,8 +1,3 @@
-use std::{
-    sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
-};
-
 use super::BlockHash;
 use crate::{
     utils::{
@@ -10,18 +5,19 @@ use crate::{
     },
     Block,
 };
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Information on an unchecked block
 #[derive(Clone, Debug)]
 pub struct UncheckedInfo {
-    pub block: Arc<Block>,
+    pub block: Block,
 
     /// Seconds since posix epoch
     pub modified: u64,
 }
 
 impl UncheckedInfo {
-    pub fn new(block: Arc<Block>) -> Self {
+    pub fn new(block: Block) -> Self {
         Self {
             block,
             modified: SystemTime::now()
@@ -51,10 +47,7 @@ impl Deserialize for UncheckedInfo {
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self::Target> {
         let block = Block::deserialize(stream)?;
         let modified = stream.read_u64_ne()?;
-        Ok(Self {
-            block: Arc::new(block),
-            modified,
-        })
+        Ok(Self { block, modified })
     }
 }
 

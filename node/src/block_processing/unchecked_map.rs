@@ -515,7 +515,7 @@ mod tests {
     fn test_entry<T: Into<BlockHash>>(hash: T) -> Entry {
         Entry::new(
             UncheckedKey::new(hash.into(), BlockHash::default()),
-            UncheckedInfo::new(Arc::new(Block::new_test_instance())),
+            UncheckedInfo::new(Block::new_test_instance()),
         )
     }
 }

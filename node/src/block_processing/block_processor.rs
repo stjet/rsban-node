@@ -639,7 +639,7 @@ impl BlockProcessorLoop {
             }
             BlockStatus::GapPrevious => {
                 self.unchecked_map
-                    .put(block.previous().into(), UncheckedInfo::new(Arc::new(block)));
+                    .put(block.previous().into(), UncheckedInfo::new(block));
                 self.stats.inc(StatType::Ledger, DetailType::GapPrevious);
             }
             BlockStatus::GapSource => {
@@ -648,14 +648,14 @@ impl BlockProcessorLoop {
                         .source_field()
                         .unwrap_or(block.link_field().unwrap_or_default().into())
                         .into(),
-                    UncheckedInfo::new(Arc::new(block)),
+                    UncheckedInfo::new(block),
                 );
                 self.stats.inc(StatType::Ledger, DetailType::GapSource);
             }
             BlockStatus::GapEpochOpenPending => {
                 // Specific unchecked key starting with epoch open block account public key
                 self.unchecked_map
-                    .put(block.account().into(), UncheckedInfo::new(Arc::new(block)));
+                    .put(block.account().into(), UncheckedInfo::new(block));
                 self.stats.inc(StatType::Ledger, DetailType::GapSource);
             }
             BlockStatus::Old => {

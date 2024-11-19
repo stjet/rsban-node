@@ -9,7 +9,7 @@ use test_helpers::{assert_timely, assert_timely_eq};
 #[test]
 fn one_bootstrap() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
-    let block1 = Arc::new(Block::State(StateBlock::new(
+    let block1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -17,7 +17,7 @@ fn one_bootstrap() {
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
         0,
-    )));
+    ));
     unchecked.put(block1.hash().into(), UncheckedInfo::new(block1.clone()));
 
     // Waits for the block1 to get saved in the database
@@ -44,7 +44,7 @@ fn one_bootstrap() {
 #[test]
 fn simple() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
-    let block = Arc::new(Block::State(StateBlock::new(
+    let block = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -52,7 +52,7 @@ fn simple() {
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
         0,
-    )));
+    ));
     // Asserts the block wasn't added yet to the unchecked table
     let block_listing1 = unchecked.get(&block.previous().into());
     assert!(block_listing1.is_empty());
@@ -78,7 +78,7 @@ fn simple() {
 #[test]
 fn multiple() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
-    let block = Arc::new(Block::State(StateBlock::new(
+    let block = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -86,7 +86,7 @@ fn multiple() {
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
         0,
-    )));
+    ));
     // Asserts the block wasn't added yet to the unchecked table
     let block_listing1 = unchecked.get(&block.previous().into());
     assert!(block_listing1.is_empty());
@@ -109,7 +109,7 @@ fn multiple() {
 #[test]
 fn double_put() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
-    let block = Arc::new(Block::State(StateBlock::new(
+    let block = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
         *DEV_GENESIS_PUB_KEY,
@@ -117,7 +117,7 @@ fn double_put() {
         (*DEV_GENESIS_ACCOUNT).into(),
         &DEV_GENESIS_KEY,
         0,
-    )));
+    ));
     // Asserts the block wasn't added yet to the unchecked table
     let block_listing1 = unchecked.get(&block.previous().into());
     assert!(block_listing1.is_empty());
@@ -142,7 +142,7 @@ fn multiple_get() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
     // Instantiates three blocks
     let key1 = KeyPair::new();
-    let block1 = Arc::new(Block::State(StateBlock::new(
+    let block1 = Block::State(StateBlock::new(
         key1.account(),
         1.into(),
         *DEV_GENESIS_PUB_KEY,
@@ -150,9 +150,9 @@ fn multiple_get() {
         (*DEV_GENESIS_ACCOUNT).into(),
         &key1,
         0,
-    )));
+    ));
     let key2 = KeyPair::new();
-    let block2 = Arc::new(Block::State(StateBlock::new(
+    let block2 = Block::State(StateBlock::new(
         key2.account(),
         2.into(),
         *DEV_GENESIS_PUB_KEY,
@@ -160,9 +160,9 @@ fn multiple_get() {
         (*DEV_GENESIS_ACCOUNT).into(),
         &key2,
         0,
-    )));
+    ));
     let key3 = KeyPair::new();
-    let block3 = Arc::new(Block::State(StateBlock::new(
+    let block3 = Block::State(StateBlock::new(
         key3.account(),
         3.into(),
         *DEV_GENESIS_PUB_KEY,
@@ -170,7 +170,7 @@ fn multiple_get() {
         (*DEV_GENESIS_ACCOUNT).into(),
         &key3,
         0,
-    )));
+    ));
     // Add the blocks' info to the unchecked table
     unchecked.put(block1.previous().into(), UncheckedInfo::new(block1.clone())); // unchecked1
     unchecked.put(block1.hash().into(), UncheckedInfo::new(block1.clone())); // unchecked2

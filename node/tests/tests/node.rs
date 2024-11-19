@@ -3652,10 +3652,8 @@ fn block_processor_signatures() {
 
     send5.set_block_signature(&Signature::new());
     // Invalid signature to unchecked
-    node.unchecked.put(
-        send5.previous().into(),
-        UncheckedInfo::new(Arc::new(send5.clone())),
-    );
+    node.unchecked
+        .put(send5.previous().into(), UncheckedInfo::new(send5.clone()));
 
     // Create a valid receive block
     let receive1 = BlockBuilder::state()

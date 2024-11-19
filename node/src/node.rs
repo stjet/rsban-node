@@ -802,7 +802,7 @@ impl Node {
         unchecked.set_satisfied_observer(Box::new(move |info| {
             if let Some(processor) = block_processor_w.upgrade() {
                 processor.add(
-                    info.block.clone(),
+                    info.block.clone().into(),
                     BlockSource::Unchecked,
                     ChannelId::LOOPBACK,
                 );

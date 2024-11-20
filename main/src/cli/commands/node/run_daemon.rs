@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use clap::{ArgGroup, Parser};
+use clap::Parser;
 use rsnano_core::Networks;
 use rsnano_daemon::DaemonBuilder;
 use rsnano_node::config::NodeFlags;
@@ -7,14 +7,12 @@ use std::{path::PathBuf, str::FromStr};
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
-#[command(group = ArgGroup::new("input")
-    .args(&["data_path", "network"]))]
 pub(crate) struct RunDaemonArgs {
     /// Uses the supplied path as the data directory
-    #[arg(long, group = "input")]
+    #[arg(long)]
     data_path: Option<String>,
     /// Uses the supplied network (live, test, beta or dev)
-    #[arg(long, group = "input")]
+    #[arg(long)]
     network: Option<String>,
     /// Disables activate_successors in active_elections
     #[arg(long)]

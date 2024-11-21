@@ -162,8 +162,6 @@ pub trait BlockBase: FullHash {
     }
     fn json_representation(&self) -> JsonBlock;
     fn root(&self) -> Root;
-    fn visit(&self, visitor: &mut dyn BlockVisitor);
-    fn visit_mut(&mut self, visitor: &mut dyn MutableBlockVisitor);
     fn balance_field(&self) -> Option<Amount>;
     /// Source block for open/receive blocks, zero otherwise.
     fn source_field(&self) -> Option<BlockHash>;
@@ -183,22 +181,6 @@ impl<T: BlockBase> FullHash for T {
             .update(self.work().to_ne_bytes())
             .build()
     }
-}
-
-pub trait BlockVisitor {
-    fn send_block(&mut self, block: &SendBlock);
-    fn receive_block(&mut self, block: &ReceiveBlock);
-    fn open_block(&mut self, block: &OpenBlock);
-    fn change_block(&mut self, block: &ChangeBlock);
-    fn state_block(&mut self, block: &StateBlock);
-}
-
-pub trait MutableBlockVisitor {
-    fn send_block(&mut self, block: &mut SendBlock);
-    fn receive_block(&mut self, block: &mut ReceiveBlock);
-    fn open_block(&mut self, block: &mut OpenBlock);
-    fn change_block(&mut self, block: &mut ChangeBlock);
-    fn state_block(&mut self, block: &mut StateBlock);
 }
 
 pub fn serialized_block_size(block_type: BlockType) -> usize {

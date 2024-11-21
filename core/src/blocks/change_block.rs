@@ -1,4 +1,4 @@
-use super::{BlockBase, BlockVisitor};
+use super::BlockBase;
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
@@ -206,10 +206,6 @@ impl BlockBase for ChangeBlock {
         self.previous().into()
     }
 
-    fn visit(&self, visitor: &mut dyn BlockVisitor) {
-        visitor.change_block(self);
-    }
-
     fn balance_field(&self) -> Option<Amount> {
         None
     }
@@ -220,10 +216,6 @@ impl BlockBase for ChangeBlock {
 
     fn representative_field(&self) -> Option<PublicKey> {
         Some(self.hashables.representative)
-    }
-
-    fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {
-        visitor.change_block(self)
     }
 
     fn valid_predecessor(&self, block_type: BlockType) -> bool {

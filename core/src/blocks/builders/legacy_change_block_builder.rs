@@ -1,7 +1,6 @@
 use crate::work::WorkPool;
-use crate::{Account, Amount, Block, BlockDetails, BlockSideband, Epoch, KeyPair, PublicKey};
-
 use crate::{work::STUB_WORK_POOL, BlockBase, BlockHash, ChangeBlock};
+use crate::{Account, Amount, Block, BlockDetails, BlockSideband, Epoch, KeyPair, PublicKey};
 
 pub struct LegacyChangeBlockBuilder {
     account: Option<Account>,

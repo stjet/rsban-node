@@ -6,8 +6,7 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{BufferReader, FixedSizeSerialize},
-    Block, BlockBase, BlockHash, BlockSideband, BlockType, BlockVisitor, BlockWithSideband,
-    ChangeBlock, OpenBlock, ReceiveBlock, SendBlock, StateBlock,
+    Block, BlockBase, BlockHash, BlockSideband, BlockType, BlockWithSideband,
 };
 use rsnano_nullable_lmdb::ConfiguredDatabase;
 #[cfg(feature = "output_tracking")]
@@ -84,10 +83,7 @@ impl LmdbBlockStore {
         );
 
         self.raw_put(txn, &block.serialize_with_sideband(), &hash);
-        {
-            let mut predecessor = BlockPredecessorMdbSet::new(txn, self);
-            block.visit(&mut predecessor);
-        }
+        self.update_predecessor(txn, block);
     }
 
     pub fn exists(&self, transaction: &dyn Transaction, hash: &BlockHash) -> bool {
@@ -185,27 +181,15 @@ impl LmdbBlockStore {
             Err(e) => panic!("Could not load block. {:?}", e),
         }
     }
-}
 
-/// Fill in our predecessors
-struct BlockPredecessorMdbSet<'a> {
-    transaction: &'a mut LmdbWriteTransaction,
-    block_store: &'a LmdbBlockStore,
-}
-
-impl<'a> BlockPredecessorMdbSet<'a> {
-    fn new(transaction: &'a mut LmdbWriteTransaction, block_store: &'a LmdbBlockStore) -> Self {
-        Self {
-            transaction,
-            block_store,
+    /// Update the "successor" value of the block's predecesssor
+    fn update_predecessor(&self, txn: &mut LmdbWriteTransaction, block: &Block) {
+        if block.previous().is_zero() {
+            return;
         }
-    }
-
-    fn fill_value(&mut self, block: &dyn BlockBase) {
         let hash = block.hash();
         let value = self
-            .block_store
-            .block_raw_get(self.transaction, &block.previous())
+            .block_raw_get(txn, &block.previous())
             .expect("block not found by fill_value");
         let mut data = value.to_vec();
         let block_type = BlockType::from_u8(data[0]).unwrap();
@@ -213,32 +197,7 @@ impl<'a> BlockPredecessorMdbSet<'a> {
         let offset = block_successor_offset(data.len(), block_type);
         data[offset..offset + hash.as_bytes().len()].copy_from_slice(hash.as_bytes());
 
-        self.block_store
-            .raw_put(self.transaction, &data, &block.previous());
-    }
-}
-
-impl<'a> BlockVisitor for BlockPredecessorMdbSet<'a> {
-    fn send_block(&mut self, block: &SendBlock) {
-        self.fill_value(block);
-    }
-
-    fn receive_block(&mut self, block: &ReceiveBlock) {
-        self.fill_value(block);
-    }
-
-    fn open_block(&mut self, _block: &OpenBlock) {
-        // Open blocks don't have a predecessor
-    }
-
-    fn change_block(&mut self, block: &ChangeBlock) {
-        self.fill_value(block);
-    }
-
-    fn state_block(&mut self, block: &StateBlock) {
-        if !block.previous().is_zero() {
-            self.fill_value(block);
-        }
+        self.raw_put(txn, &data, &block.previous());
     }
 }
 

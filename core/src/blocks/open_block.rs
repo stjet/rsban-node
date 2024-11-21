@@ -1,4 +1,4 @@
-use super::{BlockBase, BlockSideband, BlockType, BlockVisitor};
+use super::{BlockBase, BlockSideband, BlockType};
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
@@ -208,10 +208,6 @@ impl BlockBase for OpenBlock {
         self.hashables.account.into()
     }
 
-    fn visit(&self, visitor: &mut dyn BlockVisitor) {
-        visitor.open_block(self);
-    }
-
     fn balance_field(&self) -> Option<Amount> {
         None
     }
@@ -222,10 +218,6 @@ impl BlockBase for OpenBlock {
 
     fn representative_field(&self) -> Option<PublicKey> {
         Some(self.hashables.representative)
-    }
-
-    fn visit_mut(&mut self, visitor: &mut dyn super::MutableBlockVisitor) {
-        visitor.open_block(self)
     }
 
     fn valid_predecessor(&self, _block_type: BlockType) -> bool {

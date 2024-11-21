@@ -16,6 +16,7 @@ impl From<JsonBlock> for ProcessArgs {
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ProcessArgs {
+    pub json_block: RpcBool,
     pub block: JsonBlock,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subtype: Option<BlockSubTypeDto>,
@@ -31,6 +32,7 @@ impl ProcessArgs {
     pub fn build(block: JsonBlock) -> ProcessArgsBuilder {
         ProcessArgsBuilder {
             args: ProcessArgs {
+                json_block: true.into(),
                 subtype: None,
                 block,
                 force: None,
@@ -92,6 +94,7 @@ mod tests {
             serialized,
             json!({
                 "action": "process",
+                "json_block": "true",
                 "subtype": "send",
                 "block": {
                     "type": "state",
@@ -116,6 +119,7 @@ mod tests {
         let json = json!({
             "action": "process",
             "subtype": "receive",
+            "json_block": "true",
             "block": {
                 "type": "state",
                 "account": "nano_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",

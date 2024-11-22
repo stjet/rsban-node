@@ -1,6 +1,9 @@
 use rand::{thread_rng, Rng};
 use siphasher::{prelude::*, sip128::SipHasher};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Mutex, MutexGuard,
+};
 
 #[derive(Clone, Default)]
 struct Entry {
@@ -14,8 +17,8 @@ struct Entry {
 pub struct NetworkFilter<T: NetworkFilterHasher = DefaultNetworkFilterHasher> {
     items: Mutex<Vec<Entry>>,
     hasher: T,
-    age_cutoff: u64,
-    current_epoch: u64,
+    pub age_cutoff: u64,
+    current_epoch: AtomicU64,
 }
 
 impl<T: NetworkFilterHasher> NetworkFilter<T> {
@@ -24,17 +27,18 @@ impl<T: NetworkFilterHasher> NetworkFilter<T> {
             items: Mutex::new(vec![Entry::default(); size]),
             hasher,
             age_cutoff: 0,
-            current_epoch: 0,
+            current_epoch: AtomicU64::new(0),
         }
     }
 
-    fn update(&mut self, epoch_inc: u64) {
-        self.current_epoch += epoch_inc;
+    pub fn update(&self, epoch_inc: u64) {
+        self.current_epoch.fetch_add(epoch_inc, Ordering::SeqCst);
     }
 
     fn compare(&self, existing: &Entry, digest: u128) -> bool {
         // Only consider digests to be the same if the epoch is within the age cutoff
-        existing.digest == digest && existing.epoch + self.age_cutoff >= self.current_epoch
+        existing.digest == digest
+            && existing.epoch + self.age_cutoff >= self.current_epoch.load(Ordering::SeqCst)
     }
 
     /// Reads `count` bytes starting from `bytes` and inserts the siphash digest in the filter.
@@ -55,7 +59,7 @@ impl<T: NetworkFilterHasher> NetworkFilter<T> {
             // Replace likely old element with a new one
             *element = Entry {
                 digest,
-                epoch: self.current_epoch,
+                epoch: self.current_epoch.load(Ordering::SeqCst),
             };
         }
         existed

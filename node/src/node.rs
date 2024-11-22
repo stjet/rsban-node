@@ -129,7 +129,7 @@ pub struct Node {
     pub inbound_message_queue: Arc<InboundMessageQueue>,
     monitor: TimerThread<Monitor>,
     stopped: AtomicBool,
-    pub publish_filter: Arc<NetworkFilter>,
+    pub network_filter: Arc<NetworkFilter>,
     pub message_publisher: Arc<Mutex<MessagePublisher>>, // TODO remove this. It is needed right now
     // to keep the weak pointer alive
     start_stop_listener: OutputListenerMt<&'static str>,
@@ -280,7 +280,9 @@ impl Node {
             network_params.network.cleanup_cutoff(),
         );
 
-        let publish_filter = Arc::new(NetworkFilter::new(1024 * 1024));
+        let mut network_filter = NetworkFilter::new(1024 * 1024);
+        network_filter.age_cutoff = 60;
+        let network_filter = Arc::new(network_filter);
 
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'
@@ -525,7 +527,7 @@ impl Node {
             confirming_set.clone(),
             block_processor.clone(),
             vote_generators.clone(),
-            publish_filter.clone(),
+            network_filter.clone(),
             network_info.clone(),
             vote_cache.clone(),
             stats.clone(),
@@ -599,7 +601,7 @@ impl Node {
             network_params: network_params.clone(),
             syn_cookies: syn_cookies.clone(),
             latest_keepalives: latest_keepalives.clone(),
-            publish_filter: publish_filter.clone(),
+            publish_filter: network_filter.clone(),
         });
 
         let peer_connector = Arc::new(PeerConnector::new(
@@ -703,7 +705,7 @@ impl Node {
         let realtime_message_handler = Arc::new(RealtimeMessageHandler::new(
             stats.clone(),
             network_info.clone(),
-            publish_filter.clone(),
+            network_filter.clone(),
             block_processor.clone(),
             config.clone(),
             wallets.clone(),
@@ -726,6 +728,7 @@ impl Node {
             network_params.clone(),
             stats.clone(),
             syn_cookies.clone(),
+            network_filter.clone(),
             keepalive_factory.clone(),
             latest_keepalives.clone(),
             dead_channel_cleanup,
@@ -1124,7 +1127,7 @@ impl Node {
             inbound_message_queue,
             monitor,
             message_publisher: message_publisher_l,
-            publish_filter,
+            network_filter,
             stopped: AtomicBool::new(false),
             start_stop_listener: OutputListenerMt::new(),
         }

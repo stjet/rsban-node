@@ -2773,7 +2773,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
         node.network_info.clone(),
         node.inbound_message_queue.clone(),
         channel,
-        node.publish_filter.clone(),
+        node.network_filter.clone(),
         Arc::new(node.network_params.clone()),
         node.stats.clone(),
         true,

@@ -1,4 +1,4 @@
-use super::{LatestKeepalives, MessagePublisher, SynCookies};
+use super::{LatestKeepalives, MessagePublisher, NetworkFilter, SynCookies};
 use crate::{
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, StatType, Stats},
@@ -26,6 +26,7 @@ pub(crate) struct NetworkThreads {
     network_params: NetworkParams,
     stats: Arc<Stats>,
     syn_cookies: Arc<SynCookies>,
+    network_filter: Arc<NetworkFilter>,
     keepalive_factory: Arc<KeepaliveFactory>,
     latest_keepalives: Arc<Mutex<LatestKeepalives>>,
     dead_channel_cleanup: Option<DeadChannelCleanup>,
@@ -41,6 +42,7 @@ impl NetworkThreads {
         network_params: NetworkParams,
         stats: Arc<Stats>,
         syn_cookies: Arc<SynCookies>,
+        network_filter: Arc<NetworkFilter>,
         keepalive_factory: Arc<KeepaliveFactory>,
         latest_keepalives: Arc<Mutex<LatestKeepalives>>,
         dead_channel_cleanup: DeadChannelCleanup,
@@ -58,6 +60,7 @@ impl NetworkThreads {
             network_params,
             stats,
             syn_cookies,
+            network_filter,
             keepalive_factory,
             latest_keepalives,
             dead_channel_cleanup: Some(dead_channel_cleanup),
@@ -72,6 +75,7 @@ impl NetworkThreads {
             network_params: self.network_params.clone(),
             flags: self.flags.clone(),
             syn_cookies: self.syn_cookies.clone(),
+            network_filter: self.network_filter.clone(),
             dead_channel_cleanup: self.dead_channel_cleanup.take().unwrap(),
         };
 
@@ -145,6 +149,7 @@ struct CleanupLoop {
     network_params: NetworkParams,
     flags: NodeFlags,
     syn_cookies: Arc<SynCookies>,
+    network_filter: Arc<NetworkFilter>,
     dead_channel_cleanup: DeadChannelCleanup,
 }
 
@@ -170,6 +175,8 @@ impl CleanupLoop {
 
             self.syn_cookies
                 .purge(self.network_params.network.sync_cookie_cutoff);
+
+            self.network_filter.update(timeout.as_secs());
 
             stopped = self.stopped.1.lock().unwrap();
         }

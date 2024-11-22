@@ -967,13 +967,13 @@ fn dropped_cleanup() {
     let mut stream = MemoryStream::new();
     chain[0].serialize(&mut stream);
     let block_bytes = stream.as_bytes();
-    assert!(!node.publish_filter.apply(&block_bytes).1);
-    assert!(node.publish_filter.apply(&block_bytes).1);
+    assert!(!node.network_filter.apply(&block_bytes).1);
+    assert!(node.network_filter.apply(&block_bytes).1);
 
     let election = start_election(&node, &hash);
 
     // Not yet removed
-    assert!(node.publish_filter.apply(&block_bytes).1);
+    assert!(node.network_filter.apply(&block_bytes).1);
     assert!(node.active.election(&qual_root).is_some());
 
     // Now simulate dropping the election
@@ -981,7 +981,7 @@ fn dropped_cleanup() {
     node.active.erase(&qual_root);
 
     // The filter must have been cleared
-    assert!(node.publish_filter.apply(&block_bytes).1);
+    assert!(node.network_filter.apply(&block_bytes).1);
 
     // An election was recently dropped
     assert_eq!(
@@ -997,7 +997,7 @@ fn dropped_cleanup() {
     assert!(node.active.election(&qual_root).is_none());
 
     // Repeat test for a confirmed election
-    assert!(node.publish_filter.apply(&block_bytes).1);
+    assert!(node.network_filter.apply(&block_bytes).1);
 
     let election = start_election(&node, &hash);
     node.active.force_confirm(&election);
@@ -1005,7 +1005,7 @@ fn dropped_cleanup() {
     node.active.erase(&qual_root);
 
     // The filter should not have been cleared
-    assert!(node.publish_filter.apply(&block_bytes).1);
+    assert!(node.network_filter.apply(&block_bytes).1);
 
     // Not dropped
     assert_eq!(
@@ -1135,7 +1135,7 @@ fn fork_filter_cleanup() {
 
     // Block is erased from the duplicate filter
     assert_timely(Duration::from_secs(5), || {
-        !node1.publish_filter.apply(&send_block_bytes).1
+        !node1.network_filter.apply(&send_block_bytes).1
     });
 }
 

@@ -14,9 +14,9 @@ use tracing::{debug, trace};
  * The account is supplied as the "start" member, and the final block to
  * send is the "end" member.  The "start" member may also be a block
  * hash, in which case the that hash is used as the start of a chain
- * to send.  To determine if "start" is interpretted as an account or
+ * to send.  To determine if "start" is interpreted as an account or
  * hash, the ledger is checked to see if the block specified exists,
- * if not then it is interpretted as an account.
+ * if not then it is interpreted as an account.
  *
  * Additionally, if "start" is specified as a block hash the range
  * is inclusive of that block hash, that is the range will be:

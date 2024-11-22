@@ -104,7 +104,7 @@ impl BootstrapAttemptLegacy {
     }
 
     pub fn set_start_account(&self, account: Account) {
-        // Add last account fron frontier request
+        // Add last account from frontier request
         let mut guard = self.mutex.lock().unwrap();
         guard.start_account = account;
     }

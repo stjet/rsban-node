@@ -12,6 +12,9 @@ use std::{
     time::Duration,
 };
 
+/// This class routes votes to their associated election
+/// This class holds a weak_ptr as this container does not own the elections
+/// Routing entries are removed periodically if the weak_ptr has expired
 pub struct VoteRouter {
     thread: Mutex<Option<JoinHandle<()>>>,
     shared: Arc<(Condvar, Mutex<State>)>,
@@ -73,6 +76,9 @@ impl VoteRouter {
         self.vote_processed_observers.lock().unwrap().push(observer);
     }
 
+    /// Add a route for 'hash' to 'election'
+    /// Existing routes will be replaced
+    /// Election must hold the block for the hash being passed in
     pub fn connect(&self, hash: BlockHash, election: Weak<Election>) {
         self.shared
             .1
@@ -82,6 +88,7 @@ impl VoteRouter {
             .insert(hash, election);
     }
 
+    /// Remove all routes to this election
     pub fn disconnect_election(&self, election: &Election) {
         let mut state = self.shared.1.lock().unwrap();
         let election_guard = election.mutex.lock().unwrap();
@@ -90,6 +97,7 @@ impl VoteRouter {
         }
     }
 
+    /// Remove all routes to this election
     pub fn disconnect(&self, hash: &BlockHash) {
         let mut state = self.shared.1.lock().unwrap();
         state.elections.remove(hash);

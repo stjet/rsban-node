@@ -86,7 +86,7 @@ impl RealtimeMessageHandler {
                 }
             }
             Message::Publish(publish) => {
-                // Put blocks that are being initally broadcasted in a separate queue, so that they won't have to compete with rebroadcasted blocks
+                // Put blocks that are being initially broadcasted in a separate queue, so that they won't have to compete with rebroadcasted blocks
                 // Both queues have the same priority and size, so the potential for exploiting this is limited
                 let source = if publish.is_originator {
                     BlockSource::LiveOriginator

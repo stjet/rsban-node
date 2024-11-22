@@ -201,7 +201,7 @@ impl BulkPullAccountServerImpl {
             /*
              * If the pending_address_only flag is set, de-duplicate the
              * responses.  The responses are the address of the sender,
-             * so they are are part of the pending table's information
+             * so they are part of the pending table's information
              * and not key, so we have to de-duplicate them manually.
              */
             if self.pending_address_only {

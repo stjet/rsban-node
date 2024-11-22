@@ -529,7 +529,7 @@ impl BootstrapAscending {
 
                 while let Some(block) = blocks.pop_front() {
                     if blocks.is_empty() {
-                        // It's the last block submitted for this account chanin, reset timestamp to allow more requests
+                        // It's the last block submitted for this account chain, reset timestamp to allow more requests
                         let stats = self.stats.clone();
                         let data = self.mutex.clone();
                         let condition = self.condition.clone();

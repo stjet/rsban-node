@@ -67,7 +67,7 @@ pub struct ResponseServer {
     pub disable_bootstrap_listener: bool,
     pub connections_max: usize,
 
-    // Remote enpoint used to remove response channel even after socket closing
+    // Remote endpoint used to remove response channel even after socket closing
     remote_endpoint: Mutex<SocketAddrV6>,
 
     network_params: Arc<NetworkParams>,

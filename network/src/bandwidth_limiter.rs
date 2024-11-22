@@ -11,11 +11,11 @@ impl From<TrafficType> for BandwidthLimitType {
     }
 }
 
-pub struct BandwidthLimiter {
+pub struct RateLimiter {
     bucket: Mutex<TokenBucket>,
 }
 
-impl BandwidthLimiter {
+impl RateLimiter {
     pub fn new(limit_burst_ratio: f64, limit: usize) -> Self {
         Self {
             bucket: Mutex::new(TokenBucket::new(
@@ -67,18 +67,15 @@ impl Default for OutboundBandwidthLimiterConfig {
 }
 
 pub struct OutboundBandwidthLimiter {
-    limiter_standard: BandwidthLimiter,
-    limiter_bootstrap: BandwidthLimiter,
+    limiter_standard: RateLimiter,
+    limiter_bootstrap: RateLimiter,
 }
 
 impl OutboundBandwidthLimiter {
     pub fn new(config: OutboundBandwidthLimiterConfig) -> Self {
         Self {
-            limiter_standard: BandwidthLimiter::new(
-                config.standard_burst_ratio,
-                config.standard_limit,
-            ),
-            limiter_bootstrap: BandwidthLimiter::new(
+            limiter_standard: RateLimiter::new(config.standard_burst_ratio, config.standard_limit),
+            limiter_bootstrap: RateLimiter::new(
                 config.bootstrap_burst_ratio,
                 config.bootstrap_limit,
             ),
@@ -97,7 +94,7 @@ impl OutboundBandwidthLimiter {
         self.select_limiter(limit_type).reset(burst_ratio, limit);
     }
 
-    fn select_limiter(&self, limit_type: BandwidthLimitType) -> &BandwidthLimiter {
+    fn select_limiter(&self, limit_type: BandwidthLimitType) -> &RateLimiter {
         match limit_type {
             BandwidthLimitType::Standard => &self.limiter_standard,
             BandwidthLimitType::Bootstrap => &self.limiter_bootstrap,
@@ -119,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_limit() {
-        let limiter = BandwidthLimiter::new(1.5, 10);
+        let limiter = RateLimiter::new(1.5, 10);
         assert_eq!(limiter.should_pass(15), true);
         assert_eq!(limiter.should_pass(1), false);
         MockClock::advance(Duration::from_millis(100));

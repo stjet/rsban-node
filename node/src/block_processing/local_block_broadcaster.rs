@@ -10,7 +10,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
-use rsnano_network::{bandwidth_limiter::BandwidthLimiter, DropPolicy, TrafficType};
+use rsnano_network::{bandwidth_limiter::RateLimiter, DropPolicy, TrafficType};
 use std::{
     cmp::min,
     collections::{BTreeMap, HashMap, HashSet, VecDeque},
@@ -73,7 +73,7 @@ pub struct LocalBlockBroadcaster {
     enabled: bool,
     mutex: Mutex<LocalBlockBroadcasterData>,
     condition: Condvar,
-    limiter: BandwidthLimiter,
+    limiter: RateLimiter,
     message_publisher: Mutex<MessagePublisher>,
 }
 
@@ -88,7 +88,7 @@ impl LocalBlockBroadcaster {
         enabled: bool,
     ) -> Self {
         Self {
-            limiter: BandwidthLimiter::new(
+            limiter: RateLimiter::new(
                 config.broadcast_rate_burst_ratio,
                 config.broadcast_rate_limit,
             ),

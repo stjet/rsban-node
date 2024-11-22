@@ -35,7 +35,7 @@ use rsnano_messages::{
     AscPullReqType, BlocksAckPayload, BlocksReqPayload, HashType, Message,
 };
 use rsnano_network::{
-    bandwidth_limiter::BandwidthLimiter, ChannelId, DropPolicy, NetworkInfo, TrafficType,
+    bandwidth_limiter::RateLimiter, ChannelId, DropPolicy, NetworkInfo, TrafficType,
 };
 use rsnano_nullable_clock::{SteadyClock, Timestamp};
 use std::{
@@ -63,7 +63,7 @@ pub struct BootstrapAscending {
     config: BootstrapAscendingConfig,
     /// Requests for accounts from database have much lower hitrate and could introduce strain on the network
     /// A separate (lower) limiter ensures that we always reserve resources for querying accounts from priority queue
-    database_limiter: BandwidthLimiter,
+    database_limiter: RateLimiter,
     clock: Arc<SteadyClock>,
 }
 
@@ -102,7 +102,7 @@ impl BootstrapAscending {
                 network_info,
             })),
             condition: Arc::new(Condvar::new()),
-            database_limiter: BandwidthLimiter::new(1.0, config.database_rate_limit),
+            database_limiter: RateLimiter::new(1.0, config.database_rate_limit),
             config,
             stats,
             ledger,
@@ -923,7 +923,7 @@ impl BootstrapAscendingLogic {
     fn next_database(
         &mut self,
         should_throttle: bool,
-        database_limiter: &BandwidthLimiter,
+        database_limiter: &RateLimiter,
         stats: &Stats,
         warmup_ratio: usize,
     ) -> Account {

@@ -245,7 +245,7 @@ impl TestDbFile {
     }
 
     fn temp_file_name() -> PathBuf {
-        PathBuf::from(format!("{}.ldb", uuid::Uuid::new_v4().to_simple()))
+        PathBuf::from(format!("{}.ldb", uuid::Uuid::new_v4().simple()))
     }
 
     fn lock_file_path(&self) -> PathBuf {

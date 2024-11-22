@@ -19,7 +19,7 @@ lmdb-rkv = "0.14"
 lmdb-rkv-sys = "0.11"
 primitive-types = "0"
 anyhow = "1"
-uuid = { version = "0", features = ["v4"] }
+uuid = { version = "1", features = ["v4"] }
 num-traits = "0"
 rand = { version = "0" }
 num-derive = "0"

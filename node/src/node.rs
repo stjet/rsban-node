@@ -280,7 +280,7 @@ impl Node {
             network_params.network.cleanup_cutoff(),
         );
 
-        let publish_filter = Arc::new(NetworkFilter::new(256 * 1024));
+        let publish_filter = Arc::new(NetworkFilter::new(1024 * 1024));
 
         // empty `config.peering_port` means the user made no port choice at all;
         // otherwise, any value is considered, with `0` having the special meaning of 'let the OS pick a port instead'

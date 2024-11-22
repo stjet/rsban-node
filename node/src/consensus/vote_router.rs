@@ -1,9 +1,10 @@
-use super::{Election, RecentlyConfirmedCache, VoteApplier};
+use super::{Election, RecentlyConfirmedCache, VoteApplier, VoteCache};
 use crate::consensus::VoteApplierExt;
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     BlockHash, Vote, VoteCode, VoteSource,
 };
+use rsnano_ledger::RepWeightCache;
 use std::{
     collections::HashMap,
     mem::size_of,
@@ -21,12 +22,16 @@ pub struct VoteRouter {
     vote_processed_observers: Mutex<Vec<VoteProcessedCallback>>,
     recently_confirmed: Arc<RecentlyConfirmedCache>,
     vote_applier: Arc<VoteApplier>,
+    vote_cache: Arc<Mutex<VoteCache>>,
+    rep_weights: Arc<RepWeightCache>,
 }
 
 impl VoteRouter {
     pub fn new(
+        vote_cache: Arc<Mutex<VoteCache>>,
         recently_confirmed: Arc<RecentlyConfirmedCache>,
         vote_applier: Arc<VoteApplier>,
+        rep_weights: Arc<RepWeightCache>,
     ) -> Self {
         Self {
             thread: Mutex::new(None),
@@ -40,6 +45,8 @@ impl VoteRouter {
             vote_processed_observers: Mutex::new(Vec::new()),
             recently_confirmed,
             vote_applier,
+            vote_cache,
+            rep_weights,
         }
     }
 
@@ -159,6 +166,15 @@ impl VoteRouter {
                 source,
             );
             results.insert(block_hash, vote_result);
+        }
+
+        // Cache the votes that didn't match any election
+        if source != VoteSource::Cache {
+            let rep_weight = self.rep_weights.weight(&vote.voting_account);
+            self.vote_cache
+                .lock()
+                .unwrap()
+                .insert(vote, rep_weight, &results);
         }
 
         self.on_vote_processed(vote, source, &results);

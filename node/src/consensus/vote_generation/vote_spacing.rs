@@ -1,5 +1,5 @@
 #[cfg(test)]
-use mock_instant::global::Instant;
+use mock_instant::thread_local::Instant;
 use rsnano_core::{BlockHash, Root};
 #[cfg(not(test))]
 use std::time::Instant;
@@ -187,7 +187,7 @@ fn remove_from_time_index(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mock_instant::global::MockClock;
+    use mock_instant::thread_local::MockClock;
 
     #[test]
     fn empty() {

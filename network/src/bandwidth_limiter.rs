@@ -91,7 +91,7 @@ impl Default for BandwidthLimiter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mock_instant::global::MockClock;
+    use mock_instant::thread_local::MockClock;
     use std::time::Duration;
 
     #[test]

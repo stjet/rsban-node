@@ -482,8 +482,10 @@ impl Node {
         ));
 
         let vote_router = Arc::new(VoteRouter::new(
+            vote_cache.clone(),
             recently_confirmed.clone(),
             vote_applier.clone(),
+            rep_weights.clone(),
         ));
 
         let on_vote = args
@@ -809,25 +811,12 @@ impl Node {
             }
         }));
 
-        let ledger_w = Arc::downgrade(&ledger);
-        let vote_cache_w = Arc::downgrade(&vote_cache);
         let wallets_w = Arc::downgrade(&wallets);
         let publisher_l = Mutex::new(message_publisher.clone());
-        vote_router.add_vote_processed_observer(Box::new(move |vote, source, results| {
-            let Some(ledger) = ledger_w.upgrade() else {
-                return;
-            };
-            let Some(vote_cache) = vote_cache_w.upgrade() else {
-                return;
-            };
+        vote_router.add_vote_processed_observer(Box::new(move |vote, _source, results| {
             let Some(wallets) = wallets_w.upgrade() else {
                 return;
             };
-            let rep_weight = ledger.weight(&vote.voting_account);
-
-            if source != VoteSource::Cache {
-                vote_cache.lock().unwrap().insert(vote, rep_weight, results);
-            }
 
             // Republish vote if it is new and the node does not host a principal representative (or close to)
             let processed = results.iter().any(|(_, code)| *code == VoteCode::Vote);

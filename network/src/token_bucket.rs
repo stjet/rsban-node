@@ -1,5 +1,5 @@
 #[cfg(test)]
-use mock_instant::global::Instant;
+use mock_instant::thread_local::Instant;
 use std::time::Duration;
 #[cfg(not(test))]
 use std::time::Instant;
@@ -108,7 +108,7 @@ impl TokenBucket {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mock_instant::global::MockClock;
+    use mock_instant::thread_local::MockClock;
 
     #[test]
     fn basic() {

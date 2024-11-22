@@ -1,5 +1,5 @@
 #[cfg(test)]
-use mock_instant::global::Instant;
+use mock_instant::thread_local::Instant;
 use rsnano_core::{BlockHash, HashOrAccount};
 #[cfg(not(test))]
 use std::time::Instant;
@@ -136,7 +136,7 @@ pub struct PullInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mock_instant::global::MockClock;
+    use mock_instant::thread_local::MockClock;
     use std::time::Duration;
 
     #[test]

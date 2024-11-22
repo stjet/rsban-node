@@ -1424,7 +1424,9 @@ impl NodeExt for Arc<Node> {
         self.unchecked.start();
         self.wallets.start();
         self.rep_tiers.start();
-        self.vote_processor.start();
+        if self.config.enable_vote_processor {
+            self.vote_processor.start();
+        }
         self.vote_cache_processor.start();
         self.block_processor.start();
         self.active.start();

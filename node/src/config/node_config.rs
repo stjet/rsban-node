@@ -43,6 +43,7 @@ pub struct NodeConfig {
     pub background_threads: u32,
     pub signature_checker_threads: u32,
     pub enable_voting: bool,
+    pub enable_vote_processor: bool,
     pub bootstrap_connections: u32,
     pub bootstrap_connections_max: u32,
     pub bootstrap_initiator_threads: u32,
@@ -238,6 +239,7 @@ impl NodeConfig {
             /* Use half available threads on the system for signature checking. The calling thread does checks as well, so these are extra worker threads */
             signature_checker_threads: (parallelism / 2) as u32,
             enable_voting,
+            enable_vote_processor: true,
             bootstrap_connections: bootstrap_initiator_cfg.bootstrap_connections,
             bootstrap_connections_max: bootstrap_initiator_cfg.bootstrap_connections_max,
             bootstrap_initiator_threads: 1,

@@ -33,6 +33,7 @@ pub struct System {
     pub work: Arc<WorkPoolImpl>,
     pub nodes: Vec<Arc<Node>>,
     pub initialization_blocks: Vec<Block>,
+    pub initialization_blocks_cemented: Vec<Block>,
 }
 
 impl System {
@@ -50,6 +51,7 @@ impl System {
             network_params,
             nodes: Vec::new(),
             initialization_blocks: Vec::new(),
+            initialization_blocks_cemented: Vec::new(),
         }
     }
 
@@ -88,6 +90,18 @@ impl System {
         self.build_node().finish()
     }
 
+    fn setup_node(&mut self, node: &Node) {
+        let mut tx = node.store.tx_begin_write();
+        for block in &mut self.initialization_blocks {
+            node.ledger.process(&mut tx, block).unwrap();
+        }
+
+        for block in &mut self.initialization_blocks_cemented {
+            node.ledger.process(&mut tx, block).unwrap();
+            node.ledger.confirm(&mut tx, block.hash());
+        }
+    }
+
     fn make_node_with(
         &mut self,
         config: NodeConfig,
@@ -96,15 +110,17 @@ impl System {
     ) -> Arc<Node> {
         let node = self.new_node(config, flags);
 
-        for block in &mut self.initialization_blocks {
-            node.ledger
-                .process(&mut node.store.tx_begin_write(), block)
-                .unwrap();
-        }
+        self.setup_node(&node);
 
         let wallet_id = WalletId::random();
         node.wallets.create(wallet_id);
         node.start();
+
+        // Check that we don't start more nodes than limit for single IP address
+        debug_assert!(
+            self.nodes.len() < node.config.max_peers_per_ip.into()
+                || node.flags.disable_max_peers_per_ip
+        );
         self.nodes.push(node.clone());
 
         if self.nodes.len() > 1 && !disconnected {

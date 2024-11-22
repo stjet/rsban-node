@@ -1,7 +1,7 @@
 use super::TallyKey;
 use crate::stats::{DetailType, StatType, Stats};
 #[cfg(test)]
-use mock_instant::Instant;
+use mock_instant::global::Instant;
 use rsnano_core::{
     utils::{ContainerInfo, ContainerInfoComponent},
     Amount, BlockHash, PublicKey, Vote, VoteCode,
@@ -529,7 +529,7 @@ impl OrderedVoters {
 mod tests {
     use super::*;
     use crate::stats::Direction;
-    use mock_instant::MockClock;
+    use mock_instant::global::MockClock;
     use rsnano_core::KeyPair;
 
     fn create_vote(rep: &KeyPair, hash: &BlockHash, timestamp_offset: u64) -> Arc<Vote> {

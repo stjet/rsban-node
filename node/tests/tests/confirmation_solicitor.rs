@@ -9,7 +9,6 @@ use rsnano_node::{
     stats::{DetailType, Direction, StatType},
     DEV_NETWORK_PARAMS,
 };
-use std::sync::Arc;
 use test_helpers::{establish_tcp, System};
 
 #[test]

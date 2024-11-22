@@ -823,7 +823,7 @@ fn new_unconfirmed_block() {
             &DEV_GENESIS_KEY,
             node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
-        node1.process_local(send).unwrap();
+        node1.process_local(send.clone()).unwrap();
 
         let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
             panic!("not a text message");
@@ -831,6 +831,7 @@ fn new_unconfirmed_block() {
 
         let response_json: OutgoingMessageEnvelope = serde_json::from_str(&response).unwrap();
         assert_eq!(response_json.topic, Some(Topic::NewUnconfirmedBlock));
+        assert_eq!(response_json.hash, Some(send.hash()));
 
         // Check the response
         let msg = response_json.message.unwrap();

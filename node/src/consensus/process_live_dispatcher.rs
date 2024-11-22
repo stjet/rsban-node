@@ -75,5 +75,7 @@ fn new_block_arrived_message(block: &Block) -> OutgoingMessageEnvelope {
     block.serialize_json(&mut json_block).unwrap();
     let subtype = block.sideband().unwrap().details.subtype_str();
     json_block.put_string("subtype", subtype).unwrap();
-    OutgoingMessageEnvelope::new(Topic::NewUnconfirmedBlock, json_block.value)
+    let mut result = OutgoingMessageEnvelope::new(Topic::NewUnconfirmedBlock, json_block.value);
+    result.hash = Some(block.hash());
+    result
 }

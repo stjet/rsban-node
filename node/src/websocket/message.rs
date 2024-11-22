@@ -51,6 +51,8 @@ pub struct OutgoingMessageEnvelope {
     pub ack: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub topic: Option<Topic>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hash: Option<BlockHash>,
     pub time: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<Value>,
@@ -62,6 +64,7 @@ impl OutgoingMessageEnvelope {
             id: None,
             ack: None,
             topic: Some(topic),
+            hash: None,
             time: milliseconds_since_epoch().to_string(),
             message: Some(serde_json::to_value(message).expect("could not serialize message")),
         }
@@ -72,6 +75,7 @@ impl OutgoingMessageEnvelope {
             id,
             topic: None,
             ack: Some(action),
+            hash: None,
             time: milliseconds_since_epoch().to_string(),
             message: None,
         }

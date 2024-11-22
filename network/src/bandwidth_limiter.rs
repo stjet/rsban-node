@@ -114,7 +114,7 @@ impl Default for OutboundBandwidthLimiter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mock_instant::MockClock;
+    use mock_instant::global::MockClock;
     use std::time::Duration;
 
     #[test]

@@ -2748,12 +2748,6 @@ dependencies = [
 
 [[package]]
 name = "mock_instant"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "717e29a243b81f8130e31e24e04fb151b04a44b5a7d05370935f7d937e9de06d"
-
-[[package]]
-name = "mock_instant"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdcebb6db83796481097dedc7747809243cc81d9ed83e6a938b76d4ea0b249cf"
@@ -2878,17 +2872,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
 dependencies = [
  "num-traits",
-]
-
-[[package]]
-name = "num-derive"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -3729,7 +3712,7 @@ dependencies = [
  "eframe",
  "egui_extras",
  "num",
- "num-derive 0.4.2",
+ "num-derive",
  "num-format",
  "num-traits",
  "rsnano_core",
@@ -3755,7 +3738,7 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "num",
- "num-derive 0.4.2",
+ "num-derive",
  "num-format",
  "num-traits",
  "primitive-types",
@@ -3784,7 +3767,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "lmdb-rkv",
- "num-derive 0.4.2",
+ "num-derive",
  "num-traits",
  "once_cell",
  "rand",
@@ -3799,7 +3782,7 @@ dependencies = [
  "anyhow",
  "bitvec",
  "num",
- "num-derive 0.3.3",
+ "num-derive",
  "num-traits",
  "rand",
  "rsnano_core",
@@ -3815,8 +3798,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "mock_instant 0.2.1",
- "num-derive 0.4.2",
+ "mock_instant",
+ "num-derive",
  "num-traits",
  "rand",
  "rsnano_core",
@@ -3843,9 +3826,9 @@ dependencies = [
  "chrono",
  "dirs",
  "futures-util",
- "mock_instant 0.5.1",
+ "mock_instant",
  "num",
- "num-derive 0.4.2",
+ "num-derive",
  "num-traits",
  "once_cell",
  "ordered-float",
@@ -4021,7 +4004,7 @@ dependencies = [
  "anyhow",
  "lmdb-rkv",
  "lmdb-rkv-sys",
- "num-derive 0.4.2",
+ "num-derive",
  "num-traits",
  "primitive-types",
  "rand",
@@ -4578,7 +4561,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
- "mock_instant 0.5.1",
+ "mock_instant",
  "rsnano_core",
  "rsnano_ledger",
  "rsnano_network",

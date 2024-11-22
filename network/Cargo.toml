@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dev-dependencies]
-mock_instant = "0.2.1"
+mock_instant = "0"
 
 [dependencies]
 rsnano_nullable_clock = { path = "../nullables/clock" }

@@ -28,10 +28,9 @@ impl RateLimiter {
 }
 
 pub struct BandwidthLimiterConfig {
-    // standard
-    pub standard_limit: usize,
-    pub standard_burst_ratio: f64,
-    // bootstrap
+    pub generic_limit: usize,
+    pub generic_burst_ratio: f64,
+
     pub bootstrap_limit: usize,
     pub bootstrap_burst_ratio: f64,
 }
@@ -39,8 +38,8 @@ pub struct BandwidthLimiterConfig {
 impl Default for BandwidthLimiterConfig {
     fn default() -> Self {
         Self {
-            standard_limit: 10 * 1024 * 1024,
-            standard_burst_ratio: 3_f64,
+            generic_limit: 10 * 1024 * 1024,
+            generic_burst_ratio: 3_f64,
             bootstrap_limit: 5 * 1024 * 1024,
             bootstrap_burst_ratio: 1_f64,
         }
@@ -55,7 +54,7 @@ pub struct BandwidthLimiter {
 impl BandwidthLimiter {
     pub fn new(config: BandwidthLimiterConfig) -> Self {
         Self {
-            limiter_generic: RateLimiter::new(config.standard_burst_ratio, config.standard_limit),
+            limiter_generic: RateLimiter::new(config.generic_burst_ratio, config.generic_limit),
             limiter_bootstrap: RateLimiter::new(
                 config.bootstrap_burst_ratio,
                 config.bootstrap_limit,

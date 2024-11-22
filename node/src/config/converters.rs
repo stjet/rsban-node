@@ -80,8 +80,8 @@ impl From<&GlobalConfig> for NetworkConfig {
 impl From<&GlobalConfig> for BandwidthLimiterConfig {
     fn from(value: &GlobalConfig) -> Self {
         Self {
-            standard_limit: value.node_config.bandwidth_limit,
-            standard_burst_ratio: value.node_config.bandwidth_limit_burst_ratio,
+            generic_limit: value.node_config.bandwidth_limit,
+            generic_burst_ratio: value.node_config.bandwidth_limit_burst_ratio,
             bootstrap_limit: value.node_config.bootstrap_bandwidth_limit,
             bootstrap_burst_ratio: value.node_config.bootstrap_bandwidth_burst_ratio,
         }

@@ -140,7 +140,7 @@ mod tests {
 
     // Send two publish messages and asserts that the duplication is detected.
     #[tokio::test]
-    async fn duplicate_detection() {
+    async fn duplicate_publish_message() {
         let protocol = ProtocolInfo::default();
         let message = Message::Publish(Publish::new_test_instance());
         let mut serializer = MessageSerializer::new(protocol);
@@ -159,5 +159,28 @@ mod tests {
         let error = deserializer.read().await.unwrap_err();
 
         assert_eq!(error, ParseMessageError::DuplicatePublishMessage);
+    }
+
+    // Send two publish messages and asserts that the duplication is detected.
+    #[tokio::test]
+    async fn duplicate_confirm_ack() {
+        let protocol = ProtocolInfo::default();
+        let message = Message::ConfirmAck(ConfirmAck::new_test_instance());
+        let mut serializer = MessageSerializer::new(protocol);
+        let mut buffer = serializer.serialize(&message).to_vec();
+        buffer.extend_from_slice(serializer.serialize(&message));
+        let reader = VecBufferReader::new(buffer);
+
+        let mut deserializer = MessageDeserializer::new(
+            protocol,
+            WorkThresholds::new(0, 0, 0),
+            Arc::new(NetworkFilter::default()),
+            reader,
+        );
+
+        deserializer.read().await.unwrap();
+        let error = deserializer.read().await.unwrap_err();
+
+        assert_eq!(error, ParseMessageError::DuplicateConfirmAckMessage);
     }
 }

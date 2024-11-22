@@ -20,7 +20,7 @@ use tracing::trace;
 /// Handle realtime messages (as opposed to bootstrap messages)
 pub struct RealtimeMessageHandler {
     stats: Arc<Stats>,
-    publish_filter: Arc<NetworkFilter>,
+    network_filter: Arc<NetworkFilter>,
     network_info: Arc<RwLock<NetworkInfo>>,
     block_processor: Arc<BlockProcessor>,
     config: NodeConfig,
@@ -49,7 +49,7 @@ impl RealtimeMessageHandler {
         Self {
             stats,
             network_info,
-            publish_filter,
+            network_filter: publish_filter,
             block_processor,
             config,
             wallets,
@@ -97,7 +97,9 @@ impl RealtimeMessageHandler {
                     .block_processor
                     .add(publish.block, source, channel.channel_id());
                 if !added {
-                    self.publish_filter.clear(publish.digest);
+                    // The message couldn't be handled. We have to remove it from the duplicate
+                    // filter, so that it can be retransmitted and handled later
+                    self.network_filter.clear(publish.digest);
                     self.stats
                         .inc_dir(StatType::Drop, DetailType::Publish, Direction::In);
                 }
@@ -132,7 +134,9 @@ impl RealtimeMessageHandler {
                 );
 
                 if !added {
-                    self.publish_filter.clear(ack.digest);
+                    // The message couldn't be handled. We have to remove it from the duplicate
+                    // filter, so that it can be retransmitted and handled later
+                    self.network_filter.clear(ack.digest);
                     self.stats
                         .inc_dir(StatType::Drop, DetailType::ConfirmAck, Direction::In);
                 }

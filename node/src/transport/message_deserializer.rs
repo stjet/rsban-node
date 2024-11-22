@@ -64,7 +64,7 @@ impl<T: AsyncBufferReader + Send> MessageDeserializer<T> {
         payload_size: usize,
     ) -> Result<DeserializedMessage, ParseMessageError> {
         let payload_bytes = &self.read_buffer[..payload_size];
-        let digest = self.filter_duplicate_publish_messages(header.message_type, payload_bytes)?;
+        let digest = self.filter_duplicate_messages(header.message_type, payload_bytes)?;
         let message = Message::deserialize(payload_bytes, &header, digest)
             .ok_or(ParseMessageError::InvalidMessage(header.message_type))?;
         self.validate_work(&message)?;
@@ -88,16 +88,20 @@ impl<T: AsyncBufferReader + Send> MessageDeserializer<T> {
         Ok(())
     }
 
-    fn filter_duplicate_publish_messages(
+    /// Early filtering to not waste time deserializing duplicate blocks
+    fn filter_duplicate_messages(
         &self,
         message_type: MessageType,
         payload_bytes: &[u8],
     ) -> Result<u128, ParseMessageError> {
-        if message_type == MessageType::Publish {
-            // Early filtering to not waste time deserializing duplicate blocks
+        if matches!(message_type, MessageType::Publish | MessageType::ConfirmAck) {
             let (digest, existed) = self.network_filter.apply(payload_bytes);
             if existed {
-                Err(ParseMessageError::DuplicatePublishMessage)
+                if message_type == MessageType::ConfirmAck {
+                    Err(ParseMessageError::DuplicateConfirmAckMessage)
+                } else {
+                    Err(ParseMessageError::DuplicatePublishMessage)
+                }
             } else {
                 Ok(digest)
             }

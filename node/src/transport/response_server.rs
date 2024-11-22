@@ -80,7 +80,7 @@ pub struct ResponseServer {
     inbound_queue: Arc<InboundMessageQueue>,
     handshake_process: HandshakeProcess,
     initiate_handshake_listener: OutputListenerMt<()>,
-    publish_filter: Arc<NetworkFilter>,
+    network_filter: Arc<NetworkFilter>,
     tokio: tokio::runtime::Handle,
     ledger: Arc<Ledger>,
     workers: Arc<dyn ThreadPool>,
@@ -135,7 +135,7 @@ impl ResponseServer {
             disable_bootstrap_bulk_pull_server: false,
             allow_bootstrap,
             initiate_handshake_listener: OutputListenerMt::new(),
-            publish_filter,
+            network_filter: publish_filter,
             tokio,
             ledger,
             workers,
@@ -330,7 +330,7 @@ impl ResponseServerExt for Arc<ResponseServer> {
         let mut message_deserializer = MessageDeserializer::new(
             self.network_params.network.protocol_info(),
             self.network_params.network.work.clone(),
-            self.publish_filter.clone(),
+            self.network_filter.clone(),
             ChannelReader::new(self.channel.clone()),
         );
 
@@ -358,6 +358,14 @@ impl ResponseServerExt for Arc<ResponseServer> {
                     self.stats.inc_dir(
                         StatType::Filter,
                         DetailType::DuplicatePublishMessage,
+                        Direction::In,
+                    );
+                    ProcessResult::Progress
+                }
+                Err(ParseMessageError::DuplicateConfirmAckMessage) => {
+                    self.stats.inc_dir(
+                        StatType::Filter,
+                        DetailType::DuplicateConfirmAckMessage,
                         Direction::In,
                     );
                     ProcessResult::Progress

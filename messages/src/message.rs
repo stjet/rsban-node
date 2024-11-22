@@ -36,6 +36,7 @@ pub enum ParseMessageError {
     InvalidNetwork,
     OutdatedVersion,
     DuplicatePublishMessage,
+    DuplicateConfirmAckMessage,
     MessageSizeTooBig,
     Stopped,
 }
@@ -121,9 +122,11 @@ impl Message {
                 Message::BulkPullAccount(BulkPullAccount::deserialize(&mut stream)?)
             }
             MessageType::BulkPush => Message::BulkPush,
-            MessageType::ConfirmAck => {
-                Message::ConfirmAck(ConfirmAck::deserialize(&mut stream, header.extensions)?)
-            }
+            MessageType::ConfirmAck => Message::ConfirmAck(ConfirmAck::deserialize(
+                &mut stream,
+                header.extensions,
+                digest,
+            )?),
             MessageType::ConfirmReq => {
                 Message::ConfirmReq(ConfirmReq::deserialize(&mut stream, header.extensions)?)
             }

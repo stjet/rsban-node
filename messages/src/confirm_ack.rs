@@ -24,6 +24,8 @@ use std::fmt::{Debug, Display};
 pub struct ConfirmAck {
     vote: Vote,
     is_rebroadcasted: bool,
+    /// Messages deserialized from network should have their digest set
+    pub digest: u128,
 }
 
 impl ConfirmAck {
@@ -35,6 +37,7 @@ impl ConfirmAck {
         Self {
             vote,
             is_rebroadcasted: false,
+            digest: 0,
         }
     }
 
@@ -43,6 +46,7 @@ impl ConfirmAck {
         Self {
             vote,
             is_rebroadcasted: true,
+            digest: 0,
         }
     }
 
@@ -59,16 +63,21 @@ impl ConfirmAck {
         Vote::serialized_size(count as usize)
     }
 
-    pub fn deserialize(stream: &mut impl Stream, extensions: BitArray<u16>) -> Option<Self> {
+    pub fn deserialize(
+        stream: &mut impl Stream,
+        extensions: BitArray<u16>,
+        digest: u128,
+    ) -> Option<Self> {
         let mut vote = Vote::null();
         vote.deserialize(stream).ok()?;
 
         let is_rebroadcasted = extensions[Self::REBROADCASTED_FLAG];
-        let ack = if is_rebroadcasted {
+        let mut ack = if is_rebroadcasted {
             ConfirmAck::new_with_rebroadcasted_vote(vote)
         } else {
             ConfirmAck::new_with_own_vote(vote)
         };
+        ack.digest = digest;
 
         Some(ack)
     }
@@ -174,7 +183,7 @@ mod tests {
         let mut extensions = BitArray::<u16>::new(0);
         extensions.set(ConfirmAck::REBROADCASTED_FLAG, true);
 
-        let ack = ConfirmAck::deserialize(&mut stream, extensions).unwrap();
+        let ack = ConfirmAck::deserialize(&mut stream, extensions, 0).unwrap();
 
         assert_eq!(ack.is_rebroadcasted(), true);
     }
@@ -188,7 +197,7 @@ mod tests {
         let mut extensions = BitArray::<u16>::new(0);
         extensions.set(ConfirmAck::REBROADCASTED_FLAG, false);
 
-        let ack = ConfirmAck::deserialize(&mut stream, extensions).unwrap();
+        let ack = ConfirmAck::deserialize(&mut stream, extensions, 0).unwrap();
 
         assert_eq!(ack.is_rebroadcasted(), false);
     }

@@ -196,6 +196,9 @@ pub enum DetailType {
     AscPullReq,
     AscPullAck,
 
+    // dropped messages
+    ConfirmAckZeroAccount,
+
     // bootstrap, callback
     Initiate,
     InitiateLegacyAge,
@@ -344,6 +347,7 @@ pub enum DetailType {
 
     // duplicate
     DuplicatePublishMessage,
+    DuplicateConfirmAckMessage,
 
     // telemetry
     InvalidSignature,

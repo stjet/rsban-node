@@ -111,16 +111,30 @@ impl RealtimeMessageHandler {
                 }
             }
             Message::ConfirmAck(ack) => {
-                if !ack.vote().voting_account.is_zero() {
-                    let source = match ack.is_rebroadcasted() {
-                        true => VoteSource::Rebroadcast,
-                        false => VoteSource::Live,
-                    };
-                    self.vote_processor_queue.vote(
-                        Arc::new(ack.vote().clone()),
-                        channel.channel_id(),
-                        source,
+                // Ignore zero account votes
+                if ack.vote().voting_account.is_zero() {
+                    self.stats.inc_dir(
+                        StatType::Drop,
+                        DetailType::ConfirmAckZeroAccount,
+                        Direction::In,
                     );
+                }
+
+                let source = match ack.is_rebroadcasted() {
+                    true => VoteSource::Rebroadcast,
+                    false => VoteSource::Live,
+                };
+
+                let added = self.vote_processor_queue.vote(
+                    Arc::new(ack.vote().clone()),
+                    channel.channel_id(),
+                    source,
+                );
+
+                if !added {
+                    self.publish_filter.clear(ack.digest);
+                    self.stats
+                        .inc_dir(StatType::Drop, DetailType::ConfirmAck, Direction::In);
                 }
             }
             Message::NodeIdHandshake(_) => {

@@ -12,7 +12,7 @@ use std::{
     time::Duration,
 };
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct BacklogPopulationConfig {
     /** Control if ongoing backlog population is enabled. If not, backlog population can still be triggered by RPC */
     pub enabled: bool,
@@ -22,6 +22,16 @@ pub struct BacklogPopulationConfig {
 
     /** Number of batches to run per second. Batches run in 1 second / `frequency` intervals */
     pub frequency: u32,
+}
+
+impl Default for BacklogPopulationConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            batch_size: 10 * 1000,
+            frequency: 10,
+        }
+    }
 }
 
 struct BacklogPopulationFlags {

@@ -1,6 +1,8 @@
 use super::{DiagnosticsConfig, Networks};
 use crate::{
-    block_processing::{BlockProcessorConfig, LocalBlockBroadcasterConfig},
+    block_processing::{
+        BacklogPopulationConfig, BlockProcessorConfig, LocalBlockBroadcasterConfig,
+    },
     bootstrap::{BootstrapAscendingConfig, BootstrapInitiatorConfig, BootstrapServerConfig},
     cementation::ConfirmingSetConfig,
     consensus::{
@@ -97,10 +99,6 @@ pub struct NodeConfig {
     pub diagnostics_config: DiagnosticsConfig,
     pub stat_config: StatsConfig,
     pub lmdb_config: LmdbConfig,
-    /// Number of accounts per second to process when doing backlog population scan
-    pub backlog_scan_batch_size: u32,
-    /// Number of times per second to run backlog population batches. Number of accounts per single batch is `backlog_scan_batch_size / backlog_scan_frequency`
-    pub backlog_scan_frequency: u32,
     pub vote_cache: VoteCacheConfig,
     pub rep_crawler_query_timeout: Duration,
     pub block_processor: BlockProcessorConfig,
@@ -113,6 +111,7 @@ pub struct NodeConfig {
     pub local_block_broadcaster: LocalBlockBroadcasterConfig,
     pub confirming_set: ConfirmingSetConfig,
     pub monitor: MonitorConfig,
+    pub backlog: BacklogPopulationConfig,
 }
 
 static DEFAULT_LIVE_PEER_NETWORK: Lazy<String> =
@@ -312,8 +311,6 @@ impl NodeConfig {
             diagnostics_config: DiagnosticsConfig::new(),
             stat_config: StatsConfig::new(),
             lmdb_config: LmdbConfig::new(),
-            backlog_scan_batch_size: 10 * 1000,
-            backlog_scan_frequency: 10,
             optimistic_scheduler: OptimisticSchedulerConfig::new(),
             hinted_scheduler: if network_params.network.is_dev_network() {
                 HintedSchedulerConfig::default_for_dev_network()
@@ -343,6 +340,7 @@ impl NodeConfig {
             ),
             confirming_set: Default::default(),
             monitor: Default::default(),
+            backlog: Default::default(),
         }
     }
 

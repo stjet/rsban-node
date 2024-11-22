@@ -111,8 +111,11 @@ mod tests {
         request_aggregator_threads = 999
         max_unchecked_blocks = 999
         frontiers_confirmation = "always"
-        backlog_scan_batch_size = 999
-        backlog_scan_frequency = 999
+
+        [node.backlog_population]
+        enable = false
+        batch_size = 999
+        frequency = 999
 
         [node.block_processor]
         max_peer_queue = 999
@@ -447,12 +450,12 @@ mod tests {
             default_cfg.node.frontiers_confirmation
         );
         assert_ne!(
-            deserialized.node.backlog_scan_batch_size,
-            default_cfg.node.backlog_scan_batch_size
+            deserialized.node.backlog.enabled,
+            default_cfg.node.backlog.enabled
         );
         assert_ne!(
-            deserialized.node.backlog_scan_frequency,
-            default_cfg.node.backlog_scan_frequency
+            deserialized.node.backlog.frequency,
+            default_cfg.node.backlog.frequency
         );
 
         // Block Processor section

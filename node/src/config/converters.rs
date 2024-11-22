@@ -55,12 +55,10 @@ impl From<&GlobalConfig> for BootstrapInitiatorConfig {
 
 impl From<&GlobalConfig> for BacklogPopulationConfig {
     fn from(value: &GlobalConfig) -> Self {
-        Self {
-            enabled: value.node_config.frontiers_confirmation
-                != FrontiersConfirmationMode::Disabled,
-            batch_size: value.node_config.backlog_scan_batch_size,
-            frequency: value.node_config.backlog_scan_frequency,
-        }
+        let mut result = value.node_config.backlog.clone();
+        result.enabled =
+            value.node_config.frontiers_confirmation != FrontiersConfirmationMode::Disabled;
+        result
     }
 }
 

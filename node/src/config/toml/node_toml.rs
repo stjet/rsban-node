@@ -1,9 +1,4 @@
-use super::{
-    ActiveElectionsToml, BlockProcessorToml, BootstrapAscendingToml, BootstrapServerToml,
-    DiagnosticsToml, ExperimentalToml, HintedSchedulerToml, HttpcallbackToml, IpcToml, LmdbToml,
-    MessageProcessorToml, MonitorToml, OptimisticSchedulerToml, PriorityBucketToml, RepCrawlerToml,
-    RequestAggregatorToml, StatsToml, VoteCacheToml, VoteProcessorToml, WebsocketToml,
-};
+use super::*;
 use crate::config::{FrontiersConfirmationMode, NodeConfig};
 use rsnano_core::{utils::Peer, Account, Amount};
 use serde::{Deserialize, Serialize};
@@ -13,8 +8,6 @@ use std::{str::FromStr, time::Duration};
 pub struct NodeToml {
     pub allow_local_peers: Option<bool>,
     pub background_threads: Option<u32>,
-    pub backlog_scan_batch_size: Option<u32>,
-    pub backlog_scan_frequency: Option<u32>,
     pub backup_before_upgrade: Option<bool>,
     pub bandwidth_limit: Option<usize>,
     pub bandwidth_limit_burst_ratio: Option<f64>,
@@ -79,6 +72,7 @@ pub struct NodeToml {
     pub vote_cache: Option<VoteCacheToml>,
     pub vote_processor: Option<VoteProcessorToml>,
     pub websocket: Option<WebsocketToml>,
+    pub backlog_population: Option<BacklogPopulationToml>,
 }
 
 impl NodeConfig {
@@ -88,12 +82,6 @@ impl NodeConfig {
         }
         if let Some(background_threads) = toml.background_threads {
             self.background_threads = background_threads;
-        }
-        if let Some(backlog_scan_batch_size) = toml.backlog_scan_batch_size {
-            self.backlog_scan_batch_size = backlog_scan_batch_size;
-        }
-        if let Some(backlog_scan_frequency) = toml.backlog_scan_frequency {
-            self.backlog_scan_frequency = backlog_scan_frequency;
         }
         if let Some(backup_before_upgrade) = toml.backup_before_upgrade {
             self.backup_before_upgrade = backup_before_upgrade;
@@ -318,12 +306,6 @@ impl NodeConfig {
         if let Some(lmdb_config_toml) = &toml.lmdb {
             self.lmdb_config = lmdb_config_toml.into();
         }
-        if let Some(backlog_scan_batch_size) = toml.backlog_scan_batch_size {
-            self.backlog_scan_batch_size = backlog_scan_batch_size;
-        }
-        if let Some(backlog_scan_frequency) = toml.backlog_scan_frequency {
-            self.backlog_scan_frequency = backlog_scan_frequency;
-        }
         if let Some(vote_cache_toml) = &toml.vote_cache {
             self.vote_cache = vote_cache_toml.into();
         }
@@ -360,6 +342,9 @@ impl NodeConfig {
                 self.callback_target = target.clone();
             }
         }
+        if let Some(backlog) = &toml.backlog_population {
+            self.backlog.merge_toml(&backlog);
+        }
     }
 }
 
@@ -368,8 +353,6 @@ impl From<&NodeConfig> for NodeToml {
         Self {
             allow_local_peers: Some(config.allow_local_peers),
             background_threads: Some(config.background_threads),
-            backlog_scan_batch_size: Some(config.backlog_scan_batch_size),
-            backlog_scan_frequency: Some(config.backlog_scan_frequency),
             backup_before_upgrade: Some(config.backup_before_upgrade),
             bandwidth_limit: Some(config.bandwidth_limit),
             bandwidth_limit_burst_ratio: Some(config.bandwidth_limit_burst_ratio),
@@ -459,6 +442,7 @@ impl From<&NodeConfig> for NodeToml {
             httpcallback: Some(config.into()),
             rep_crawler: Some(config.into()),
             experimental: Some(config.into()),
+            backlog_population: (Some((&config.backlog).into())),
         }
     }
 }

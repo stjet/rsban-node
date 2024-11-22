@@ -1,5 +1,5 @@
 use crate::{
-    bandwidth_limiter::OutboundBandwidthLimiter,
+    bandwidth_limiter::BandwidthLimiter,
     utils::into_ipv6_socket_address,
     write_queue::{WriteQueue, WriteQueueReceiver},
     AsyncBufferReader, ChannelDirection, ChannelId, ChannelInfo, DropPolicy, NetworkObserver,
@@ -22,7 +22,7 @@ use tracing::debug;
 pub struct Channel {
     channel_id: ChannelId,
     pub info: Arc<ChannelInfo>,
-    limiter: Arc<OutboundBandwidthLimiter>,
+    limiter: Arc<BandwidthLimiter>,
     write_queue: Arc<WriteQueue>,
     stream: Weak<TcpStream>,
     clock: Arc<SteadyClock>,
@@ -36,7 +36,7 @@ impl Channel {
     fn new(
         channel_info: Arc<ChannelInfo>,
         stream: Weak<TcpStream>,
-        limiter: Arc<OutboundBandwidthLimiter>,
+        limiter: Arc<BandwidthLimiter>,
         clock: Arc<SteadyClock>,
         observer: Arc<dyn NetworkObserver>,
         cancel_token: CancellationToken,
@@ -73,7 +73,7 @@ impl Channel {
                 Timestamp::new_test_instance(),
             )),
             Arc::downgrade(&Arc::new(TcpStream::new_null())),
-            Arc::new(OutboundBandwidthLimiter::default()),
+            Arc::new(BandwidthLimiter::default()),
             Arc::new(SteadyClock::new_null()),
             Arc::new(NullNetworkObserver::new()),
             CancellationToken::new(),
@@ -84,7 +84,7 @@ impl Channel {
     pub fn create(
         channel_info: Arc<ChannelInfo>,
         stream: TcpStream,
-        limiter: Arc<OutboundBandwidthLimiter>,
+        limiter: Arc<BandwidthLimiter>,
         clock: Arc<SteadyClock>,
         observer: Arc<dyn NetworkObserver>,
         handle: &tokio::runtime::Handle,

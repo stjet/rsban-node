@@ -5,7 +5,7 @@ use rsnano_core::{
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::BulkPull;
 use rsnano_network::{
-    bandwidth_limiter::OutboundBandwidthLimiter, Channel, ChannelInfo, NullNetworkObserver,
+    bandwidth_limiter::BandwidthLimiter, Channel, ChannelInfo, NullNetworkObserver,
 };
 use rsnano_node::{
     bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy, BulkPullServer},
@@ -2763,7 +2763,7 @@ fn create_response_server(node: &Node) -> Arc<ResponseServer> {
     let channel = Channel::create(
         Arc::new(ChannelInfo::new_test_instance()),
         TcpStream::new_null(),
-        Arc::new(OutboundBandwidthLimiter::default()),
+        Arc::new(BandwidthLimiter::default()),
         node.steady_clock.clone(),
         Arc::new(NullNetworkObserver::new()),
         &node.runtime,

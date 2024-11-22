@@ -46,7 +46,7 @@ pub enum BandwidthLimitType {
     Bootstrap,
 }
 
-pub struct OutboundBandwidthLimiterConfig {
+pub struct BandwidthLimiterConfig {
     // standard
     pub standard_limit: usize,
     pub standard_burst_ratio: f64,
@@ -55,7 +55,7 @@ pub struct OutboundBandwidthLimiterConfig {
     pub bootstrap_burst_ratio: f64,
 }
 
-impl Default for OutboundBandwidthLimiterConfig {
+impl Default for BandwidthLimiterConfig {
     fn default() -> Self {
         Self {
             standard_limit: 10 * 1024 * 1024,
@@ -66,13 +66,13 @@ impl Default for OutboundBandwidthLimiterConfig {
     }
 }
 
-pub struct OutboundBandwidthLimiter {
+pub struct BandwidthLimiter {
     limiter_standard: RateLimiter,
     limiter_bootstrap: RateLimiter,
 }
 
-impl OutboundBandwidthLimiter {
-    pub fn new(config: OutboundBandwidthLimiterConfig) -> Self {
+impl BandwidthLimiter {
+    pub fn new(config: BandwidthLimiterConfig) -> Self {
         Self {
             limiter_standard: RateLimiter::new(config.standard_burst_ratio, config.standard_limit),
             limiter_bootstrap: RateLimiter::new(
@@ -102,7 +102,7 @@ impl OutboundBandwidthLimiter {
     }
 }
 
-impl Default for OutboundBandwidthLimiter {
+impl Default for BandwidthLimiter {
     fn default() -> Self {
         Self::new(Default::default())
     }

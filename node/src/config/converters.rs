@@ -3,7 +3,7 @@ use crate::{
     block_processing::{BacklogPopulationConfig, BlockProcessorConfig},
     bootstrap::BootstrapInitiatorConfig,
 };
-use rsnano_network::{bandwidth_limiter::OutboundBandwidthLimiterConfig, NetworkConfig};
+use rsnano_network::{bandwidth_limiter::BandwidthLimiterConfig, NetworkConfig};
 use std::time::Duration;
 
 impl From<&GlobalConfig> for BlockProcessorConfig {
@@ -77,7 +77,7 @@ impl From<&GlobalConfig> for NetworkConfig {
     }
 }
 
-impl From<&GlobalConfig> for OutboundBandwidthLimiterConfig {
+impl From<&GlobalConfig> for BandwidthLimiterConfig {
     fn from(value: &GlobalConfig) -> Self {
         Self {
             standard_limit: value.node_config.bandwidth_limit,

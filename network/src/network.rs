@@ -1,5 +1,5 @@
 use crate::{
-    bandwidth_limiter::{OutboundBandwidthLimiter, OutboundBandwidthLimiterConfig},
+    bandwidth_limiter::{BandwidthLimiter, BandwidthLimiterConfig},
     utils::into_ipv6_socket_address,
     Channel, ChannelDirection, ChannelId, ChannelMode, DeadChannelCleanupStep, DropPolicy,
     NetworkInfo, NetworkObserver, NullNetworkObserver, TrafficType,
@@ -17,7 +17,7 @@ use tracing::{debug, warn};
 pub struct Network {
     channels: Mutex<HashMap<ChannelId, Arc<Channel>>>,
     pub info: Arc<RwLock<NetworkInfo>>,
-    limiter: Arc<OutboundBandwidthLimiter>,
+    limiter: Arc<BandwidthLimiter>,
     clock: Arc<SteadyClock>,
     observer: Arc<dyn NetworkObserver>,
     handle: tokio::runtime::Handle,
@@ -25,14 +25,14 @@ pub struct Network {
 
 impl Network {
     pub fn new(
-        limiter_config: OutboundBandwidthLimiterConfig,
+        limiter_config: BandwidthLimiterConfig,
         network_info: Arc<RwLock<NetworkInfo>>,
         clock: Arc<SteadyClock>,
         handle: tokio::runtime::Handle,
     ) -> Self {
         Self {
             channels: Mutex::new(HashMap::new()),
-            limiter: Arc::new(OutboundBandwidthLimiter::new(limiter_config)),
+            limiter: Arc::new(BandwidthLimiter::new(limiter_config)),
             clock,
             info: network_info,
             observer: Arc::new(NullNetworkObserver::new()),

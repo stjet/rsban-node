@@ -1,15 +1,5 @@
 use crate::{token_bucket::TokenBucket, TrafficType};
-use num_derive::FromPrimitive;
 use std::sync::Mutex;
-
-impl From<TrafficType> for BandwidthLimitType {
-    fn from(value: TrafficType) -> Self {
-        match value {
-            TrafficType::Generic => BandwidthLimitType::Standard,
-            TrafficType::Bootstrap => BandwidthLimitType::Bootstrap,
-        }
-    }
-}
 
 pub struct RateLimiter {
     bucket: Mutex<TokenBucket>,
@@ -37,15 +27,6 @@ impl RateLimiter {
     }
 }
 
-/// Enumeration for different bandwidth limits for different traffic types
-#[derive(FromPrimitive)]
-pub enum BandwidthLimitType {
-    /** For all message */
-    Standard,
-    /** For bootstrap (asc_pull_ack, asc_pull_req) traffic */
-    Bootstrap,
-}
-
 pub struct BandwidthLimiterConfig {
     // standard
     pub standard_limit: usize,
@@ -67,14 +48,14 @@ impl Default for BandwidthLimiterConfig {
 }
 
 pub struct BandwidthLimiter {
-    limiter_standard: RateLimiter,
+    limiter_generic: RateLimiter,
     limiter_bootstrap: RateLimiter,
 }
 
 impl BandwidthLimiter {
     pub fn new(config: BandwidthLimiterConfig) -> Self {
         Self {
-            limiter_standard: RateLimiter::new(config.standard_burst_ratio, config.standard_limit),
+            limiter_generic: RateLimiter::new(config.standard_burst_ratio, config.standard_limit),
             limiter_bootstrap: RateLimiter::new(
                 config.bootstrap_burst_ratio,
                 config.bootstrap_limit,
@@ -86,18 +67,18 @@ impl BandwidthLimiter {
      * Check whether packet falls withing bandwidth limits and should be allowed
      * @return true if OK, false if needs to be dropped
      */
-    pub fn should_pass(&self, buffer_size: usize, limit_type: BandwidthLimitType) -> bool {
+    pub fn should_pass(&self, buffer_size: usize, limit_type: TrafficType) -> bool {
         self.select_limiter(limit_type).should_pass(buffer_size)
     }
 
-    pub fn reset(&self, limit: usize, burst_ratio: f64, limit_type: BandwidthLimitType) {
+    pub fn reset(&self, limit: usize, burst_ratio: f64, limit_type: TrafficType) {
         self.select_limiter(limit_type).reset(burst_ratio, limit);
     }
 
-    fn select_limiter(&self, limit_type: BandwidthLimitType) -> &RateLimiter {
+    fn select_limiter(&self, limit_type: TrafficType) -> &RateLimiter {
         match limit_type {
-            BandwidthLimitType::Standard => &self.limiter_standard,
-            BandwidthLimitType::Bootstrap => &self.limiter_bootstrap,
+            TrafficType::Generic => &self.limiter_generic,
+            TrafficType::Bootstrap => &self.limiter_bootstrap,
         }
     }
 }

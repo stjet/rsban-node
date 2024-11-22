@@ -196,7 +196,7 @@ impl Channel {
             sleep(Duration::from_millis(20)).await;
         }
 
-        while !self.limiter.should_pass(buffer.len(), traffic_type.into()) {
+        while !self.limiter.should_pass(buffer.len(), traffic_type) {
             // TODO: better implementation
             sleep(Duration::from_millis(20)).await;
         }
@@ -239,7 +239,7 @@ impl Channel {
             return false;
         }
 
-        let should_pass = self.limiter.should_pass(buffer.len(), traffic_type.into());
+        let should_pass = self.limiter.should_pass(buffer.len(), traffic_type);
         if !should_pass && drop_policy == DropPolicy::CanDrop {
             return false;
         } else {

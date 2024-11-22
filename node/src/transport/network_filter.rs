@@ -37,6 +37,12 @@ impl<T: NetworkFilterHasher> NetworkFilter<T> {
         (digest, existed)
     }
 
+    /// Checks if the digest is in the filter.
+    pub fn check(&self, digest: u128) -> bool {
+        let mut guard = self.items.lock().unwrap();
+        *self.get_element(digest, &mut guard) == digest
+    }
+
     /// Sets the corresponding element in the filter to zero, if it matches `digest` exactly.
     pub fn clear(&self, digest: u128) {
         let mut lock = self.items.lock().unwrap();
@@ -141,6 +147,23 @@ mod tests {
 
         let (_, existed) = filter.apply(&bytes);
         assert_eq!(existed, true);
+    }
+
+    #[test]
+    fn check() {
+        let filter = NetworkFilter::new(10);
+        assert_eq!(filter.check(123), false);
+        assert_eq!(filter.check(123), false);
+
+        let (digest, _) = filter.apply(&[42]);
+        assert_eq!(filter.check(digest), true);
+        assert_eq!(filter.check(digest), true);
+
+        let (digest2, _) = filter.apply(&[100]);
+
+        assert_eq!(filter.check(digest), true);
+        assert_eq!(filter.check(digest2), true);
+        assert_eq!(filter.check(123), false);
     }
 
     #[test]

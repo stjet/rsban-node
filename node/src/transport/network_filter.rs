@@ -2,20 +2,39 @@ use rand::{thread_rng, Rng};
 use siphasher::{prelude::*, sip128::SipHasher};
 use std::sync::{Mutex, MutexGuard};
 
+#[derive(Clone, Default)]
+struct Entry {
+    digest: u128,
+    epoch: u64,
+}
+
 /// A probabilistic duplicate filter based on directed map caches, using SipHash 2/4/128
 /// The probability of false negatives (unique packet marked as duplicate) is the probability of a 128-bit SipHash collision.
 /// The probability of false positives (duplicate packet marked as unique) shrinks with a larger filter.
 pub struct NetworkFilter<T: NetworkFilterHasher = DefaultNetworkFilterHasher> {
-    items: Mutex<Vec<u128>>,
+    items: Mutex<Vec<Entry>>,
     hasher: T,
+    age_cutoff: u64,
+    current_epoch: u64,
 }
 
 impl<T: NetworkFilterHasher> NetworkFilter<T> {
     pub fn with_hasher(hasher: T, size: usize) -> Self {
         Self {
-            items: Mutex::new(vec![0; size]),
+            items: Mutex::new(vec![Entry::default(); size]),
             hasher,
+            age_cutoff: 0,
+            current_epoch: 0,
         }
+    }
+
+    fn update(&mut self, epoch_inc: u64) {
+        self.current_epoch += epoch_inc;
+    }
+
+    fn compare(&self, existing: &Entry, digest: u128) -> bool {
+        // Only consider digests to be the same if the epoch is within the age cutoff
+        existing.digest == digest && existing.epoch + self.age_cutoff >= self.current_epoch
     }
 
     /// Reads `count` bytes starting from `bytes` and inserts the siphash digest in the filter.
@@ -23,24 +42,30 @@ impl<T: NetworkFilterHasher> NetworkFilter<T> {
     /// * the resulting siphash digest
     /// * a boolean representing the previous existence of the hash in the filter.
     pub fn apply(&self, bytes: &[u8]) -> (u128, bool) {
-        // Get hash before locking
         let digest = self.hash(bytes);
+        let existed = self.apply_digest(digest);
+        (digest, existed)
+    }
 
+    pub fn apply_digest(&self, digest: u128) -> bool {
         let mut lock = self.items.lock().unwrap();
         let element = self.get_element(digest, &mut lock);
-        let existed = *element == digest;
+        let existed = self.compare(element, digest);
         if !existed {
             // Replace likely old element with a new one
-            *element = digest;
+            *element = Entry {
+                digest,
+                epoch: self.current_epoch,
+            };
         }
-
-        (digest, existed)
+        existed
     }
 
     /// Checks if the digest is in the filter.
     pub fn check(&self, digest: u128) -> bool {
         let mut guard = self.items.lock().unwrap();
-        *self.get_element(digest, &mut guard) == digest
+        let element = self.get_element(digest, &mut guard);
+        self.compare(element, digest)
     }
 
     /// Sets the corresponding element in the filter to zero, if it matches `digest` exactly.
@@ -62,17 +87,17 @@ impl<T: NetworkFilterHasher> NetworkFilter<T> {
 
     pub fn clear_all(&self) {
         let mut lock = self.items.lock().unwrap();
-        lock.fill(0);
+        lock.fill(Default::default());
     }
 
-    fn clear_locked(&self, digest: u128, lock: &mut MutexGuard<Vec<u128>>) {
+    fn clear_locked(&self, digest: u128, lock: &mut MutexGuard<Vec<Entry>>) {
         let element = self.get_element(digest, lock);
-        if *element == digest {
-            *element = 0;
+        if self.compare(&element, digest) {
+            *element = Default::default();
         }
     }
 
-    fn get_element<'a>(&self, hash: u128, items: &'a mut MutexGuard<Vec<u128>>) -> &'a mut u128 {
+    fn get_element<'a>(&self, hash: u128, items: &'a mut MutexGuard<Vec<Entry>>) -> &'a mut Entry {
         let index = (hash % items.len() as u128) as usize;
         items.get_mut(index).unwrap()
     }
@@ -234,5 +259,43 @@ mod tests {
 
         let (_, existed) = filter.apply(&bytes3);
         assert_eq!(existed, true);
+    }
+
+    #[test]
+    fn expire() {
+        let mut filter = NetworkFilter::with_hasher(StubHasher::default(), 4);
+        filter.age_cutoff = 2;
+        assert_eq!(filter.apply_digest(1), false); // Entry with epoch 0
+        filter.update(1); // Bump epoch to 1
+        assert_eq!(filter.apply_digest(2), false); // Entry with epoch 1
+
+        // Both values should be detected as present
+        assert!(filter.check(1));
+        assert!(filter.check(2));
+
+        filter.update(2); // Bump epoch to 3
+
+        assert_eq!(
+            filter.check(1),
+            false,
+            "Entry with epoch 0 should be expired"
+        );
+        assert_eq!(
+            filter.check(2),
+            true,
+            "Entry with epoch 1 should still be present"
+        );
+
+        filter.update(1); // Bump epoch to 4
+        assert_eq!(
+            filter.check(2),
+            false,
+            "Entry with epoch 1 should be expired"
+        );
+        assert_eq!(
+            filter.apply_digest(2),
+            false,
+            "Entry with epoch 1 should be replaced"
+        );
     }
 }

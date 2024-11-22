@@ -393,7 +393,7 @@ impl Drop for Telemetry {
 }
 
 pub struct TelementryConfig {
-    pub enable_ongoing_requests: bool,
+    pub enable_ongoing_requests: bool, // TODO: No longer used, remove
     pub enable_ongoing_broadcasts: bool,
 }
 

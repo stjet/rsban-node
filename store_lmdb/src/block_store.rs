@@ -6,7 +6,7 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{BufferReader, FixedSizeSerialize},
-    Block, BlockBase, BlockHash, BlockSideband, BlockType, BlockWithSideband,
+    Block, BlockHash, BlockSideband, BlockType, BlockWithSideband,
 };
 use rsnano_nullable_lmdb::ConfiguredDatabase;
 #[cfg(feature = "output_tracking")]

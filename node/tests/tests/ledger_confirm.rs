@@ -6,7 +6,6 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeConfig},
     consensus::{Election, ElectionBehavior, ElectionStatus},
     stats::{DetailType, Direction, StatType},
 };
@@ -64,10 +63,7 @@ fn single() {
 #[test]
 fn multiple_accounts() {
     let mut system = System::new();
-    let cfg = NodeConfig {
-        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-        ..System::default_config()
-    };
+    let cfg = System::default_config_without_backlog_population();
     let node = system.build_node().config(cfg).finish();
     let key1 = KeyPair::new();
     let key2 = KeyPair::new();
@@ -297,10 +293,7 @@ fn multiple_accounts() {
 #[test]
 fn send_receive_between_2_accounts() {
     let mut system = System::new();
-    let cfg = NodeConfig {
-        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-        ..System::default_config()
-    };
+    let cfg = System::default_config_without_backlog_population();
     let node = system.build_node().config(cfg).finish();
     let key1 = KeyPair::new();
     let key1_acc = key1.public_key().as_account();
@@ -441,10 +434,7 @@ fn send_receive_between_2_accounts() {
 #[test]
 fn send_receive_self() {
     let mut system = System::new();
-    let cfg = NodeConfig {
-        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-        ..System::default_config()
-    };
+    let cfg = System::default_config_without_backlog_population();
     let node = system.build_node().config(cfg).finish();
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
@@ -543,10 +533,7 @@ fn send_receive_self() {
 #[test]
 fn all_block_types() {
     let mut system = System::new();
-    let cfg = NodeConfig {
-        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-        ..System::default_config()
-    };
+    let cfg = System::default_config_without_backlog_population();
     let node = system.build_node().config(cfg).finish();
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
     let key1 = KeyPair::new();

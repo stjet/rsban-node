@@ -23,15 +23,6 @@ use rsnano_core::{
 use rsnano_store_lmdb::LmdbConfig;
 use std::{cmp::max, net::Ipv6Addr, time::Duration};
 
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive)]
-pub enum FrontiersConfirmationMode {
-    Always,    // Always confirm frontiers
-    Automatic, // Always mode if node contains representative with at least 50% of principal weight, less frequest requests if not
-    Disabled,  // Do not confirm frontiers
-    Invalid,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct NodeConfig {
     pub peering_port: Option<u16>,
@@ -80,7 +71,6 @@ pub struct NodeConfig {
     pub confirming_set_batch_time: Duration,
     pub backup_before_upgrade: bool,
     pub max_work_generate_multiplier: f64,
-    pub frontiers_confirmation: FrontiersConfirmationMode,
     pub max_queued_requests: u32,
     pub request_aggregator_threads: u32,
     pub max_unchecked_blocks: u32,
@@ -287,7 +277,6 @@ impl NodeConfig {
             confirming_set_batch_time: Duration::from_millis(250),
             backup_before_upgrade: false,
             max_work_generate_multiplier: 64_f64,
-            frontiers_confirmation: FrontiersConfirmationMode::Automatic,
             max_queued_requests: 512,
             request_aggregator_threads: max(parallelism, 4) as u32,
             max_unchecked_blocks: 65536,

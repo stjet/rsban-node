@@ -1,10 +1,7 @@
 use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelMode;
-use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
-    wallets::WalletsExt,
-};
+use rsnano_node::{config::NodeFlags, wallets::WalletsExt};
 use rsnano_rpc_messages::BootstrapArgs;
 use std::time::Duration;
 use test_helpers::{assert_timely_eq, setup_rpc_client_and_server, System};
@@ -75,10 +72,7 @@ fn bootstrap_id_none() {
     ));
     node1.process(receive.clone()).unwrap();
 
-    let config = NodeConfig {
-        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-        ..System::default_config()
-    };
+    let config = System::default_config_without_backlog_population();
 
     let flags = NodeFlags {
         disable_ongoing_bootstrap: true,

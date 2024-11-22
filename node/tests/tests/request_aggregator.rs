@@ -2,7 +2,7 @@ use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::ConfirmAck;
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeFlags},
+    config::NodeFlags,
     stats::{DetailType, Direction, StatType},
     wallets::WalletsExt,
 };
@@ -12,8 +12,7 @@ use test_helpers::{assert_timely_eq, assert_timely_msg, make_fake_channel, Syste
 #[test]
 fn one() {
     let mut system = System::new();
-    let mut config = System::default_config();
-    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
     node.wallets
         .insert_adhoc2(
@@ -153,8 +152,7 @@ fn one() {
 #[test]
 fn one_update() {
     let mut system = System::new();
-    let mut config = System::default_config();
-    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
     node.wallets
         .insert_adhoc2(
@@ -297,8 +295,7 @@ fn one_update() {
 #[test]
 fn two() {
     let mut system = System::new();
-    let mut config = System::default_config();
-    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
     node.wallets
         .insert_adhoc2(
@@ -454,8 +451,7 @@ fn two() {
 fn split() {
     const MAX_VBH: usize = ConfirmAck::HASHES_MAX;
     let mut system = System::new();
-    let mut config = System::default_config();
-    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
     node.wallets
         .insert_adhoc2(
@@ -548,8 +544,7 @@ fn split() {
 #[test]
 fn channel_max_queue() {
     let mut system = System::new();
-    let mut config = System::default_config();
-    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut config = System::default_config_without_backlog_population();
     config.request_aggregator.max_queue = 0;
     let node = system.build_node().config(config).finish();
     node.wallets

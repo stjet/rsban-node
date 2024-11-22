@@ -1,10 +1,7 @@
 use std::time::Duration;
 
 use rsnano_core::DEV_GENESIS_KEY;
-use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeConfig},
-    consensus::ElectionBehavior,
-};
+use rsnano_node::consensus::ElectionBehavior;
 use test_helpers::{assert_never, assert_timely, setup_chains, System};
 
 /*
@@ -125,10 +122,7 @@ pub fn under_gap_threshold() {
     let mut system = System::new();
     let node = system
         .build_node()
-        .config(NodeConfig {
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
-        })
+        .config(System::default_config_without_backlog_population())
         .finish();
 
     // Must be smaller than optimistic scheduler `gap_threshold`

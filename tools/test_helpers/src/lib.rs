@@ -5,6 +5,7 @@ use rsnano_core::{
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
 use rsnano_node::{
+    block_processing::BacklogPopulationConfig,
     config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
     unique_path,
@@ -58,6 +59,16 @@ impl System {
         let mut config = NodeConfig::new(Some(port), &network_params, 1);
         config.representative_vote_weight_minimum = Amount::zero();
         config
+    }
+
+    pub fn default_config_without_backlog_population() -> NodeConfig {
+        NodeConfig {
+            backlog: BacklogPopulationConfig {
+                enabled: false,
+                ..Default::default()
+            },
+            ..Self::default_config()
+        }
     }
 
     pub fn build_node<'a>(&'a mut self) -> TestNodeBuilder<'a> {

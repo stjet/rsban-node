@@ -4,7 +4,6 @@ use rsnano_core::{
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
-    config::FrontiersConfirmationMode,
     consensus::VoteSpacing,
     stats::{DetailType, Direction, StatType},
     wallets::WalletsExt,
@@ -362,8 +361,7 @@ fn vote_spacing_prune() {
 #[test]
 fn vote_spacing_vote_generator() {
     let mut system = System::new();
-    let mut config = System::default_config();
-    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled; // Disable frontiers confirmation
+    let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
 
     let wallet_id = WalletId::random();
@@ -457,8 +455,7 @@ fn vote_spacing_vote_generator() {
 #[test]
 fn vote_spacing_rapid() {
     let mut system = System::new();
-    let mut config = System::default_config();
-    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled; // Disable frontiers confirmation
+    let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
 
     let wallet_id = WalletId::random();

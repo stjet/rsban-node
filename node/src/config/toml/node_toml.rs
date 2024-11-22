@@ -1,5 +1,5 @@
 use super::*;
-use crate::config::{FrontiersConfirmationMode, NodeConfig};
+use crate::config::NodeConfig;
 use rsnano_core::{utils::Peer, Account, Amount};
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, time::Duration};
@@ -26,7 +26,6 @@ pub struct NodeToml {
     pub enable_voting: Option<bool>,
     pub external_address: Option<String>,
     pub external_port: Option<u16>,
-    pub frontiers_confirmation: Option<String>,
     pub io_threads: Option<u32>,
     pub max_queued_requests: Option<u32>,
     pub max_unchecked_blocks: Option<u32>,
@@ -136,14 +135,6 @@ impl NodeConfig {
         }
         if let Some(external_port) = toml.external_port {
             self.external_port = external_port;
-        }
-        if let Some(frontiers_confirmation) = &toml.frontiers_confirmation {
-            self.frontiers_confirmation = match frontiers_confirmation.as_str() {
-                "always" => FrontiersConfirmationMode::Always,
-                "auto" => FrontiersConfirmationMode::Automatic,
-                "disabled" => FrontiersConfirmationMode::Disabled,
-                _ => FrontiersConfirmationMode::Invalid,
-            }
         }
         if let Some(io_threads) = toml.io_threads {
             self.io_threads = io_threads;
@@ -371,12 +362,6 @@ impl From<&NodeConfig> for NodeToml {
             enable_voting: Some(config.enable_voting),
             external_address: Some(config.external_address.clone()),
             external_port: Some(config.external_port),
-            frontiers_confirmation: Some(match config.frontiers_confirmation {
-                FrontiersConfirmationMode::Always => "always".to_string(),
-                FrontiersConfirmationMode::Automatic => "auto".to_string(),
-                FrontiersConfirmationMode::Disabled => "disabled".to_string(),
-                FrontiersConfirmationMode::Invalid => "invalid".to_string(),
-            }),
             io_threads: Some(config.io_threads),
             max_queued_requests: Some(config.max_queued_requests),
             max_unchecked_blocks: Some(config.max_unchecked_blocks),

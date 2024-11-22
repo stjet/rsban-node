@@ -5,7 +5,7 @@ use rsnano_core::{
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
+    config::{NodeConfig, NodeFlags},
     consensus::RepTier,
     stats::{DetailType, Direction, StatType},
     wallets::WalletsExt,
@@ -19,8 +19,7 @@ use test_helpers::{assert_timely, assert_timely_eq, setup_chain, start_election,
 #[test]
 fn codes() {
     let mut system = System::new();
-    let mut config = System::default_config();
-    config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+    let mut config = System::default_config_without_backlog_population();
     config.hinted_scheduler.enabled = false;
     config.optimistic_scheduler.enabled = false;
     let node = system.build_node().config(config).finish();
@@ -290,8 +289,7 @@ fn no_broadcast_local() {
         .build_node()
         .config(NodeConfig {
             representative_vote_weight_minimum: Amount::zero(),
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
+            ..System::default_config_without_backlog_population()
         })
         .flags(flags.clone())
         .finish();
@@ -300,8 +298,7 @@ fn no_broadcast_local() {
         .build_node()
         .config(NodeConfig {
             representative_vote_weight_minimum: Amount::zero(),
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
+            ..System::default_config_without_backlog_population()
         })
         .flags(flags)
         .finish();
@@ -369,8 +366,7 @@ fn local_broadcast_without_a_representative() {
         .build_node()
         .config(NodeConfig {
             representative_vote_weight_minimum: Amount::zero(),
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
+            ..System::default_config_without_backlog_population()
         })
         .flags(flags.clone())
         .finish();
@@ -378,8 +374,7 @@ fn local_broadcast_without_a_representative() {
         .build_node()
         .config(NodeConfig {
             representative_vote_weight_minimum: Amount::zero(),
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
+            ..System::default_config_without_backlog_population()
         })
         .flags(flags)
         .finish();
@@ -449,18 +444,12 @@ fn no_broadcast_local_with_a_principal_representative() {
     };
     let node = system
         .build_node()
-        .config(NodeConfig {
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
-        })
+        .config(System::default_config_without_backlog_population())
         .flags(flags.clone())
         .finish();
     let _node2 = system
         .build_node()
-        .config(NodeConfig {
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
-        })
+        .config(System::default_config_without_backlog_population())
         .flags(flags)
         .finish();
     // Reduce the weight of genesis to 2x default min voting weight

@@ -446,10 +446,6 @@ mod tests {
             default_cfg.node.max_unchecked_blocks
         );
         assert_ne!(
-            deserialized.node.frontiers_confirmation,
-            default_cfg.node.frontiers_confirmation
-        );
-        assert_ne!(
             deserialized.node.backlog.enabled,
             default_cfg.node.backlog.enabled
         );

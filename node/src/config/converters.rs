@@ -1,4 +1,4 @@
-use super::{FrontiersConfirmationMode, GlobalConfig};
+use super::GlobalConfig;
 use crate::{
     block_processing::{BacklogPopulationConfig, BlockProcessorConfig},
     bootstrap::BootstrapInitiatorConfig,
@@ -55,10 +55,7 @@ impl From<&GlobalConfig> for BootstrapInitiatorConfig {
 
 impl From<&GlobalConfig> for BacklogPopulationConfig {
     fn from(value: &GlobalConfig) -> Self {
-        let mut result = value.node_config.backlog.clone();
-        result.enabled =
-            value.node_config.frontiers_confirmation != FrontiersConfirmationMode::Disabled;
-        result
+        value.node_config.backlog.clone()
     }
 }
 

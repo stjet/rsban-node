@@ -126,10 +126,7 @@ mod bucket {
 mod election_scheduler {
     use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-    use rsnano_node::{
-        config::{FrontiersConfirmationMode, NodeConfig},
-        consensus::ActiveElectionsExt,
-    };
+    use rsnano_node::{config::NodeConfig, consensus::ActiveElectionsExt};
     use std::time::Duration;
     use test_helpers::{assert_timely, assert_timely_eq, System};
 
@@ -214,12 +211,11 @@ mod election_scheduler {
         let node = system
             .build_node()
             .config(NodeConfig {
-                frontiers_confirmation: FrontiersConfirmationMode::Disabled,
                 active_elections: rsnano_node::consensus::ActiveElectionsConfig {
                     size: 1,
                     ..Default::default()
                 },
-                ..System::default_config()
+                ..System::default_config_without_backlog_population()
             })
             .finish();
 

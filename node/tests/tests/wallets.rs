@@ -3,7 +3,7 @@ use std::time::Duration;
 use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
+    config::{NodeConfig, NodeFlags},
     consensus::ActiveElectionsExt,
     wallets::WalletsExt,
 };
@@ -144,8 +144,7 @@ fn search_receivable() {
             .build_node()
             .config(NodeConfig {
                 enable_voting: false,
-                frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-                ..System::default_config()
+                ..System::default_config_without_backlog_population()
             })
             .flags(NodeFlags {
                 disable_search_pending: true,

@@ -4,25 +4,17 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
-use rsnano_node::{
-    block_processing::BlockSource,
-    config::{FrontiersConfirmationMode, NodeConfig},
-};
+use rsnano_node::{block_processing::BlockSource, config::NodeConfig};
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely, assert_timely_eq, start_elections, System};
 
 mod votes {
-    use std::time::SystemTime;
-
+    use super::*;
     use rsnano_core::StateBlock;
     use rsnano_ledger::DEV_GENESIS_ACCOUNT;
-    use rsnano_node::{
-        config::{FrontiersConfirmationMode, NodeConfig},
-        consensus::ActiveElectionsExt,
-    };
+    use rsnano_node::consensus::ActiveElectionsExt;
+    use std::time::SystemTime;
     use test_helpers::start_election;
-
-    use super::*;
 
     #[test]
     fn add_one() {
@@ -105,8 +97,7 @@ mod votes {
         let mut system = System::new();
         let config = NodeConfig {
             online_weight_minimum: Amount::MAX,
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
+            ..System::default_config_without_backlog_population()
         };
         let node1 = system.build_node().config(config).finish();
         let key1 = KeyPair::new();
@@ -430,10 +421,7 @@ fn unchecked_epoch_invalid() {
     let mut system = System::new();
     let node1 = system
         .build_node()
-        .config(NodeConfig {
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
-        })
+        .config(System::default_config_without_backlog_population())
         .finish();
 
     let destination = KeyPair::new();

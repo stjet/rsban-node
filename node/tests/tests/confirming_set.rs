@@ -1,7 +1,7 @@
 use rsnano_core::{Amount, Block, KeyPair, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
-    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
+    config::NodeFlags,
     consensus::{ActiveElectionsExt, Election, ElectionBehavior, ElectionStatus},
     stats::{DetailType, Direction, StatType},
 };
@@ -11,10 +11,7 @@ use test_helpers::{assert_always_eq, assert_timely, assert_timely_eq, start_elec
 #[test]
 fn observer_callbacks() {
     let mut system = System::new();
-    let config = NodeConfig {
-        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-        ..System::default_config()
-    };
+    let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
     node.insert_into_wallet(&DEV_GENESIS_KEY);
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
@@ -75,10 +72,7 @@ fn confirmed_history() {
         disable_ascending_bootstrap: true,
         ..Default::default()
     };
-    let config = NodeConfig {
-        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-        ..System::default_config()
-    };
+    let config = System::default_config_without_backlog_population();
     let node = system.build_node().flags(flags).config(config).finish();
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
@@ -210,10 +204,7 @@ fn dependent_election() {
         force_use_write_queue: true,
         ..Default::default()
     };
-    let config = NodeConfig {
-        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-        ..System::default_config()
-    };
+    let config = System::default_config_without_backlog_population();
     let node = system.build_node().flags(flags).config(config).finish();
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 

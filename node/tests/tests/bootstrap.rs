@@ -9,7 +9,7 @@ use rsnano_network::{
 };
 use rsnano_node::{
     bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy, BulkPullServer},
-    config::{FrontiersConfirmationMode, NodeConfig, NodeFlags},
+    config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType},
     transport::{LatestKeepalives, ResponseServer},
     wallets::WalletsExt,
@@ -27,14 +27,12 @@ mod bootstrap_processor {
     use rsnano_core::{BlockBuilder, PublicKey};
     use rsnano_ledger::{BlockStatus, DEV_GENESIS_PUB_KEY};
     use rsnano_network::ChannelMode;
-    use rsnano_node::config::NodeConfig;
     use test_helpers::establish_tcp;
 
     #[test]
     fn bootstrap_processor_wallet_lazy_pending() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let mut config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
         flags.disable_legacy_bootstrap = true;
@@ -107,8 +105,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_lazy_destinations() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let mut config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
         flags.disable_legacy_bootstrap = true;
@@ -206,8 +203,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_lazy_unclear_state_link_not_existing() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let mut config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
         flags.disable_legacy_bootstrap = true;
@@ -297,8 +293,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_lazy_unclear_state_link() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let mut config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
         flags.disable_legacy_bootstrap = true;
@@ -401,8 +396,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_lazy_hash_pruning() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let mut config = System::default_config_without_backlog_population();
         config.enable_voting = false; // Remove after allowing pruned voting
 
         let mut flags = NodeFlags::new();
@@ -576,8 +570,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_pull_diamond() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
@@ -653,8 +646,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_process_state() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system
@@ -727,8 +719,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_process_new() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let mut config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
         let key2 = KeyPair::new();
@@ -803,8 +794,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_process_two() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
@@ -879,8 +869,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_process_one() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let mut config = System::default_config_without_backlog_population();
         config.enable_voting = false;
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
@@ -940,8 +929,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_lazy_hash() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
@@ -1029,8 +1017,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_lazy_hash_bootstrap_id() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
@@ -1122,8 +1109,7 @@ mod bootstrap_processor {
     #[ignore = "fails because of an unknown bug. pruning has low priority right now"]
     fn bootstrap_processor_lazy_pruning_missing_block() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let mut config = System::default_config_without_backlog_population();
         config.enable_voting = false; // Remove after allowing pruned voting
 
         let mut flags = NodeFlags::new();
@@ -1258,8 +1244,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_lazy_cancel() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let config = System::default_config_without_backlog_population();
 
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
@@ -1307,8 +1292,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_multiple_attempts() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
@@ -1408,8 +1392,7 @@ mod bootstrap_processor {
     #[test]
     fn bootstrap_processor_wallet_lazy_frontier() {
         let mut system = System::new();
-        let mut config = System::default_config();
-        config.frontiers_confirmation = FrontiersConfirmationMode::Disabled;
+        let config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
         flags.disable_legacy_bootstrap = true;
@@ -1559,10 +1542,7 @@ mod bootstrap_processor {
         ));
         node1.process(receive.clone()).unwrap();
 
-        let config = NodeConfig {
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
-        };
+        let config = System::default_config_without_backlog_population();
 
         let flags = NodeFlags {
             disable_ongoing_bootstrap: true,
@@ -2294,10 +2274,7 @@ mod bulk_pull_account {
 #[test]
 fn bulk_genesis() {
     let mut system = System::new();
-    let config = NodeConfig {
-        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-        ..System::default_config()
-    };
+    let config = System::default_config_without_backlog_population();
     let flags = NodeFlags {
         disable_bootstrap_bulk_push_client: true,
         disable_lazy_bootstrap: true,
@@ -2346,10 +2323,7 @@ fn bulk_genesis() {
 #[ignore = "This test fails a lot"]
 fn bulk_offline_send() {
     let mut system = System::new();
-    let config = NodeConfig {
-        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-        ..System::default_config()
-    };
+    let config = System::default_config_without_backlog_population();
     let flags = NodeFlags {
         disable_bootstrap_bulk_push_client: true,
         disable_lazy_bootstrap: true,
@@ -2424,9 +2398,8 @@ fn bulk_offline_send() {
 fn bulk_genesis_pruning() {
     let mut system = System::new();
     let config = NodeConfig {
-        frontiers_confirmation: FrontiersConfirmationMode::Disabled,
         enable_voting: false,
-        ..System::default_config()
+        ..System::default_config_without_backlog_population()
     };
     let mut flags = NodeFlags {
         disable_bootstrap_bulk_push_client: true,
@@ -2527,10 +2500,7 @@ fn push_diamond_pruning() {
 
     let node0 = system
         .build_node()
-        .config(NodeConfig {
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
-        })
+        .config(System::default_config_without_backlog_population())
         .flags(NodeFlags {
             disable_ascending_bootstrap: true,
             disable_ongoing_bootstrap: true,
@@ -2541,9 +2511,8 @@ fn push_diamond_pruning() {
     let node1 = system
         .build_node()
         .config(NodeConfig {
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
             enable_voting: false,
-            ..System::default_config()
+            ..System::default_config_without_backlog_population()
         })
         .flags(NodeFlags {
             enable_pruning: true,
@@ -2648,10 +2617,7 @@ fn push_one() {
 
     let node0 = system
         .build_node()
-        .config(NodeConfig {
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
-        })
+        .config(System::default_config_without_backlog_population())
         .finish();
 
     let key1 = KeyPair::new();
@@ -2696,10 +2662,7 @@ fn lazy_max_pull_count() {
     let mut system = System::new();
     let node0 = system
         .build_node()
-        .config(NodeConfig {
-            frontiers_confirmation: FrontiersConfirmationMode::Disabled,
-            ..System::default_config()
-        })
+        .config(System::default_config_without_backlog_population())
         .flags(NodeFlags {
             disable_bootstrap_bulk_push_client: true,
             ..Default::default()

@@ -17,7 +17,6 @@ impl KeyDerivationFunction {
             hash_length: 32,
             lanes: 1,
             mem_cost: self.kdf_work,
-            thread_mode: argon2::ThreadMode::Sequential,
             time_cost: 1,
             variant: Variant::Argon2d,
             version: Version::Version10,

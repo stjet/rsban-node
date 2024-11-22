@@ -13,8 +13,11 @@ use std::fmt::{Debug, Display};
 #[serde(rename_all = "snake_case")]
 pub struct Publish {
     pub block: Block,
+
+    /// Messages deserialized from network should have their digest set
     #[serde(skip_serializing)]
     pub digest: u128,
+
     pub is_originator: bool,
 }
 

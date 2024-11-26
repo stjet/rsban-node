@@ -103,6 +103,7 @@ pub struct NodeConfig {
     pub confirming_set: ConfirmingSetConfig,
     pub monitor: MonitorConfig,
     pub backlog: BacklogPopulationConfig,
+    pub network_duplicate_filter_cutoff: u64,
 }
 
 static DEFAULT_LIVE_PEER_NETWORK: Lazy<String> =
@@ -332,6 +333,7 @@ impl NodeConfig {
             confirming_set: Default::default(),
             monitor: Default::default(),
             backlog: Default::default(),
+            network_duplicate_filter_cutoff: 60,
         }
     }
 

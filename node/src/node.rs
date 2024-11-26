@@ -281,7 +281,7 @@ impl Node {
         );
 
         let mut network_filter = NetworkFilter::new(1024 * 1024);
-        network_filter.age_cutoff = 60;
+        network_filter.age_cutoff = config.network_duplicate_filter_cutoff;
         let network_filter = Arc::new(network_filter);
 
         // empty `config.peering_port` means the user made no port choice at all;

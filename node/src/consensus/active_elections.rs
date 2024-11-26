@@ -970,9 +970,12 @@ impl ActiveElections {
                     count: guard.count_by_behavior(ElectionBehavior::Optimistic),
                     sizeof_element: 0,
                 }),
-                self.vote_applier.collect_container_info("vote_applier"),
+                self.vote_applier
+                    .container_info()
+                    .into_legacy("vote_applier"),
                 self.recently_confirmed
-                    .collect_container_info("recently_confirmed"),
+                    .container_info()
+                    .into_legacy("recently_confirmed"),
                 ContainerInfoComponent::Composite(
                     "recently_cemented".to_string(),
                     vec![ContainerInfoComponent::Leaf(ContainerInfo {

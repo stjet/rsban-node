@@ -1138,25 +1138,28 @@ impl Node {
             .network_info
             .read()
             .unwrap()
-            .collect_container_info("tcp_channels");
+            .container_info()
+            .into_legacy("tcp_channels");
 
         let online_reps = self
             .online_reps
             .lock()
             .unwrap()
-            .collect_container_info("online_reps");
+            .container_info()
+            .into_legacy("online_reps");
 
         let vote_cache = self
             .vote_cache
             .lock()
             .unwrap()
-            .collect_container_info("vote_cache");
+            .container_info()
+            .into_legacy("vote_cache");
 
         ContainerInfoComponent::Composite(
             name.into(),
             vec![
-                self.work.collect_container_info("work"),
-                self.ledger.collect_container_info("ledger"),
+                self.work.container_info().into_legacy("work"),
+                self.ledger.container_info().into_legacy("ledger"),
                 self.active.collect_container_info("active"),
                 self.bootstrap_initiator
                     .collect_container_info("bootstrap_initiator"),

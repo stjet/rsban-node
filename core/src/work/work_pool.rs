@@ -3,7 +3,7 @@ use super::{
     WorkTicket, WORK_THRESHOLDS_STUB,
 };
 use crate::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     Root,
 };
 use std::{
@@ -141,15 +141,8 @@ impl WorkPoolImpl {
         self.work_thresholds.difficulty(root, work)
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "pending".to_string(),
-                count: self.size(),
-                sizeof_element: Self::pending_value_size(),
-            })],
-        )
+    pub fn container_info(&self) -> ContainerInfos {
+        [("pending", self.size(), Self::pending_value_size())].into()
     }
 }
 

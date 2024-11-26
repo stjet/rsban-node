@@ -88,7 +88,7 @@ impl AccountDatabaseIterator {
     fn next_batch(&mut self, tx: &LmdbReadTransaction, batch_size: usize) -> Vec<Account> {
         let mut result = Vec::new();
         let accounts = self.ledger.store.account.iter_range(tx, self.next..);
-        let count = 0;
+        let mut count = 0;
         let mut end_reached = true;
         for (account, _) in accounts {
             if count >= batch_size {
@@ -96,6 +96,7 @@ impl AccountDatabaseIterator {
                 break;
             }
             result.push(account);
+            count += 1;
             self.next = account.inc().unwrap_or_default();
         }
 
@@ -168,7 +169,7 @@ impl PendingDatabaseIterator {
 
             // If we didn't advance to the next account, perform a fresh lookup
             if let Some(current) = it.current() {
-                if current.0.receiving_account != starting_account {
+                if current.0.receiving_account == starting_account {
                     it = self.ledger.store.pending.begin_at_key(
                         tx,
                         &PendingKey::new(
@@ -193,5 +194,226 @@ impl PendingDatabaseIterator {
 
     fn warmed_up(&self) -> bool {
         self.completed > 0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rsnano_core::{
+        work::{WorkPool, STUB_WORK_POOL},
+        Amount, Block, KeyPair, StateBlock, DEV_GENESIS_KEY,
+    };
+    use rsnano_ledger::{LedgerContext, DEV_GENESIS_HASH};
+
+    #[test]
+    fn pending_database_scanner() {
+        const COUNT: usize = 4;
+
+        // Prepare pending sends from genesis
+        // 1 account with 1 pending
+        // 1 account with 21 pendings
+        // 2 accounts with 1 pending each
+        let mut blocks = Vec::new();
+        let key1 = KeyPair::new();
+        let key2 = KeyPair::new();
+        let key3 = KeyPair::new();
+        let key4 = KeyPair::new();
+        {
+            let source = &DEV_GENESIS_KEY;
+            let mut latest = *DEV_GENESIS_HASH;
+            let mut balance = Amount::MAX;
+
+            // 1 account with 1 pending
+            {
+                let send = Block::State(StateBlock::new(
+                    source.account(),
+                    latest,
+                    source.public_key(),
+                    balance - Amount::raw(1),
+                    key1.account().into(),
+                    source,
+                    STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
+                ));
+                latest = send.hash();
+                balance = send.balance();
+                blocks.push(send);
+            }
+            // 1 account with 21 pendings
+            for _ in 0..21 {
+                let send = Block::State(StateBlock::new(
+                    source.account(),
+                    latest,
+                    source.public_key(),
+                    balance - Amount::raw(1),
+                    key2.account().into(),
+                    source,
+                    STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
+                ));
+                latest = send.hash();
+                balance = send.balance();
+                blocks.push(send);
+            }
+            // 2 accounts with 1 pending each
+            {
+                let send = Block::State(StateBlock::new(
+                    source.account(),
+                    latest,
+                    source.public_key(),
+                    balance - Amount::raw(1),
+                    key3.account().into(),
+                    source,
+                    STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
+                ));
+                latest = send.hash();
+                balance = send.balance();
+                blocks.push(send);
+            }
+            {
+                let send = Block::State(StateBlock::new(
+                    source.account(),
+                    latest,
+                    source.public_key(),
+                    balance - Amount::raw(1),
+                    key4.account().into(),
+                    source,
+                    STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
+                ));
+                blocks.push(send);
+            }
+
+            let ledger_ctx = LedgerContext::empty();
+            for mut block in blocks {
+                let mut txn = ledger_ctx.ledger.rw_txn();
+                ledger_ctx.ledger.process(&mut txn, &mut block).unwrap();
+            }
+            // Single batch
+            {
+                let mut scanner = PendingDatabaseIterator::new(ledger_ctx.ledger.clone());
+                let tx = ledger_ctx.ledger.read_txn();
+                let accounts = scanner.next_batch(&tx, 256);
+
+                // Check that account set contains all keys
+                assert_eq!(accounts.len(), 4);
+                assert!(accounts.contains(&key1.account()));
+                assert!(accounts.contains(&key2.account()));
+                assert!(accounts.contains(&key3.account()));
+                assert!(accounts.contains(&key4.account()));
+
+                assert_eq!(scanner.completed, 1);
+            }
+
+            // Multi batch
+            {
+                let mut scanner = PendingDatabaseIterator::new(ledger_ctx.ledger.clone());
+                let tx = ledger_ctx.ledger.read_txn();
+
+                // Request accounts in multiple batches
+                let accounts1 = scanner.next_batch(&tx, 2);
+                let accounts2 = scanner.next_batch(&tx, 1);
+                let accounts3 = scanner.next_batch(&tx, 1);
+
+                assert_eq!(accounts1.len(), 2);
+                assert_eq!(accounts2.len(), 1);
+                assert_eq!(accounts3.len(), 1);
+
+                // Check that account set contains all keys
+                let mut accounts = accounts1;
+                accounts.extend(accounts2);
+                accounts.extend(accounts3);
+                assert!(accounts.contains(&key1.account()));
+                assert!(accounts.contains(&key2.account()));
+                assert!(accounts.contains(&key3.account()));
+                assert!(accounts.contains(&key4.account()));
+
+                assert_eq!(scanner.completed, 1);
+            }
+        }
+    }
+
+    #[test]
+    fn account_database_scanner() {
+        const COUNT: usize = 4;
+
+        // Prepare some accounts
+        let mut blocks = Vec::new();
+        let mut keys = Vec::new();
+        {
+            let source = &DEV_GENESIS_KEY;
+            let mut latest = *DEV_GENESIS_HASH;
+            let mut balance = Amount::MAX;
+
+            for _ in 0..COUNT {
+                let key = KeyPair::new();
+                let send = Block::State(StateBlock::new(
+                    source.account(),
+                    latest,
+                    source.public_key(),
+                    balance - Amount::raw(1),
+                    key.account().into(),
+                    source,
+                    STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
+                ));
+                let open = Block::State(StateBlock::new(
+                    key.account(),
+                    BlockHash::zero(),
+                    key.public_key(),
+                    Amount::raw(1),
+                    send.hash().into(),
+                    &key,
+                    STUB_WORK_POOL.generate_dev2(key.account().into()).unwrap(),
+                ));
+                latest = send.hash();
+                balance = send.balance();
+                blocks.push(send);
+                blocks.push(open);
+                keys.push(key);
+            }
+        }
+
+        let ledger_ctx = LedgerContext::empty();
+        for mut block in blocks {
+            let mut txn = ledger_ctx.ledger.rw_txn();
+            ledger_ctx.ledger.process(&mut txn, &mut block).unwrap();
+        }
+
+        // Single batch
+        {
+            let mut scanner = AccountDatabaseIterator::new(ledger_ctx.ledger.clone());
+            let tx = ledger_ctx.ledger.read_txn();
+            let accounts = scanner.next_batch(&tx, 256);
+
+            // Check that account set contains all keys
+            assert_eq!(accounts.len(), keys.len() + 1); // +1 for genesis
+            for key in &keys {
+                assert!(accounts.contains(&key.account()));
+            }
+            assert_eq!(scanner.completed, 1);
+        }
+
+        // Multi batch
+        {
+            let mut scanner = AccountDatabaseIterator::new(ledger_ctx.ledger.clone());
+            let tx = ledger_ctx.ledger.read_txn();
+
+            // Request accounts in multiple batches
+            let accounts1 = scanner.next_batch(&tx, 2);
+            let accounts2 = scanner.next_batch(&tx, 2);
+            let accounts3 = scanner.next_batch(&tx, 1);
+
+            assert_eq!(accounts1.len(), 2);
+            assert_eq!(accounts2.len(), 2);
+            assert_eq!(accounts3.len(), 1);
+
+            let mut accounts = accounts1;
+            accounts.extend(accounts2);
+            accounts.extend(accounts3);
+
+            // Check that account set contains all keys
+            for key in &keys {
+                assert!(accounts.contains(&key.account()));
+            }
+            assert_eq!(scanner.completed, 1);
+        }
     }
 }

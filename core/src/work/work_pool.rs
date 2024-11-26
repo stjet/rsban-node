@@ -52,6 +52,10 @@ impl WorkPoolImpl {
         pool
     }
 
+    pub fn new_dev() -> Self {
+        Self::new(WorkThresholds::publish_dev().clone(), 1, Duration::ZERO)
+    }
+
     pub fn new_null(configured_work: u64) -> Self {
         let mut pool = Self {
             threads: Vec::new(),

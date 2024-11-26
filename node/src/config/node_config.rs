@@ -229,7 +229,7 @@ impl NodeConfig {
             peering_port,
             default_peering_port: network_params.network.default_node_port,
             bootstrap_fraction_numerator: 1,
-            receive_minimum: Amount::xrb(1),
+            receive_minimum: Amount::micronano(1),
             online_weight_minimum: Amount::nano(60_000_000),
             representative_vote_weight_minimum: Amount::nano(10),
             password_fanout: 1024,

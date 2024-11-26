@@ -601,7 +601,7 @@ impl Node {
             network_params: network_params.clone(),
             syn_cookies: syn_cookies.clone(),
             latest_keepalives: latest_keepalives.clone(),
-            publish_filter: network_filter.clone(),
+            network_filter: network_filter.clone(),
         });
 
         let peer_connector = Arc::new(PeerConnector::new(

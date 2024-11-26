@@ -230,7 +230,7 @@ impl Ledger {
             constants,
             observer: Arc::new(NullLedgerObserver::new()),
             pruning: AtomicBool::new(false),
-            write_queue: Arc::new(WriteQueue::new(false)),
+            write_queue: Arc::new(WriteQueue::new()),
         };
 
         ledger.initialize(&GenerateCacheFlags::new())?;

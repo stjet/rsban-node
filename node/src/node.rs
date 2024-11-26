@@ -1160,7 +1160,7 @@ impl Node {
             vec![
                 self.work.container_info().into_legacy("work"),
                 self.ledger.container_info().into_legacy("ledger"),
-                self.active.collect_container_info("active"),
+                self.active.container_info().into_legacy("active"),
                 self.bootstrap_initiator
                     .collect_container_info("bootstrap_initiator"),
                 ContainerInfoComponent::Composite(

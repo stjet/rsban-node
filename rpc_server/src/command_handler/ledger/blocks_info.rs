@@ -55,7 +55,7 @@ impl RpcCommandHandler {
                 };
 
                 if receivable || receive_hash {
-                    if block.is_send() {
+                    if !block.is_send() {
                         if receivable {
                             block_info.receivable = Some(0.into());
                         }

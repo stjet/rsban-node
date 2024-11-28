@@ -2,8 +2,8 @@ use super::BlockBase;
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, JsonBlock, KeyPair,
-    LazyBlockHash, Link, PublicKey, RawKey, Root, Signature, WorkNonce,
+    Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, JsonBlock,
+    LazyBlockHash, Link, PrivateKey, PublicKey, RawKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 
@@ -62,7 +62,7 @@ impl ChangeBlock {
     }
 
     pub fn new_test_instance() -> Self {
-        let key = KeyPair::from(42);
+        let key = PrivateKey::from(42);
         Self::new(
             BlockHash::from(123),
             PublicKey::from(456),
@@ -266,12 +266,12 @@ mod tests {
     use super::*;
     use crate::{
         utils::{MemoryStream, TestPropertyTree},
-        Block, KeyPair,
+        Block, PrivateKey,
     };
 
     #[test]
     fn create_block() {
-        let key1 = KeyPair::new();
+        let key1 = PrivateKey::new();
         let previous = BlockHash::from(1);
         let block = ChangeBlock::new(previous.clone(), PublicKey::from(2), &key1.private_key(), 5);
         assert_eq!(block.previous(), previous);
@@ -281,7 +281,7 @@ mod tests {
     // original test: change_block.deserialize
     #[test]
     fn serialize() {
-        let key1 = KeyPair::new();
+        let key1 = PrivateKey::new();
         let block1 = ChangeBlock::new(
             BlockHash::from(1),
             PublicKey::from(2),

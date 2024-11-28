@@ -1,7 +1,7 @@
 use super::{
     sign_message,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Stream},
-    validate_message, Account, BlockHash, BlockHashBuilder, FullHash, KeyPair, Signature,
+    validate_message, Account, BlockHash, BlockHashBuilder, FullHash, PrivateKey, Signature,
 };
 use crate::{utils::Serialize, Amount, PublicKey};
 use anyhow::Result;
@@ -63,12 +63,12 @@ impl Vote {
         }
     }
 
-    pub fn new_final(key: &KeyPair, hashes: Vec<BlockHash>) -> Self {
+    pub fn new_final(key: &PrivateKey, hashes: Vec<BlockHash>) -> Self {
         assert!(hashes.len() <= Self::MAX_HASHES);
         Self::new(key, Self::TIMESTAMP_MAX, Self::DURATION_MAX, hashes)
     }
 
-    pub fn new(keys: &KeyPair, timestamp: u64, duration: u8, hashes: Vec<BlockHash>) -> Self {
+    pub fn new(keys: &PrivateKey, timestamp: u64, duration: u8, hashes: Vec<BlockHash>) -> Self {
         assert!(hashes.len() <= Self::MAX_HASHES);
         let mut result = Self {
             voting_account: keys.public_key(),
@@ -81,7 +81,7 @@ impl Vote {
     }
 
     pub fn new_test_instance() -> Self {
-        let key = KeyPair::from(42);
+        let key = PrivateKey::from(42);
         Self::new(&key, 1, 2, vec![BlockHash::from(5)])
     }
 

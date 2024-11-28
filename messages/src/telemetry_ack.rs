@@ -5,7 +5,8 @@ use rsnano_core::utils::{
     BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
 };
 use rsnano_core::{
-    sign_message, to_hex_string, validate_message, Account, BlockHash, KeyPair, NodeId, Signature,
+    sign_message, to_hex_string, validate_message, Account, BlockHash, NodeId, PrivateKey,
+    Signature,
 };
 use serde_derive::Serialize;
 use std::fmt::Display;
@@ -184,7 +185,7 @@ impl TelemetryData {
         Ok(data)
     }
 
-    pub fn sign(&mut self, keys: &KeyPair) -> Result<()> {
+    pub fn sign(&mut self, keys: &PrivateKey) -> Result<()> {
         debug_assert!(keys.public_key() == self.node_id.into());
         let mut stream = MemoryStream::new();
         self.serialize_without_signature(&mut stream);
@@ -341,7 +342,7 @@ mod tests {
     // original test: telemetry.signatures
     #[test]
     fn sign_telemetry_data() -> Result<()> {
-        let keys = KeyPair::new();
+        let keys = PrivateKey::new();
         let mut data = test_data(&keys);
         data.sign(&keys)?;
         assert_eq!(data.validate_signature(), true);
@@ -357,7 +358,7 @@ mod tests {
     //original test: telemetry.unknown_data
     #[test]
     fn sign_with_unknown_data() -> Result<()> {
-        let keys = KeyPair::new();
+        let keys = PrivateKey::new();
         let mut data = test_data(&keys);
         data.unknown_data = vec![1];
         data.sign(&keys)?;
@@ -367,7 +368,7 @@ mod tests {
 
     #[test]
     fn max_possible_size() {
-        let keys = KeyPair::new();
+        let keys = PrivateKey::new();
         let mut data = test_data(&keys);
         data.unknown_data = vec![
             1;
@@ -378,7 +379,7 @@ mod tests {
         assert_deserializable(&Message::TelemetryAck(TelemetryAck(Some(data))));
     }
 
-    fn test_data(keys: &KeyPair) -> TelemetryData {
+    fn test_data(keys: &PrivateKey) -> TelemetryData {
         let mut data = TelemetryData::new();
         data.node_id = keys.public_key().into();
         data.major_version = 20;

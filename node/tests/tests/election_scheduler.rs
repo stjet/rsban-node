@@ -124,7 +124,7 @@ mod bucket {
 }
 
 mod election_scheduler {
-    use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
+    use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, DEV_GENESIS_KEY};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use rsnano_node::{config::NodeConfig, consensus::ActiveElectionsExt};
     use std::time::Duration;
@@ -219,7 +219,7 @@ mod election_scheduler {
             })
             .finish();
 
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
 
         // Activating accounts depends on confirmed dependencies. First, prepare 2 accounts
         let send = Block::State(StateBlock::new(

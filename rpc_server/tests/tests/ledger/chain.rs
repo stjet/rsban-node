@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, KeyPair, WalletId, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, PrivateKey, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_node::wallets::WalletsExt;
 use rsnano_rpc_messages::ChainArgs;
@@ -21,7 +21,7 @@ fn chain() {
     let genesis = node.latest(&*DEV_GENESIS_ACCOUNT);
     assert!(!genesis.is_zero());
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let block = node
         .wallets
         .send_action2(
@@ -72,7 +72,7 @@ fn chain_limit() {
     let genesis = node.latest(&*DEV_GENESIS_ACCOUNT);
     assert!(!genesis.is_zero());
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let block = node
         .wallets
         .send_action2(
@@ -122,7 +122,7 @@ fn chain_offset() {
     let genesis = node.latest(&*DEV_GENESIS_ACCOUNT);
     assert!(!genesis.is_zero());
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let block = node
         .wallets
         .send_action2(

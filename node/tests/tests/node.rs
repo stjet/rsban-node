@@ -1,8 +1,8 @@
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBase,
-    BlockBuilder, BlockHash, DifficultyV1, Epoch, KeyPair, LegacySendBlockBuilder, Link, OpenBlock,
-    PublicKey, QualifiedRoot, Root, SendBlock, Signature, StateBlock, UncheckedInfo, Vote,
-    VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
+    BlockBuilder, BlockHash, DifficultyV1, Epoch, LegacySendBlockBuilder, Link, OpenBlock,
+    PrivateKey, PublicKey, QualifiedRoot, Root, SendBlock, Signature, StateBlock, UncheckedInfo,
+    Vote, VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -48,7 +48,7 @@ fn pruning_depth_max_depth() {
         .config(node_config)
         .flags(node_flags)
         .finish();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
 
     // Create the first send block
     let latest_hash = *DEV_GENESIS_HASH;
@@ -129,7 +129,7 @@ fn pruning_automatic() {
         .config(node_config)
         .flags(node_flags)
         .finish();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
 
     let latest_hash = *DEV_GENESIS_HASH;
     let send1 = LegacySendBlockBuilder::new()
@@ -210,7 +210,7 @@ fn deferred_dependent_elections() {
         .flags(node_flags)
         .finish();
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     let send1 = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
@@ -392,7 +392,7 @@ fn rollback_gap_source() {
     node_config.peering_port = Some(get_available_port());
     let node = system.build_node().config(node_config).finish();
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     let send1 = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
@@ -551,7 +551,7 @@ fn vote_by_hash_bundle() {
     node.wallets
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     node.wallets
         .insert_adhoc2(&wallet_id, &key1.private_key(), true)
         .unwrap();
@@ -718,7 +718,7 @@ fn send_callback() {
     let mut system = System::new();
     let node = system.make_node();
     let wallet_id = node.wallets.wallet_ids()[0];
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
 
     node.wallets
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
@@ -767,7 +767,7 @@ fn no_voting() {
         .wallets
         .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     node1
         .wallets
         .insert_adhoc2(&wallet_id1, &key1.private_key(), true)
@@ -808,7 +808,7 @@ fn bootstrap_confirm_frontiers() {
         .wallets
         .insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
-    let key0 = KeyPair::new();
+    let key0 = PrivateKey::new();
 
     // create block to send 500 raw from genesis to key0 and save into node0 ledger without immediately triggering an election
     let send0 = Block::LegacySend(SendBlock::new(
@@ -862,7 +862,7 @@ fn bootstrap_fork_open() {
     let wallet_id0 = node0.wallets.wallet_ids()[0];
     node_config.peering_port = Some(get_available_port());
     let node1 = system.build_node().config(node_config).finish();
-    let key0 = KeyPair::new();
+    let key0 = PrivateKey::new();
 
     let send0 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
@@ -968,7 +968,7 @@ fn rep_self_vote() {
     node_config.online_weight_minimum = Amount::MAX;
     let node0 = system.build_node().config(node_config).finish();
     let wallet_id = node0.wallets.wallet_ids()[0];
-    let rep_big = KeyPair::new();
+    let rep_big = PrivateKey::new();
 
     let fund_big = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
@@ -1073,7 +1073,7 @@ fn fork_bootstrap_flip() {
         .unwrap();
 
     let latest = node1.latest(&DEV_GENESIS_ACCOUNT);
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let send1 = Block::LegacySend(SendBlock::new(
         &latest,
         &key1.account(),
@@ -1082,7 +1082,7 @@ fn fork_bootstrap_flip() {
         system.work.generate_dev2(latest.into()).unwrap(),
     ));
 
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let send2 = Block::LegacySend(SendBlock::new(
         &latest,
         &key2.account(),
@@ -1138,7 +1138,7 @@ fn fork_multi_flip() {
     config.peering_port = Some(get_available_port());
     let node2 = system.build_node().config(config).flags(flags).finish();
 
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let send1 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
         &key1.account(),
@@ -1150,7 +1150,7 @@ fn fork_multi_flip() {
             .unwrap(),
     ));
 
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let send2 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
         &key2.account(),
@@ -1250,8 +1250,8 @@ fn fork_multi_flip() {
 fn fork_publish_inactive() {
     let mut system = System::new();
     let node = system.make_node();
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
 
     let send1 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
@@ -1322,7 +1322,7 @@ fn unlock_search() {
     let mut system = System::new();
     let node = system.make_node();
     let wallet_id = node.wallets.wallet_ids()[0];
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let balance = node.balance(&DEV_GENESIS_ACCOUNT);
 
     node.wallets.rekey(&wallet_id, "").unwrap();
@@ -1371,7 +1371,7 @@ fn search_receivable_confirmed() {
     let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
     let wallet_id = node.wallets.wallet_ids()[0];
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     node.wallets
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
@@ -1447,7 +1447,7 @@ fn search_receivable_pruned() {
     let node2 = system.build_node().config(config2).flags(flags).finish();
     let wallet_id2 = node2.wallets.wallet_ids()[0];
 
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     node1
         .wallets
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
@@ -1531,7 +1531,7 @@ fn search_receivable() {
     let mut system = System::new();
     let node = system.make_node();
     let wallet_id = node.wallets.wallet_ids()[0];
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     node.wallets
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
@@ -1565,7 +1565,7 @@ fn search_receivable_same() {
     let mut system = System::new();
     let node = system.make_node();
     let wallet_id = node.wallets.wallet_ids()[0];
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     node.wallets
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
@@ -1606,8 +1606,8 @@ fn search_receivable_multiple() {
     let mut system = System::new();
     let node = system.make_node();
     let wallet_id = node.wallets.wallet_ids()[0];
-    let key2 = KeyPair::new();
-    let key3 = KeyPair::new();
+    let key2 = PrivateKey::new();
+    let key3 = PrivateKey::new();
     node.wallets
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
@@ -1720,7 +1720,7 @@ fn auto_bootstrap_reverse() {
         .flags(node_flags.clone())
         .finish();
     let wallet_id = node0.wallets.wallet_ids()[0];
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
 
     node0
         .wallets
@@ -1758,7 +1758,7 @@ fn quick_confirm() {
     let mut system = System::new();
     let node1 = system.make_node();
     let wallet_id = node1.wallets.wallet_ids()[0];
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let previous = node1.latest(&DEV_GENESIS_ACCOUNT);
     let genesis_start_balance = node1.balance(&DEV_GENESIS_ACCOUNT);
 
@@ -1802,7 +1802,7 @@ fn quick_confirm() {
 fn send_out_of_order() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
 
     let send1 = Block::LegacySend(SendBlock::new(
         &DEV_GENESIS_HASH,
@@ -1849,7 +1849,7 @@ fn send_out_of_order() {
 #[test]
 fn send_single_observing_peer() {
     let mut system = System::new();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let node1 = system.make_node();
     let node2 = system.make_node();
     let wallet_id1 = node1.wallets.wallet_ids()[0];
@@ -1899,7 +1899,7 @@ fn send_single_observing_peer() {
 #[test]
 fn send_single() {
     let mut system = System::new();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let node1 = system.make_node();
     let node2 = system.make_node();
     let wallet_id1 = node1.wallets.wallet_ids()[0];
@@ -1944,7 +1944,7 @@ fn send_single() {
 #[test]
 fn send_self() {
     let mut system = System::new();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let node = system.make_node();
     let wallet_id = node.wallets.wallet_ids()[0];
     node.wallets
@@ -2046,7 +2046,7 @@ fn local_block_broadcast() {
     let node1 = system.build_node().config(node_config).finish();
     let node2 = system.make_disconnected_node();
 
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let latest_hash = *DEV_GENESIS_HASH;
 
     let send1 = Block::LegacySend(SendBlock::new(
@@ -2201,7 +2201,7 @@ fn fork_no_vote_quorum() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(block.hash()),
     ));
-    let vote = Vote::new(&KeyPair::new(), 0, 0, vec![send2.hash()]);
+    let vote = Vote::new(&PrivateKey::new(), 0, 0, vec![send2.hash()]);
     let confirm = Message::ConfirmAck(ConfirmAck::new_with_own_vote(vote));
     let channel = node2
         .network_info
@@ -2240,7 +2240,7 @@ fn fork_open() {
 
     // create block send1, to send all the balance from genesis to key1
     // this is done to ensure that the open block(s) cannot be voted on and confirmed
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -2377,7 +2377,7 @@ fn online_reps_election() {
     let node = system.build_node().flags(flags).finish();
 
     // Start election
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -2418,7 +2418,7 @@ fn vote_republish() {
     let mut system = System::new();
     let node1 = system.make_node();
     let node2 = system.make_node();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     // by not setting a private key on node1's wallet for genesis account, it is stopped from voting
     let wallet_id = node2.wallets.wallet_ids()[0];
     node2
@@ -2522,7 +2522,7 @@ fn vote_by_hash_republish() {
     let mut system = System::new();
     let node1 = system.make_node();
     let node2 = system.make_node();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     // by not setting a private key on node1's wallet for genesis account, it is stopped from voting
     let wallet_id = node2.wallets.wallet_ids()[0];
     node2
@@ -2671,7 +2671,7 @@ fn fork_election_invalid_block_signature() {
 fn confirm_back() {
     let mut system = System::new();
     let node = system.make_node();
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -2728,7 +2728,7 @@ fn rollback_vote_self() {
     flags.disable_request_loop = true;
     let node = system.build_node().flags(flags).finish();
     let wallet_id = node.wallets.wallet_ids()[0];
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     // send half the voting weight to a non voting rep to ensure quorum cannot be reached
     let send1 = Block::State(StateBlock::new(
@@ -2865,8 +2865,8 @@ fn rollback_vote_self() {
 fn rep_crawler_rep_remove() {
     let mut system = System::new();
     let searching_node = system.make_node(); // will be used to find principal representatives
-    let keys_rep1 = KeyPair::new(); // Principal representative 1
-    let keys_rep2 = KeyPair::new(); // Principal representative 2
+    let keys_rep1 = PrivateKey::new(); // Principal representative 1
+    let keys_rep2 = PrivateKey::new(); // Principal representative 2
 
     let min_pr_weight = searching_node
         .online_reps
@@ -3065,7 +3065,7 @@ fn epoch_conflict_confirm() {
     let config1 = System::default_config_without_backlog_population();
     let node1 = system.build_node().config(config1).finish();
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let epoch_signer = DEV_GENESIS_KEY.clone();
 
     let send = Block::State(StateBlock::new(
@@ -3181,7 +3181,7 @@ fn node_receive_quorum() {
     let node1 = system.make_node();
 
     let wallet_id = node1.wallets.wallet_ids()[0];
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let previous = node1.latest(&DEV_GENESIS_ACCOUNT);
 
     node1
@@ -3249,7 +3249,7 @@ fn auto_bootstrap() {
         .flags(node_flags.clone())
         .finish();
     let wallet_id = node0.wallets.wallet_ids()[0];
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
 
     node0
         .wallets
@@ -3312,9 +3312,9 @@ fn fork_open_flip() {
     let node1 = system.make_node();
     let wallet_id = node1.wallets.wallet_ids()[0];
 
-    let key1 = KeyPair::new();
-    let rep1 = KeyPair::new();
-    let rep2 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let rep1 = PrivateKey::new();
+    let rep2 = PrivateKey::new();
 
     // send 1 raw from genesis to key1 on both node1 and node2
     let send1 = Block::LegacySend(SendBlock::new(
@@ -3438,7 +3438,7 @@ fn unconfirmed_send() {
         .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let node2 = system.make_node();
     let wallet_id2 = node2.wallets.wallet_ids()[0];
     node2
@@ -3565,9 +3565,9 @@ fn block_processor_signatures() {
         .unwrap();
 
     let latest = node.latest(&*DEV_GENESIS_ACCOUNT);
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
-    let key3 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
+    let key3 = PrivateKey::new();
 
     // Create a valid send block
     let send1 = BlockBuilder::state()
@@ -3688,7 +3688,7 @@ fn block_confirm() {
     let node1 = system.make_node();
     let node2 = system.make_node();
     let wallet_id2 = node2.wallets.wallet_ids()[0];
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     let send1 = BlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
@@ -3767,9 +3767,9 @@ fn dependency_graph_frontier() {
         .config(System::default_config_without_backlog_population())
         .finish();
     let node2 = system.make_node();
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
-    let key3 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
+    let key3 = PrivateKey::new();
 
     // Send to key1
     let gen_send1 = Block::State(StateBlock::new(
@@ -3947,9 +3947,9 @@ fn dependency_graph() {
         .build_node()
         .config(System::default_config_without_backlog_population())
         .finish();
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
-    let key3 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
+    let key3 = PrivateKey::new();
 
     // Send to key1
     let gen_send1 = Block::State(StateBlock::new(
@@ -4155,8 +4155,8 @@ fn fork_keep() {
     let mut system = System::new();
     let node1 = system.make_node();
     let node2 = system.make_node();
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
     // send1 and send2 fork to different accounts
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,

@@ -1,5 +1,5 @@
 use rsnano_core::{
-    work::WorkPoolImpl, Account, Amount, Block, BlockHash, Epoch, KeyPair, Networks, PublicKey,
+    work::WorkPoolImpl, Account, Amount, Block, BlockHash, Epoch, Networks, PrivateKey, PublicKey,
     StateBlock, StateBlockBuilder, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
@@ -375,14 +375,14 @@ pub fn activate_hashes(node: &Node, hashes: &[BlockHash]) {
     }
 }
 
-pub fn setup_chain(node: &Node, count: usize, target: &KeyPair, confirm: bool) -> Vec<Block> {
+pub fn setup_chain(node: &Node, count: usize, target: &PrivateKey, confirm: bool) -> Vec<Block> {
     let mut latest = node.latest(&target.account());
     let mut balance = node.balance(&target.account());
 
     let mut blocks = Vec::new();
 
     for _ in 0..count {
-        let throwaway = KeyPair::new();
+        let throwaway = PrivateKey::new();
         balance = balance - Amount::raw(1);
         let send = Block::State(StateBlock::new(
             target.account(),
@@ -415,7 +415,7 @@ pub fn setup_chains(
     node: &Node,
     chain_count: usize,
     block_count: usize,
-    source: &KeyPair,
+    source: &PrivateKey,
     confirm: bool,
 ) -> Vec<(Account, Vec<Block>)> {
     let mut latest = node.latest(&source.account());
@@ -423,7 +423,7 @@ pub fn setup_chains(
 
     let mut chains = Vec::new();
     for _ in 0..chain_count {
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let amount_sent = Amount::raw(block_count as u128 * 2);
         balance = balance - amount_sent; // Send enough to later create `block_count` blocks
         let send = Block::State(StateBlock::new(
@@ -464,14 +464,14 @@ pub fn setup_chains(
     chains
 }
 
-pub fn setup_independent_blocks(node: &Node, count: usize, source: &KeyPair) -> Vec<Block> {
+pub fn setup_independent_blocks(node: &Node, count: usize, source: &PrivateKey) -> Vec<Block> {
     let mut blocks = Vec::new();
     let account: Account = source.public_key().into();
     let mut latest = node.latest(&account);
     let mut balance = node.balance(&account);
 
     for _ in 0..count {
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
 
         balance -= 1;
 
@@ -661,7 +661,7 @@ pub fn process_send_block(node: Arc<Node>, account: Account, amount: Amount) -> 
     send
 }
 
-pub fn process_open_block(node: Arc<Node>, keys: KeyPair) -> Block {
+pub fn process_open_block(node: Arc<Node>, keys: PrivateKey) -> Block {
     let transaction = node.ledger.read_txn();
     let account = keys.account();
 
@@ -727,8 +727,8 @@ pub fn upgrade_epoch(
 pub fn setup_new_account(
     node: &Node,
     amount: Amount,
-    source: &KeyPair,
-    dest: &KeyPair,
+    source: &PrivateKey,
+    dest: &PrivateKey,
     dest_rep: PublicKey,
     force_confirm: bool,
 ) -> (Block, Block) {

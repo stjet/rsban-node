@@ -2,7 +2,7 @@ use super::{BlockBase, BlockSideband, BlockType};
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, KeyPair, LazyBlockHash, Link,
+    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, LazyBlockHash, Link, PrivateKey,
     PublicKey, RawKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
@@ -71,7 +71,7 @@ impl OpenBlock {
     }
 
     pub fn new_test_instance() -> Self {
-        let key = KeyPair::from(42);
+        let key = PrivateKey::from(42);
         Self::new(
             BlockHash::from(123),
             PublicKey::from(456),
@@ -275,12 +275,12 @@ mod tests {
     use super::*;
     use crate::{
         utils::{MemoryStream, TestPropertyTree},
-        Block, KeyPair,
+        Block, PrivateKey,
     };
 
     #[test]
     fn create_block() {
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let source = BlockHash::from(1);
         let representative = PublicKey::from(2);
         let account = Account::from(3);
@@ -293,7 +293,7 @@ mod tests {
     // original test: block.open_serialize_json
     #[test]
     fn serialize_json() {
-        let key1 = KeyPair::new();
+        let key1 = PrivateKey::new();
         let block1 = OpenBlock::new(
             BlockHash::from(0),
             PublicKey::from(1),

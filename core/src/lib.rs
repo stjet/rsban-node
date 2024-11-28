@@ -29,7 +29,7 @@ pub use vote::*;
 
 mod key_pair;
 pub use key_pair::{
-    sign_message, validate_block_signature, validate_message, KeyPair, KeyPairFactory,
+    sign_message, validate_block_signature, validate_message, KeyPairFactory, PrivateKey,
 };
 
 mod raw_key;
@@ -119,7 +119,7 @@ serialize_32_byte_string!(WalletId);
 impl WalletId {
     pub fn random() -> Self {
         let secret: [u8; 32] = thread_rng().gen();
-        let keys = KeyPair::from_priv_key_bytes(&secret).unwrap();
+        let keys = PrivateKey::from_priv_key_bytes(&secret).unwrap();
         Self::from_bytes(*keys.public_key().as_bytes())
     }
 }

@@ -16,7 +16,7 @@ fn receive() {
         .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false)
         .unwrap();
 
-    let key1 = rsnano_core::KeyPair::new();
+    let key1 = rsnano_core::PrivateKey::new();
     node.wallets
         .insert_adhoc2(&wallet, &key1.private_key(), false)
         .unwrap();

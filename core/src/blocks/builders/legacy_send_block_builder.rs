@@ -1,6 +1,6 @@
 use crate::{
     work::{WorkPool, STUB_WORK_POOL},
-    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair,
+    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, PrivateKey,
     SendBlock,
 };
 
@@ -12,7 +12,7 @@ pub struct LegacySendBlockBuilder {
     balance: Option<Amount>,
     previous_balance: Option<Amount>,
     work: Option<u64>,
-    keypair: Option<KeyPair>,
+    keypair: Option<PrivateKey>,
     build_sideband: bool,
 }
 
@@ -69,7 +69,7 @@ impl LegacySendBlockBuilder {
         self
     }
 
-    pub fn sign(mut self, keypair: KeyPair) -> Self {
+    pub fn sign(mut self, keypair: PrivateKey) -> Self {
         self.keypair = Some(keypair);
         self
     }

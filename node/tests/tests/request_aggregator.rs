@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::ConfirmAck;
 use rsnano_node::{
@@ -162,7 +162,7 @@ fn one_update() {
         )
         .unwrap();
 
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
 
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -305,7 +305,7 @@ fn two() {
         )
         .unwrap();
 
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
 
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,

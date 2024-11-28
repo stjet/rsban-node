@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, Vote, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, Vote, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{ConfirmAck, Message};
 use rsnano_network::{ChannelId, ChannelMode, DropPolicy, TrafficType};
@@ -82,8 +82,8 @@ fn rep_weight() {
     let node1 = system.make_node();
     let node2 = system.make_node();
     let node3 = system.make_node();
-    let keypair1 = KeyPair::new();
-    let keypair2 = KeyPair::new();
+    let keypair1 = PrivateKey::new();
+    let keypair2 = PrivateKey::new();
     let amount_pr = node.online_reps.lock().unwrap().minimum_principal_weight() + Amount::raw(100);
     let amount_not_pr =
         node.online_reps.lock().unwrap().minimum_principal_weight() - Amount::raw(100);

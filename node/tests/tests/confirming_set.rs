@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, Block, KeyPair, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, PrivateKey, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     config::NodeFlags,
@@ -16,7 +16,7 @@ fn observer_callbacks() {
     node.insert_into_wallet(&DEV_GENESIS_KEY);
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         latest,
@@ -75,7 +75,7 @@ fn confirmed_history() {
     let node = system.build_node().flags(flags).config(config).finish();
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         latest,
@@ -203,7 +203,7 @@ fn dependent_election() {
     let node = system.build_node().config(config).finish();
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         latest,

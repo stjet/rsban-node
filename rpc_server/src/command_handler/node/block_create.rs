@@ -1,8 +1,8 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_core::{
-    Account, Amount, Block, BlockDetails, BlockHash, ChangeBlock, Epoch, KeyPair, OpenBlock,
-    PendingKey, PublicKey, RawKey, ReceiveBlock, Root, SendBlock, StateBlock,
+    Account, Amount, Block, BlockDetails, BlockHash, ChangeBlock, Epoch, OpenBlock, PendingKey,
+    PrivateKey, PublicKey, RawKey, ReceiveBlock, Root, SendBlock, StateBlock,
 };
 use rsnano_node::Node;
 use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateResponse, BlockTypeDto};
@@ -109,7 +109,7 @@ impl RpcCommandHandler {
         }
 
         let root: Root;
-        let keys = KeyPair::from(prv_key);
+        let keys = PrivateKey::from(prv_key);
         let mut block = match args.block_type {
             BlockTypeDto::State => {
                 if args.previous.is_some()

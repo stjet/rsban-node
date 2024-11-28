@@ -10,7 +10,7 @@ use crate::{
     utils::{ThreadPool, ThreadPoolImpl},
     NetworkParams,
 };
-use rsnano_core::{KeyPair, Networks};
+use rsnano_core::{Networks, PrivateKey};
 use rsnano_ledger::Ledger;
 use rsnano_network::{
     Channel, ChannelDirection, Network, NetworkInfo, NullNetworkObserver, ResponseServerSpawner,
@@ -21,7 +21,7 @@ use std::sync::{Arc, Mutex, RwLock};
 pub struct NanoResponseServerSpawner {
     pub(crate) tokio: tokio::runtime::Handle,
     pub(crate) stats: Arc<Stats>,
-    pub(crate) node_id: KeyPair,
+    pub(crate) node_id: PrivateKey,
     pub(crate) ledger: Arc<Ledger>,
     pub(crate) workers: Arc<dyn ThreadPool>,
     pub(crate) block_processor: Arc<BlockProcessor>,
@@ -51,7 +51,7 @@ impl NanoResponseServerSpawner {
         Self {
             tokio: tokio.clone(),
             stats: stats.clone(),
-            node_id: KeyPair::from(42),
+            node_id: PrivateKey::from(42),
             ledger: ledger.clone(),
             workers: Arc::new(ThreadPoolImpl::new_test_instance()),
             block_processor: block_processor.clone(),

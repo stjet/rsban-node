@@ -30,7 +30,7 @@ pub use builders::*;
 
 use crate::{
     utils::{BufferReader, BufferWriter, MemoryStream, PropertyTree, SerdePropertyTree, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, Epoch, Epochs, FullHash, KeyPair, Link,
+    Account, Amount, BlockHash, BlockHashBuilder, Epoch, Epochs, FullHash, Link, PrivateKey,
     PublicKey, QualifiedRoot, Root, Signature,
 };
 use num::FromPrimitive;
@@ -208,7 +208,7 @@ impl Block {
         Self::State(StateBlock::new_test_instance())
     }
 
-    pub fn new_test_instance_with_key(key: impl Into<KeyPair>) -> Self {
+    pub fn new_test_instance_with_key(key: impl Into<PrivateKey>) -> Self {
         Self::State(StateBlock::new_test_instance_with_key(key.into()))
     }
 
@@ -567,8 +567,8 @@ static DEV_PRIVATE_KEY_DATA: &str =
     "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
 pub static DEV_PUBLIC_KEY_DATA: &str =
     "B0311EA55708D6A53C75CDBF88300259C6D018522FE3D4D0A242E431F9E8B6D0"; // xrb_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo
-pub static DEV_GENESIS_KEY: LazyLock<KeyPair> =
-    LazyLock::new(|| KeyPair::from_priv_key_hex(DEV_PRIVATE_KEY_DATA).unwrap());
+pub static DEV_GENESIS_KEY: LazyLock<PrivateKey> =
+    LazyLock::new(|| PrivateKey::from_priv_key_hex(DEV_PRIVATE_KEY_DATA).unwrap());
 
 #[derive(Default)]
 pub struct DependentBlocks {

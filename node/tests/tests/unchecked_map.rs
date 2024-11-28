@@ -1,5 +1,5 @@
 use rsnano_core::{
-    Amount, Block, KeyPair, StateBlock, UncheckedInfo, UncheckedKey, DEV_GENESIS_KEY,
+    Amount, Block, PrivateKey, StateBlock, UncheckedInfo, UncheckedKey, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{block_processing::UncheckedMap, stats::Stats};
@@ -141,7 +141,7 @@ fn double_put() {
 fn multiple_get() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
     // Instantiates three blocks
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let block1 = Block::State(StateBlock::new(
         key1.account(),
         1.into(),
@@ -151,7 +151,7 @@ fn multiple_get() {
         &key1,
         0,
     ));
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let block2 = Block::State(StateBlock::new(
         key2.account(),
         2.into(),
@@ -161,7 +161,7 @@ fn multiple_get() {
         &key2,
         0,
     ));
-    let key3 = KeyPair::new();
+    let key3 = PrivateKey::new();
     let block3 = Block::State(StateBlock::new(
         key3.account(),
         3.into(),

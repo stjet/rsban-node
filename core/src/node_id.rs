@@ -1,4 +1,4 @@
-use crate::{Account, KeyPair, PublicKey};
+use crate::{Account, PrivateKey, PublicKey};
 use serde::de::{Unexpected, Visitor};
 use std::{fmt::Display, str::FromStr};
 
@@ -134,8 +134,8 @@ impl From<PublicKey> for NodeId {
     }
 }
 
-impl From<&KeyPair> for NodeId {
-    fn from(value: &KeyPair) -> Self {
+impl From<&PrivateKey> for NodeId {
+    fn from(value: &PrivateKey) -> Self {
         value.public_key().into()
     }
 }

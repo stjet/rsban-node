@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount, Block, BlockHash, KeyPair, StateBlock};
+use rsnano_core::{Account, Amount, Block, BlockHash, PrivateKey, StateBlock};
 use rsnano_ledger::{DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use std::time::Duration;
 use test_helpers::{assert_timely, setup_rpc_client_and_server, System};
@@ -10,7 +10,7 @@ fn unchecked_clear() {
 
     let server = setup_rpc_client_and_server(node.clone(), true);
 
-    let keypair = KeyPair::new();
+    let keypair = PrivateKey::new();
 
     let send1 = Block::State(StateBlock::new(
         keypair.account(),

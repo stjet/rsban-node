@@ -1,5 +1,5 @@
 use anyhow::Context;
-use rsnano_core::{KeyPair, KeyPairFactory};
+use rsnano_core::{KeyPairFactory, PrivateKey};
 use rsnano_nullable_fs::NullableFilesystem;
 use std::path::{Path, PathBuf};
 use tracing::info;
@@ -22,7 +22,7 @@ impl NodeIdKeyFile {
         Self::new(NullableFilesystem::new_null(), KeyPairFactory::new_null())
     }
 
-    pub fn initialize(&mut self, app_path: impl AsRef<Path>) -> anyhow::Result<KeyPair> {
+    pub fn initialize(&mut self, app_path: impl AsRef<Path>) -> anyhow::Result<PrivateKey> {
         let app_path = app_path.as_ref();
         let file_path = Self::key_file_path(app_path);
         if self.fs.exists(&file_path) {
@@ -38,7 +38,7 @@ impl NodeIdKeyFile {
         key_file
     }
 
-    fn load_key(&mut self, file_path: &Path) -> anyhow::Result<KeyPair> {
+    fn load_key(&mut self, file_path: &Path) -> anyhow::Result<PrivateKey> {
         info!("Reading node id from: {:?}", file_path);
 
         let content = self
@@ -47,13 +47,13 @@ impl NodeIdKeyFile {
             .context(format!("Could not read node id file {:?}", file_path))?;
 
         let first_line = content.lines().next().unwrap_or("");
-        KeyPair::from_priv_key_hex(first_line).context(format!(
+        PrivateKey::from_priv_key_hex(first_line).context(format!(
             "Could not decode node id key from file {:?}",
             file_path
         ))
     }
 
-    fn create_key(&mut self, app_path: &Path, file_path: &Path) -> anyhow::Result<KeyPair> {
+    fn create_key(&mut self, app_path: &Path, file_path: &Path) -> anyhow::Result<PrivateKey> {
         info!("Generating a new node id, saving to: {:?}", file_path);
 
         self.fs
@@ -209,13 +209,13 @@ mod tests {
         }
     }
 
-    fn initialize_node_id_without_existing_file() -> (anyhow::Result<KeyPair>, Vec<FsEvent>) {
+    fn initialize_node_id_without_existing_file() -> (anyhow::Result<PrivateKey>, Vec<FsEvent>) {
         let fs = NullableFilesystem::new_null();
         let key_pair_factory = KeyPairFactory::new_null_with(EXPECTED_KEY);
         initialize_node_id(fs, key_pair_factory)
     }
 
-    fn initialize_node_id_with_valid_existing_file() -> (anyhow::Result<KeyPair>, Vec<FsEvent>) {
+    fn initialize_node_id_with_valid_existing_file() -> (anyhow::Result<PrivateKey>, Vec<FsEvent>) {
         let fs = fs_with_key_file(format!("{}\n", EXPECTED_KEY.encode_hex()));
         initialize_node_id(fs, KeyPairFactory::new_null())
     }
@@ -223,7 +223,7 @@ mod tests {
     fn initialize_node_id(
         fs: NullableFilesystem,
         key_pair_factory: KeyPairFactory,
-    ) -> (anyhow::Result<KeyPair>, Vec<FsEvent>) {
+    ) -> (anyhow::Result<PrivateKey>, Vec<FsEvent>) {
         let fs_tracker = fs.track();
         let mut id_file = NodeIdKeyFile::new(fs, key_pair_factory);
         let key_pair = id_file.initialize(&test_app_path());

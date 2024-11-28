@@ -6,7 +6,7 @@ use rand::{thread_rng, Rng};
 use rsnano_core::{
     sign_message,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream},
-    validate_message, write_hex_bytes, Account, BlockHash, KeyPair, NodeId, Signature,
+    validate_message, write_hex_bytes, Account, BlockHash, NodeId, PrivateKey, Signature,
 };
 use serde::ser::SerializeStruct;
 use std::fmt::{Display, Write};
@@ -40,7 +40,7 @@ pub struct NodeIdHandshakeResponse {
 }
 
 impl NodeIdHandshakeResponse {
-    pub fn new_v1(cookie: &Cookie, node_id: &KeyPair) -> Self {
+    pub fn new_v1(cookie: &Cookie, node_id: &PrivateKey) -> Self {
         let mut response = Self {
             node_id: node_id.public_key().into(),
             signature: Signature::default(),
@@ -50,7 +50,7 @@ impl NodeIdHandshakeResponse {
         response
     }
 
-    pub fn new_v2(cookie: &Cookie, node_id: &KeyPair, genesis: BlockHash) -> Self {
+    pub fn new_v2(cookie: &Cookie, node_id: &PrivateKey, genesis: BlockHash) -> Self {
         let mut salt = [0; 32];
         thread_rng().fill(&mut salt);
 
@@ -63,7 +63,7 @@ impl NodeIdHandshakeResponse {
         response
     }
 
-    pub fn sign(&mut self, cookie: &Cookie, key: &KeyPair) {
+    pub fn sign(&mut self, cookie: &Cookie, key: &PrivateKey) {
         debug_assert!(NodeId::from(key.public_key()) == self.node_id);
         let data = self.data_to_sign(cookie);
         self.signature = sign_message(&key.private_key(), &data);
@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn valid_v1_signature() {
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let mut response = NodeIdHandshakeResponse {
             node_id: key.public_key().into(),
             signature: Signature::default(),
@@ -346,7 +346,7 @@ mod tests {
 
     #[test]
     fn valid_v2_signature() {
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let mut response = NodeIdHandshakeResponse {
             node_id: key.public_key().into(),
             signature: Signature::default(),

@@ -1,6 +1,6 @@
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, Ledger};
 use rsnano_core::{
-    Account, AccountInfo, Amount, BlockHash, Epoch, KeyPair, Link, PublicKey, DEV_GENESIS_KEY,
+    Account, AccountInfo, Amount, BlockHash, Epoch, Link, PrivateKey, PublicKey, DEV_GENESIS_KEY,
 };
 
 use rsnano_core::{
@@ -11,14 +11,14 @@ use rsnano_store_lmdb::Transaction;
 
 /// Test helper that creates blocks for a single account
 pub struct AccountBlockFactory<'a> {
-    pub key: KeyPair,
+    pub key: PrivateKey,
     ledger: &'a Ledger,
 }
 
 impl<'a> AccountBlockFactory<'a> {
     pub(crate) fn new(ledger: &'a Ledger) -> Self {
         Self {
-            key: KeyPair::new(),
+            key: PrivateKey::new(),
             ledger,
         }
     }

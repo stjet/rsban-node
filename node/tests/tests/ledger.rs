@@ -1,6 +1,6 @@
 use rsnano_core::{
-    Account, Amount, Block, BlockHash, Epoch, KeyPair, PublicKey, SendBlock, Signature, StateBlock,
-    Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
+    Account, Amount, Block, BlockHash, Epoch, PrivateKey, PublicKey, SendBlock, Signature,
+    StateBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
@@ -20,7 +20,7 @@ mod votes {
     fn add_one() {
         let mut system = System::new();
         let node1 = system.make_node();
-        let key1 = KeyPair::new();
+        let key1 = PrivateKey::new();
         let send1 = Block::LegacySend(SendBlock::new(
             &DEV_GENESIS_HASH,
             &key1.public_key().as_account(),
@@ -100,7 +100,7 @@ mod votes {
             ..System::default_config_without_backlog_population()
         };
         let node1 = system.build_node().config(config).finish();
-        let key1 = KeyPair::new();
+        let key1 = PrivateKey::new();
         let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
@@ -132,7 +132,7 @@ mod votes {
                 .timestamp,
             Vote::TIMESTAMP_MIN
         );
-        let key2 = KeyPair::new();
+        let key2 = PrivateKey::new();
         let send2 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
@@ -218,7 +218,7 @@ mod votes {
 fn epoch_open_pending() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let epoch_open = Block::State(StateBlock::new(
         key1.account(),
         BlockHash::zero(),
@@ -263,7 +263,7 @@ fn epoch_open_pending() {
 fn block_hash_account_conflict() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
 
     /*
      * Generate a send block whose destination is a block hash already
@@ -353,7 +353,7 @@ fn block_hash_account_conflict() {
 fn unchecked_epoch() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let destination = KeyPair::new();
+    let destination = PrivateKey::new();
 
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -424,7 +424,7 @@ fn unchecked_epoch_invalid() {
         .config(System::default_config_without_backlog_population())
         .finish();
 
-    let destination = KeyPair::new();
+    let destination = PrivateKey::new();
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -515,7 +515,7 @@ fn unchecked_epoch_invalid() {
 fn unchecked_open() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let destination = KeyPair::new();
+    let destination = PrivateKey::new();
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -569,7 +569,7 @@ fn unchecked_open() {
 fn unchecked_receive() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let destination = KeyPair::new();
+    let destination = PrivateKey::new();
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,

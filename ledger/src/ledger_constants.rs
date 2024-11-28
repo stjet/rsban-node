@@ -3,8 +3,8 @@ use rsnano_core::{
     deserialize_block_json, epoch_v1_link, epoch_v2_link,
     utils::{get_env_or_default_string, seconds_since_epoch, SerdePropertyTree},
     work::{WorkThresholds, WORK_THRESHOLDS_STUB},
-    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, Epochs, KeyPair,
-    Networks, PublicKey, DEV_GENESIS_KEY,
+    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, Epochs, Networks,
+    PrivateKey, PublicKey, DEV_GENESIS_KEY,
 };
 use std::sync::{Arc, LazyLock};
 
@@ -94,7 +94,7 @@ mod tests {
 #[derive(Clone)]
 pub struct LedgerConstants {
     pub work: WorkThresholds,
-    pub zero_key: KeyPair,
+    pub zero_key: PrivateKey,
     pub nano_beta_account: Account,
     pub nano_live_account: Account,
     pub nano_test_account: Account,
@@ -204,7 +204,7 @@ impl LedgerConstants {
 
         Self {
             work,
-            zero_key: KeyPair::zero(),
+            zero_key: PrivateKey::zero(),
             nano_beta_account,
             nano_live_account: Account::decode_hex(LIVE_PUBLIC_KEY_DATA).unwrap(),
             nano_test_account,

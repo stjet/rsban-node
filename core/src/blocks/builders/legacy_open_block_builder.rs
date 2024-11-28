@@ -1,14 +1,14 @@
 use crate::{
     work::{WorkPool, STUB_WORK_POOL},
-    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair,
-    OpenBlock, PublicKey,
+    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, OpenBlock,
+    PrivateKey, PublicKey,
 };
 
 pub struct LegacyOpenBlockBuilder {
     account: Option<Account>,
     representative: Option<PublicKey>,
     source: Option<BlockHash>,
-    keypair: Option<KeyPair>,
+    keypair: Option<PrivateKey>,
     work: Option<u64>,
     build_sideband: bool,
     height: Option<u64>,
@@ -42,7 +42,7 @@ impl LegacyOpenBlockBuilder {
         self
     }
 
-    pub fn sign(mut self, keypair: &KeyPair) -> Self {
+    pub fn sign(mut self, keypair: &PrivateKey) -> Self {
         self.keypair = Some(keypair.clone());
         self
     }

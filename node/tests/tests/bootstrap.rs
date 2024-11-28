@@ -1,5 +1,5 @@
 use rsnano_core::{
-    Account, Amount, Block, BlockHash, KeyPair, Link, StateBlock, UncheckedKey, WalletId,
+    Account, Amount, Block, BlockHash, Link, PrivateKey, StateBlock, UncheckedKey, WalletId,
     DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
@@ -43,8 +43,8 @@ mod bootstrap_processor {
             .config(config.clone())
             .flags(flags.clone())
             .finish();
-        let key1 = KeyPair::new();
-        let key2 = KeyPair::new();
+        let key1 = PrivateKey::new();
+        let key2 = PrivateKey::new();
         // Generating test chain
 
         let send1 = BlockBuilder::state()
@@ -116,8 +116,8 @@ mod bootstrap_processor {
             .config(config.clone())
             .flags(flags.clone())
             .finish();
-        let key1 = KeyPair::new();
-        let key2 = KeyPair::new();
+        let key1 = PrivateKey::new();
+        let key2 = PrivateKey::new();
 
         // send 1000 nano from genesis to key1
         let send1 = BlockBuilder::state()
@@ -214,8 +214,8 @@ mod bootstrap_processor {
             .config(config.clone())
             .flags(flags.clone())
             .finish();
-        let key = KeyPair::new();
-        let key2 = KeyPair::new();
+        let key = PrivateKey::new();
+        let key2 = PrivateKey::new();
         // Generating test chain
 
         let send1 = BlockBuilder::state()
@@ -305,7 +305,7 @@ mod bootstrap_processor {
             .config(config.clone())
             .flags(flags.clone())
             .finish();
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
 
         let send1 = BlockBuilder::state()
             .account(*DEV_GENESIS_ACCOUNT)
@@ -409,8 +409,8 @@ mod bootstrap_processor {
             .flags(flags.clone())
             .finish();
 
-        let key1 = KeyPair::new();
-        let key2 = KeyPair::new();
+        let key1 = PrivateKey::new();
+        let key2 = PrivateKey::new();
 
         // send 1000 nano from genesis to genesis
         let send1 = Block::State(StateBlock::new(
@@ -575,7 +575,7 @@ mod bootstrap_processor {
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
 
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
 
         let send1 = BlockBuilder::legacy_send()
             .previous(node0.latest(&DEV_GENESIS_ACCOUNT))
@@ -722,7 +722,7 @@ mod bootstrap_processor {
         let mut config = System::default_config_without_backlog_population();
         let mut flags = NodeFlags::new();
         flags.disable_bootstrap_bulk_push_client = true;
-        let key2 = KeyPair::new();
+        let key2 = PrivateKey::new();
 
         let node1 = system
             .build_node()
@@ -934,8 +934,8 @@ mod bootstrap_processor {
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
 
-        let key1 = KeyPair::new();
-        let key2 = KeyPair::new();
+        let key1 = PrivateKey::new();
+        let key2 = PrivateKey::new();
 
         let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
@@ -1022,8 +1022,8 @@ mod bootstrap_processor {
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
 
-        let key1 = KeyPair::new();
-        let key2 = KeyPair::new();
+        let key1 = PrivateKey::new();
+        let key2 = PrivateKey::new();
         // Generating test chain
 
         let send1 = Block::State(StateBlock::new(
@@ -1125,8 +1125,8 @@ mod bootstrap_processor {
             .flags(flags.clone())
             .finish();
 
-        let key1 = KeyPair::new();
-        let key2 = KeyPair::new();
+        let key1 = PrivateKey::new();
+        let key2 = PrivateKey::new();
 
         // send from genesis to key1
         let send1 = Block::State(StateBlock::new(
@@ -1255,7 +1255,7 @@ mod bootstrap_processor {
             .flags(flags.clone())
             .finish();
 
-        let key1 = KeyPair::new();
+        let key1 = PrivateKey::new();
 
         let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
@@ -1297,8 +1297,8 @@ mod bootstrap_processor {
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
 
-        let key1 = KeyPair::new();
-        let key2 = KeyPair::new();
+        let key1 = PrivateKey::new();
+        let key2 = PrivateKey::new();
         // Generating test chain
 
         let send1 = Block::State(StateBlock::new(
@@ -1400,8 +1400,8 @@ mod bootstrap_processor {
         flags.disable_ongoing_bootstrap = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
 
-        let key1 = KeyPair::new();
-        let key2 = KeyPair::new();
+        let key1 = PrivateKey::new();
+        let key2 = PrivateKey::new();
         // Generating test chain
 
         let send1 = Block::State(StateBlock::new(
@@ -1481,7 +1481,7 @@ mod bootstrap_processor {
     #[test]
     fn push_diamond() {
         let mut system = System::new();
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let node1 = system.make_disconnected_node();
         let wallet_id = WalletId::from(100);
         node1.wallets.create(wallet_id);
@@ -1635,7 +1635,7 @@ mod bulk_pull {
     fn end_not_owned() {
         let mut system = System::new();
         let node = system.make_node();
-        let key2 = KeyPair::new();
+        let key2 = PrivateKey::new();
         let wallet_id = node.wallets.wallet_ids()[0];
         node.wallets
             .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
@@ -1929,7 +1929,7 @@ mod frontier_req {
         let node = system.make_node();
 
         // Public key FB93... after genesis in accounts table
-        let key1 = KeyPair::from_priv_key_hex(
+        let key1 = PrivateKey::from_priv_key_hex(
             "ED5AE0A6505B14B67435C29FD9FEEBC26F597D147BC92F6D795FFAD7AFD3D967",
         )
         .unwrap();
@@ -2013,15 +2013,15 @@ mod frontier_req {
         let mut system = System::new();
         let node = system.make_node();
 
-        let mut key_before_genesis = KeyPair::new();
+        let mut key_before_genesis = PrivateKey::new();
         // Public key before genesis in accounts table
         while key_before_genesis.public_key().number() >= DEV_GENESIS_ACCOUNT.number() {
-            key_before_genesis = KeyPair::new();
+            key_before_genesis = PrivateKey::new();
         }
-        let mut key_after_genesis = KeyPair::new();
+        let mut key_after_genesis = PrivateKey::new();
         // Public key after genesis in accounts table
         while key_after_genesis.public_key().number() <= DEV_GENESIS_ACCOUNT.number() {
-            key_after_genesis = KeyPair::new();
+            key_after_genesis = PrivateKey::new();
         }
 
         let send1 = Block::State(StateBlock::new(
@@ -2171,7 +2171,7 @@ mod bulk_pull_account {
         let mut config = System::default_config();
         config.receive_minimum = Amount::raw(20);
         let node = system.build_node().config(config).finish();
-        let key1 = KeyPair::new();
+        let key1 = PrivateKey::new();
         let wallet_id = node.wallets.wallet_ids()[0];
         node.wallets
             .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
@@ -2287,7 +2287,7 @@ fn bulk_genesis() {
     let latest1 = node1.latest(&DEV_GENESIS_ACCOUNT);
     let latest2 = node2.latest(&DEV_GENESIS_ACCOUNT);
     assert_eq!(latest1, latest2);
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let wallet_id = node1.wallets.wallet_ids()[0];
     let _send = node1
         .wallets
@@ -2333,7 +2333,7 @@ fn bulk_offline_send() {
     node1.insert_into_wallet(&DEV_GENESIS_KEY);
     let amount = node1.config.receive_minimum;
     let node2 = system.make_disconnected_node();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let wallet_id2 = WalletId::random();
     node2.wallets.create(wallet_id2);
     node2
@@ -2520,7 +2520,7 @@ fn push_diamond_pruning() {
         })
         .finish();
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     // send all balance from genesis to key
     let send1 = Block::State(StateBlock::new(
@@ -2620,7 +2620,7 @@ fn push_one() {
         .config(System::default_config_without_backlog_population())
         .finish();
 
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let node1 = system.make_disconnected_node();
     node1.insert_into_wallet(&DEV_GENESIS_KEY);
 
@@ -2668,8 +2668,8 @@ fn lazy_max_pull_count() {
             ..Default::default()
         })
         .finish();
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
 
     // Generating test chain
     let send1 = Block::State(StateBlock::new(

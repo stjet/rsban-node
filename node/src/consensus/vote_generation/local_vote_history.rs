@@ -159,7 +159,7 @@ fn clean(data: &mut LocalVoteHistoryData, max_cache: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::KeyPair;
+    use rsnano_core::PrivateKey;
 
     #[test]
     fn empty_history() {
@@ -218,7 +218,7 @@ mod tests {
         let hash = BlockHash::from(2);
         let vote1a = Arc::new(Vote::null());
         let vote1b = Arc::new(Vote::null());
-        let keys = KeyPair::new();
+        let keys = PrivateKey::new();
         let vote2 = Arc::new(Vote::new(&keys, 0, 0, Vec::new()));
         history.add(&root, &hash, &vote1a);
         history.add(&root, &hash, &vote1b);
@@ -238,9 +238,9 @@ mod tests {
         let hash = BlockHash::from(2);
         let vote1a = Arc::new(Vote::null());
         let vote1b = Arc::new(Vote::null());
-        let keys1 = KeyPair::new();
+        let keys1 = PrivateKey::new();
         let vote2 = Arc::new(Vote::new(&keys1, 0, 0, Vec::new()));
-        let keys2 = KeyPair::new();
+        let keys2 = PrivateKey::new();
         let vote3 = Arc::new(Vote::new(&keys2, 0, 0, Vec::new()));
         history.add(&root, &hash, &vote1a);
         history.add(&root, &hash, &vote1b);

@@ -1,12 +1,12 @@
 use crate::work::WorkPool;
 use crate::{work::STUB_WORK_POOL, BlockBase, BlockHash, ChangeBlock};
-use crate::{Account, Amount, Block, BlockDetails, BlockSideband, Epoch, KeyPair, PublicKey};
+use crate::{Account, Amount, Block, BlockDetails, BlockSideband, Epoch, PrivateKey, PublicKey};
 
 pub struct LegacyChangeBlockBuilder {
     account: Option<Account>,
     representative: Option<PublicKey>,
     previous: Option<BlockHash>,
-    keypair: Option<KeyPair>,
+    keypair: Option<PrivateKey>,
     work: Option<u64>,
     build_sideband: bool,
 }
@@ -38,7 +38,7 @@ impl LegacyChangeBlockBuilder {
         self
     }
 
-    pub fn sign(mut self, keypair: &KeyPair) -> Self {
+    pub fn sign(mut self, keypair: &PrivateKey) -> Self {
         self.keypair = Some(keypair.clone());
         self
     }

@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use rsnano_core::{
-    Amount, Block, BlockHash, ChangeBlock, Epoch, KeyPair, Link, OpenBlock, PublicKey,
+    Amount, Block, BlockHash, ChangeBlock, Epoch, Link, OpenBlock, PrivateKey, PublicKey,
     ReceiveBlock, SendBlock, StateBlock, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
@@ -16,7 +16,7 @@ fn single() {
     let amount = Amount::MAX;
     let mut system = System::new();
     let node = system.make_node();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     node.insert_into_wallet(&DEV_GENESIS_KEY);
     let latest1 = node.latest(&DEV_GENESIS_ACCOUNT);
     let send1 = Block::State(StateBlock::new(
@@ -65,9 +65,9 @@ fn multiple_accounts() {
     let mut system = System::new();
     let cfg = System::default_config_without_backlog_population();
     let node = system.build_node().config(cfg).finish();
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
-    let key3 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
+    let key3 = PrivateKey::new();
     let latest1 = node.latest(&DEV_GENESIS_ACCOUNT);
 
     let quorum_delta = node.online_reps.lock().unwrap().quorum_delta();
@@ -295,7 +295,7 @@ fn send_receive_between_2_accounts() {
     let mut system = System::new();
     let cfg = System::default_config_without_backlog_population();
     let node = system.build_node().config(cfg).finish();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let key1_acc = key1.public_key().as_account();
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
@@ -391,7 +391,7 @@ fn send_receive_between_2_accounts() {
         &key1,
         node.work_generate_dev(send4.hash()),
     ));
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let send6 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         send5.hash(),
@@ -494,7 +494,7 @@ fn send_receive_self() {
     ));
 
     // Send to another account to prevent automatic receiving on the genesis account
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let send4 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         receive3.hash(),
@@ -536,8 +536,8 @@ fn all_block_types() {
     let cfg = System::default_config_without_backlog_population();
     let node = system.build_node().config(cfg).finish();
     let latest = node.latest(&DEV_GENESIS_ACCOUNT);
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
 
     let send = Block::LegacySend(SendBlock::new(
         &latest,
@@ -719,7 +719,7 @@ fn all_block_types() {
 fn conflict_rollback_cemented() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     // create one side of a forked transaction on node1
     let fork1a = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -734,7 +734,7 @@ fn conflict_rollback_cemented() {
     node1.confirm(fork1a.hash());
 
     // create the other side of the fork on node2
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let fork1b = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -764,7 +764,7 @@ fn conflict_rollback_cemented() {
 fn observers() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,

@@ -43,7 +43,7 @@ use crate::{
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo, SerdePropertyTree},
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, Block, BlockHash, BlockType, KeyPair, Networks, NodeId, PublicKey, Root,
+    Account, Amount, Block, BlockHash, BlockType, Networks, NodeId, PrivateKey, PublicKey, Root,
     VoteCode, VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
@@ -76,7 +76,7 @@ pub struct Node {
     pub runtime: tokio::runtime::Handle,
     pub data_path: PathBuf,
     pub steady_clock: Arc<SteadyClock>,
-    pub node_id: KeyPair,
+    pub node_id: PrivateKey,
     pub config: NodeConfig,
     pub network_params: NetworkParams,
     pub stats: Arc<Stats>,
@@ -1245,7 +1245,7 @@ impl Node {
         }
     }
 
-    pub fn insert_into_wallet(&self, keys: &KeyPair) {
+    pub fn insert_into_wallet(&self, keys: &PrivateKey) {
         let wallet_id = self.wallets.wallet_ids()[0];
         self.wallets
             .insert_adhoc2(&wallet_id, &keys.private_key(), true)

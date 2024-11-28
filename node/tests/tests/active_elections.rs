@@ -1,5 +1,5 @@
 use rsnano_core::{
-    utils::MemoryStream, work::WorkPool, Account, Amount, Block, BlockHash, KeyPair, StateBlock,
+    utils::MemoryStream, work::WorkPool, Account, Amount, Block, BlockHash, PrivateKey, StateBlock,
     Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
@@ -90,7 +90,7 @@ fn fork_replacement_tally() {
 fn inactive_votes_cache_basic() {
     let mut system = System::new();
     let node = system.make_node();
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -185,7 +185,7 @@ fn non_final() {
 fn inactive_votes_cache_fork() {
     let mut system = System::new();
     let node = system.make_node();
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -252,7 +252,7 @@ fn inactive_votes_cache_existing_vote() {
     let mut system = System::new();
     let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let rep_weight = Amount::nano(100_000);
 
     let send = Block::State(StateBlock::new(
@@ -341,7 +341,7 @@ fn inactive_votes_cache_multiple_votes() {
     let mut system = System::new();
     let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -409,8 +409,8 @@ fn inactive_votes_cache_election_start() {
     config.optimistic_scheduler.enabled = false;
     config.priority_scheduler_enabled = false;
     let node = system.build_node().config(config).finish();
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
 
     // Enough weight to trigger election hinting but not enough to confirm block on its own
     let amount = ((node
@@ -552,7 +552,7 @@ fn republish_winner() {
     config.peering_port = Some(get_available_port());
     let node2 = system.build_node().config(config).finish();
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -1067,7 +1067,7 @@ fn fork_filter_cleanup() {
     let mut config = System::default_config_without_backlog_population();
     let node1 = system.build_node().config(config.clone()).finish();
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let latest_hash = *DEV_GENESIS_HASH;
 
     let send1 = Block::State(StateBlock::new(
@@ -1149,7 +1149,7 @@ fn conflicting_block_vote_existing_election() {
         ..Default::default()
     };
     let node = system.build_node().config(config).flags(flags).finish();
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -1200,7 +1200,7 @@ fn activate_account_chain() {
     let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -1340,7 +1340,7 @@ fn list_active() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     let send = process_send_block(node.clone(), *DEV_GENESIS_ACCOUNT, Amount::raw(1));
 
@@ -1371,7 +1371,7 @@ fn vote_replays() {
             ..System::default_config_without_backlog_population()
         })
         .finish();
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     // send 1000 nano from genesis to key
     let send1 = Block::State(StateBlock::new(
@@ -1592,7 +1592,7 @@ fn active_inactive() {
         .config(System::default_config_without_backlog_population())
         .finish();
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,

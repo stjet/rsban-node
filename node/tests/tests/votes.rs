@@ -1,5 +1,5 @@
 use rsnano_core::{
-    Amount, Block, BlockHash, Epoch, KeyPair, Root, Signature, StateBlock, Vote, VoteCode,
+    Amount, Block, BlockHash, Epoch, PrivateKey, Root, Signature, StateBlock, Vote, VoteCode,
     VoteSource, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
@@ -20,7 +20,7 @@ fn check_signature() {
     let mut config = System::default_config();
     config.online_weight_minimum = Amount::MAX;
     let node = system.build_node().config(config).finish();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -70,7 +70,7 @@ fn check_signature() {
 fn add_old() {
     let mut system = System::new();
     let node = system.make_node();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -96,7 +96,7 @@ fn add_old() {
     node.vote_processor
         .vote_blocking(&vote1, channel.channel_id(), VoteSource::Live);
 
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -135,7 +135,7 @@ fn add_old() {
 fn add_cooldown() {
     let mut system = System::new();
     let node = system.make_node();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -161,7 +161,7 @@ fn add_cooldown() {
     node.vote_processor
         .vote_blocking(&vote1, channel.channel_id(), VoteSource::Live);
 
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -225,9 +225,9 @@ fn vote_generator_multiple_representatives() {
     let node = system.make_node();
     let wallet_id = WalletId::random();
     node.wallets.create(wallet_id);
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
-    let key3 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
+    let key3 = PrivateKey::new();
 
     // Insert keys into the wallet
     node.wallets

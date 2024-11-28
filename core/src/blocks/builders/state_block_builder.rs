@@ -1,7 +1,7 @@
 use crate::work::WorkPool;
 use crate::{work::STUB_WORK_POOL, BlockBase, StateBlock};
 use crate::{
-    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, Link,
+    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, Link, PrivateKey,
     PublicKey, Signature,
 };
 use anyhow::Result;
@@ -12,7 +12,7 @@ pub struct StateBlockBuilder {
     representative: PublicKey,
     balance: Amount,
     link: Link,
-    key_pair: KeyPair,
+    key_pair: PrivateKey,
     work: Option<u64>,
     signature: Option<Signature>,
     previous_balance: Option<Amount>,
@@ -21,7 +21,7 @@ pub struct StateBlockBuilder {
 
 impl StateBlockBuilder {
     pub fn new() -> Self {
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         Self {
             account: Account::from(1),
             previous: BlockHash::from(2),
@@ -111,7 +111,7 @@ impl StateBlockBuilder {
         Ok(self.link(Link::decode_hex(link)?))
     }
 
-    pub fn sign(mut self, key: &KeyPair) -> Self {
+    pub fn sign(mut self, key: &PrivateKey) -> Self {
         self.signature = None;
         self.key_pair = key.clone();
         self
@@ -265,7 +265,7 @@ mod tests {
     // original test: block_builder.zeroed_state_block
     #[test]
     fn zeroed_state_block() {
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         // Make sure manually- and builder constructed all-zero blocks have equal hashes, and check signature.
         let zero_block_manual = BlockBuilder::state()
             .account(0)
@@ -316,8 +316,8 @@ mod tests {
     // original test: block_builder.state_equality
     #[test]
     fn state_equality() {
-        let key1 = KeyPair::new();
-        let key2 = KeyPair::new();
+        let key1 = PrivateKey::new();
+        let key2 = PrivateKey::new();
         let block1 = StateBlock::new(
             Account::from(key1.public_key()),
             BlockHash::from(1),

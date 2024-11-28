@@ -1,6 +1,6 @@
 use crate::{block_insertion::validation::tests::BlockValidationTest, BlockStatus};
 use rsnano_core::{
-    AccountInfo, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, PendingKey,
+    AccountInfo, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, PendingKey, PrivateKey,
 };
 
 #[test]
@@ -75,7 +75,7 @@ fn fails_with_bad_signature_if_signature_is_invalid() {
                 .new_open_block()
                 .balance(10)
                 .link(0)
-                .sign(&KeyPair::new())
+                .sign(&PrivateKey::new())
                 .build()
         })
         .assert_validation_fails_with(BlockStatus::BadSignature);

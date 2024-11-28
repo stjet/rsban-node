@@ -1,7 +1,7 @@
 use core::panic;
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::{
-    Account, Amount, Block, JsonBlock, KeyPair, Networks, SendBlock, StateBlock, Vote, VoteCode,
+    Account, Amount, Block, JsonBlock, Networks, PrivateKey, SendBlock, StateBlock, Vote, VoteCode,
     DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
@@ -46,7 +46,7 @@ fn started_election() {
         );
 
         // Create election, causing a websocket message to be emitted
-        let key1 = KeyPair::new();
+        let key1 = PrivateKey::new();
         let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
@@ -102,7 +102,7 @@ fn stopped_election() {
         );
 
         // Create election, then erase it, causing a websocket message to be emitted
-        let key1 = KeyPair::new();
+        let key1 = PrivateKey::new();
         let send1 = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
             *DEV_GENESIS_HASH,
@@ -200,7 +200,7 @@ fn confirmation() {
         ws_stream.next().await.unwrap().unwrap();
 
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let mut balance = Amount::MAX;
         let send_amount = node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1);
         // Quick-confirm a block, legacy blocks should work without filtering
@@ -269,7 +269,7 @@ fn confirmation_options() {
 
         // Confirm a state block for an in-wallet account
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let mut balance = Amount::MAX;
         let send_amount = node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1);
         let mut previous = node1.latest(&DEV_GENESIS_ACCOUNT);
@@ -365,7 +365,7 @@ fn confirmation_options_votes() {
 
         // Confirm a state block for an in-wallet account
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let balance = Amount::MAX;
         let send_amount = node1.config.online_weight_minimum + Amount::raw(1);
         let previous = *DEV_GENESIS_HASH;
@@ -419,7 +419,7 @@ fn confirmation_options_sideband() {
 	    // Confirm a state block for an in-wallet account
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
 
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let balance = Amount::MAX;
         let send_amount = node1.config.online_weight_minimum + Amount::raw(1);
         let previous = *DEV_GENESIS_HASH;
@@ -478,7 +478,7 @@ fn confirmation_options_update() {
 
         // Confirm a block
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let previous = *DEV_GENESIS_HASH;
         let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
@@ -543,7 +543,7 @@ fn vote() {
 
         // Quick-confirm a block
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let previous = *DEV_GENESIS_HASH;
         let send = Block::State(StateBlock::new(
             *DEV_GENESIS_ACCOUNT,
@@ -618,7 +618,7 @@ fn vote_options_representatives() {
 
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
 	    // Quick-confirm a block
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let mut previous = *DEV_GENESIS_HASH;
         let send_amount = node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1);
         let send = Block::State(StateBlock::new(

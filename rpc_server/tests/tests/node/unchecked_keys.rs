@@ -1,4 +1,4 @@
-use rsnano_core::{BlockHash, KeyPair, StateBlockBuilder};
+use rsnano_core::{BlockHash, PrivateKey, StateBlockBuilder};
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 use tokio::time::Duration;
 
@@ -8,7 +8,7 @@ fn test_unchecked_keys() {
     let node = system.build_node().finish();
     let server = setup_rpc_client_and_server(node.clone(), true);
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     let open = StateBlockBuilder::new()
         .account(key.account())

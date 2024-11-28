@@ -14,7 +14,7 @@ use crate::{
     NetworkParams,
 };
 use async_trait::async_trait;
-use rsnano_core::{KeyPair, NodeId};
+use rsnano_core::{NodeId, PrivateKey};
 use rsnano_ledger::Ledger;
 use rsnano_messages::*;
 use rsnano_network::{Channel, ChannelMode, ChannelReader, NetworkInfo};
@@ -102,7 +102,7 @@ impl ResponseServer {
         stats: Arc<Stats>,
         allow_bootstrap: bool,
         syn_cookies: Arc<SynCookies>,
-        node_id: KeyPair,
+        node_id: PrivateKey,
         tokio: tokio::runtime::Handle,
         ledger: Arc<Ledger>,
         workers: Arc<dyn ThreadPool>,

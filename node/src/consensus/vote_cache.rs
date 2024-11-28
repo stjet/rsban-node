@@ -520,9 +520,9 @@ mod tests {
     use super::*;
     use crate::stats::Direction;
     use mock_instant::thread_local::MockClock;
-    use rsnano_core::KeyPair;
+    use rsnano_core::PrivateKey;
 
-    fn create_vote(rep: &KeyPair, hash: &BlockHash, timestamp_offset: u64) -> Arc<Vote> {
+    fn create_vote(rep: &PrivateKey, hash: &BlockHash, timestamp_offset: u64) -> Arc<Vote> {
         Arc::new(Vote::new(
             &rep,
             timestamp_offset * 1024 * 1024,
@@ -531,7 +531,7 @@ mod tests {
         ))
     }
 
-    fn create_final_vote(rep: &KeyPair, hash: &BlockHash) -> Arc<Vote> {
+    fn create_final_vote(rep: &PrivateKey, hash: &BlockHash) -> Arc<Vote> {
         Arc::new(Vote::new_final(rep, vec![*hash]))
     }
 
@@ -559,7 +559,7 @@ mod tests {
     #[test]
     fn insert_one_hash() {
         let mut cache = create_vote_cache();
-        let rep = KeyPair::new();
+        let rep = PrivateKey::new();
         let hash = BlockHash::from(1);
         let vote = create_vote(&rep, &hash, 1);
 
@@ -580,9 +580,9 @@ mod tests {
         let mut cache = create_vote_cache();
 
         let hash = BlockHash::random();
-        let rep1 = KeyPair::new();
-        let rep2 = KeyPair::new();
-        let rep3 = KeyPair::new();
+        let rep1 = PrivateKey::new();
+        let rep2 = PrivateKey::new();
+        let rep3 = PrivateKey::new();
 
         let vote1 = create_vote(&rep1, &hash, 1);
         let vote2 = create_vote(&rep2, &hash, 2);
@@ -607,10 +607,10 @@ mod tests {
         let hash3 = BlockHash::from(3);
 
         // There will be 4 reps with different weights
-        let rep1 = KeyPair::new();
-        let rep2 = KeyPair::new();
-        let rep3 = KeyPair::new();
-        let rep4 = KeyPair::new();
+        let rep1 = PrivateKey::new();
+        let rep2 = PrivateKey::new();
+        let rep3 = PrivateKey::new();
+        let rep4 = PrivateKey::new();
 
         // Votes: rep1 > hash1, rep2 > hash2, rep3 > hash3, rep4 > hash1 (the same as rep1)
         let vote1 = create_vote(&rep1, &hash1, 1);
@@ -647,7 +647,7 @@ mod tests {
         let mut cache = create_vote_cache();
 
         let hash = BlockHash::from(1);
-        let rep = KeyPair::new();
+        let rep = PrivateKey::new();
         let vote1 = create_vote(&rep, &hash, 1);
         let vote2 = create_vote(&rep, &hash, 1);
 
@@ -665,7 +665,7 @@ mod tests {
         let mut cache = create_vote_cache();
 
         let hash = BlockHash::from(1);
-        let rep = KeyPair::new();
+        let rep = PrivateKey::new();
         let vote1 = create_vote(&rep, &hash, 1);
         cache.insert(&vote1, Amount::raw(9), &HashMap::new());
 
@@ -689,7 +689,7 @@ mod tests {
     fn insert_older() {
         let mut cache = create_vote_cache();
         let hash = BlockHash::from(1);
-        let rep = KeyPair::new();
+        let rep = PrivateKey::new();
         let vote1 = create_vote(&rep, &hash, 2);
         cache.insert(&vote1, Amount::raw(9), &HashMap::new());
         let peek1 = cache.find(&hash);
@@ -716,9 +716,9 @@ mod tests {
         let hash2 = BlockHash::from(2);
         let hash3 = BlockHash::from(3);
 
-        let rep1 = KeyPair::new();
-        let rep2 = KeyPair::new();
-        let rep3 = KeyPair::new();
+        let rep1 = PrivateKey::new();
+        let rep2 = PrivateKey::new();
+        let rep3 = PrivateKey::new();
 
         let vote1 = create_vote(&rep1, &hash1, 1);
         let vote2 = create_vote(&rep2, &hash2, 1);
@@ -757,10 +757,10 @@ mod tests {
         let hash3 = BlockHash::from(3);
         let hash4 = BlockHash::from(4);
 
-        let rep1 = KeyPair::new();
-        let rep2 = KeyPair::new();
-        let rep3 = KeyPair::new();
-        let rep4 = KeyPair::new();
+        let rep1 = PrivateKey::new();
+        let rep2 = PrivateKey::new();
+        let rep3 = PrivateKey::new();
+        let rep4 = PrivateKey::new();
 
         let vote1 = create_vote(&rep1, &hash1, 1);
         cache.insert(&vote1, Amount::raw(1), &HashMap::new());
@@ -791,15 +791,15 @@ mod tests {
         let mut cache = create_vote_cache();
         let hash = BlockHash::from(1);
 
-        let rep1 = KeyPair::new();
+        let rep1 = PrivateKey::new();
         let vote1 = create_vote(&rep1, &hash, 1);
         cache.insert(&vote1, Amount::raw(9), &HashMap::new());
 
-        let rep2 = KeyPair::new();
+        let rep2 = PrivateKey::new();
         let vote2 = create_vote(&rep2, &hash, 1);
         cache.insert(&vote2, Amount::raw(9), &HashMap::new());
 
-        let rep3 = KeyPair::new();
+        let rep3 = PrivateKey::new();
         let vote3 = create_vote(&rep3, &hash, 1);
         cache.insert(&vote3, Amount::raw(9), &HashMap::new());
 
@@ -811,7 +811,7 @@ mod tests {
         let mut cache = create_vote_cache();
         let hash = BlockHash::from(1);
 
-        let rep = KeyPair::new();
+        let rep = PrivateKey::new();
         let vote = create_vote(&rep, &hash, 1);
         let final_vote = create_final_vote(&rep, &hash);
         cache.insert(&vote, Amount::raw(9), &HashMap::new());
@@ -827,7 +827,7 @@ mod tests {
         let mut cache = create_vote_cache();
         let hash = BlockHash::from(1);
 
-        let rep = KeyPair::new();
+        let rep = PrivateKey::new();
         let vote = create_final_vote(&rep, &hash);
         cache.insert(&vote, Amount::raw(9), &HashMap::new());
 
@@ -919,12 +919,12 @@ mod tests {
     }
 
     fn add_test_vote(cache: &mut VoteCache, hash: &BlockHash, rep_weight: Amount) {
-        let vote = create_vote(&KeyPair::new(), &hash, 0);
+        let vote = create_vote(&PrivateKey::new(), &hash, 0);
         cache.insert(&vote, rep_weight, &HashMap::new());
     }
 
     fn add_test_final_vote(cache: &mut VoteCache, hash: &BlockHash, rep_weight: Amount) {
-        let vote = create_final_vote(&KeyPair::new(), &hash);
+        let vote = create_final_vote(&PrivateKey::new(), &hash);
         cache.insert(&vote, rep_weight, &HashMap::new());
     }
 }

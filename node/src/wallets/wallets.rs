@@ -14,8 +14,8 @@ use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{get_env_or_default_string, ContainerInfo},
     work::{WorkPoolImpl, WorkThresholds},
-    Account, Amount, Block, BlockDetails, BlockHash, Epoch, KeyDerivationFunction, KeyPair, Link,
-    NoValue, PendingKey, PublicKey, RawKey, Root, StateBlock, WalletId,
+    Account, Amount, Block, BlockDetails, BlockHash, Epoch, KeyDerivationFunction, Link, NoValue,
+    PendingKey, PrivateKey, PublicKey, RawKey, Root, StateBlock, WalletId,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{Message, Publish};
@@ -295,10 +295,10 @@ impl Wallets {
 
     pub fn foreach_representative<F>(&self, mut action: F)
     where
-        F: FnMut(&KeyPair),
+        F: FnMut(&PrivateKey),
     {
         if self.node_config.enable_voting {
-            let mut action_accounts_l: Vec<KeyPair> = Vec::new();
+            let mut action_accounts_l: Vec<PrivateKey> = Vec::new();
             {
                 let transaction_l = self.env.tx_begin_read();
                 let ledger_txn = self.ledger.read_txn();
@@ -626,7 +626,7 @@ impl Wallets {
                         .work_get(tx, &source.into())
                         .unwrap_or_default();
                 }
-                let keys = KeyPair::from(prv_key);
+                let keys = PrivateKey::from(prv_key);
                 let state_block = Block::State(StateBlock::new(
                     source,
                     info.head,
@@ -694,7 +694,7 @@ impl Wallets {
                             .work_get(tx, &source.into())
                             .unwrap_or_default();
                     }
-                    let keys = KeyPair::from(prv_key);
+                    let keys = PrivateKey::from(prv_key);
                     let state_block = Block::State(StateBlock::new(
                         source,
                         info.head,
@@ -1508,7 +1508,7 @@ impl WalletsExt for Arc<Wallets> {
                         .work_get(&wallet_tx, &source.into())
                         .unwrap_or_default();
                 }
-                let keys = KeyPair::from(prv);
+                let keys = PrivateKey::from(prv);
                 let state_block = Block::State(StateBlock::new(
                     source,
                     info.head,
@@ -1590,7 +1590,7 @@ impl WalletsExt for Arc<Wallets> {
                             .work_get(&wallet_tx, &account.into())
                             .unwrap_or_default();
                     }
-                    let keys = KeyPair::from(prv);
+                    let keys = PrivateKey::from(prv);
                     if let Some(info) = self.ledger.account_info(&block_tx, &account) {
                         block = Some(Block::State(StateBlock::new(
                             account,

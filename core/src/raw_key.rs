@@ -45,7 +45,7 @@ impl BitXorAssign for RawKey {
 
 #[cfg(test)]
 mod tests {
-    use crate::{KeyPair, PublicKey};
+    use crate::{PrivateKey, PublicKey};
 
     use super::*;
 
@@ -73,7 +73,7 @@ mod tests {
 
     #[test]
     fn key_encryption() {
-        let keypair = KeyPair::new();
+        let keypair = PrivateKey::new();
         let secret_key = RawKey::zero();
         let iv = keypair.public_key().initialization_vector();
         let encrypted = keypair.private_key().encrypt(&secret_key, &iv);

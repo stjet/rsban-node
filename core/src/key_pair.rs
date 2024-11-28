@@ -6,7 +6,7 @@ use ed25519_dalek::Verifier;
 use rsnano_nullable_random::NullableRng;
 
 #[derive(Clone)]
-pub struct KeyPair {
+pub struct PrivateKey {
     private_key: ed25519_dalek::SigningKey,
 }
 
@@ -32,9 +32,9 @@ impl KeyPairFactory {
         }
     }
 
-    pub fn create_key_pair(&mut self) -> KeyPair {
+    pub fn create_key_pair(&mut self) -> PrivateKey {
         let private_key = ed25519_dalek::SigningKey::generate(&mut self.rng);
-        KeyPair { private_key }
+        PrivateKey { private_key }
     }
 }
 
@@ -46,13 +46,13 @@ impl Default for KeyPairFactory {
     }
 }
 
-impl Default for KeyPair {
+impl Default for PrivateKey {
     fn default() -> Self {
         KeyPairFactory::default().create_key_pair()
     }
 }
 
-impl KeyPair {
+impl PrivateKey {
     pub fn new() -> Self {
         Default::default()
     }
@@ -92,7 +92,7 @@ impl KeyPair {
     }
 }
 
-impl From<u64> for KeyPair {
+impl From<u64> for PrivateKey {
     fn from(value: u64) -> Self {
         let mut bytes = [0; 32];
         bytes[..8].copy_from_slice(&value.to_be_bytes());
@@ -100,26 +100,26 @@ impl From<u64> for KeyPair {
     }
 }
 
-impl From<RawKey> for KeyPair {
+impl From<RawKey> for PrivateKey {
     fn from(value: RawKey) -> Self {
         Self::from_priv_key_bytes(value.as_bytes()).unwrap()
     }
 }
 
-impl From<&KeyPair> for Root {
-    fn from(value: &KeyPair) -> Self {
+impl From<&PrivateKey> for Root {
+    fn from(value: &PrivateKey) -> Self {
         value.public_key().as_account().into()
     }
 }
 
-impl From<&KeyPair> for Link {
-    fn from(value: &KeyPair) -> Self {
+impl From<&PrivateKey> for Link {
+    fn from(value: &PrivateKey) -> Self {
         value.public_key().as_account().into()
     }
 }
 
-impl From<&KeyPair> for Account {
-    fn from(value: &KeyPair) -> Self {
+impl From<&PrivateKey> for Account {
+    fn from(value: &PrivateKey) -> Self {
         value.public_key().as_account()
     }
 }
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn sign_message_test() -> anyhow::Result<()> {
-        let keypair = KeyPair::new();
+        let keypair = PrivateKey::new();
         let data = [0u8; 32];
         let signature = sign_message(&keypair.private_key(), &data);
         validate_message(&keypair.public_key(), &data, &signature)?;
@@ -190,7 +190,7 @@ mod tests {
         // the C++ implementation adds random bytes and a padding when signing for extra security and for making side channel attacks more difficult.
         // Currently the Rust impl does not do that.
         // In C++ signing the same message twice will produce different signatures. In Rust we get the same signature.
-        let keypair = KeyPair::new();
+        let keypair = PrivateKey::new();
         let data = [1, 2, 3];
         let signature_a = sign_message(&keypair.private_key(), &data);
         let signature_b = sign_message(&keypair.private_key(), &data);

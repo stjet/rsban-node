@@ -603,7 +603,7 @@ fn all_block_types() {
     let change = Block::LegacyChange(ChangeBlock::new(
         receive.hash(),
         key2.public_key(),
-        &key1.private_key(),
+        &key1,
         node.work_generate_dev(receive.hash()),
     ));
     let state_change = Block::State(StateBlock::new(

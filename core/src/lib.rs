@@ -27,8 +27,8 @@ use rand::{thread_rng, Rng};
 use serde::de::{Unexpected, Visitor};
 pub use vote::*;
 
-mod key_pair;
-pub use key_pair::{
+mod private_key;
+pub use private_key::{
     sign_message, validate_block_signature, validate_message, PrivateKey, PrivateKeyFactory,
 };
 

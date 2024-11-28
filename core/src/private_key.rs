@@ -5,11 +5,6 @@ use ed25519_dalek::ed25519::signature::SignerMut;
 use ed25519_dalek::Verifier;
 use rsnano_nullable_random::NullableRng;
 
-#[derive(Clone)]
-pub struct PrivateKey {
-    private_key: ed25519_dalek::SigningKey,
-}
-
 pub struct PrivateKeyFactory {
     rng: NullableRng,
 }
@@ -46,6 +41,11 @@ impl Default for PrivateKeyFactory {
     }
 }
 
+#[derive(Clone)]
+pub struct PrivateKey {
+    private_key: ed25519_dalek::SigningKey,
+}
+
 impl Default for PrivateKey {
     fn default() -> Self {
         PrivateKeyFactory::default().create_key_pair()
@@ -59,6 +59,10 @@ impl PrivateKey {
 
     pub fn zero() -> Self {
         Self::from_priv_key_bytes(&[0u8; 32]).unwrap()
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.private_key.to_bytes() == [0; 32]
     }
 
     pub fn from_priv_key_bytes(bytes: &[u8]) -> anyhow::Result<Self> {
@@ -77,6 +81,12 @@ impl PrivateKey {
         hex::decode_to_slice(input, &mut bytes)
             .with_context(|| format!("input string: '{}'", input))?;
         Self::from_priv_key_bytes(&bytes)
+    }
+
+    pub fn sign(&self, data: &[u8]) -> Signature {
+        let mut signing_key = self.private_key.clone();
+        let signature = signing_key.sign(data);
+        Signature::from_bytes(signature.to_bytes())
     }
 
     pub fn account(&self) -> Account {

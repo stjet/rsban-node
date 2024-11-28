@@ -41,7 +41,7 @@ impl ChangeBlock {
     pub fn new(
         previous: BlockHash,
         representative: PublicKey,
-        prv_key: &RawKey,
+        prv_key: &PrivateKey,
         work: u64,
     ) -> Self {
         let hashables = ChangeHashables {
@@ -50,7 +50,7 @@ impl ChangeBlock {
         };
 
         let hash = LazyBlockHash::new();
-        let signature = sign_message(prv_key, hash.hash(&hashables).as_bytes());
+        let signature = prv_key.sign(hash.hash(&hashables).as_bytes());
 
         Self {
             work,
@@ -63,12 +63,7 @@ impl ChangeBlock {
 
     pub fn new_test_instance() -> Self {
         let key = PrivateKey::from(42);
-        Self::new(
-            BlockHash::from(123),
-            PublicKey::from(456),
-            &key.private_key(),
-            69420,
-        )
+        Self::new(BlockHash::from(123), PublicKey::from(456), &key, 69420)
     }
 
     pub fn mandatory_representative(&self) -> PublicKey {
@@ -273,7 +268,7 @@ mod tests {
     fn create_block() {
         let key1 = PrivateKey::new();
         let previous = BlockHash::from(1);
-        let block = ChangeBlock::new(previous.clone(), PublicKey::from(2), &key1.private_key(), 5);
+        let block = ChangeBlock::new(previous.clone(), PublicKey::from(2), &key1, 5);
         assert_eq!(block.previous(), previous);
         assert_eq!(block.root(), block.previous().into());
     }
@@ -282,12 +277,7 @@ mod tests {
     #[test]
     fn serialize() {
         let key1 = PrivateKey::new();
-        let block1 = ChangeBlock::new(
-            BlockHash::from(1),
-            PublicKey::from(2),
-            &key1.private_key(),
-            5,
-        );
+        let block1 = ChangeBlock::new(BlockHash::from(1), PublicKey::from(2), &key1, 5);
         let mut stream = MemoryStream::new();
         block1.serialize_without_block_type(&mut stream);
         assert_eq!(ChangeBlock::serialized_size(), stream.bytes_written());

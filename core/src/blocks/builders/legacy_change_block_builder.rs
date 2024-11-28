@@ -6,7 +6,7 @@ pub struct LegacyChangeBlockBuilder {
     account: Option<Account>,
     representative: Option<PublicKey>,
     previous: Option<BlockHash>,
-    keypair: Option<PrivateKey>,
+    prv_key: Option<PrivateKey>,
     work: Option<u64>,
     build_sideband: bool,
 }
@@ -17,7 +17,7 @@ impl LegacyChangeBlockBuilder {
             account: None,
             representative: None,
             previous: None,
-            keypair: None,
+            prv_key: None,
             work: None,
             build_sideband: false,
         }
@@ -39,7 +39,7 @@ impl LegacyChangeBlockBuilder {
     }
 
     pub fn sign(mut self, keypair: &PrivateKey) -> Self {
-        self.keypair = Some(keypair.clone());
+        self.prv_key = Some(keypair.clone());
         self
     }
 
@@ -55,13 +55,13 @@ impl LegacyChangeBlockBuilder {
 
     pub fn build(self) -> Block {
         let previous = self.previous.unwrap_or(BlockHash::from(1));
-        let key_pair = self.keypair.unwrap_or_default();
+        let prv_key = self.prv_key.unwrap_or_default();
         let representative = self.representative.unwrap_or(PublicKey::from(2));
         let work = self
             .work
             .unwrap_or_else(|| STUB_WORK_POOL.generate_dev2(previous.into()).unwrap());
 
-        let mut block = ChangeBlock::new(previous, representative, &key_pair.private_key(), work);
+        let mut block = ChangeBlock::new(previous, representative, &prv_key, work);
 
         if self.build_sideband {
             let details = BlockDetails {

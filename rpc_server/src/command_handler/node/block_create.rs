@@ -2,7 +2,7 @@ use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_core::{
     Account, Amount, Block, BlockDetails, BlockHash, ChangeBlock, Epoch, OpenBlock, PendingKey,
-    PrivateKey, PublicKey, RawKey, ReceiveBlock, Root, SendBlock, StateBlock,
+    PrivateKey, PublicKey, ReceiveBlock, Root, SendBlock, StateBlock,
 };
 use rsnano_node::Node;
 use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateResponse, BlockTypeDto};
@@ -28,7 +28,7 @@ impl RpcCommandHandler {
 
         let mut previous = args.previous.unwrap_or(BlockHash::zero());
         let mut balance = args.balance.unwrap_or(Amount::zero());
-        let mut prv_key = RawKey::default();
+        let mut prv_key = PrivateKey::zero();
 
         if work == 0 && !self.node.distributed_work.work_generation_enabled() {
             bail!("Work generation is disabled");
@@ -52,7 +52,7 @@ impl RpcCommandHandler {
         }
 
         if let Some(key) = args.key {
-            prv_key = key;
+            prv_key = key.into();
         }
 
         let link = args.link.unwrap_or_else(|| {
@@ -70,7 +70,7 @@ impl RpcCommandHandler {
         if prv_key.is_zero() {
             bail!("Private key or local wallet and account required");
         }
-        let pub_key = PublicKey::try_from(&prv_key)?;
+        let pub_key = prv_key.public_key();
         let account = Account::from(pub_key);
         // Fetching account balance & previous for send blocks (if aren't given directly)
         if args.previous.is_none() && args.balance.is_none() {
@@ -109,7 +109,6 @@ impl RpcCommandHandler {
         }
 
         let root: Root;
-        let keys = PrivateKey::from(prv_key);
         let mut block = match args.block_type {
             BlockTypeDto::State => {
                 if args.previous.is_some()
@@ -122,7 +121,7 @@ impl RpcCommandHandler {
                         representative,
                         balance,
                         link,
-                        &keys,
+                        &prv_key,
                         work,
                     ));
                     if previous.is_zero() {
@@ -141,7 +140,7 @@ impl RpcCommandHandler {
                         source,
                         representative,
                         account,
-                        &prv_key,
+                        &prv_key.private_key(),
                         work,
                     ));
                     root = account.into();
@@ -152,8 +151,12 @@ impl RpcCommandHandler {
             }
             BlockTypeDto::Receive => {
                 if !source.is_zero() && !previous.is_zero() {
-                    let block =
-                        Block::LegacyReceive(ReceiveBlock::new(previous, source, &prv_key, work));
+                    let block = Block::LegacyReceive(ReceiveBlock::new(
+                        previous,
+                        source,
+                        &prv_key.private_key(),
+                        work,
+                    ));
                     root = previous.into();
                     block
                 } else {
@@ -185,7 +188,7 @@ impl RpcCommandHandler {
                             &previous,
                             &destination,
                             &(balance - amount),
-                            &prv_key,
+                            &prv_key.private_key(),
                             work,
                         ));
                         root = previous.into();

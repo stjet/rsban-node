@@ -6,7 +6,6 @@ use crate::{
     block_processing::{BlockProcessor, BlockSource},
     bootstrap::PullInfo,
     config::NodeFlags,
-    websocket::WebsocketListener,
     NetworkParams,
 };
 use anyhow::Result;
@@ -220,7 +219,6 @@ impl BootstrapAttemptLazy {
     const BATCH_READ_SIZE: usize = 256;
 
     pub fn new(
-        websocket_server: Option<Arc<WebsocketListener>>,
         block_processor: Arc<BlockProcessor>,
         bootstrap_initiator: Weak<BootstrapInitiator>,
         ledger: Arc<Ledger>,
@@ -229,16 +227,21 @@ impl BootstrapAttemptLazy {
         flags: NodeFlags,
         connections: Arc<BootstrapConnections>,
         network_params: NetworkParams,
+        bootstrap_started_observer: Arc<Mutex<Vec<Box<dyn Fn(String, String) + Send + Sync>>>>,
+        bootstrap_ended_observer: Arc<
+            Mutex<Vec<Box<dyn Fn(String, String, String, String) + Send + Sync>>>,
+        >,
     ) -> Result<Self> {
         Ok(Self {
             attempt: BootstrapAttempt::new(
-                websocket_server,
                 Arc::downgrade(&block_processor),
                 bootstrap_initiator,
                 Arc::clone(&ledger),
                 id,
                 BootstrapMode::Lazy,
                 incremental_id,
+                bootstrap_started_observer,
+                bootstrap_ended_observer,
             )?,
             flags: flags.clone(),
             connections,

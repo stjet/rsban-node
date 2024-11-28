@@ -8,7 +8,6 @@ use crate::{
     bootstrap::BootstrapConnectionsExt,
     stats::{DetailType, Direction, StatType, Stats},
     utils::ThreadPool,
-    websocket::WebsocketListener,
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{utils::PropertyTree, Account, Block, BlockHash};
@@ -46,7 +45,6 @@ pub struct BootstrapAttemptLegacy {
 
 impl BootstrapAttemptLegacy {
     pub fn new(
-        websocket_server: Option<Arc<WebsocketListener>>,
         block_processor: Weak<BlockProcessor>,
         bootstrap_initiator: Weak<BootstrapInitiator>,
         ledger: Arc<Ledger>,
@@ -59,16 +57,21 @@ impl BootstrapAttemptLegacy {
         tokio: tokio::runtime::Handle,
         frontiers_age: u32,
         start_account: Account,
+        bootstrap_started_observer: Arc<Mutex<Vec<Box<dyn Fn(String, String) + Send + Sync>>>>,
+        bootstrap_ended_observer: Arc<
+            Mutex<Vec<Box<dyn Fn(String, String, String, String) + Send + Sync>>>,
+        >,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             attempt: BootstrapAttempt::new(
-                websocket_server,
                 Weak::clone(&block_processor),
                 bootstrap_initiator,
                 Arc::clone(&ledger),
                 id,
                 BootstrapMode::Legacy,
                 incremental_id,
+                bootstrap_started_observer,
+                bootstrap_ended_observer,
             )?,
             connections,
             mutex: Mutex::new(LegacyData {

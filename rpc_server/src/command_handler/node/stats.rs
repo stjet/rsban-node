@@ -1,4 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
+use rsnano_core::utils::ContainerInfos;
 use rsnano_node::stats::StatsJsonWriterV2;
 use rsnano_rpc_messages::{StatsArgs, StatsType, SuccessResponse};
 
@@ -23,7 +24,10 @@ impl RpcCommandHandler {
                 Ok(sink.finish())
             }
             StatsType::Database => Ok(serde_json::to_value(self.node.store.memory_stats()?)?),
-            StatsType::Objects => Ok(self.node.collect_container_info("node").into_json()),
+            StatsType::Objects => Ok(ContainerInfos::builder()
+                .node("node", self.node.container_info())
+                .finish()
+                .into_json()),
         }
     }
 

@@ -41,7 +41,7 @@ use crate::{
     BUILD_INFO, VERSION_STRING,
 };
 use rsnano_core::{
-    utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfoComponent, SerdePropertyTree},
+    utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfos, SerdePropertyTree},
     work::{WorkPool, WorkPoolImpl},
     Account, Amount, Block, BlockHash, BlockType, KeyPair, Networks, PublicKey, Root, VoteCode,
     VoteSource,
@@ -1133,85 +1133,60 @@ impl Node {
         }
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        let network = self
-            .network_info
-            .read()
-            .unwrap()
-            .container_info()
-            .into_legacy("tcp_channels");
+    pub fn container_info(&self) -> ContainerInfos {
+        let tcp_channels = self.network_info.read().unwrap().container_info();
+        let online_reps = self.online_reps.lock().unwrap().container_info();
+        let vote_cache = self.vote_cache.lock().unwrap().container_info();
 
-        let online_reps = self
-            .online_reps
-            .lock()
-            .unwrap()
-            .container_info()
-            .into_legacy("online_reps");
+        let network = ContainerInfos::builder()
+            .node("tcp_channels", tcp_channels)
+            .node("syn_cookies", self.syn_cookies.container_info())
+            .finish();
 
-        let vote_cache = self
-            .vote_cache
-            .lock()
-            .unwrap()
-            .container_info()
-            .into_legacy("vote_cache");
-
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                self.work.container_info().into_legacy("work"),
-                self.ledger.container_info().into_legacy("ledger"),
-                self.active.container_info().into_legacy("active"),
-                self.bootstrap_initiator
-                    .container_info()
-                    .into_legacy("bootstrap_initiator"),
-                ContainerInfoComponent::Composite(
-                    "network".to_string(),
-                    vec![
-                        network,
-                        self.syn_cookies.container_info().into_legacy("syn_cookies"),
-                    ],
-                ),
-                self.telemetry.container_info().into_legacy("telemetry"),
-                self.wallets.container_info().into_legacy("wallets"),
-                self.vote_processor_queue
-                    .container_info()
-                    .into_legacy("vote_processor"),
-                self.vote_cache_processor
-                    .container_info()
-                    .into_legacy("vote_cache_processor"),
-                self.rep_crawler.container_info().into_legacy("rep_crawler"),
-                self.block_processor
-                    .container_info()
-                    .into_legacy("block_processor"),
-                online_reps,
-                self.history.container_info().into_legacy("history"),
-                self.confirming_set
-                    .container_info()
-                    .into_legacy("confirming_set"),
-                self.request_aggregator
-                    .container_info()
-                    .into_legacy("request_aggregator"),
-                self.election_schedulers
-                    .container_info()
-                    .into_legacy("election_scheduler"),
-                vote_cache,
-                self.vote_router.container_info().into_legacy("vote_router"),
-                self.vote_generators
-                    .container_info()
-                    .into_legacy("vote_generators"),
-                self.ascendboot
-                    .container_info()
-                    .into_legacy("bootstrap_ascending"),
-                self.unchecked.container_info().into_legacy("unchecked"),
-                self.local_block_broadcaster
-                    .container_info()
-                    .into_legacy("local_block_broadcaster"),
-                self.rep_tiers.container_info().into_legacy("rep_tiers"),
-                self.inbound_message_queue
-                    .container_info()
-                    .into_legacy("message_processor"),
-            ],
-        )
+        ContainerInfos::builder()
+            .node("work", self.work.container_info())
+            .node("ledger", self.ledger.container_info())
+            .node("active", self.active.container_info())
+            .node(
+                "bootstrap_initiator",
+                self.bootstrap_initiator.container_info(),
+            )
+            .node("network", network)
+            .node("telemetry", self.telemetry.container_info())
+            .node("wallets", self.wallets.container_info())
+            .node("vote_processor", self.vote_processor_queue.container_info())
+            .node(
+                "vote_cache_processor",
+                self.vote_cache_processor.container_info(),
+            )
+            .node("rep_crawler", self.rep_crawler.container_info())
+            .node("block_processor", self.block_processor.container_info())
+            .node("online_reps", online_reps)
+            .node("history", self.history.container_info())
+            .node("confirming_set", self.confirming_set.container_info())
+            .node(
+                "request_aggregator",
+                self.request_aggregator.container_info(),
+            )
+            .node(
+                "election_scheduler",
+                self.election_schedulers.container_info(),
+            )
+            .node("vote_cache", vote_cache)
+            .node("vote_router", self.vote_router.container_info())
+            .node("vote_generators", self.vote_generators.container_info())
+            .node("bootstrap_ascending", self.ascendboot.container_info())
+            .node("unchecked", self.unchecked.container_info())
+            .node(
+                "local_block_broadcaster",
+                self.local_block_broadcaster.container_info(),
+            )
+            .node("rep_tiers", self.rep_tiers.container_info())
+            .node(
+                "message_processor",
+                self.inbound_message_queue.container_info(),
+            )
+            .finish()
     }
 
     fn long_inactivity_cleanup(&self) {

@@ -815,7 +815,7 @@ fn bootstrap_confirm_frontiers() {
         &DEV_GENESIS_HASH,
         &key0.account(),
         &(Amount::MAX - Amount::raw(500)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         node0.work_generate_dev(*DEV_GENESIS_HASH),
     ));
 
@@ -868,7 +868,7 @@ fn bootstrap_fork_open() {
         &DEV_GENESIS_HASH,
         &key0.account(),
         &(Amount::MAX - Amount::raw(500)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system
             .work
             .generate_dev2((*DEV_GENESIS_HASH).into())
@@ -974,7 +974,7 @@ fn rep_self_vote() {
         &DEV_GENESIS_HASH,
         &rep_big.account(),
         &Amount::raw(0xb000_0000_0000_0000_0000_0000_0000_0000),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system
             .work
             .generate_dev2((*DEV_GENESIS_HASH).into())
@@ -1025,7 +1025,7 @@ fn rep_self_vote() {
         &fund_big.hash(),
         &rep_big.account(),
         &Amount::raw(0x6000_0000_0000_0000_0000_0000_0000_0000),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system.work.generate_dev2(fund_big.hash().into()).unwrap(),
     ));
 
@@ -1078,7 +1078,7 @@ fn fork_bootstrap_flip() {
         &latest,
         &key1.account(),
         &(Amount::MAX - Amount::raw(1_000_000)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system.work.generate_dev2(latest.into()).unwrap(),
     ));
 
@@ -1087,7 +1087,7 @@ fn fork_bootstrap_flip() {
         &latest,
         &key2.account(),
         &(Amount::MAX - Amount::raw(1_000_000)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system.work.generate_dev2(latest.into()).unwrap(),
     ));
 
@@ -1143,7 +1143,7 @@ fn fork_multi_flip() {
         &DEV_GENESIS_HASH,
         &key1.account(),
         &(Amount::MAX - Amount::raw(100)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system
             .work
             .generate_dev2((*DEV_GENESIS_HASH).into())
@@ -1155,7 +1155,7 @@ fn fork_multi_flip() {
         &DEV_GENESIS_HASH,
         &key2.account(),
         &(Amount::MAX - Amount::raw(100)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system
             .work
             .generate_dev2((*DEV_GENESIS_HASH).into())
@@ -1166,7 +1166,7 @@ fn fork_multi_flip() {
         &send2.hash(),
         &key2.account(),
         &(Amount::MAX - Amount::raw(100)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system.work.generate_dev2(send2.hash().into()).unwrap(),
     ));
 
@@ -1257,7 +1257,7 @@ fn fork_publish_inactive() {
         &DEV_GENESIS_HASH,
         &key1.account(),
         &(Amount::MAX - Amount::raw(100)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system
             .work
             .generate_dev2((*DEV_GENESIS_HASH).into())
@@ -1268,7 +1268,7 @@ fn fork_publish_inactive() {
         &DEV_GENESIS_HASH,
         &key2.account(),
         &(Amount::MAX - Amount::raw(100)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system
             .work
             .generate_dev2((*DEV_GENESIS_HASH).into())
@@ -1775,7 +1775,7 @@ fn quick_confirm() {
         &previous,
         &key.account(),
         &(node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system.work.generate_dev2(previous.into()).unwrap(),
     ));
 
@@ -1808,7 +1808,7 @@ fn send_out_of_order() {
         &DEV_GENESIS_HASH,
         &key2.account(),
         &(Amount::MAX - node1.config.receive_minimum),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system
             .work
             .generate_dev2((*DEV_GENESIS_HASH).into())
@@ -1819,7 +1819,7 @@ fn send_out_of_order() {
         &send1.hash(),
         &key2.account(),
         &(Amount::MAX - node1.config.receive_minimum * 2),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system.work.generate_dev2(send1.hash().into()).unwrap(),
     ));
 
@@ -1827,7 +1827,7 @@ fn send_out_of_order() {
         &send2.hash(),
         &key2.account(),
         &(Amount::MAX - node1.config.receive_minimum * 3),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system.work.generate_dev2(send2.hash().into()).unwrap(),
     ));
 
@@ -2053,7 +2053,7 @@ fn local_block_broadcast() {
         &latest_hash,
         &key1.account(),
         &(Amount::MAX - Amount::nano(1000)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system.work.generate_dev2(latest_hash.into()).unwrap(),
     ));
 
@@ -3193,7 +3193,7 @@ fn node_receive_quorum() {
         &previous,
         &key.account(),
         &(node1.ledger.constants.genesis_amount - Amount::nano(1000)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system.work.generate_dev2(previous.into()).unwrap(),
     ));
 
@@ -3321,7 +3321,7 @@ fn fork_open_flip() {
         &DEV_GENESIS_HASH,
         &key1.account(),
         &(Amount::MAX - Amount::raw(1)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         system
             .work
             .generate_dev2((*DEV_GENESIS_HASH).into())

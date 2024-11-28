@@ -184,7 +184,7 @@ impl RpcCommandHandler {
                             &previous,
                             &destination,
                             &(balance - amount),
-                            &prv_key.private_key(),
+                            &prv_key,
                             work,
                         ));
                         root = previous.into();

@@ -25,7 +25,7 @@ mod votes {
             &DEV_GENESIS_HASH,
             &key1.public_key().as_account(),
             &(Amount::MAX - Amount::raw(100)),
-            &DEV_GENESIS_KEY.private_key(),
+            &DEV_GENESIS_KEY,
             node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         node1.process(send1.clone()).unwrap();

@@ -210,7 +210,7 @@ fn confirmation() {
             &previous,
             &key.public_key().as_account(),
             &balance,
-            &DEV_GENESIS_KEY.private_key(),
+            &DEV_GENESIS_KEY,
             node1.work_generate_dev(previous),
         ));
         previous = send.hash();
@@ -339,7 +339,7 @@ fn confirmation_options() {
         // Confirm a legacy block
         // When filtering options are enabled, legacy blocks are always filtered
         balance = balance - send_amount;
-        let send = Block::LegacySend(SendBlock::new(&previous, &key.public_key().as_account(), &balance, &DEV_GENESIS_KEY.private_key(),
+        let send = Block::LegacySend(SendBlock::new(&previous, &key.public_key().as_account(), &balance, &DEV_GENESIS_KEY,
                 node1.work_generate_dev(previous)));
         node1.process_active(send);
         timeout(Duration::from_secs(1), ws_stream.next())

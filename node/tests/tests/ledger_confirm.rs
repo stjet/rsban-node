@@ -543,14 +543,14 @@ fn all_block_types() {
         &latest,
         &key1.public_key().as_account(),
         &(Amount::MAX - Amount::nano(1000)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         node.work_generate_dev(latest),
     ));
     let send1 = Block::LegacySend(SendBlock::new(
         &send.hash(),
         &key2.public_key().as_account(),
         &(Amount::MAX - Amount::nano(2000)),
-        &DEV_GENESIS_KEY.private_key(),
+        &DEV_GENESIS_KEY,
         node.work_generate_dev(send.hash()),
     ));
     let open = Block::LegacyOpen(OpenBlock::new(
@@ -573,7 +573,7 @@ fn all_block_types() {
         &open.hash(),
         &key2.public_key().as_account(),
         &Amount::zero(),
-        &key1.private_key(),
+        &key1,
         node.work_generate_dev(open.hash()),
     ));
     let state_receive = Block::State(StateBlock::new(

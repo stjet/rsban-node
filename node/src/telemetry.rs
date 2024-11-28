@@ -1,5 +1,5 @@
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     KeyPair, Signature,
 };
 use rsnano_ledger::Ledger;
@@ -332,16 +332,14 @@ impl Telemetry {
         result
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub fn container_info(&self) -> ContainerInfos {
         let guard = self.mutex.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "telemetries".to_string(),
-                count: guard.telemetries.len(),
-                sizeof_element: OrderedTelemetries::ELEMENT_SIZE,
-            })],
-        )
+        [(
+            "telemetries",
+            guard.telemetries.len(),
+            OrderedTelemetries::ELEMENT_SIZE,
+        )]
+        .into()
     }
 
     pub fn local_telemetry(&self) -> TelemetryData {

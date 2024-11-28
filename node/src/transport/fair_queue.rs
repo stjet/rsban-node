@@ -1,4 +1,4 @@
-use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent};
+use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos};
 use std::{
     cmp::min,
     collections::{BTreeMap, HashMap, VecDeque},
@@ -178,22 +178,20 @@ where
         }
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "queues".to_string(),
-                    count: self.queues.len(),
-                    sizeof_element: std::mem::size_of::<S>() + std::mem::size_of::<Entry<T>>(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "total_size".to_string(),
-                    count: self.len(),
-                    sizeof_element: std::mem::size_of::<S>() + std::mem::size_of::<Entry<T>>(),
-                }),
-            ],
-        )
+    pub fn container_info(&self) -> ContainerInfos {
+        [
+            (
+                "queues",
+                self.queues.len(),
+                std::mem::size_of::<S>() + std::mem::size_of::<Entry<T>>(),
+            ),
+            (
+                "total_size",
+                self.len(),
+                std::mem::size_of::<S>() + std::mem::size_of::<Entry<T>>(),
+            ),
+        ]
+        .into()
     }
 
     fn seek_next(&mut self) {

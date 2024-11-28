@@ -1171,20 +1171,23 @@ impl Node {
                         self.syn_cookies.container_info().into_legacy("syn_cookies"),
                     ],
                 ),
-                self.telemetry.collect_container_info("telemetry"),
-                self.wallets.collect_container_info("wallets"),
+                self.telemetry.container_info().into_legacy("telemetry"),
+                self.wallets.container_info().into_legacy("wallets"),
                 self.vote_processor_queue
-                    .collect_container_info("vote_processor"),
+                    .container_info()
+                    .into_legacy("vote_processor"),
                 self.vote_cache_processor
                     .collect_container_info("vote_cache_processor"),
                 self.rep_crawler.collect_container_info("rep_crawler"),
                 self.block_processor
-                    .collect_container_info("block_processor"),
+                    .container_info()
+                    .into_legacy("block_processor"),
                 online_reps,
                 self.history.collect_container_info("history"),
                 self.confirming_set.collect_container_info("confirming_set"),
                 self.request_aggregator
-                    .collect_container_info("request_aggregator"),
+                    .container_info()
+                    .into_legacy("request_aggregator"),
                 self.election_schedulers
                     .collect_container_info("election_scheduler"),
                 vote_cache,
@@ -1198,7 +1201,8 @@ impl Node {
                     .collect_container_info("local_block_broadcaster"),
                 self.rep_tiers.collect_container_info("rep_tiers"),
                 self.inbound_message_queue
-                    .collect_container_info("message_processor"),
+                    .container_info()
+                    .into_legacy("message_processor"),
             ],
         )
     }

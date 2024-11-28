@@ -12,7 +12,7 @@ use crate::{
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::{get_env_or_default_string, ContainerInfo, ContainerInfoComponent},
+    utils::{get_env_or_default_string, ContainerInfo, ContainerInfoComponent, ContainerInfos},
     work::{WorkPoolImpl, WorkThresholds},
     Account, Amount, Block, BlockDetails, BlockHash, Epoch, KeyDerivationFunction, KeyPair, Link,
     NoValue, PendingKey, PublicKey, RawKey, Root, StateBlock, WalletId,
@@ -895,22 +895,16 @@ impl Wallets {
         !guard.have_half_rep() && !guard.exists(&voting_account)
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "items".to_string(),
-                    count: self.mutex.lock().unwrap().len(),
-                    sizeof_element: size_of::<usize>() * size_of::<WalletId>(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "actions".to_string(),
-                    count: self.wallet_actions.len(),
-                    sizeof_element: size_of::<usize>() * 2,
-                }),
-            ],
-        )
+    pub fn container_info(&self) -> ContainerInfos {
+        [
+            (
+                "items",
+                self.mutex.lock().unwrap().len(),
+                size_of::<usize>() * size_of::<WalletId>(),
+            ),
+            ("actions", self.wallet_actions.len(), size_of::<usize>() * 2),
+        ]
+        .into()
     }
 }
 

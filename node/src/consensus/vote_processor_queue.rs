@@ -4,7 +4,7 @@ use crate::{
     transport::{FairQueue, FairQueueInfo},
 };
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     Vote, VoteSource,
 };
 use rsnano_network::{ChannelId, DeadChannelCleanupStep};
@@ -121,19 +121,16 @@ impl VoteProcessorQueue {
             .compacted_info(|(tier, _)| *tier)
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub fn container_info(&self) -> ContainerInfos {
         let guard = self.data.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "votes".to_string(),
-                    count: guard.queue.len(),
-                    sizeof_element: size_of::<(Arc<Vote>, VoteSource)>(),
-                }),
-                guard.queue.collect_container_info("queue"),
-            ],
-        )
+        ContainerInfos::builder()
+            .leaf(
+                "votes",
+                guard.queue.len(),
+                size_of::<(Arc<Vote>, VoteSource)>(),
+            )
+            .node("queue", guard.queue.container_info())
+            .finish()
     }
 }
 

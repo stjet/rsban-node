@@ -4,7 +4,7 @@ use crate::{
     transport::{FairQueue, FairQueueInfo},
 };
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     work::WorkThresholds,
     Block, BlockType, Epoch, HashOrAccount, Networks, UncheckedInfo,
 };
@@ -319,8 +319,8 @@ impl BlockProcessor {
         self.processor_loop.info()
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        self.processor_loop.collect_container_info(name)
+    pub fn container_info(&self) -> ContainerInfos {
+        self.processor_loop.container_info()
     }
 }
 
@@ -713,26 +713,19 @@ impl BlockProcessorLoop {
         guard.info()
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub fn container_info(&self) -> ContainerInfos {
         let guard = self.mutex.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "blocks".to_owned(),
-                    count: guard.queue.len(),
-                    sizeof_element: size_of::<Arc<Block>>(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "forced".to_owned(),
-                    count: guard
-                        .queue
-                        .queue_len(&(BlockSource::Forced, ChannelId::LOOPBACK)),
-                    sizeof_element: size_of::<Arc<Block>>(),
-                }),
-                guard.queue.collect_container_info("queue"),
-            ],
-        )
+        ContainerInfos::builder()
+            .leaf("blocks", guard.queue.len(), size_of::<Arc<Block>>())
+            .leaf(
+                "forced",
+                guard
+                    .queue
+                    .queue_len(&(BlockSource::Forced, ChannelId::LOOPBACK)),
+                size_of::<Arc<Block>>(),
+            )
+            .node("queue", guard.queue.container_info())
+            .finish()
     }
 }
 

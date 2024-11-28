@@ -1,6 +1,6 @@
 use super::{FairQueue, MessageCallback};
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::utils::ContainerInfoComponent;
+use rsnano_core::utils::{ContainerInfoComponent, ContainerInfos};
 use rsnano_messages::Message;
 use rsnano_network::{ChannelId, ChannelInfo, DeadChannelCleanupStep};
 use std::{
@@ -101,16 +101,11 @@ impl InboundMessageQueue {
         self.condition.notify_all();
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![self
-                .state
-                .lock()
-                .unwrap()
-                .queue
-                .collect_container_info("queue")],
-        )
+    pub fn container_info(&self) -> ContainerInfos {
+        let guard = self.state.lock().unwrap();
+        ContainerInfos::builder()
+            .node("queue", guard.queue.container_info())
+            .finish()
     }
 }
 

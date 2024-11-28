@@ -7,7 +7,7 @@ use rsnano_nullable_random::NullableRng;
 
 #[derive(Clone)]
 pub struct KeyPair {
-    keypair: ed25519_dalek::SigningKey,
+    private_key: ed25519_dalek::SigningKey,
 }
 
 pub struct KeyPairFactory {
@@ -33,8 +33,8 @@ impl KeyPairFactory {
     }
 
     pub fn create_key_pair(&mut self) -> KeyPair {
-        let keypair = ed25519_dalek::SigningKey::generate(&mut self.rng);
-        KeyPair { keypair }
+        let private_key = ed25519_dalek::SigningKey::generate(&mut self.rng);
+        KeyPair { private_key }
     }
 }
 
@@ -67,7 +67,7 @@ impl KeyPair {
             .map_err(|_| anyhow::anyhow!("Invalid secret key length"))?;
         let signing_key = ed25519_dalek::SigningKey::from_bytes(&secret_bytes);
         Ok(Self {
-            keypair: signing_key,
+            private_key: signing_key,
         })
     }
 
@@ -80,15 +80,15 @@ impl KeyPair {
     }
 
     pub fn account(&self) -> Account {
-        Account::from_bytes(self.keypair.verifying_key().to_bytes())
+        Account::from_bytes(self.private_key.verifying_key().to_bytes())
     }
 
     pub fn public_key(&self) -> PublicKey {
-        PublicKey::from_bytes(self.keypair.verifying_key().to_bytes())
+        PublicKey::from_bytes(self.private_key.verifying_key().to_bytes())
     }
 
     pub fn private_key(&self) -> RawKey {
-        RawKey::from_bytes(self.keypair.to_bytes())
+        RawKey::from_bytes(self.private_key.to_bytes())
     }
 }
 

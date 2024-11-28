@@ -267,10 +267,6 @@ impl PublicKey {
         self.0[..16].try_into().unwrap()
     }
 
-    pub fn to_node_id(&self) -> String {
-        Account::from(self).to_node_id()
-    }
-
     pub fn as_account(&self) -> Account {
         self.into()
     }

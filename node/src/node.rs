@@ -229,7 +229,7 @@ impl Node {
             if work.has_opencl() { "OpenCL" } else { "CPU" }
         );
         info!("Work peers: {}", config.work_peers.len());
-        info!("Node ID: {}", node_id.public_key().to_node_id());
+        info!("Node ID: {}", NodeId::from(&node_id));
 
         let (max_blocks, bootstrap_weights) = if (network_params.network.is_live_network()
             || network_params.network.is_beta_network())

@@ -14,7 +14,7 @@ fn sign() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let key = rsnano_core::KeyPair::new();
+    let key = rsnano_core::PrivateKey::new();
 
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);

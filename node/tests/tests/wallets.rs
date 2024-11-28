@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
@@ -24,8 +24,8 @@ fn open_create() {
 fn vote_minimum() {
     let mut system = System::new();
     let node = system.make_node();
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
 
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -116,8 +116,8 @@ fn vote_minimum() {
 fn exists() {
     let mut system = System::new();
     let node = system.make_node();
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
     let wallet_id = node.wallets.wallet_ids()[0];
 
     assert_eq!(node.wallets.exists(&key1.public_key()), false);

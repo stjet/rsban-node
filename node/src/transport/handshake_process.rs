@@ -1,6 +1,6 @@
 use super::SynCookies;
 use crate::stats::{DetailType, Direction, StatType, Stats};
-use rsnano_core::{utils::TEST_ENDPOINT_1, BlockHash, KeyPair, PublicKey};
+use rsnano_core::{utils::TEST_ENDPOINT_1, BlockHash, NodeId, PrivateKey};
 use rsnano_messages::{
     Message, MessageSerializer, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse,
     ProtocolInfo,
@@ -19,14 +19,14 @@ pub enum HandshakeStatus {
     Abort,
     AbortOwnNodeId,
     Handshake,
-    Realtime(PublicKey),
+    Realtime(NodeId),
     Bootstrap,
 }
 
 /// Responsible for performing a correct handshake when connecting to another node
 pub(crate) struct HandshakeProcess {
     genesis_hash: BlockHash,
-    node_id: KeyPair,
+    node_id: PrivateKey,
     syn_cookies: Arc<SynCookies>,
     stats: Arc<Stats>,
     handshake_received: AtomicBool,
@@ -37,7 +37,7 @@ pub(crate) struct HandshakeProcess {
 impl HandshakeProcess {
     pub(crate) fn new(
         genesis_hash: BlockHash,
-        node_id: KeyPair,
+        node_id: PrivateKey,
         syn_cookies: Arc<SynCookies>,
         stats: Arc<Stats>,
         remote_endpoint: SocketAddrV6,
@@ -58,7 +58,7 @@ impl HandshakeProcess {
     pub fn new_null() -> Self {
         Self {
             genesis_hash: BlockHash::from(1),
-            node_id: KeyPair::from(2),
+            node_id: PrivateKey::from(2),
             syn_cookies: Arc::new(SynCookies::new(1)),
             stats: Arc::new(Stats::default()),
             handshake_received: AtomicBool::new(false),
@@ -257,7 +257,7 @@ impl HandshakeProcess {
         remote_endpoint: &SocketAddrV6,
     ) -> Result<(), HandshakeResponseError> {
         // Prevent connection with ourselves
-        if response.node_id == self.node_id.public_key() {
+        if response.node_id == self.node_id.public_key().into() {
             return Err(HandshakeResponseError::OwnNodeId);
         }
 

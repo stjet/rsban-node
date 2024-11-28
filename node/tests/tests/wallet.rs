@@ -1,5 +1,5 @@
 use rsnano_core::{
-    deterministic_key, Account, Amount, Block, BlockHash, Epoch, KeyDerivationFunction, KeyPair,
+    deterministic_key, Account, Amount, Block, BlockHash, Epoch, KeyDerivationFunction, PrivateKey,
     PublicKey, RawKey, StateBlock, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
@@ -28,7 +28,7 @@ fn no_special_keys_accounts() {
     let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
     let wallet =
         LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
-    let key = KeyPair::from(42);
+    let key = PrivateKey::from(42);
     assert!(!wallet.exists(&tx, &key.public_key()));
     wallet.insert_adhoc(&mut tx, &key.private_key());
     assert!(wallet.exists(&tx, &key.public_key()));
@@ -61,7 +61,7 @@ fn fetch_locked() {
     let wallet =
         LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
     assert!(wallet.valid_password(&tx));
-    let key1 = KeyPair::from(42);
+    let key1 = PrivateKey::from(42);
     assert_eq!(
         wallet.insert_adhoc(&mut tx, &key1.private_key()),
         key1.public_key()
@@ -82,7 +82,7 @@ fn retrieval() {
     let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
     let wallet =
         LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
-    let key1 = KeyPair::from(42);
+    let key1 = PrivateKey::from(42);
     wallet.insert_adhoc(&mut tx, &key1.private_key());
     let prv1 = wallet.fetch(&tx, &key1.public_key()).unwrap();
     assert_eq!(prv1, key1.private_key());
@@ -112,7 +112,7 @@ fn one_item_iteration() {
     let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
     let wallet =
         LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
-    let key1 = KeyPair::from(42);
+    let key1 = PrivateKey::from(42);
     wallet.insert_adhoc(&mut tx, &key1.private_key());
     let mut it = wallet.begin(&tx);
     while !it.is_end() {
@@ -131,8 +131,8 @@ fn two_item_iteration() {
     test_file.push("wallet.ldb");
     let env = LmdbEnv::new(test_file).unwrap();
 
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
     let mut pubs = HashSet::new();
     let mut prvs = HashSet::new();
     let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
@@ -164,7 +164,7 @@ fn two_item_iteration() {
 fn insufficient_spend_one() {
     let mut system = System::new();
     let node = system.make_node();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     node.insert_into_wallet(&DEV_GENESIS_KEY);
     let wallet_id = node.wallets.wallet_ids()[0];
     let _block = node
@@ -201,7 +201,7 @@ fn spend_all_one() {
     let node = system.make_node();
     node.insert_into_wallet(&DEV_GENESIS_KEY);
     let wallet_id = node.wallets.wallet_ids()[0];
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     node.wallets
         .send_action2(
             &wallet_id,
@@ -232,7 +232,7 @@ fn send_async() {
     let node = system.make_node();
     node.insert_into_wallet(&DEV_GENESIS_KEY);
     let wallet_id = node.wallets.wallet_ids()[0];
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let block = Arc::new(Mutex::new(None));
     let block2 = block.clone();
     node.wallets
@@ -262,7 +262,7 @@ fn spend() {
     let node = system.make_node();
     node.insert_into_wallet(&DEV_GENESIS_KEY);
     let wallet_id = node.wallets.wallet_ids()[0];
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     // Sending from empty accounts should always be an error.
     // Accounts need to be opened with an open block, not a send block.
     assert!(node
@@ -297,7 +297,7 @@ fn partial_spend() {
     let node = system.make_node();
     node.insert_into_wallet(&DEV_GENESIS_KEY);
     let wallet_id = node.wallets.wallet_ids()[0];
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     node.wallets
         .send_action2(
             &wallet_id,
@@ -323,13 +323,13 @@ fn spend_no_previous() {
     {
         node.insert_into_wallet(&DEV_GENESIS_KEY);
         for _ in 0..50 {
-            let key = KeyPair::new();
+            let key = PrivateKey::new();
             node.wallets
                 .insert_adhoc2(&wallet_id, &key.private_key(), false)
                 .unwrap();
         }
     }
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     node.wallets
         .send_action2(
             &wallet_id,
@@ -368,7 +368,7 @@ fn find_existing() {
     let kdf = KeyDerivationFunction::new(DEV_NETWORK_PARAMS.kdf_work);
     let wallet =
         LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     assert_eq!(wallet.exists(&tx, &key1.public_key()), false);
     wallet.insert_adhoc(&mut tx, &key1.private_key());
     assert_eq!(wallet.exists(&tx, &key1.public_key()), true);
@@ -386,7 +386,7 @@ fn rekey() {
         LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
     let password = wallet.password();
     assert!(password.is_zero());
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     wallet.insert_adhoc(&mut tx, &key1.private_key());
     assert_eq!(
         wallet.fetch(&tx, &key1.public_key()).unwrap(),
@@ -487,7 +487,7 @@ fn representative() {
         LmdbWalletStore::new(0, kdf, &mut tx, &DEV_GENESIS_PUB_KEY, &PathBuf::from("0")).unwrap();
     assert_eq!(wallet.exists(&tx, &wallet.representative(&tx)), false);
     assert_eq!(wallet.representative(&tx), *DEV_GENESIS_PUB_KEY);
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     wallet.representative_set(&mut tx, &key.public_key());
     assert_eq!(wallet.representative(&tx), key.public_key());
     assert_eq!(wallet.exists(&tx, &wallet.representative(&tx)), false);
@@ -538,7 +538,7 @@ fn serialize_json_one() {
         &PathBuf::from("0"),
     )
     .unwrap();
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     wallet1.insert_adhoc(&mut tx, &key.private_key());
     let serialized = wallet1.serialize_json(&tx);
     let wallet2 =
@@ -569,7 +569,7 @@ fn serialize_json_password() {
         &PathBuf::from("0"),
     )
     .unwrap();
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     wallet1.rekey(&mut tx, "password").unwrap();
     wallet1.insert_adhoc(&mut tx, &key.private_key());
     let serialized = wallet1.serialize_json(&tx);
@@ -604,7 +604,7 @@ fn wallet_store_move() {
         &PathBuf::from("0"),
     )
     .unwrap();
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     wallet1.insert_adhoc(&mut tx, &key.private_key());
 
     let wallet2 = LmdbWalletStore::new(
@@ -615,7 +615,7 @@ fn wallet_store_move() {
         &PathBuf::from("1"),
     )
     .unwrap();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     wallet2.insert_adhoc(&mut tx, &key2.private_key());
     assert_eq!(wallet1.exists(&tx, &key2.public_key()), false);
     wallet1
@@ -632,7 +632,7 @@ fn wallet_store_import() {
     let node2 = system.make_node();
     let wallet_id1 = node1.wallets.wallet_ids()[0];
     let wallet_id2 = node2.wallets.wallet_ids()[0];
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     node1
         .wallets
         .insert_adhoc2(&wallet_id1, &key1.private_key(), false)
@@ -649,7 +649,7 @@ fn wallet_store_fail_import_bad_password() {
     let node2 = system.make_node();
     let wallet_id1 = node1.wallets.wallet_ids()[0];
     let wallet_id2 = node2.wallets.wallet_ids()[0];
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     node1
         .wallets
         .insert_adhoc2(&wallet_id1, &key1.private_key(), false)
@@ -713,7 +713,7 @@ fn work_generate() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
     let account1 = node1.wallets.get_accounts(1)[0];
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let _block = node1
         .wallets
         .send_action2(
@@ -762,7 +762,7 @@ fn work_cache_delayed() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
     let account1 = node1.wallets.get_accounts(1)[0];
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let _block1 = node1
         .wallets
         .send_action2(
@@ -872,7 +872,7 @@ fn deterministic_keys() {
     let key7 = wallet.fetch(&tx, &key6).unwrap();
     assert_ne!(key7, key5);
     assert_eq!(wallet.deterministic_index_get(&tx), 3);
-    let key9 = KeyPair::new();
+    let key9 = PrivateKey::new();
     wallet.insert_adhoc(&mut tx, &key9.private_key());
     assert!(wallet.exists(&tx, &key9.public_key()));
     wallet.deterministic_clear(&mut tx);
@@ -946,7 +946,7 @@ fn no_work() {
         .wallets
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
         .unwrap();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let block = node1
         .wallets
         .send_action2(
@@ -979,7 +979,7 @@ fn send_race() {
         .wallets
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     for i in 1..60 {
         node1
             .wallets
@@ -1188,7 +1188,7 @@ fn epoch_2_receive_propagation() {
         // Upgrade the genesis account to epoch 1
         upgrade_genesis_epoch(&node, Epoch::Epoch1);
 
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
 
         // Send and open the account
         node.wallets
@@ -1286,7 +1286,7 @@ fn epoch_2_receive_unopened() {
         // Upgrade the genesis account to epoch 1
         upgrade_genesis_epoch(&node, Epoch::Epoch1);
 
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
 
         // Send
         node.wallets
@@ -1485,7 +1485,7 @@ fn receive_pruned() {
     let wallet_id1 = node1.wallets.wallet_ids()[0];
     let wallet_id2 = node2.wallets.wallet_ids()[0];
 
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
 
     // Send
     node1

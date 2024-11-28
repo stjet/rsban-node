@@ -18,10 +18,7 @@ impl RpcCommandHandler {
                     channel.peer_addr(),
                     PeerInfo {
                         protocol_version: channel.protocol_version().into(),
-                        node_id: channel
-                            .node_id()
-                            .map(|i| i.to_node_id())
-                            .unwrap_or_default(),
+                        node_id: channel.node_id().map(|i| i.to_string()).unwrap_or_default(),
                         connection_type: "tcp".to_string(),
                         peering: channel.peering_addr_or_peer_addr(),
                     },

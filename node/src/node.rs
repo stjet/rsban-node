@@ -43,8 +43,8 @@ use crate::{
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo, SerdePropertyTree},
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, Block, BlockHash, BlockType, KeyPair, Networks, PublicKey, Root, VoteCode,
-    VoteSource,
+    Account, Amount, Block, BlockHash, BlockType, Networks, NodeId, PrivateKey, PublicKey, Root,
+    VoteCode, VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};
@@ -76,7 +76,7 @@ pub struct Node {
     pub runtime: tokio::runtime::Handle,
     pub data_path: PathBuf,
     pub steady_clock: Arc<SteadyClock>,
-    pub node_id: KeyPair,
+    pub node_id: PrivateKey,
     pub config: NodeConfig,
     pub network_params: NetworkParams,
     pub stats: Arc<Stats>,
@@ -178,6 +178,10 @@ impl Node {
         Self::new(args, false, NodeIdKeyFile::default())
     }
 
+    pub fn node_id(&self) -> NodeId {
+        self.node_id.public_key().into()
+    }
+
     fn new(args: NodeArgs, is_nulled: bool, mut node_id_key_file: NodeIdKeyFile) -> Self {
         let network_params = args.network_params;
         let config = args.config;
@@ -225,7 +229,7 @@ impl Node {
             if work.has_opencl() { "OpenCL" } else { "CPU" }
         );
         info!("Work peers: {}", config.work_peers.len());
-        info!("Node ID: {}", node_id.public_key().to_node_id());
+        info!("Node ID: {}", NodeId::from(&node_id));
 
         let (max_blocks, bootstrap_weights) = if (network_params.network.is_live_network()
             || network_params.network.is_beta_network())
@@ -1241,7 +1245,7 @@ impl Node {
         }
     }
 
-    pub fn insert_into_wallet(&self, keys: &KeyPair) {
+    pub fn insert_into_wallet(&self, keys: &PrivateKey) {
         let wallet_id = self.wallets.wallet_ids()[0];
         self.wallets
             .insert_adhoc2(&wallet_id, &keys.private_key(), true)
@@ -1274,8 +1278,8 @@ impl Node {
             .unwrap_or_default()
     }
 
-    pub fn get_node_id(&self) -> PublicKey {
-        self.node_id.public_key()
+    pub fn get_node_id(&self) -> NodeId {
+        self.node_id.public_key().into()
     }
 
     pub fn work_generate_dev(&self, root: impl Into<Root>) -> u64 {

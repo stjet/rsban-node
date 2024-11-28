@@ -1,9 +1,9 @@
 use super::{BlockBase, BlockSideband, BlockType};
 use crate::{
-    sign_message, to_hex_string, u64_from_hex_str,
+    to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, KeyPair, LazyBlockHash, Link,
-    PendingKey, PublicKey, RawKey, Root, Signature, WorkNonce,
+    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, LazyBlockHash, Link, PendingKey,
+    PrivateKey, PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 use serde::de::{Unexpected, Visitor};
@@ -79,7 +79,7 @@ impl SendBlock {
         previous: &BlockHash,
         destination: &Account,
         balance: &Amount,
-        private_key: &RawKey,
+        private_key: &PrivateKey,
         work: u64,
     ) -> Self {
         let hashables = SendHashables {
@@ -89,7 +89,7 @@ impl SendBlock {
         };
 
         let hash = LazyBlockHash::new();
-        let signature = sign_message(private_key, hash.hash(&hashables).as_bytes());
+        let signature = private_key.sign(hash.hash(&hashables).as_bytes());
 
         Self {
             hashables,
@@ -101,12 +101,12 @@ impl SendBlock {
     }
 
     pub fn new_test_instance() -> Self {
-        let key = KeyPair::from(42);
+        let key = PrivateKey::from(42);
         SendBlock::new(
             &BlockHash::from(1),
             &Account::from(2),
             &Amount::raw(3),
-            &key.private_key(),
+            &key,
             424269420,
         )
     }
@@ -396,17 +396,17 @@ mod tests {
     use super::*;
     use crate::{
         utils::{MemoryStream, TestPropertyTree},
-        validate_message, Block, KeyPair,
+        validate_message, Block, PrivateKey,
     };
 
     #[test]
     fn create_send_block() {
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let mut block = SendBlock::new(
             &BlockHash::from(0),
             &Account::from(1),
             &Amount::raw(13),
-            &key.private_key(),
+            &key,
             2,
         );
 
@@ -422,12 +422,12 @@ mod tests {
     // original test: send_block.deserialize
     #[test]
     fn serialize() {
-        let key = KeyPair::new();
+        let key = PrivateKey::new();
         let block1 = SendBlock::new(
             &BlockHash::from(0),
             &Account::from(1),
             &Amount::raw(2),
-            &key.private_key(),
+            &key,
             5,
         );
         let mut stream = MemoryStream::new();

@@ -1,4 +1,4 @@
-use rsnano_core::{utils::ContainerInfo, KeyPair, Signature};
+use rsnano_core::{utils::ContainerInfo, PrivateKey, Signature};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, TelemetryAck, TelemetryData, TelemetryMaker};
 use rsnano_nullable_clock::SteadyClock;
@@ -44,7 +44,7 @@ pub struct Telemetry {
     network_params: NetworkParams,
     network_info: Arc<RwLock<NetworkInfo>>,
     message_publisher: Mutex<MessagePublisher>,
-    node_id: KeyPair,
+    node_id: PrivateKey,
     pub startup_time: Instant,
     telemetry_processed_callbacks:
         Mutex<Vec<Box<dyn Fn(&TelemetryData, &SocketAddrV6) + Send + Sync>>>,
@@ -63,7 +63,7 @@ impl Telemetry {
         network_params: NetworkParams,
         network_info: Arc<RwLock<NetworkInfo>>,
         message_publisher: MessagePublisher,
-        node_id: KeyPair,
+        node_id: PrivateKey,
         clock: Arc<SteadyClock>,
     ) -> Self {
         Self {
@@ -351,7 +351,7 @@ impl Telemetry {
             .count_by_mode(ChannelMode::Realtime) as u32;
 
         let mut telemetry_data = TelemetryData {
-            node_id: self.node_id.public_key(),
+            node_id: self.node_id.public_key().into(),
             block_count: self.ledger.block_count(),
             cemented_count: self.ledger.cemented_count(),
             bandwidth_cap: self.node_config.bandwidth_limit as u64,

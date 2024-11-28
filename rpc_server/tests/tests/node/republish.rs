@@ -7,7 +7,7 @@ use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
 fn setup_test_environment(node: Arc<Node>) -> BlockHash {
     let genesis_hash = *DEV_GENESIS_HASH;
-    let key = rsnano_core::KeyPair::new();
+    let key = rsnano_core::PrivateKey::new();
 
     // Create and process send block
     let send = BlockBuilder::legacy_send()

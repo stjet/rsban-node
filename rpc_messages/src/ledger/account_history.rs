@@ -100,7 +100,9 @@ impl AccountHistoryArgsBuilder {
 pub struct AccountHistoryResponse {
     pub account: Account,
     pub history: Vec<HistoryEntry>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub previous: Option<BlockHash>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub next: Option<BlockHash>,
 }
 

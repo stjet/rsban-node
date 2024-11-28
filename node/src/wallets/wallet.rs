@@ -1,5 +1,5 @@
 use anyhow::Context;
-use rsnano_core::{work::WorkThresholds, KeyDerivationFunction, KeyPair, PublicKey, Root};
+use rsnano_core::{work::WorkThresholds, KeyDerivationFunction, PrivateKey, PublicKey, Root};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbWalletStore, LmdbWriteTransaction, Transaction};
 use std::{
@@ -82,7 +82,7 @@ impl Wallet {
         let mut n = index + 64;
         while i < n {
             let prv = self.store.deterministic_key(txn, i);
-            let pair = KeyPair::from_priv_key_bytes(prv.as_bytes()).unwrap();
+            let pair = PrivateKey::from_priv_key_bytes(prv.as_bytes()).unwrap();
             // Check if account received at least 1 block
             let latest = self.ledger.any().account_head(&block_txn, &pair.account());
             match latest {

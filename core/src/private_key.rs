@@ -5,16 +5,11 @@ use ed25519_dalek::ed25519::signature::SignerMut;
 use ed25519_dalek::Verifier;
 use rsnano_nullable_random::NullableRng;
 
-#[derive(Clone)]
-pub struct KeyPair {
-    keypair: ed25519_dalek::SigningKey,
-}
-
-pub struct KeyPairFactory {
+pub struct PrivateKeyFactory {
     rng: NullableRng,
 }
 
-impl KeyPairFactory {
+impl PrivateKeyFactory {
     #[allow(dead_code)]
     fn new(rng: NullableRng) -> Self {
         Self { rng }
@@ -32,13 +27,13 @@ impl KeyPairFactory {
         }
     }
 
-    pub fn create_key_pair(&mut self) -> KeyPair {
-        let keypair = ed25519_dalek::SigningKey::generate(&mut self.rng);
-        KeyPair { keypair }
+    pub fn create_key_pair(&mut self) -> PrivateKey {
+        let private_key = ed25519_dalek::SigningKey::generate(&mut self.rng);
+        PrivateKey { private_key }
     }
 }
 
-impl Default for KeyPairFactory {
+impl Default for PrivateKeyFactory {
     fn default() -> Self {
         Self {
             rng: NullableRng::thread_rng(),
@@ -46,13 +41,18 @@ impl Default for KeyPairFactory {
     }
 }
 
-impl Default for KeyPair {
+#[derive(Clone)]
+pub struct PrivateKey {
+    private_key: ed25519_dalek::SigningKey,
+}
+
+impl Default for PrivateKey {
     fn default() -> Self {
-        KeyPairFactory::default().create_key_pair()
+        PrivateKeyFactory::default().create_key_pair()
     }
 }
 
-impl KeyPair {
+impl PrivateKey {
     pub fn new() -> Self {
         Default::default()
     }
@@ -61,13 +61,17 @@ impl KeyPair {
         Self::from_priv_key_bytes(&[0u8; 32]).unwrap()
     }
 
+    pub fn is_zero(&self) -> bool {
+        self.private_key.to_bytes() == [0; 32]
+    }
+
     pub fn from_priv_key_bytes(bytes: &[u8]) -> anyhow::Result<Self> {
         let secret_bytes: [u8; 32] = bytes
             .try_into()
             .map_err(|_| anyhow::anyhow!("Invalid secret key length"))?;
         let signing_key = ed25519_dalek::SigningKey::from_bytes(&secret_bytes);
         Ok(Self {
-            keypair: signing_key,
+            private_key: signing_key,
         })
     }
 
@@ -79,20 +83,26 @@ impl KeyPair {
         Self::from_priv_key_bytes(&bytes)
     }
 
+    pub fn sign(&self, data: &[u8]) -> Signature {
+        let mut signing_key = self.private_key.clone();
+        let signature = signing_key.sign(data);
+        Signature::from_bytes(signature.to_bytes())
+    }
+
     pub fn account(&self) -> Account {
-        Account::from_bytes(self.keypair.verifying_key().to_bytes())
+        Account::from_bytes(self.private_key.verifying_key().to_bytes())
     }
 
     pub fn public_key(&self) -> PublicKey {
-        PublicKey::from_bytes(self.keypair.verifying_key().to_bytes())
+        PublicKey::from_bytes(self.private_key.verifying_key().to_bytes())
     }
 
     pub fn private_key(&self) -> RawKey {
-        RawKey::from_bytes(self.keypair.to_bytes())
+        RawKey::from_bytes(self.private_key.to_bytes())
     }
 }
 
-impl From<u64> for KeyPair {
+impl From<u64> for PrivateKey {
     fn from(value: u64) -> Self {
         let mut bytes = [0; 32];
         bytes[..8].copy_from_slice(&value.to_be_bytes());
@@ -100,26 +110,26 @@ impl From<u64> for KeyPair {
     }
 }
 
-impl From<RawKey> for KeyPair {
+impl From<RawKey> for PrivateKey {
     fn from(value: RawKey) -> Self {
         Self::from_priv_key_bytes(value.as_bytes()).unwrap()
     }
 }
 
-impl From<&KeyPair> for Root {
-    fn from(value: &KeyPair) -> Self {
+impl From<&PrivateKey> for Root {
+    fn from(value: &PrivateKey) -> Self {
         value.public_key().as_account().into()
     }
 }
 
-impl From<&KeyPair> for Link {
-    fn from(value: &KeyPair) -> Self {
+impl From<&PrivateKey> for Link {
+    fn from(value: &PrivateKey) -> Self {
         value.public_key().as_account().into()
     }
 }
 
-impl From<&KeyPair> for Account {
-    fn from(value: &KeyPair) -> Self {
+impl From<&PrivateKey> for Account {
+    fn from(value: &PrivateKey) -> Self {
         value.public_key().as_account()
     }
 }
@@ -178,7 +188,7 @@ mod tests {
 
     #[test]
     fn sign_message_test() -> anyhow::Result<()> {
-        let keypair = KeyPair::new();
+        let keypair = PrivateKey::new();
         let data = [0u8; 32];
         let signature = sign_message(&keypair.private_key(), &data);
         validate_message(&keypair.public_key(), &data, &signature)?;
@@ -190,7 +200,7 @@ mod tests {
         // the C++ implementation adds random bytes and a padding when signing for extra security and for making side channel attacks more difficult.
         // Currently the Rust impl does not do that.
         // In C++ signing the same message twice will produce different signatures. In Rust we get the same signature.
-        let keypair = KeyPair::new();
+        let keypair = PrivateKey::new();
         let data = [1, 2, 3];
         let signature_a = sign_message(&keypair.private_key(), &data);
         let signature_b = sign_message(&keypair.private_key(), &data);
@@ -247,7 +257,7 @@ mod tests {
                 0x11, 0x22, 0x33, 0x44,
             ];
             let rng = NullableRng::new_null_bytes(&random_data);
-            let mut key_pair_factory = KeyPairFactory::new(rng);
+            let mut key_pair_factory = PrivateKeyFactory::new(rng);
 
             let key_pair = key_pair_factory.create_key_pair();
 
@@ -256,7 +266,7 @@ mod tests {
 
         #[test]
         fn nullable() {
-            let mut key_pair_factory = KeyPairFactory::new_null();
+            let mut key_pair_factory = PrivateKeyFactory::new_null();
             let key_pair = key_pair_factory.create_key_pair();
             assert_ne!(key_pair.private_key(), RawKey::zero());
         }
@@ -264,7 +274,7 @@ mod tests {
         #[test]
         fn configured_response() {
             let expected = RawKey::from_bytes([3; 32]);
-            let mut key_pair_factory = KeyPairFactory::new_null_with(expected);
+            let mut key_pair_factory = PrivateKeyFactory::new_null_with(expected);
             assert_eq!(key_pair_factory.create_key_pair().private_key(), expected);
         }
     }

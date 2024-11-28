@@ -8,7 +8,7 @@ impl RpcCommandHandler {
         NodeIdResponse {
             public,
             as_account,
-            node_id: as_account,
+            node_id: public.into(),
         }
     }
 }

@@ -1,6 +1,6 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, Amount, Block, KeyPair, Signature, StateBlock, Vote, VoteCode,
-    VoteSource, DEV_GENESIS_KEY,
+    utils::milliseconds_since_epoch, Amount, Block, PrivateKey, Signature, StateBlock, Vote,
+    VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
@@ -94,7 +94,7 @@ fn invalid_signature() {
     let mut system = System::new();
     let node = system.make_node();
     let chain = setup_chain(&node, 1, &DEV_GENESIS_KEY, false);
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let vote = Vote::new(&key, Vote::TIMESTAMP_MIN, 0, vec![chain[0].hash()]);
     let mut vote_invalid = vote.clone();
     vote_invalid.signature = Signature::new();
@@ -124,7 +124,7 @@ fn overflow() {
         ..Default::default()
     };
     let node = system.build_node().flags(flags).finish();
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let vote = Arc::new(Vote::new(
         &key,
         Vote::TIMESTAMP_MIN,
@@ -161,7 +161,7 @@ fn overflow() {
  */
 #[test]
 fn empty_hashes() {
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let vote = Arc::new(Vote::new(&key, Vote::TIMESTAMP_MIN, 0, vec![]));
 
     assert_eq!(vote.voting_account, key.public_key());
@@ -174,7 +174,7 @@ fn empty_hashes() {
  */
 #[test]
 fn timestamp_and_duration_masking() {
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let hash = vec![*DEV_GENESIS_HASH];
     let vote = Arc::new(Vote::new(&key, 0x123f, 0xf, hash));
 
@@ -198,9 +198,9 @@ fn weights() {
     let level1 = stake / 500; // 0.2%
     let level2 = stake / 50; // 2%
 
-    let key0 = KeyPair::new();
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
+    let key0 = PrivateKey::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
 
     let wallet_id0 = node0.wallets.wallet_ids()[0];
     let wallet_id1 = node1.wallets.wallet_ids()[0];
@@ -304,7 +304,7 @@ fn no_broadcast_local() {
         .finish();
 
     // Reduce the weight of genesis to 2x default min voting weight
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -379,7 +379,7 @@ fn local_broadcast_without_a_representative() {
         .flags(flags)
         .finish();
     // Reduce the weight of genesis to 2x default min voting weight
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -453,7 +453,7 @@ fn no_broadcast_local_with_a_principal_representative() {
         .flags(flags)
         .finish();
     // Reduce the weight of genesis to 2x default min voting weight
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let send = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,

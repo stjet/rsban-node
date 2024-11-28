@@ -1,6 +1,6 @@
 use crate::{
     work::{WorkPool, STUB_WORK_POOL},
-    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair,
+    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, PrivateKey,
     SendBlock,
 };
 
@@ -12,7 +12,7 @@ pub struct LegacySendBlockBuilder {
     balance: Option<Amount>,
     previous_balance: Option<Amount>,
     work: Option<u64>,
-    keypair: Option<KeyPair>,
+    priv_key: Option<PrivateKey>,
     build_sideband: bool,
 }
 
@@ -26,7 +26,7 @@ impl LegacySendBlockBuilder {
             balance: None,
             previous_balance: None,
             work: None,
-            keypair: None,
+            priv_key: None,
             build_sideband: false,
         }
     }
@@ -69,8 +69,8 @@ impl LegacySendBlockBuilder {
         self
     }
 
-    pub fn sign(mut self, keypair: KeyPair) -> Self {
-        self.keypair = Some(keypair);
+    pub fn sign(mut self, priv_key: PrivateKey) -> Self {
+        self.priv_key = Some(priv_key);
         self
     }
 
@@ -85,20 +85,14 @@ impl LegacySendBlockBuilder {
     }
 
     pub fn build(self) -> Block {
-        let key_pair = self.keypair.unwrap_or_default();
+        let priv_key = self.priv_key.unwrap_or_default();
         let previous = self.previous.unwrap_or(BlockHash::from(1));
         let destination = self.destination.unwrap_or(Account::from(2));
         let balance = self.balance.unwrap_or(Amount::raw(3));
         let work = self
             .work
             .unwrap_or_else(|| STUB_WORK_POOL.generate_dev2(previous.into()).unwrap());
-        let mut block = SendBlock::new(
-            &previous,
-            &destination,
-            &balance,
-            &key_pair.private_key(),
-            work,
-        );
+        let mut block = SendBlock::new(&previous, &destination, &balance, &priv_key, work);
 
         if self.build_sideband || self.account.is_some() || self.height.is_some() {
             let details = BlockDetails::new(Epoch::Epoch0, true, false, false);

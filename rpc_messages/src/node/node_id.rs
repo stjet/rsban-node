@@ -6,34 +6,14 @@ impl RpcCommand {
     }
 }
 
-use rsnano_core::{Account, PublicKey};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use rsnano_core::{Account, NodeId, PublicKey};
+use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct NodeIdResponse {
     pub public: PublicKey,
     pub as_account: Account,
-    #[serde(
-        serialize_with = "serialize_node_id",
-        deserialize_with = "deserialize_node_id"
-    )]
-    pub node_id: Account,
-}
-
-fn serialize_node_id<S>(account: &Account, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_str(&account.to_node_id())
-}
-
-fn deserialize_node_id<'de, D>(deserializer: D) -> Result<Account, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let node_id_str = String::deserialize(deserializer)?;
-    let account_str = node_id_str.replacen("node", "nano", 1);
-    Account::decode_account(&account_str).map_err(serde::de::Error::custom)
+    pub node_id: NodeId,
 }
 
 #[cfg(test)]
@@ -63,7 +43,7 @@ mod tests {
         let node_id_dto = NodeIdResponse {
             public: PublicKey::zero(),
             as_account: Account::zero(),
-            node_id: Account::zero(),
+            node_id: NodeId::ZERO,
         };
 
         let serialized = serde_json::to_value(&node_id_dto).unwrap();
@@ -89,7 +69,7 @@ mod tests {
         let node_id_dto = NodeIdResponse {
             public: PublicKey::zero(),
             as_account: Account::zero(),
-            node_id: Account::zero(),
+            node_id: NodeId::ZERO,
         };
 
         assert_eq!(deserialized, node_id_dto);

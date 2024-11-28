@@ -12,6 +12,7 @@ extern crate static_assertions;
 mod account;
 mod amount;
 mod block_hash;
+mod node_id;
 mod vote;
 
 pub use account::Account;
@@ -21,13 +22,14 @@ use blake2::{
     Blake2bVar,
 };
 pub use block_hash::{BlockHash, BlockHashBuilder};
+pub use node_id::NodeId;
 use rand::{thread_rng, Rng};
 use serde::de::{Unexpected, Visitor};
 pub use vote::*;
 
-mod key_pair;
-pub use key_pair::{
-    sign_message, validate_block_signature, validate_message, KeyPair, KeyPairFactory,
+mod private_key;
+pub use private_key::{
+    sign_message, validate_block_signature, validate_message, PrivateKey, PrivateKeyFactory,
 };
 
 mod raw_key;
@@ -117,7 +119,7 @@ serialize_32_byte_string!(WalletId);
 impl WalletId {
     pub fn random() -> Self {
         let secret: [u8; 32] = thread_rng().gen();
-        let keys = KeyPair::from_priv_key_bytes(&secret).unwrap();
+        let keys = PrivateKey::from_priv_key_bytes(&secret).unwrap();
         Self::from_bytes(*keys.public_key().as_bytes())
     }
 }
@@ -263,10 +265,6 @@ impl PublicKey {
     /// IV for Key encryption
     pub fn initialization_vector(&self) -> [u8; 16] {
         self.0[..16].try_into().unwrap()
-    }
-
-    pub fn to_node_id(&self) -> String {
-        Account::from(self).to_node_id()
     }
 
     pub fn as_account(&self) -> Account {

@@ -6,7 +6,7 @@ use crate::{
     ChannelId, ChannelInfo, ChannelMode, TrafficType,
 };
 use rand::{seq::SliceRandom, thread_rng};
-use rsnano_core::{utils::ContainerInfo, Networks, PublicKey};
+use rsnano_core::{utils::ContainerInfo, Networks, NodeId, PublicKey};
 use rsnano_nullable_clock::Timestamp;
 use std::{
     collections::HashMap,
@@ -191,13 +191,13 @@ impl NetworkInfo {
         self.channels.remove(&channel_id);
     }
 
-    pub fn set_node_id(&self, channel_id: ChannelId, node_id: PublicKey) {
+    pub fn set_node_id(&self, channel_id: ChannelId, node_id: NodeId) {
         if let Some(channel) = self.channels.get(&channel_id) {
             channel.set_node_id(node_id);
         }
     }
 
-    pub fn find_node_id(&self, node_id: &PublicKey) -> Option<&Arc<ChannelInfo>> {
+    pub fn find_node_id(&self, node_id: &NodeId) -> Option<&Arc<ChannelInfo>> {
         self.channels
             .values()
             .find(|c| c.node_id() == Some(*node_id) && c.is_alive())
@@ -599,7 +599,7 @@ impl NetworkInfo {
     pub fn upgrade_to_realtime_connection(
         &self,
         channel_id: ChannelId,
-        node_id: PublicKey,
+        node_id: NodeId,
     ) -> Option<(
         Arc<ChannelInfo>,
         Vec<Arc<dyn Fn(Arc<ChannelInfo>) + Send + Sync>>,
@@ -756,7 +756,7 @@ mod tests {
             .unwrap();
 
         assert!(network
-            .upgrade_to_realtime_connection(channel.channel_id(), PublicKey::from(456))
+            .upgrade_to_realtime_connection(channel.channel_id(), NodeId::from(456))
             .is_some());
         assert_eq!(network.list_realtime_channels(0).len(), 1);
     }
@@ -810,7 +810,7 @@ mod tests {
         channel.set_peering_addr(peering_addr);
         network.upgrade_to_realtime_connection(
             channel.channel_id(),
-            PublicKey::from(peering_addr.ip().to_bits()),
+            NodeId::from(peering_addr.ip().to_bits()),
         );
     }
 

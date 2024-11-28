@@ -4,7 +4,7 @@ use commands::{
     config::ConfigCommand, ledger::LedgerCommand, node::NodeCommand, utils::UtilsCommand,
     wallets::WalletsCommand,
 };
-use rsnano_core::{KeyPairFactory, Networks};
+use rsnano_core::{Networks, PrivateKeyFactory};
 use rsnano_node::{config::NetworkConstants, working_path};
 use rsnano_nullable_console::Console;
 use std::{path::PathBuf, str::FromStr};
@@ -58,14 +58,14 @@ pub(crate) fn get_path(path_str: &Option<String>, network_str: &Option<String>) 
 
 #[derive(Default)]
 pub(crate) struct CliInfrastructure {
-    pub key_factory: KeyPairFactory,
+    pub key_factory: PrivateKeyFactory,
     pub console: Console,
 }
 
 impl CliInfrastructure {
     pub fn new_null() -> Self {
         Self {
-            key_factory: KeyPairFactory::new_null(),
+            key_factory: PrivateKeyFactory::new_null(),
             console: Console::new_null(),
         }
     }

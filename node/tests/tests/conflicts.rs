@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, Block, BlockSideband, KeyPair, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, BlockSideband, PrivateKey, StateBlock, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
 use rsnano_node::block_processing::BlockSource;
@@ -11,7 +11,7 @@ use test_helpers::{
 fn start_stop() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -32,7 +32,7 @@ fn start_stop() {
 fn add_existing() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
 
     // create a send block to send all of the nano supply to key1
     let send1 = Block::State(StateBlock::new(
@@ -54,7 +54,7 @@ fn add_existing() {
     // wait for election to be started before processing send2
     assert_timely(Duration::from_secs(5), || node1.active.active(&send1));
 
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     let mut send2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -80,9 +80,9 @@ fn add_existing() {
 fn add_two() {
     let mut system = System::new();
     let node = system.make_node();
-    let key1 = KeyPair::new();
-    let key2 = KeyPair::new();
-    let key3 = KeyPair::new();
+    let key1 = PrivateKey::new();
+    let key2 = PrivateKey::new();
+    let key3 = PrivateKey::new();
     let gk = DEV_GENESIS_KEY.clone();
 
     // create 2 new accounts, that receive 1 raw each, all blocks are force confirmed

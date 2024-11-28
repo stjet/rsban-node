@@ -189,7 +189,7 @@ mod tests {
     use super::*;
     use rsnano_core::{
         work::{WorkPool, STUB_WORK_POOL},
-        Amount, Block, KeyPair, StateBlock, DEV_GENESIS_KEY,
+        Amount, Block, PrivateKey, StateBlock, DEV_GENESIS_KEY,
     };
     use rsnano_ledger::{LedgerContext, DEV_GENESIS_HASH};
 
@@ -202,10 +202,10 @@ mod tests {
         // 1 account with 21 pendings
         // 2 accounts with 1 pending each
         let mut blocks = Vec::new();
-        let key1 = KeyPair::new();
-        let key2 = KeyPair::new();
-        let key3 = KeyPair::new();
-        let key4 = KeyPair::new();
+        let key1 = PrivateKey::new();
+        let key2 = PrivateKey::new();
+        let key3 = PrivateKey::new();
+        let key4 = PrivateKey::new();
         {
             let source = &DEV_GENESIS_KEY;
             let mut latest = *DEV_GENESIS_HASH;
@@ -331,7 +331,7 @@ mod tests {
             let mut balance = Amount::MAX;
 
             for _ in 0..COUNT {
-                let key = KeyPair::new();
+                let key = PrivateKey::new();
                 let send = Block::State(StateBlock::new(
                     source.account(),
                     latest,

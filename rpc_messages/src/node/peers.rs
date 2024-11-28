@@ -50,7 +50,6 @@ pub struct DetailedPeers {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::Account;
     use serde_json;
     use std::net::Ipv6Addr;
 
@@ -79,11 +78,8 @@ mod tests {
             "[::ffff:172.17.0.1]:7075".parse().unwrap(),
             PeerInfo {
                 protocol_version: 18.into(),
-                node_id: Account::decode_account(
-                    "nano_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3",
-                )
-                .unwrap()
-                .to_node_id(),
+                node_id: "node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3"
+                    .to_string(),
                 connection_type: "tcp".to_string(),
                 peering: SocketAddrV6::new(Ipv6Addr::LOCALHOST, 111, 0, 0),
             },
@@ -111,11 +107,7 @@ mod tests {
         assert_eq!(peer_info.protocol_version, 18.into());
         assert_eq!(
             peer_info.node_id,
-            Account::decode_account(
-                "nano_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3"
-            )
-            .unwrap()
-            .to_node_id()
+            "node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3"
         );
         assert_eq!(peer_info.connection_type, "tcp");
     }

@@ -1,5 +1,5 @@
 use rsnano_core::{
-    Account, Amount, Block, KeyPair, Networks, Root, StateBlock, Vote, DEV_GENESIS_KEY,
+    Account, Amount, Block, Networks, PrivateKey, Root, StateBlock, Vote, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{
@@ -12,7 +12,6 @@ use rsnano_node::{
     consensus::VoteProcessorConfig,
     stats::{DetailType, Direction, StatType},
     wallets::WalletsExt,
-    Node,
 };
 use std::{ops::Deref, sync::Arc, thread::sleep, time::Duration};
 use test_helpers::{
@@ -52,7 +51,7 @@ fn last_contacted() {
         .network_info
         .read()
         .unwrap()
-        .find_node_id(&node1.node_id.public_key())
+        .find_node_id(&node1.node_id())
         .unwrap()
         .clone();
 
@@ -174,7 +173,7 @@ fn receivable_processor_confirm_insufficient_pos() {
     node1.process(send1.clone()).unwrap();
     let election = start_election(&node1, &send1.hash());
 
-    let key1 = KeyPair::new();
+    let key1 = PrivateKey::new();
     let vote = Arc::new(Vote::new_final(&key1, vec![send1.hash()]));
     let channel = make_fake_channel(&node1);
     let con1 = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(
@@ -234,7 +233,7 @@ fn send_valid_confirm_ack() {
     let mut system = System::new();
     let node1 = system.make_node();
     let node2 = system.make_node();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     node1.insert_into_wallet(&DEV_GENESIS_KEY);
     node2.insert_into_wallet(&key2);
     let block2 = Block::State(StateBlock::new(
@@ -263,7 +262,7 @@ fn send_valid_publish() {
     node1.bootstrap_initiator.stop();
     node2.bootstrap_initiator.stop();
     node1.insert_into_wallet(&DEV_GENESIS_KEY);
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     node2.insert_into_wallet(&key2);
     let block2 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -295,7 +294,7 @@ fn send_with_receive() {
     let mut system = System::new();
     let node1 = system.make_node();
     let node2 = system.make_node();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     node1.insert_into_wallet(&DEV_GENESIS_KEY);
     let block1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
@@ -327,7 +326,7 @@ fn receive_weight_change() {
     let mut system = System::new();
     let node1 = system.make_node();
     let node2 = system.make_node();
-    let key2 = KeyPair::new();
+    let key2 = PrivateKey::new();
     node1.insert_into_wallet(&DEV_GENESIS_KEY);
     node2.insert_into_wallet(&key2);
     node2
@@ -372,7 +371,7 @@ fn duplicate_vote_detection() {
         .network_info
         .read()
         .unwrap()
-        .find_node_id(&node1.node_id.public_key())
+        .find_node_id(&node1.node_id())
         .unwrap()
         .channel_id();
 
@@ -452,7 +451,7 @@ fn duplicate_revert_vote() {
         .network_info
         .read()
         .unwrap()
-        .find_node_id(&node1.node_id.public_key())
+        .find_node_id(&node1.node_id())
         .unwrap()
         .channel_id();
 
@@ -529,7 +528,7 @@ fn expire_duplicate_filter() {
         .network_info
         .read()
         .unwrap()
-        .find_node_id(&node1.node_id.public_key())
+        .find_node_id(&node1.node_id())
         .unwrap()
         .channel_id();
 

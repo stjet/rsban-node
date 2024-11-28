@@ -1,14 +1,14 @@
 use crate::{
     work::{WorkPool, STUB_WORK_POOL},
-    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair,
-    OpenBlock, PublicKey,
+    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, OpenBlock,
+    PrivateKey, PublicKey,
 };
 
 pub struct LegacyOpenBlockBuilder {
     account: Option<Account>,
     representative: Option<PublicKey>,
     source: Option<BlockHash>,
-    keypair: Option<KeyPair>,
+    prv_key: Option<PrivateKey>,
     work: Option<u64>,
     build_sideband: bool,
     height: Option<u64>,
@@ -20,7 +20,7 @@ impl LegacyOpenBlockBuilder {
             account: None,
             representative: None,
             source: None,
-            keypair: None,
+            prv_key: None,
             work: None,
             build_sideband: false,
             height: None,
@@ -42,8 +42,8 @@ impl LegacyOpenBlockBuilder {
         self
     }
 
-    pub fn sign(mut self, keypair: &KeyPair) -> Self {
-        self.keypair = Some(keypair.clone());
+    pub fn sign(mut self, prv_key: &PrivateKey) -> Self {
+        self.prv_key = Some(prv_key.clone());
         self
     }
 
@@ -64,20 +64,14 @@ impl LegacyOpenBlockBuilder {
 
     pub fn build(self) -> Block {
         let source = self.source.unwrap_or(BlockHash::from(1));
-        let key_pair = self.keypair.unwrap_or_default();
-        let account = self.account.unwrap_or_else(|| key_pair.account());
+        let prv_key = self.prv_key.unwrap_or_default();
+        let account = self.account.unwrap_or_else(|| prv_key.account());
         let representative = self.representative.unwrap_or(PublicKey::from(2));
         let work = self
             .work
             .unwrap_or_else(|| STUB_WORK_POOL.generate_dev2(account.into()).unwrap());
 
-        let mut block = OpenBlock::new(
-            source,
-            representative,
-            account,
-            &key_pair.private_key(),
-            work,
-        );
+        let mut block = OpenBlock::new(source, representative, account, &prv_key, work);
 
         let details = BlockDetails {
             epoch: Epoch::Epoch0,

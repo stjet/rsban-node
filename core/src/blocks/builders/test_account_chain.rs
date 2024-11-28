@@ -1,12 +1,12 @@
 use crate::{
     epoch_v1_link, epoch_v2_link, Account, AccountInfo, Amount, Block, BlockBuilder, BlockDetails,
-    BlockHash, BlockSideband, Epoch, KeyPair, LegacyChangeBlockBuilder, LegacyOpenBlockBuilder,
-    LegacyReceiveBlockBuilder, LegacySendBlockBuilder, PublicKey, StateBlockBuilder,
+    BlockHash, BlockSideband, Epoch, LegacyChangeBlockBuilder, LegacyOpenBlockBuilder,
+    LegacyReceiveBlockBuilder, LegacySendBlockBuilder, PrivateKey, PublicKey, StateBlockBuilder,
     DEV_GENESIS_KEY,
 };
 
 pub struct TestAccountChain {
-    keypair: KeyPair,
+    keypair: PrivateKey,
     account: Account,
     balance: Amount,
     representative: PublicKey,
@@ -16,7 +16,7 @@ pub struct TestAccountChain {
 
 impl TestAccountChain {
     pub fn new() -> Self {
-        Self::with_keys(KeyPair::new())
+        Self::with_keys(PrivateKey::new())
     }
 
     pub fn genesis() -> Self {
@@ -52,7 +52,7 @@ impl TestAccountChain {
         );
     }
 
-    pub fn with_keys(keypair: KeyPair) -> Self {
+    pub fn with_keys(keypair: PrivateKey) -> Self {
         Self {
             account: keypair.account(),
             balance: Amount::zero(),

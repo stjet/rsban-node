@@ -12,5 +12,5 @@ fn available_supply() {
         .runtime
         .block_on(async { server.client.available_supply().await.unwrap() });
 
-    assert_eq!(result.available, Amount::MAX);
+    assert_eq!(result.available, Amount::zero());
 }

@@ -3,7 +3,7 @@ use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use generate_config::GenerateConfigArgs;
 use initialize::InitializeArgs;
-use rsnano_core::{Account, Amount, BlockHash, RawKey, SendBlock};
+use rsnano_core::{Account, Amount, BlockHash, PrivateKey, RawKey, SendBlock};
 use rsnano_node::{wallets::Wallets, BUILD_INFO, VERSION_STRING};
 use rsnano_store_lmdb::LmdbEnv;
 use run_daemon::RunDaemonArgs;
@@ -68,7 +68,7 @@ impl NodeCommand {
             &BlockHash::zero(),
             &Account::zero(),
             &Amount::zero(),
-            &RawKey::zero(),
+            &PrivateKey::zero(),
             0,
         );
 

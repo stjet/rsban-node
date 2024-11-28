@@ -1,13 +1,13 @@
 use crate::{
     work::{WorkPool, STUB_WORK_POOL},
-    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair,
+    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, PrivateKey,
     ReceiveBlock,
 };
 
 pub struct LegacyReceiveBlockBuilder {
     previous: Option<BlockHash>,
     source: Option<BlockHash>,
-    key_pair: Option<KeyPair>,
+    key_pair: Option<PrivateKey>,
     work: Option<u64>,
     build_sideband: bool,
 }
@@ -33,7 +33,7 @@ impl LegacyReceiveBlockBuilder {
         self
     }
 
-    pub fn sign(mut self, key_pair: &KeyPair) -> Self {
+    pub fn sign(mut self, key_pair: &PrivateKey) -> Self {
         self.key_pair = Some(key_pair.clone());
         self
     }
@@ -56,7 +56,7 @@ impl LegacyReceiveBlockBuilder {
             .work
             .unwrap_or_else(|| STUB_WORK_POOL.generate_dev2(previous.into()).unwrap());
 
-        let mut block = ReceiveBlock::new(previous, source, &key_pair.private_key(), work);
+        let mut block = ReceiveBlock::new(previous, source, &key_pair, work);
 
         let details = BlockDetails {
             epoch: Epoch::Epoch0,

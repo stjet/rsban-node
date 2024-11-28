@@ -95,14 +95,14 @@ impl BlockCreateResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{BlockBase, KeyPair, RawKey, StateBlock};
+    use rsnano_core::{BlockBase, PrivateKey, RawKey, StateBlock};
     use serde_json::json;
 
     #[test]
     fn serialize_block_create_command() {
         // Create a test StateBlock instance
         let state_block = StateBlock::new_test_instance();
-        let key_pair = KeyPair::new();
+        let key_pair = PrivateKey::new();
         let raw_key = RawKey::from(key_pair.private_key());
 
         // Create BlockCreateArgs using the test StateBlock data
@@ -156,7 +156,7 @@ mod tests {
     fn deserialize_block_create_command() {
         // Create a test StateBlock instance
         let state_block = StateBlock::new_test_instance();
-        let key_pair = KeyPair::new();
+        let key_pair = PrivateKey::new();
         let raw_key = RawKey::from(key_pair.private_key());
 
         // Create JSON representation

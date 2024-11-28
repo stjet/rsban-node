@@ -1,5 +1,5 @@
 use crate::{RpcBool, RpcCommand, RpcU16, RpcU32, RpcU64, RpcU8};
-use rsnano_core::{to_hex_string, BlockHash, PublicKey, Signature};
+use rsnano_core::{to_hex_string, BlockHash, NodeId, Signature};
 use rsnano_messages::TelemetryData;
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 use std::net::{Ipv6Addr, SocketAddrV6};
@@ -75,7 +75,7 @@ pub struct TelemetryDto {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signature: Option<Signature>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub node_id: Option<PublicKey>,
+    pub node_id: Option<NodeId>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<Ipv6Addr>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -159,14 +159,14 @@ impl<'de> Deserialize<'de> for TelemetryResponose {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{to_hex_string, BlockHash, PublicKey, Signature};
+    use rsnano_core::{to_hex_string, BlockHash, Signature};
     use rsnano_messages::TelemetryData;
     use std::time::UNIX_EPOCH;
 
     fn create_test_telemetry_data() -> TelemetryData {
         TelemetryData {
             signature: Signature::new(),
-            node_id: PublicKey::zero(),
+            node_id: NodeId::ZERO,
             block_count: 1000,
             cemented_count: 900,
             unchecked_count: 100,

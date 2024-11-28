@@ -1,5 +1,5 @@
 use rsnano_core::{
-    AccountInfo, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, KeyPair, PendingKey,
+    AccountInfo, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, PendingKey, PrivateKey,
 };
 
 use crate::{block_insertion::validation::tests::BlockValidationTest, BlockStatus};
@@ -74,6 +74,11 @@ fn fail_with_gap_source_if_source_not_found() {
 fn fail_if_signature_is_bad() {
     BlockValidationTest::for_unopened_account()
         .with_pending_receive(Amount::raw(10), Epoch::Epoch0)
-        .block_to_validate(|chain| chain.new_legacy_open_block().sign(&KeyPair::new()).build())
+        .block_to_validate(|chain| {
+            chain
+                .new_legacy_open_block()
+                .sign(&PrivateKey::new())
+                .build()
+        })
         .assert_validation_fails_with(BlockStatus::BadSignature);
 }

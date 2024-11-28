@@ -1,11 +1,11 @@
-use rsnano_core::{Amount, Block, BlockHash, KeyPair, StateBlock, WalletId, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, WalletId, DEV_GENESIS_KEY};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
 use rsnano_rpc_messages::WalletLedgerArgs;
 use std::sync::Arc;
 use test_helpers::{setup_rpc_client_and_server, System};
 
-fn setup_test_environment(node: Arc<Node>, keys: KeyPair, send_amount: Amount) -> BlockHash {
+fn setup_test_environment(node: Arc<Node>, keys: PrivateKey, send_amount: Amount) -> BlockHash {
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,
@@ -37,7 +37,7 @@ fn setup_test_environment(node: Arc<Node>, keys: KeyPair, send_amount: Amount) -
 fn wallet_ledger() {
     let mut system = System::new();
     let node = system.build_node().finish();
-    let keys = KeyPair::new();
+    let keys = PrivateKey::new();
     let send_amount = Amount::from(100);
     let open_hash = setup_test_environment(node.clone(), keys.clone(), send_amount);
 

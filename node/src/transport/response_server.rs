@@ -14,7 +14,7 @@ use crate::{
     NetworkParams,
 };
 use async_trait::async_trait;
-use rsnano_core::{KeyPair, PublicKey};
+use rsnano_core::{NodeId, PrivateKey};
 use rsnano_ledger::Ledger;
 use rsnano_messages::*;
 use rsnano_network::{Channel, ChannelMode, ChannelReader, NetworkInfo};
@@ -102,7 +102,7 @@ impl ResponseServer {
         stats: Arc<Stats>,
         allow_bootstrap: bool,
         syn_cookies: Arc<SynCookies>,
-        node_id: KeyPair,
+        node_id: PrivateKey,
         tokio: tokio::runtime::Handle,
         ledger: Arc<Ledger>,
         workers: Arc<dyn ThreadPool>,
@@ -266,7 +266,7 @@ pub trait BootstrapMessageVisitor: MessageVisitor {
 
 #[async_trait]
 pub trait ResponseServerExt {
-    fn to_realtime_connection(&self, node_id: &PublicKey) -> bool;
+    fn to_realtime_connection(&self, node_id: &NodeId) -> bool;
     async fn run(&self);
     async fn process_message(&self, message: Message) -> ProcessResult;
     fn process_realtime(&self, message: Message) -> ProcessResult;
@@ -281,7 +281,7 @@ pub enum ProcessResult {
 
 #[async_trait]
 impl ResponseServerExt for Arc<ResponseServer> {
-    fn to_realtime_connection(&self, node_id: &PublicKey) -> bool {
+    fn to_realtime_connection(&self, node_id: &NodeId) -> bool {
         if self.channel.info.mode() != ChannelMode::Undefined {
             return false;
         }
@@ -303,14 +303,14 @@ impl ResponseServerExt for Arc<ResponseServer> {
             debug!(
                 "Switched to realtime mode (addr: {}, node_id: {})",
                 self.channel.info.peer_addr(),
-                node_id.to_node_id()
+                node_id
             );
             true
         } else {
             debug!(
                 channel_id = ?self.channel.channel_id(),
                 peer = %self.channel.info.peer_addr(),
-                node_id = node_id.to_node_id(),
+                %node_id,
                 "Could not upgrade channel to realtime connection, because another channel for the same node ID was found",
             );
             false

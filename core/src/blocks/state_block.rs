@@ -2,7 +2,7 @@ use super::{BlockBase, BlockSideband, BlockType};
 use crate::{
     sign_message, to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, KeyPair, LazyBlockHash, Link,
+    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, LazyBlockHash, Link, PrivateKey,
     PublicKey, RawKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
@@ -61,7 +61,7 @@ impl StateBlock {
         representative: PublicKey,
         balance: Amount,
         link: Link,
-        keys: &KeyPair,
+        keys: &PrivateKey,
         work: u64,
     ) -> Self {
         Self::new_obsolete(
@@ -105,7 +105,7 @@ impl StateBlock {
         }
     }
 
-    pub fn new_test_instance_with_key(key: KeyPair) -> Self {
+    pub fn new_test_instance_with_key(key: PrivateKey) -> Self {
         Self::new(
             key.account(),
             BlockHash::from(456),
@@ -118,7 +118,7 @@ impl StateBlock {
     }
 
     pub fn new_test_instance() -> Self {
-        let key = KeyPair::from(42);
+        let key = PrivateKey::from(42);
         Self::new_test_instance_with_key(key)
     }
 

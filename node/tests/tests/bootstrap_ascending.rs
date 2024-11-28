@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use rsnano_core::{
     work::{WorkPool, WorkPoolImpl},
-    Amount, Block, BlockHash, KeyPair, StateBlock, DEV_GENESIS_KEY,
+    Amount, Block, BlockHash, PrivateKey, StateBlock, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use test_helpers::{assert_timely, System};
@@ -69,7 +69,7 @@ fn account_inductive() {
 fn trace_base() {
     let mut system = System::new();
     let node0 = system.make_node();
-    let key = KeyPair::new();
+    let key = PrivateKey::new();
     let send1 = Block::State(StateBlock::new(
         *DEV_GENESIS_ACCOUNT,
         *DEV_GENESIS_HASH,

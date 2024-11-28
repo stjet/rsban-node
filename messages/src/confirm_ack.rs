@@ -120,11 +120,11 @@ impl Display for ConfirmAck {
 mod tests {
     use super::*;
     use crate::{assert_deserializable, Message};
-    use rsnano_core::{utils::MemoryStream, BlockHash, KeyPair};
+    use rsnano_core::{utils::MemoryStream, BlockHash, PrivateKey};
 
     #[test]
     fn serialize_v1() {
-        let keys = KeyPair::new();
+        let keys = PrivateKey::new();
         let hashes = vec![BlockHash::from(1)];
         let vote = Vote::new(&keys, 0, 0, hashes);
         let confirm = Message::ConfirmAck(ConfirmAck::new_with_own_vote(vote));
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn serialize_v2() {
-        let keys = KeyPair::new();
+        let keys = PrivateKey::new();
         let mut hashes = Vec::new();
         for i in 0..ConfirmAck::HASHES_MAX {
             hashes.push(BlockHash::from(i as u64))
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn panics_when_vote_contains_too_many_hashes() {
-        let keys = KeyPair::new();
+        let keys = PrivateKey::new();
         let hashes = vec![BlockHash::from(1); 256];
         let vote = Vote::new(&keys, 0, 0, hashes);
         Message::ConfirmAck(ConfirmAck::new_with_own_vote(vote));

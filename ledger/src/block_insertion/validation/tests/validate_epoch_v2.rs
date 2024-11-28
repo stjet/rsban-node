@@ -1,6 +1,6 @@
 use super::BlockValidationTest;
 use crate::BlockStatus;
-use rsnano_core::{epoch_v2_link, Amount, Epoch, KeyPair};
+use rsnano_core::{epoch_v2_link, Amount, Epoch, PrivateKey};
 
 #[test]
 fn fails_if_directly_upgrading_from_epoch_0_to_epoch_2() {
@@ -78,7 +78,7 @@ fn fails_with_bad_signature_if_signature_is_invalid() {
             chain
                 .new_epoch1_block()
                 .link(epoch_v2_link())
-                .sign(&KeyPair::new())
+                .sign(&PrivateKey::new())
                 .build()
         })
         .assert_validation_fails_with(BlockStatus::BadSignature);

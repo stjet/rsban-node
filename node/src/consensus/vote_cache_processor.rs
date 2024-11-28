@@ -1,6 +1,6 @@
 use super::{VoteCache, VoteProcessorConfig, VoteRouter};
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::{utils::ContainerInfos, BlockHash, VoteSource};
+use rsnano_core::{utils::ContainerInfo, BlockHash, VoteSource};
 use std::{
     collections::{HashSet, VecDeque},
     sync::{Arc, Condvar, Mutex, MutexGuard},
@@ -90,7 +90,7 @@ impl VoteCacheProcessor {
         self.state.lock().unwrap().triggered.len()
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         [("triggered", self.len(), std::mem::size_of::<BlockHash>())].into()
     }
 }

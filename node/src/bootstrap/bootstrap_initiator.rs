@@ -14,7 +14,7 @@ use crate::{
     NetworkParams,
 };
 use rsnano_core::{
-    utils::ContainerInfos, work::WorkThresholds, Account, Amount, HashOrAccount, Networks,
+    utils::ContainerInfo, work::WorkThresholds, Account, Amount, HashOrAccount, Networks,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::ProtocolInfo;
@@ -236,7 +236,7 @@ impl BootstrapInitiator {
         self.cache.lock().unwrap().remove(pull);
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let cache_count = self.cache.lock().unwrap().size();
         [("pulls_cache", cache_count, PullsCache::ELEMENT_SIZE)].into()
     }

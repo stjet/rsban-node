@@ -23,7 +23,7 @@ impl Leaf {
 
 pub struct Node {
     pub name: String,
-    pub children: ContainerInfos,
+    pub children: ContainerInfo,
 }
 
 impl Node {
@@ -51,9 +51,9 @@ impl ContainerInfoEntry {
     }
 }
 
-pub struct ContainerInfos(Vec<ContainerInfoEntry>);
+pub struct ContainerInfo(Vec<ContainerInfoEntry>);
 
-impl ContainerInfos {
+impl ContainerInfo {
     pub fn builder() -> ContainerInfosBuilder {
         ContainerInfosBuilder(Vec::new())
     }
@@ -82,21 +82,21 @@ impl ContainerInfosBuilder {
         self
     }
 
-    pub fn node(mut self, name: impl Into<String>, infos: ContainerInfos) -> Self {
+    pub fn node(mut self, name: impl Into<String>, infos: ContainerInfo) -> Self {
         self.0.push(ContainerInfoEntry::Node(Node {
             name: name.into(),
             children: infos,
         }));
         self
     }
-    pub fn finish(self) -> ContainerInfos {
-        ContainerInfos(self.0)
+    pub fn finish(self) -> ContainerInfo {
+        ContainerInfo(self.0)
     }
 }
 
-impl<const N: usize> From<[(&'static str, usize, usize); N]> for ContainerInfos {
+impl<const N: usize> From<[(&'static str, usize, usize); N]> for ContainerInfo {
     fn from(value: [(&'static str, usize, usize); N]) -> Self {
-        let mut builder = ContainerInfos::builder();
+        let mut builder = ContainerInfo::builder();
         for (name, count, element_size) in value {
             builder = builder.leaf(name, count, element_size);
         }

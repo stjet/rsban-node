@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::Result;
 use rand::Rng;
-use rsnano_core::{utils::ContainerInfos, validate_message, Account, Signature};
+use rsnano_core::{utils::ContainerInfo, validate_message, Account, Signature};
 use rsnano_messages::Cookie;
 
 /// Node ID cookies for node ID handshakes
@@ -118,7 +118,7 @@ impl SynCookies {
         std::mem::size_of::<usize>()
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         [
             (
                 "syn_cookies",

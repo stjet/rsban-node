@@ -5,7 +5,7 @@ use crate::{
     representatives::OnlineReps,
     stats::{DetailType, StatType, Stats},
 };
-use rsnano_core::{utils::ContainerInfos, Amount, BlockHash};
+use rsnano_core::{utils::ContainerInfo, Amount, BlockHash};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
@@ -112,7 +112,7 @@ impl HintedScheduler {
         }
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.cooldowns.lock().unwrap();
         [(
             "cooldowns",

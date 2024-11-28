@@ -3,7 +3,7 @@ use std::{
     sync::Mutex,
 };
 
-use rsnano_core::{utils::ContainerInfos, BlockHash, QualifiedRoot};
+use rsnano_core::{utils::ContainerInfo, BlockHash, QualifiedRoot};
 
 pub struct RecentlyConfirmedCache {
     mutex: Mutex<RecentlyConfirmedCacheImpl>,
@@ -75,7 +75,7 @@ impl RecentlyConfirmedCache {
             .map(|hash| (guard.by_hash.get(hash).unwrap().clone(), *hash))
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         [(
             "confirmed",
             self.len(),

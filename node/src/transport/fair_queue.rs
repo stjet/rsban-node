@@ -1,4 +1,4 @@
-use rsnano_core::utils::ContainerInfos;
+use rsnano_core::utils::ContainerInfo;
 use std::{
     cmp::min,
     collections::{BTreeMap, HashMap, VecDeque},
@@ -178,7 +178,7 @@ where
         }
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         [
             (
                 "queues",

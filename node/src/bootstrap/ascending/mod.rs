@@ -26,7 +26,7 @@ use ordered_tags::QuerySource;
 use priority::Priority;
 use rand::{thread_rng, RngCore};
 use rsnano_core::{
-    utils::ContainerInfos, Account, AccountInfo, Block, BlockHash, BlockType, HashOrAccount,
+    utils::ContainerInfo, Account, AccountInfo, Block, BlockHash, BlockType, HashOrAccount,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{
@@ -672,7 +672,7 @@ impl BootstrapAscending {
         self.condition.notify_all();
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         self.mutex.lock().unwrap().container_info()
     }
 }
@@ -1000,8 +1000,8 @@ impl BootstrapAscendingLogic {
         }
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
-        ContainerInfos::builder()
+    pub fn container_info(&self) -> ContainerInfo {
+        ContainerInfo::builder()
             .leaf("tags", self.tags.len(), OrderedTags::ELEMENT_SIZE)
             .leaf("throttle", self.throttle.len(), 0)
             .leaf("throttle_success", self.throttle.successes(), 0)

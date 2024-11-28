@@ -1,4 +1,4 @@
-use rsnano_core::utils::ContainerInfos;
+use rsnano_core::utils::ContainerInfo;
 use rsnano_nullable_clock::Timestamp;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -113,7 +113,7 @@ impl PeerExclusion {
         self.by_ip.insert(*peer.address.ip(), peer.clone());
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         [("peers", self.by_ip.len(), size_of::<Peer>())].into()
     }
 }

@@ -18,7 +18,7 @@ use crate::{
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
-    utils::{ContainerInfos, MemoryStream},
+    utils::{ContainerInfo, MemoryStream},
     Account, Amount, Block, BlockHash, BlockType, QualifiedRoot, Vote, VoteWithWeightInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
@@ -945,17 +945,17 @@ impl ActiveElections {
         self.vote_applier.remove_election_winner_details(hash);
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.mutex.lock().unwrap();
 
-        let recently_cemented: ContainerInfos = [(
+        let recently_cemented: ContainerInfo = [(
             "cemented",
             self.recently_cemented.lock().unwrap().len(),
             size_of::<ElectionStatus>(),
         )]
         .into();
 
-        ContainerInfos::builder()
+        ContainerInfo::builder()
             .leaf("roots", guard.roots.len(), OrderedRoots::ELEMENT_SIZE)
             .leaf(
                 "normal",

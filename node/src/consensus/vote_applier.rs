@@ -15,7 +15,7 @@ use super::{
     LocalVoteHistory, RecentlyConfirmedCache, TallyKey, VoteGenerators,
 };
 use rsnano_core::{
-    utils::ContainerInfos, Amount, Block, BlockHash, PublicKey, VoteCode, VoteSource,
+    utils::ContainerInfo, Amount, Block, BlockHash, PublicKey, VoteCode, VoteSource,
 };
 use rsnano_ledger::Ledger;
 use std::{
@@ -186,7 +186,7 @@ impl VoteApplier {
         }
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         [(
             "election_winner_details",
             self.election_winner_details.lock().unwrap().len(),

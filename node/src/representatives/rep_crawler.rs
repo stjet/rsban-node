@@ -8,7 +8,7 @@ use crate::{
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
-    utils::{ContainerInfos, Peer, NULL_ENDPOINT},
+    utils::{ContainerInfo, Peer, NULL_ENDPOINT},
     Account, BlockHash, Root, Vote,
 };
 use rsnano_ledger::Ledger;
@@ -455,7 +455,7 @@ impl RepCrawler {
         });
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.rep_crawler_impl.lock().unwrap();
         [
             ("queries", guard.queries.len(), OrderedQueries::ELEMENT_SIZE),

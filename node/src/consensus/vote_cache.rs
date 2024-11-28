@@ -2,7 +2,7 @@ use super::TallyKey;
 use crate::stats::{DetailType, StatType, Stats};
 #[cfg(test)]
 use mock_instant::thread_local::Instant;
-use rsnano_core::{utils::ContainerInfos, Amount, BlockHash, PublicKey, Vote, VoteCode};
+use rsnano_core::{utils::ContainerInfo, Amount, BlockHash, PublicKey, Vote, VoteCode};
 #[cfg(not(test))]
 use std::time::Instant;
 use std::{
@@ -178,7 +178,7 @@ impl VoteCache {
         }
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         [("cache", self.size(), size_of::<CacheEntry>())].into()
     }
 }

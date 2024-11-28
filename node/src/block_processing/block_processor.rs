@@ -4,7 +4,7 @@ use crate::{
     transport::{FairQueue, FairQueueInfo},
 };
 use rsnano_core::{
-    utils::ContainerInfos, work::WorkThresholds, Block, BlockType, Epoch, HashOrAccount, Networks,
+    utils::ContainerInfo, work::WorkThresholds, Block, BlockType, Epoch, HashOrAccount, Networks,
     UncheckedInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
@@ -318,7 +318,7 @@ impl BlockProcessor {
         self.processor_loop.info()
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         self.processor_loop.container_info()
     }
 }
@@ -712,9 +712,9 @@ impl BlockProcessorLoop {
         guard.info()
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.mutex.lock().unwrap();
-        ContainerInfos::builder()
+        ContainerInfo::builder()
             .leaf("blocks", guard.queue.len(), size_of::<Arc<Block>>())
             .leaf(
                 "forced",

@@ -7,7 +7,7 @@ use crate::{
     wallets::Wallets,
 };
 use rsnano_core::{
-    utils::{milliseconds_since_epoch, ContainerInfos},
+    utils::{milliseconds_since_epoch, ContainerInfo},
     Block, BlockHash, Root, Vote,
 };
 use rsnano_ledger::{Ledger, Writer};
@@ -142,7 +142,7 @@ impl VoteGenerator {
         result
     }
 
-    pub(crate) fn container_info(&self) -> ContainerInfos {
+    pub(crate) fn container_info(&self) -> ContainerInfo {
         let candidates_count;
         let requests_count;
         {

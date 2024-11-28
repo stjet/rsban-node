@@ -4,7 +4,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::MessagePublisher,
 };
-use rsnano_core::{utils::ContainerInfos, Block, BlockHash, Networks};
+use rsnano_core::{utils::ContainerInfo, Block, BlockHash, Networks};
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
 use rsnano_network::{bandwidth_limiter::RateLimiter, DropPolicy, TrafficType};
@@ -243,7 +243,7 @@ impl LocalBlockBroadcaster {
         data
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.mutex.lock().unwrap();
         [(
             "local",

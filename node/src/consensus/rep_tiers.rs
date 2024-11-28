@@ -3,7 +3,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     NetworkParams,
 };
-use rsnano_core::{utils::ContainerInfos, Account, PublicKey};
+use rsnano_core::{utils::ContainerInfo, Account, PublicKey};
 use rsnano_ledger::RepWeightCache;
 use std::{
     collections::HashSet,
@@ -112,7 +112,7 @@ impl RepTiers {
         }
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let tiers = self.rep_tiers_impl.tiers.lock().unwrap();
         [
             (

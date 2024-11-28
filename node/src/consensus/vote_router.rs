@@ -1,6 +1,6 @@
 use super::{Election, RecentlyConfirmedCache, VoteApplier, VoteCache};
 use crate::consensus::VoteApplierExt;
-use rsnano_core::{utils::ContainerInfos, BlockHash, Vote, VoteCode, VoteSource};
+use rsnano_core::{utils::ContainerInfo, BlockHash, Vote, VoteCode, VoteSource};
 use rsnano_ledger::RepWeightCache;
 use std::{
     collections::HashMap,
@@ -206,7 +206,7 @@ impl VoteRouter {
         }
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.shared.1.lock().unwrap();
         [(
             "elections",

@@ -1,7 +1,7 @@
 use super::{ActiveElections, Bucket, BucketExt, PriorityBucketConfig};
 use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{
-    utils::ContainerInfos, Account, AccountInfo, Amount, Block, ConfirmationHeightInfo,
+    utils::ContainerInfo, Account, AccountInfo, Amount, Block, ConfirmationHeightInfo,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
@@ -247,16 +247,16 @@ impl PriorityScheduler {
         }
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
-        let mut bucket_infos = ContainerInfos::builder();
-        let mut election_infos = ContainerInfos::builder();
+    pub fn container_info(&self) -> ContainerInfo {
+        let mut bucket_infos = ContainerInfo::builder();
+        let mut election_infos = ContainerInfo::builder();
 
         for (id, bucket) in self.buckets.iter().enumerate() {
             bucket_infos = bucket_infos.leaf(id.to_string(), bucket.len(), 0);
             election_infos = election_infos.leaf(id.to_string(), bucket.election_count(), 0);
         }
 
-        ContainerInfos::builder()
+        ContainerInfo::builder()
             .node("blocks", bucket_infos.finish())
             .node("elections", election_infos.finish())
             .finish()

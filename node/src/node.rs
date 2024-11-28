@@ -41,7 +41,7 @@ use crate::{
     BUILD_INFO, VERSION_STRING,
 };
 use rsnano_core::{
-    utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfos, SerdePropertyTree},
+    utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo, SerdePropertyTree},
     work::{WorkPool, WorkPoolImpl},
     Account, Amount, Block, BlockHash, BlockType, KeyPair, Networks, PublicKey, Root, VoteCode,
     VoteSource,
@@ -1133,17 +1133,17 @@ impl Node {
         }
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let tcp_channels = self.network_info.read().unwrap().container_info();
         let online_reps = self.online_reps.lock().unwrap().container_info();
         let vote_cache = self.vote_cache.lock().unwrap().container_info();
 
-        let network = ContainerInfos::builder()
+        let network = ContainerInfo::builder()
             .node("tcp_channels", tcp_channels)
             .node("syn_cookies", self.syn_cookies.container_info())
             .finish();
 
-        ContainerInfos::builder()
+        ContainerInfo::builder()
             .node("work", self.work.container_info())
             .node("ledger", self.ledger.container_info())
             .node("active", self.active.container_info())

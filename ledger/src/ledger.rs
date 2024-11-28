@@ -8,7 +8,7 @@ use crate::{
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::{seconds_since_epoch, ContainerInfos},
+    utils::{seconds_since_epoch, ContainerInfo},
     Account, AccountInfo, Amount, Block, BlockHash, BlockSubType, ConfirmationHeightInfo,
     DependentBlocks, Epoch, Link, PendingInfo, PendingKey, PublicKey, Root,
 };
@@ -654,8 +654,8 @@ impl Ledger {
         self.store.cache.pruned_count.load(Ordering::SeqCst)
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
-        ContainerInfos::builder()
+    pub fn container_info(&self) -> ContainerInfo {
+        ContainerInfo::builder()
             .node("rep_weights", self.rep_weights.container_info())
             .finish()
     }

@@ -3,7 +3,7 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     transport::{FairQueue, FairQueueInfo},
 };
-use rsnano_core::{utils::ContainerInfos, Vote, VoteSource};
+use rsnano_core::{utils::ContainerInfo, Vote, VoteSource};
 use rsnano_network::{ChannelId, DeadChannelCleanupStep};
 use std::{
     collections::VecDeque,
@@ -118,9 +118,9 @@ impl VoteProcessorQueue {
             .compacted_info(|(tier, _)| *tier)
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.data.lock().unwrap();
-        ContainerInfos::builder()
+        ContainerInfo::builder()
             .leaf(
                 "votes",
                 guard.queue.len(),

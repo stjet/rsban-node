@@ -3,7 +3,7 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     utils::{ThreadPool, ThreadPoolImpl},
 };
-use rsnano_core::{utils::ContainerInfos, Block, BlockHash};
+use rsnano_core::{utils::ContainerInfo, Block, BlockHash};
 use rsnano_ledger::{Ledger, WriteGuard, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
@@ -118,7 +118,7 @@ impl ConfirmingSet {
         }
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.thread.mutex.lock().unwrap();
         [("set", guard.set.len(), std::mem::size_of::<BlockHash>())].into()
     }

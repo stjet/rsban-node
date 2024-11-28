@@ -2,7 +2,7 @@ use super::{
     CpuWorkGenerator, StubWorkPool, WorkItem, WorkQueueCoordinator, WorkThread, WorkThresholds,
     WorkTicket, WORK_THRESHOLDS_STUB,
 };
-use crate::{utils::ContainerInfos, Root};
+use crate::{utils::ContainerInfo, Root};
 use std::{
     mem::size_of,
     sync::{Arc, Condvar, LazyLock, Mutex},
@@ -138,7 +138,7 @@ impl WorkPoolImpl {
         self.work_thresholds.difficulty(root, work)
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         [("pending", self.size(), Self::pending_value_size())].into()
     }
 }

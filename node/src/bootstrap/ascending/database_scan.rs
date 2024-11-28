@@ -1,4 +1,4 @@
-use rsnano_core::{utils::ContainerInfos, Account, BlockHash, PendingKey};
+use rsnano_core::{utils::ContainerInfo, Account, BlockHash, PendingKey};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{collections::VecDeque, sync::Arc};
@@ -48,7 +48,7 @@ impl DatabaseScan {
         self.accounts_iterator.warmed_up() && self.pending_iterator.warmed_up()
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         [
             ("accounts_iterator", self.accounts_iterator.completed, 0),
             ("pending_iterator", self.pending_iterator.completed, 0),

@@ -1,4 +1,4 @@
-use rsnano_core::{utils::ContainerInfos, Account, Amount, PublicKey};
+use rsnano_core::{utils::ContainerInfo, Account, Amount, PublicKey};
 use rsnano_store_lmdb::LedgerCache;
 use std::{
     collections::HashMap,
@@ -103,7 +103,7 @@ impl RepWeightCache {
         self.weights.clone()
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         [("rep_weights", self.len(), size_of::<(Account, Amount)>())].into()
     }
 }

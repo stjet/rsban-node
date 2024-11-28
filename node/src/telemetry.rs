@@ -1,4 +1,4 @@
-use rsnano_core::{utils::ContainerInfos, KeyPair, Signature};
+use rsnano_core::{utils::ContainerInfo, KeyPair, Signature};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, TelemetryAck, TelemetryData, TelemetryMaker};
 use rsnano_nullable_clock::SteadyClock;
@@ -329,7 +329,7 @@ impl Telemetry {
         result
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.mutex.lock().unwrap();
         [(
             "telemetries",

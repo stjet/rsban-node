@@ -4,7 +4,7 @@ use super::{
     priority::Priority,
 };
 use crate::bootstrap::ascending::ordered_priorities::PriorityEntry;
-use rsnano_core::{utils::ContainerInfos, Account, BlockHash};
+use rsnano_core::{utils::ContainerInfo, Account, BlockHash};
 use rsnano_nullable_clock::Timestamp;
 use std::{cmp::min, time::Duration};
 
@@ -316,7 +316,7 @@ impl AccountSets {
         return Priority::ZERO;
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         // Count blocking entries with their dependency account unknown
         let blocking_unknown = self.blocking.count_by_dependency_account(&Account::zero());
         [

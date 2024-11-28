@@ -1,6 +1,6 @@
 use super::{FairQueue, MessageCallback};
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::utils::ContainerInfos;
+use rsnano_core::utils::ContainerInfo;
 use rsnano_messages::Message;
 use rsnano_network::{ChannelId, ChannelInfo, DeadChannelCleanupStep};
 use std::{
@@ -101,9 +101,9 @@ impl InboundMessageQueue {
         self.condition.notify_all();
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.state.lock().unwrap();
-        ContainerInfos::builder()
+        ContainerInfo::builder()
             .node("queue", guard.queue.container_info())
             .finish()
     }

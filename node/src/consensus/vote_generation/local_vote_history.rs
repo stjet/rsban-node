@@ -1,4 +1,4 @@
-use rsnano_core::{utils::ContainerInfos, BlockHash, Root, Vote};
+use rsnano_core::{utils::ContainerInfo, BlockHash, Root, Vote};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     mem::size_of,
@@ -126,7 +126,7 @@ impl LocalVoteHistory {
         self.data.lock().unwrap().history.len()
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         [(
             "history",
             self.data.lock().unwrap().history.len(),

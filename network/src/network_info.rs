@@ -6,7 +6,7 @@ use crate::{
     ChannelId, ChannelInfo, ChannelMode, TrafficType,
 };
 use rand::{seq::SliceRandom, thread_rng};
-use rsnano_core::{utils::ContainerInfos, Networks, PublicKey};
+use rsnano_core::{utils::ContainerInfo, Networks, PublicKey};
 use rsnano_nullable_clock::Timestamp;
 use std::{
     collections::HashMap,
@@ -666,8 +666,8 @@ impl NetworkInfo {
         self.stopped
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
-        ContainerInfos::builder()
+    pub fn container_info(&self) -> ContainerInfo {
+        ContainerInfo::builder()
             .leaf(
                 "channels",
                 self.channels.len(),

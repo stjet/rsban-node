@@ -12,7 +12,7 @@ use crate::{
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::{get_env_or_default_string, ContainerInfos},
+    utils::{get_env_or_default_string, ContainerInfo},
     work::{WorkPoolImpl, WorkThresholds},
     Account, Amount, Block, BlockDetails, BlockHash, Epoch, KeyDerivationFunction, KeyPair, Link,
     NoValue, PendingKey, PublicKey, RawKey, Root, StateBlock, WalletId,
@@ -895,7 +895,7 @@ impl Wallets {
         !guard.have_half_rep() && !guard.exists(&voting_account)
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         [
             (
                 "items",

@@ -1,6 +1,6 @@
 use super::{ActiveElections, ActiveElectionsExt, ElectionBehavior};
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::{utils::ContainerInfos, Amount, Block};
+use rsnano_core::{utils::ContainerInfo, Amount, Block};
 use std::{
     collections::VecDeque,
     mem::size_of,
@@ -85,7 +85,7 @@ impl ManualScheduler {
         }
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.mutex.lock().unwrap();
         [(
             "queue",

@@ -4,7 +4,7 @@ use crate::{
     config::NetworkConstants,
     stats::{DetailType, StatType, Stats},
 };
-use rsnano_core::{utils::ContainerInfos, Account, AccountInfo, ConfirmationHeightInfo};
+use rsnano_core::{utils::ContainerInfo, Account, AccountInfo, ConfirmationHeightInfo};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{
@@ -135,7 +135,7 @@ impl OptimisticScheduler {
         }
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.candidates.lock().unwrap();
         [(
             "candidates",

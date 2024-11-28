@@ -6,7 +6,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::FairQueue,
 };
-use rsnano_core::{utils::ContainerInfos, BlockHash, Root};
+use rsnano_core::{utils::ContainerInfo, BlockHash, Root};
 use rsnano_ledger::Ledger;
 use rsnano_network::{ChannelId, DeadChannelCleanupStep, NetworkInfo, TrafficType};
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
@@ -161,9 +161,9 @@ impl RequestAggregator {
         self.len() == 0
     }
 
-    pub fn container_info(&self) -> ContainerInfos {
+    pub fn container_info(&self) -> ContainerInfo {
         let guard = self.state.lock().unwrap();
-        ContainerInfos::builder()
+        ContainerInfo::builder()
             .node("queue", guard.queue.container_info())
             .finish()
     }

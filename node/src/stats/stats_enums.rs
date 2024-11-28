@@ -545,6 +545,8 @@ pub enum Sample {
     ActiveElectionDuration,
     BootstrapTagDuration,
     RepResponseTime,
+    VoteGeneratorFinalHashes,
+    VoteGeneratorHashes,
 }
 
 impl Sample {

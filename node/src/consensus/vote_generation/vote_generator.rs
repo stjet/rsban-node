@@ -1,7 +1,7 @@
 use super::{LocalVoteHistory, VoteSpacing};
 use crate::{
     consensus::VoteBroadcaster,
-    stats::{DetailType, Direction, StatType, Stats},
+    stats::{DetailType, Direction, Sample, StatType, Stats},
     transport::MessagePublisher,
     utils::ProcessingQueue,
     wallets::Wallets,
@@ -250,10 +250,20 @@ impl SharedState {
 
         if !hashes.is_empty() {
             drop(queues);
-            self.vote(&hashes, &roots, |vote| {
-                self.vote_broadcaster.broadcast(vote);
+            self.vote(&hashes, &roots, |generated_vote| {
                 self.stats
                     .inc(StatType::VoteGenerator, DetailType::GeneratorBroadcasts);
+                let sample = if self.is_final {
+                    Sample::VoteGeneratorFinalHashes
+                } else {
+                    Sample::VoteGeneratorHashes
+                };
+                self.stats.sample(
+                    sample,
+                    generated_vote.hashes.len() as i64,
+                    (0, ConfirmAck::HASHES_MAX as i64),
+                );
+                self.vote_broadcaster.broadcast(generated_vote);
             });
             queues = self.queues.lock().unwrap();
         }

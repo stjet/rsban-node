@@ -1,9 +1,9 @@
 use super::{BlockBase, BlockSideband, BlockType};
 use crate::{
-    sign_message, to_hex_string, u64_from_hex_str,
+    to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, LazyBlockHash, Link, PrivateKey,
-    PublicKey, RawKey, Root, Signature, WorkNonce,
+    PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 
@@ -38,10 +38,10 @@ pub struct ReceiveBlock {
 }
 
 impl ReceiveBlock {
-    pub fn new(previous: BlockHash, source: BlockHash, priv_key: &RawKey, work: u64) -> Self {
+    pub fn new(previous: BlockHash, source: BlockHash, priv_key: &PrivateKey, work: u64) -> Self {
         let hashables = ReceiveHashables { previous, source };
         let hash = LazyBlockHash::new();
-        let signature = sign_message(priv_key, hash.hash(&hashables).as_bytes());
+        let signature = priv_key.sign(hash.hash(&hashables).as_bytes());
 
         Self {
             work,
@@ -54,12 +54,7 @@ impl ReceiveBlock {
 
     pub fn new_test_instance() -> Self {
         let key = PrivateKey::from(42);
-        ReceiveBlock::new(
-            BlockHash::from(123),
-            BlockHash::from(456),
-            &key.private_key(),
-            69420,
-        )
+        ReceiveBlock::new(BlockHash::from(123), BlockHash::from(456), &key, 69420)
     }
 
     // Receive blocks always have a source
@@ -257,7 +252,7 @@ mod tests {
     fn create_block() {
         let key = PrivateKey::new();
         let previous = BlockHash::from(1);
-        let block = ReceiveBlock::new(previous, BlockHash::from(2), &key.private_key(), 4);
+        let block = ReceiveBlock::new(previous, BlockHash::from(2), &key, 4);
         assert_eq!(block.previous(), previous);
         assert_eq!(block.root(), previous.into());
     }
@@ -267,12 +262,7 @@ mod tests {
     #[test]
     fn serialize() {
         let key1 = PrivateKey::new();
-        let block1 = ReceiveBlock::new(
-            BlockHash::from(0),
-            BlockHash::from(1),
-            &key1.private_key(),
-            4,
-        );
+        let block1 = ReceiveBlock::new(BlockHash::from(0), BlockHash::from(1), &key1, 4);
         let mut stream = MemoryStream::new();
         block1.serialize_without_block_type(&mut stream);
         assert_eq!(ReceiveBlock::serialized_size(), stream.bytes_written());

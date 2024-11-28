@@ -151,12 +151,8 @@ impl RpcCommandHandler {
             }
             BlockTypeDto::Receive => {
                 if !source.is_zero() && !previous.is_zero() {
-                    let block = Block::LegacyReceive(ReceiveBlock::new(
-                        previous,
-                        source,
-                        &prv_key.private_key(),
-                        work,
-                    ));
+                    let block =
+                        Block::LegacyReceive(ReceiveBlock::new(previous, source, &prv_key, work));
                     root = previous.into();
                     block
                 } else {

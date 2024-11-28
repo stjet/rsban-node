@@ -597,7 +597,7 @@ fn all_block_types() {
     let receive = Block::LegacyReceive(ReceiveBlock::new(
         send2.hash(),
         state_send.hash(),
-        &key1.private_key(),
+        &key1,
         node.work_generate_dev(send2.hash()),
     ));
     let change = Block::LegacyChange(ChangeBlock::new(

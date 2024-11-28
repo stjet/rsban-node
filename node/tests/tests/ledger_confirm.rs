@@ -557,7 +557,7 @@ fn all_block_types() {
         send.hash(),
         *DEV_GENESIS_PUB_KEY,
         key1.public_key().as_account(),
-        &key1.private_key(),
+        &key1,
         node.work_generate_dev(&key1),
     ));
     let state_open = Block::State(StateBlock::new(

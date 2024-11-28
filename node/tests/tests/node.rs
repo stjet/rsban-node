@@ -879,7 +879,7 @@ fn bootstrap_fork_open() {
         send0.hash(),
         PublicKey::from_bytes([1; 32]),
         key0.account(),
-        &key0.private_key(),
+        &key0,
         system.work.generate_dev2(key0.public_key().into()).unwrap(),
     ));
 
@@ -887,7 +887,7 @@ fn bootstrap_fork_open() {
         send0.hash(),
         PublicKey::from_bytes([2; 32]),
         key0.account(),
-        &key0.private_key(),
+        &key0,
         system.work.generate_dev2(key0.public_key().into()).unwrap(),
     ));
 
@@ -985,7 +985,7 @@ fn rep_self_vote() {
         fund_big.hash(),
         rep_big.public_key(),
         rep_big.account(),
-        &rep_big.private_key(),
+        &rep_big,
         system
             .work
             .generate_dev2(rep_big.public_key().into())
@@ -3334,7 +3334,7 @@ fn fork_open_flip() {
         send1.hash(),
         rep1.public_key(),
         key1.account(),
-        &key1.private_key(),
+        &key1,
         system.work.generate_dev2(key1.public_key().into()).unwrap(),
     ));
 
@@ -3343,7 +3343,7 @@ fn fork_open_flip() {
         send1.hash(),
         rep2.public_key(),
         key1.account(),
-        &key1.private_key(),
+        &key1,
         system.work.generate_dev2(key1.public_key().into()).unwrap(),
     ));
     assert_ne!(open1.hash(), open2.hash());

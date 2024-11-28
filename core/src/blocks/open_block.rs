@@ -1,9 +1,9 @@
 use super::{BlockBase, BlockSideband, BlockType};
 use crate::{
-    sign_message, to_hex_string, u64_from_hex_str,
+    to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, LazyBlockHash, Link, PrivateKey,
-    PublicKey, RawKey, Root, Signature, WorkNonce,
+    PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 
@@ -45,7 +45,7 @@ impl OpenBlock {
         source: BlockHash,
         representative: PublicKey,
         account: Account,
-        prv_key: &RawKey,
+        prv_key: &PrivateKey,
         work: u64,
     ) -> Self {
         let hashables = OpenHashables {
@@ -55,7 +55,7 @@ impl OpenBlock {
         };
 
         let hash = LazyBlockHash::new();
-        let signature = sign_message(prv_key, hash.hash(&hashables).as_bytes());
+        let signature = prv_key.sign(hash.hash(&hashables).as_bytes());
 
         Self {
             work,
@@ -76,7 +76,7 @@ impl OpenBlock {
             BlockHash::from(123),
             PublicKey::from(456),
             Account::from(789),
-            &key.private_key(),
+            &key,
             69420,
         )
     }
@@ -284,7 +284,7 @@ mod tests {
         let source = BlockHash::from(1);
         let representative = PublicKey::from(2);
         let account = Account::from(3);
-        let block = OpenBlock::new(source, representative, account, &key.private_key(), 0);
+        let block = OpenBlock::new(source, representative, account, &key, 0);
 
         assert_eq!(block.account_field(), Some(account));
         assert_eq!(block.root(), account.into());
@@ -298,7 +298,7 @@ mod tests {
             BlockHash::from(0),
             PublicKey::from(1),
             Account::from(0),
-            &key1.private_key(),
+            &key1,
             0,
         );
         let mut ptree = TestPropertyTree::new();

@@ -140,7 +140,7 @@ impl RpcCommandHandler {
                         source,
                         representative,
                         account,
-                        &prv_key.private_key(),
+                        &prv_key,
                         work,
                     ));
                     root = account.into();

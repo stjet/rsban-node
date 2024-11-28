@@ -1,9 +1,9 @@
 use super::BlockBase;
 use crate::{
-    sign_message, to_hex_string, u64_from_hex_str,
+    to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, JsonBlock,
-    LazyBlockHash, Link, PrivateKey, PublicKey, RawKey, Root, Signature, WorkNonce,
+    LazyBlockHash, Link, PrivateKey, PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 

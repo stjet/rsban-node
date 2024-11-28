@@ -21,6 +21,9 @@ members = [
     "tools/xtask",
     "tools/test_helpers", 
 	"tools/signature-checker", 
-	"tools/insight"
-	, "daemon", "nullables/console"]
+	"tools/insight", 
+    "daemon", 
+    "nullables/console", 
+    "websocket_messages"
+]
 resolver = "2"

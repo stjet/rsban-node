@@ -1,5 +1,5 @@
 use super::{
-    ConfirmationJsonOptions, ConfirmationOptions, Options, OutgoingMessageEnvelope, Topic,
+    ConfirmationJsonOptions, ConfirmationOptions, Options,
     WebsocketSessionEntry,
 };
 use crate::{consensus::ElectionStatus, wallets::Wallets, websocket::WebsocketSession};
@@ -7,6 +7,7 @@ use rsnano_core::{
     utils::{PropertyTree, SerdePropertyTree},
     Account, Amount, Block, BlockSideband, VoteWithWeightInfo,
 };
+use rsnano_websocket_messages::{OutgoingMessageEnvelope, Topic};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{

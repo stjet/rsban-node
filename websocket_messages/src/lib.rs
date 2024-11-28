@@ -1,5 +1,7 @@
-use crate::DEV_NETWORK_PARAMS;
-use rsnano_core::{utils::milliseconds_since_epoch, BlockHash, DifficultyV1, WorkVersion};
+#[macro_use]
+extern crate num_derive;
+
+use rsnano_core::{utils::milliseconds_since_epoch, work::WorkThresholds, BlockHash, DifficultyV1, WorkVersion};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fmt::Debug, hash::Hash, time::Duration};
@@ -129,7 +131,7 @@ pub fn work_generation_message(
     };
 
     let result = if completed {
-        let result_difficulty = DEV_NETWORK_PARAMS.work.difficulty(&root.into(), work);
+        let result_difficulty = WorkThresholds::publish_full().difficulty(&root.into(), work);
 
         let result_multiplier = DifficultyV1::to_multiplier(result_difficulty, publish_threshold);
 

@@ -1,7 +1,7 @@
 use super::election_schedulers::ElectionSchedulers;
 use crate::{
     block_processing::BlockProcessor,
-    websocket::{OutgoingMessageEnvelope, Topic, WebsocketListener},
+    websocket::WebsocketListener,
 };
 use rsnano_core::{
     utils::{PropertyTree, SerdePropertyTree},
@@ -9,6 +9,7 @@ use rsnano_core::{
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_store_lmdb::LmdbReadTransaction;
+use rsnano_websocket_messages::{OutgoingMessageEnvelope, Topic};
 use std::sync::Arc;
 
 /// Observes confirmed blocks and dispatches the process_live function.

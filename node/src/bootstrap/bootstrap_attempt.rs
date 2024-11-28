@@ -2,8 +2,9 @@ use super::{bootstrap_limits, BootstrapInitiator, BootstrapMode};
 use crate::{
     block_processing::{BlockProcessor, BlockSource},
     utils::HardenedConstants,
-    websocket::{OutgoingMessageEnvelope, Topic, WebsocketListener},
+    websocket::WebsocketListener,
 };
+use rsnano_websocket_messages::{Topic, OutgoingMessageEnvelope};
 use anyhow::Result;
 use rsnano_core::{encode_hex, utils::PropertyTree, Account, Block};
 use rsnano_ledger::Ledger;

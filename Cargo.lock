@@ -3678,6 +3678,7 @@ dependencies = [
  "rsnano_nullable_tcp",
  "rsnano_output_tracker",
  "rsnano_store_lmdb",
+ "rsnano_websocket_messages",
  "scoped_threadpool",
  "serde",
  "serde_derive",
@@ -3849,6 +3850,17 @@ dependencies = [
  "serde_json",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "rsnano_websocket_messages"
+version = "0.1.0"
+dependencies = [
+ "num-derive",
+ "num-traits",
+ "rsnano_core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

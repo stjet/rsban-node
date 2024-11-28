@@ -1,12 +1,12 @@
-use super::{OutgoingMessageEnvelope, WebsocketConfig, WebsocketListener};
+use super::{WebsocketConfig, WebsocketListener};
 use crate::{
     consensus::{ActiveElections, ElectionStatus, ElectionStatusType, VoteProcessor},
     wallets::Wallets,
-    websocket::Topic,
     Telemetry,
 };
 use rsnano_core::{Account, Amount, BlockHash, BlockType, Vote, VoteCode, VoteWithWeightInfo};
 use rsnano_messages::TelemetryData;
+use rsnano_websocket_messages::{OutgoingMessageEnvelope, Topic};
 use serde::{Deserialize, Serialize};
 use std::{
     net::{IpAddr, SocketAddr, SocketAddrV6},

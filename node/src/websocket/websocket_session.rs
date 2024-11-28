@@ -1,10 +1,11 @@
 use super::{
-    to_topic, ConfirmationJsonOptions, ConfirmationOptions, Options, OutgoingMessageEnvelope,
-    Topic, VoteJsonOptions, VoteOptions,
+    ConfirmationJsonOptions, ConfirmationOptions, Options,
+    VoteJsonOptions, VoteOptions,
 };
-use crate::{wallets::Wallets, websocket::IncomingMessage};
+use crate::wallets::Wallets;
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::utils::SerdePropertyTree;
+use rsnano_websocket_messages::{to_topic, IncomingMessage, OutgoingMessageEnvelope, Topic};
 use std::{
     collections::HashMap,
     net::SocketAddr,

@@ -38,7 +38,7 @@ use crate::{
     websocket::{create_websocket_server, WebsocketListenerExt},
     work::DistributedWorkFactory,
     NetworkParams, NodeCallbacks, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry,
-    BUILD_INFO, VERSION_STRING,
+    TelemetryDeadChannelCleanup, BUILD_INFO, VERSION_STRING,
 };
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo, SerdePropertyTree},
@@ -360,6 +360,7 @@ impl Node {
             node_id.clone(),
             steady_clock.clone(),
         ));
+        dead_channel_cleanup.add_step(TelemetryDeadChannelCleanup(telemetry.clone()));
 
         let bootstrap_server = Arc::new(BootstrapServer::new(
             config.bootstrap_server.clone(),

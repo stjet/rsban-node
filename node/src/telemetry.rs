@@ -19,7 +19,10 @@ use crate::{
     transport::MessagePublisher,
     NetworkParams,
 };
-use rsnano_network::{ChannelId, ChannelInfo, ChannelMode, DropPolicy, NetworkInfo, TrafficType};
+use rsnano_network::{
+    ChannelId, ChannelInfo, ChannelMode, DeadChannelCleanupStep, DropPolicy, NetworkInfo,
+    TrafficType,
+};
 
 /**
  * This class periodically broadcasts and requests telemetry from peers.
@@ -149,13 +152,14 @@ impl Telemetry {
         let mut guard = self.mutex.lock().unwrap();
         let peer_addr = channel.peer_addr();
 
-        if let Some(entry) = guard.telemetries.get_mut(&peer_addr) {
+        if let Some(entry) = guard.telemetries.get_mut(channel.channel_id()) {
             self.stats.inc(StatType::Telemetry, DetailType::Update);
             entry.data = data.clone();
             entry.last_updated = Instant::now();
         } else {
             self.stats.inc(StatType::Telemetry, DetailType::Insert);
             guard.telemetries.push_back(Entry {
+                channel_id: channel.channel_id(),
                 endpoint: peer_addr,
                 data: data.clone(),
                 last_updated: Instant::now(),
@@ -310,7 +314,7 @@ impl Telemetry {
     /// Returns telemetry for selected endpoint
     pub fn get_telemetry(&self, endpoint: &SocketAddrV6) -> Option<TelemetryData> {
         let guard = self.mutex.lock().unwrap();
-        if let Some(entry) = guard.telemetries.get(endpoint) {
+        if let Some(entry) = guard.telemetries.get_by_endpoint(endpoint) {
             if !self.has_timed_out(entry) {
                 return Some(entry.data.clone());
             }
@@ -420,6 +424,7 @@ impl TelementryExt for Arc<Telemetry> {
 }
 
 struct Entry {
+    channel_id: ChannelId,
     endpoint: SocketAddrV6,
     data: TelemetryData,
     last_updated: Instant,
@@ -427,8 +432,9 @@ struct Entry {
 
 #[derive(Default)]
 struct OrderedTelemetries {
-    by_endpoint: HashMap<SocketAddrV6, Entry>,
-    sequenced: VecDeque<SocketAddrV6>,
+    by_channel_id: HashMap<ChannelId, Entry>,
+    by_endpoint: HashMap<SocketAddrV6, ChannelId>,
+    sequenced: VecDeque<ChannelId>,
 }
 
 impl OrderedTelemetries {
@@ -438,38 +444,73 @@ impl OrderedTelemetries {
     }
 
     fn push_back(&mut self, entry: Entry) {
+        let channel_id = entry.channel_id;
         let endpoint = entry.endpoint;
-        if let Some(old) = self.by_endpoint.insert(endpoint, entry) {
-            self.sequenced.retain(|i| *i != old.endpoint);
+        if let Some(old) = self.by_channel_id.insert(channel_id, entry) {
+            if old.endpoint != endpoint {
+                // This should never be reached
+                self.by_endpoint.remove(&old.endpoint);
+            }
+            // already in sequenced
+        } else {
+            self.sequenced.push_back(channel_id);
         }
-        self.sequenced.push_back(endpoint);
+        self.by_endpoint.insert(endpoint, channel_id);
     }
 
-    fn get(&self, entpoint: &SocketAddrV6) -> Option<&Entry> {
-        self.by_endpoint.get(entpoint)
+    fn get_by_endpoint(&self, entpoint: &SocketAddrV6) -> Option<&Entry> {
+        let channel_id = self.by_endpoint.get(entpoint)?;
+        self.by_channel_id.get(channel_id)
     }
 
-    fn get_mut(&mut self, entpoint: &SocketAddrV6) -> Option<&mut Entry> {
-        self.by_endpoint.get_mut(entpoint)
+    fn get_mut(&mut self, channel_id: ChannelId) -> Option<&mut Entry> {
+        self.by_channel_id.get_mut(&channel_id)
+    }
+
+    fn remove(&mut self, channel_id: ChannelId) {
+        if let Some(entry) = self.by_channel_id.remove(&channel_id) {
+            self.by_endpoint.remove(&entry.endpoint);
+            self.sequenced.retain(|i| *i != channel_id);
+        }
     }
 
     fn pop_front(&mut self) {
-        if let Some(endpoint) = self.sequenced.pop_front() {
-            self.by_endpoint.remove(&endpoint);
+        if let Some(channel_id) = self.sequenced.pop_front() {
+            if let Some(entry) = self.by_channel_id.remove(&channel_id) {
+                self.by_endpoint.remove(&entry.endpoint);
+            }
         }
     }
 
     fn retain(&mut self, mut f: impl FnMut(&Entry) -> bool) {
-        self.by_endpoint.retain(|endpoint, entry| {
+        self.by_channel_id.retain(|channel_id, entry| {
             let retain = f(entry);
             if !retain {
-                self.sequenced.retain(|i| i != endpoint);
+                self.sequenced.retain(|i| i != channel_id);
+                self.by_endpoint.remove(&entry.endpoint);
             }
             retain
         })
     }
 
     fn iter(&self) -> impl Iterator<Item = &Entry> {
-        self.by_endpoint.values()
+        self.by_channel_id.values()
+    }
+}
+
+impl DeadChannelCleanupStep for Telemetry {
+    fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
+        let mut guard = self.mutex.lock().unwrap();
+        for channel_id in dead_channel_ids {
+            guard.telemetries.remove(*channel_id);
+        }
+    }
+}
+
+pub struct TelemetryDeadChannelCleanup(pub Arc<Telemetry>);
+
+impl DeadChannelCleanupStep for TelemetryDeadChannelCleanup {
+    fn clean_up_dead_channels(&self, dead_channel_ids: &[ChannelId]) {
+        self.0.clean_up_dead_channels(dead_channel_ids);
     }
 }

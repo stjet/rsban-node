@@ -4,10 +4,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::MessagePublisher,
 };
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
-    Block, BlockHash, Networks,
-};
+use rsnano_core::{utils::ContainerInfos, Block, BlockHash, Networks};
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
 use rsnano_network::{bandwidth_limiter::RateLimiter, DropPolicy, TrafficType};
@@ -246,16 +243,14 @@ impl LocalBlockBroadcaster {
         data
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub fn container_info(&self) -> ContainerInfos {
         let guard = self.mutex.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "local".to_string(),
-                count: guard.local_blocks.len(),
-                sizeof_element: OrderedLocals::ELEMENT_SIZE,
-            })],
-        )
+        [(
+            "local",
+            guard.local_blocks.len(),
+            OrderedLocals::ELEMENT_SIZE,
+        )]
+        .into()
     }
 
     /// Flood block to all PRs and a random selection of non-PRs

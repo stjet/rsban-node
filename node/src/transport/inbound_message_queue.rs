@@ -1,6 +1,6 @@
 use super::{FairQueue, MessageCallback};
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::utils::{ContainerInfoComponent, ContainerInfos};
+use rsnano_core::utils::ContainerInfos;
 use rsnano_messages::Message;
 use rsnano_network::{ChannelId, ChannelInfo, DeadChannelCleanupStep};
 use std::{

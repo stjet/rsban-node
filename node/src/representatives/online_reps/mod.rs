@@ -9,10 +9,7 @@ pub use cleanup::*;
 pub use peered_container::InsertResult;
 pub use peered_rep::PeeredRep;
 use primitive_types::U256;
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    Amount, PublicKey,
-};
+use rsnano_core::{utils::ContainerInfos, Amount, PublicKey};
 use rsnano_ledger::RepWeightCache;
 use rsnano_network::ChannelId;
 use rsnano_nullable_clock::Timestamp;

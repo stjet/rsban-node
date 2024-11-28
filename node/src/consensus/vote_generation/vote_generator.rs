@@ -7,7 +7,7 @@ use crate::{
     wallets::Wallets,
 };
 use rsnano_core::{
-    utils::{milliseconds_since_epoch, ContainerInfo, ContainerInfoComponent, ContainerInfos},
+    utils::{milliseconds_since_epoch, ContainerInfos},
     Block, BlockHash, Root, Vote,
 };
 use rsnano_ledger::{Ledger, Writer};

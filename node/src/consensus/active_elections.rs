@@ -18,7 +18,7 @@ use crate::{
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos, MemoryStream},
+    utils::{ContainerInfos, MemoryStream},
     Account, Amount, Block, BlockHash, BlockType, QualifiedRoot, Vote, VoteWithWeightInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger};

@@ -1,9 +1,6 @@
 use super::{VoteCache, VoteProcessorConfig, VoteRouter};
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    BlockHash, VoteSource,
-};
+use rsnano_core::{utils::ContainerInfos, BlockHash, VoteSource};
 use std::{
     collections::{HashSet, VecDeque},
     sync::{Arc, Condvar, Mutex, MutexGuard},

@@ -3,10 +3,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     NetworkParams,
 };
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
-    Account, PublicKey,
-};
+use rsnano_core::{utils::ContainerInfos, Account, PublicKey};
 use rsnano_ledger::RepWeightCache;
 use std::{
     collections::HashSet,
@@ -115,28 +112,26 @@ impl RepTiers {
         }
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub fn container_info(&self) -> ContainerInfos {
         let tiers = self.rep_tiers_impl.tiers.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "representatives_1".to_owned(),
-                    count: tiers.representatives_1.len(),
-                    sizeof_element: size_of::<Account>(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "representatives_2".to_owned(),
-                    count: tiers.representatives_2.len(),
-                    sizeof_element: size_of::<Account>(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "representatives_3".to_owned(),
-                    count: tiers.representatives_3.len(),
-                    sizeof_element: size_of::<Account>(),
-                }),
-            ],
-        )
+        [
+            (
+                "representatives_1",
+                tiers.representatives_1.len(),
+                size_of::<Account>(),
+            ),
+            (
+                "representatives_2",
+                tiers.representatives_2.len(),
+                size_of::<Account>(),
+            ),
+            (
+                "representatives_3",
+                tiers.representatives_3.len(),
+                size_of::<Account>(),
+            ),
+        ]
+        .into()
     }
 }
 

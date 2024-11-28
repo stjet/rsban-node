@@ -4,9 +4,8 @@ use crate::{
     transport::{FairQueue, FairQueueInfo},
 };
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    work::WorkThresholds,
-    Block, BlockType, Epoch, HashOrAccount, Networks, UncheckedInfo,
+    utils::ContainerInfos, work::WorkThresholds, Block, BlockType, Epoch, HashOrAccount, Networks,
+    UncheckedInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
 use rsnano_network::{ChannelId, DeadChannelCleanupStep};

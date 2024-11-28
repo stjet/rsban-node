@@ -12,7 +12,7 @@ use crate::{
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::{get_env_or_default_string, ContainerInfo, ContainerInfoComponent, ContainerInfos},
+    utils::{get_env_or_default_string, ContainerInfos},
     work::{WorkPoolImpl, WorkThresholds},
     Account, Amount, Block, BlockDetails, BlockHash, Epoch, KeyDerivationFunction, KeyPair, Link,
     NoValue, PendingKey, PublicKey, RawKey, Root, StateBlock, WalletId,

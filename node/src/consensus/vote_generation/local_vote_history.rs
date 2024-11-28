@@ -1,7 +1,4 @@
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    BlockHash, Root, Vote,
-};
+use rsnano_core::{utils::ContainerInfos, BlockHash, Root, Vote};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     mem::size_of,

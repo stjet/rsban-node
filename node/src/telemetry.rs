@@ -1,7 +1,4 @@
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    KeyPair, Signature,
-};
+use rsnano_core::{utils::ContainerInfos, KeyPair, Signature};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{Message, TelemetryAck, TelemetryData, TelemetryMaker};
 use rsnano_nullable_clock::SteadyClock;

@@ -1202,10 +1202,11 @@ impl Node {
                 self.ascendboot
                     .container_info()
                     .into_legacy("bootstrap_ascending"),
-                self.unchecked.collect_container_info("unchecked"),
+                self.unchecked.container_info().into_legacy("unchecked"),
                 self.local_block_broadcaster
-                    .collect_container_info("local_block_broadcaster"),
-                self.rep_tiers.collect_container_info("rep_tiers"),
+                    .container_info()
+                    .into_legacy("local_block_broadcaster"),
+                self.rep_tiers.container_info().into_legacy("rep_tiers"),
                 self.inbound_message_queue
                     .container_info()
                     .into_legacy("message_processor"),

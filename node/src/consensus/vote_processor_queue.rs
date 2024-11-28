@@ -3,10 +3,7 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     transport::{FairQueue, FairQueueInfo},
 };
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    Vote, VoteSource,
-};
+use rsnano_core::{utils::ContainerInfos, Vote, VoteSource};
 use rsnano_network::{ChannelId, DeadChannelCleanupStep};
 use std::{
     collections::VecDeque,

@@ -15,8 +15,7 @@ use super::{
     LocalVoteHistory, RecentlyConfirmedCache, TallyKey, VoteGenerators,
 };
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    Amount, Block, BlockHash, PublicKey, VoteCode, VoteSource,
+    utils::ContainerInfos, Amount, Block, BlockHash, PublicKey, VoteCode, VoteSource,
 };
 use rsnano_ledger::Ledger;
 use std::{

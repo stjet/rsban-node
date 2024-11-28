@@ -1,4 +1,4 @@
-use rsnano_core::utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos};
+use rsnano_core::utils::ContainerInfos;
 use rsnano_nullable_clock::Timestamp;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},

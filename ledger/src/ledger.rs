@@ -8,7 +8,7 @@ use crate::{
 };
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    utils::{seconds_since_epoch, ContainerInfoComponent, ContainerInfos},
+    utils::{seconds_since_epoch, ContainerInfos},
     Account, AccountInfo, Amount, Block, BlockHash, BlockSubType, ConfirmationHeightInfo,
     DependentBlocks, Epoch, Link, PendingInfo, PendingKey, PublicKey, Root,
 };

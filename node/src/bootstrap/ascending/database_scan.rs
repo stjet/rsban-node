@@ -1,7 +1,4 @@
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    Account, BlockHash, PendingKey,
-};
+use rsnano_core::{utils::ContainerInfos, Account, BlockHash, PendingKey};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::LmdbReadTransaction;
 use std::{collections::VecDeque, sync::Arc};

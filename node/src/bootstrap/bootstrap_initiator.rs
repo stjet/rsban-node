@@ -14,9 +14,7 @@ use crate::{
     NetworkParams,
 };
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    work::WorkThresholds,
-    Account, Amount, HashOrAccount, Networks,
+    utils::ContainerInfos, work::WorkThresholds, Account, Amount, HashOrAccount, Networks,
 };
 use rsnano_ledger::Ledger;
 use rsnano_messages::ProtocolInfo;

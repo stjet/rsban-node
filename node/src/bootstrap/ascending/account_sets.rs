@@ -4,10 +4,7 @@ use super::{
     priority::Priority,
 };
 use crate::bootstrap::ascending::ordered_priorities::PriorityEntry;
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    Account, BlockHash,
-};
+use rsnano_core::{utils::ContainerInfos, Account, BlockHash};
 use rsnano_nullable_clock::Timestamp;
 use std::{cmp::min, time::Duration};
 

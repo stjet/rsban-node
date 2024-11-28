@@ -3,10 +3,7 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     utils::{ThreadPool, ThreadPoolImpl},
 };
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    Block, BlockHash,
-};
+use rsnano_core::{utils::ContainerInfos, Block, BlockHash};
 use rsnano_ledger::{Ledger, WriteGuard, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{

@@ -1,7 +1,4 @@
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    Account, Amount, PublicKey,
-};
+use rsnano_core::{utils::ContainerInfos, Account, Amount, PublicKey};
 use rsnano_store_lmdb::LedgerCache;
 use std::{
     collections::HashMap,

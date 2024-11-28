@@ -7,10 +7,7 @@ use std::{
 
 use anyhow::Result;
 use rand::Rng;
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    validate_message, Account, Signature,
-};
+use rsnano_core::{utils::ContainerInfos, validate_message, Account, Signature};
 use rsnano_messages::Cookie;
 
 /// Node ID cookies for node ID handshakes

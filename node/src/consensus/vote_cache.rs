@@ -2,10 +2,7 @@ use super::TallyKey;
 use crate::stats::{DetailType, StatType, Stats};
 #[cfg(test)]
 use mock_instant::thread_local::Instant;
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    Amount, BlockHash, PublicKey, Vote, VoteCode,
-};
+use rsnano_core::{utils::ContainerInfos, Amount, BlockHash, PublicKey, Vote, VoteCode};
 #[cfg(not(test))]
 use std::time::Instant;
 use std::{

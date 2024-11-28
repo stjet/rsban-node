@@ -26,8 +26,7 @@ use ordered_tags::QuerySource;
 use priority::Priority;
 use rand::{thread_rng, RngCore};
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    Account, AccountInfo, Block, BlockHash, BlockType, HashOrAccount,
+    utils::ContainerInfos, Account, AccountInfo, Block, BlockHash, BlockType, HashOrAccount,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{

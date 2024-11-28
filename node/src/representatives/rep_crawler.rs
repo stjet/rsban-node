@@ -8,7 +8,7 @@ use crate::{
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos, Peer, NULL_ENDPOINT},
+    utils::{ContainerInfos, Peer, NULL_ENDPOINT},
     Account, BlockHash, Root, Vote,
 };
 use rsnano_ledger::Ledger;

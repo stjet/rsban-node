@@ -3,10 +3,7 @@ use crate::{
     config::NodeConfig, consensus::VoteBroadcaster, stats::Stats, transport::MessagePublisher,
     wallets::Wallets, NetworkParams,
 };
-use rsnano_core::{
-    utils::{ContainerInfoComponent, ContainerInfos},
-    Block, BlockHash, Root,
-};
+use rsnano_core::{utils::ContainerInfos, Block, BlockHash, Root};
 use rsnano_ledger::Ledger;
 use rsnano_network::ChannelId;
 use std::{sync::Arc, time::Duration};

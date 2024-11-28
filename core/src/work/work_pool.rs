@@ -2,10 +2,7 @@ use super::{
     CpuWorkGenerator, StubWorkPool, WorkItem, WorkQueueCoordinator, WorkThread, WorkThresholds,
     WorkTicket, WORK_THRESHOLDS_STUB,
 };
-use crate::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    Root,
-};
+use crate::{utils::ContainerInfos, Root};
 use std::{
     mem::size_of,
     sync::{Arc, Condvar, LazyLock, Mutex},

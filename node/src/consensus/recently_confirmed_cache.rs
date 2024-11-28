@@ -3,10 +3,7 @@ use std::{
     sync::Mutex,
 };
 
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    BlockHash, QualifiedRoot,
-};
+use rsnano_core::{utils::ContainerInfos, BlockHash, QualifiedRoot};
 
 pub struct RecentlyConfirmedCache {
     mutex: Mutex<RecentlyConfirmedCacheImpl>,

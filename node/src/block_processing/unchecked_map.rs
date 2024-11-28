@@ -1,8 +1,5 @@
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
-    BlockHash, HashOrAccount, UncheckedInfo, UncheckedKey,
-};
+use rsnano_core::{utils::ContainerInfos, BlockHash, HashOrAccount, UncheckedInfo, UncheckedKey};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, VecDeque},
@@ -161,22 +158,12 @@ impl UncheckedMap {
         self.mutable.lock().unwrap().satisfied_callback = Some(callback);
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "entries".to_string(),
-                    count: self.len(),
-                    sizeof_element: Self::entries_size(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "queries".to_string(),
-                    count: self.buffer_count(),
-                    sizeof_element: Self::buffer_entry_size(),
-                }),
-            ],
-        )
+    pub fn container_info(&self) -> ContainerInfos {
+        [
+            ("entries", self.len(), Self::entries_size()),
+            ("queries", self.buffer_count(), Self::buffer_entry_size()),
+        ]
+        .into()
     }
 }
 

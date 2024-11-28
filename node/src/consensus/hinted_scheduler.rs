@@ -5,10 +5,7 @@ use crate::{
     representatives::OnlineReps,
     stats::{DetailType, StatType, Stats},
 };
-use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
-    Amount, BlockHash,
-};
+use rsnano_core::{utils::ContainerInfos, Amount, BlockHash};
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{

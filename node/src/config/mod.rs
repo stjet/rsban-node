@@ -7,6 +7,7 @@ mod node_flags;
 mod node_rpc_config;
 mod opencl_config;
 mod toml;
+mod websocket_config;
 
 use crate::NetworkParams;
 pub use daemon_config::*;
@@ -20,6 +21,7 @@ pub use rsnano_core::Networks;
 use serde::de::DeserializeOwned;
 use std::path::{Path, PathBuf};
 pub use toml::DaemonToml;
+pub use websocket_config::WebsocketConfig;
 
 pub fn get_node_toml_config_path(data_path: impl Into<PathBuf>) -> PathBuf {
     let mut node_toml = data_path.into();

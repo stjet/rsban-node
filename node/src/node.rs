@@ -35,7 +35,6 @@ use crate::{
         LongRunningTransactionLogger, ThreadPool, ThreadPoolImpl, TimerThread, TxnTrackingConfig,
     },
     wallets::{Wallets, WalletsExt},
-    websocket::{create_websocket_server, WebsocketListenerExt},
     work::DistributedWorkFactory,
     NetworkParams, NodeCallbacks, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry,
     TelemetryDeadChannelCleanup, BUILD_INFO, VERSION_STRING,
@@ -109,7 +108,6 @@ pub struct Node {
     pub vote_router: Arc<VoteRouter>,
     pub vote_processor: Arc<VoteProcessor>,
     vote_cache_processor: Arc<VoteCacheProcessor>,
-    pub websocket: Option<Arc<crate::websocket::WebsocketListener>>,
     pub bootstrap_initiator: Arc<BootstrapInitiator>,
     pub rep_crawler: Arc<RepCrawler>,
     pub tcp_listener: Arc<TcpListener>,
@@ -118,7 +116,7 @@ pub struct Node {
     pub backlog_population: Arc<BacklogPopulation>,
     ascendboot: Arc<BootstrapAscending>,
     pub local_block_broadcaster: Arc<LocalBlockBroadcaster>,
-    process_live_dispatcher: Arc<ProcessLiveDispatcher>,
+    pub process_live_dispatcher: Arc<ProcessLiveDispatcher>,
     message_processor: Mutex<MessageProcessor>,
     network_threads: Arc<Mutex<NetworkThreads>>,
     ledger_pruning: Arc<LedgerPruning>,
@@ -597,17 +595,6 @@ impl Node {
         ));
         bootstrap_initiator.initialize();
         bootstrap_initiator.start();
-
-        let websocket = create_websocket_server(
-            config.websocket_config.clone(),
-            wallets.clone(),
-            runtime.clone(),
-            &active_elections,
-            &telemetry,
-            &vote_processor,
-            &process_live_dispatcher,
-            &bootstrap_initiator,
-        );
 
         let latest_keepalives = Arc::new(Mutex::new(LatestKeepalives::default()));
         dead_channel_cleanup.add_step(LatestKeepalivesCleanup::new(latest_keepalives.clone()));
@@ -1116,7 +1103,6 @@ impl Node {
             active: active_elections,
             vote_processor,
             vote_cache_processor,
-            websocket,
             bootstrap_initiator,
             rep_crawler,
             tcp_listener,
@@ -1437,9 +1423,6 @@ impl NodeExt for Arc<Node> {
                 .initialize(&self.network_params.ledger.genesis_account);
             self.ascendboot.start();
         }
-        if let Some(ws_listener) = &self.websocket {
-            ws_listener.start();
-        }
         self.telemetry.start();
         self.stats.start();
         self.local_block_broadcaster.start();
@@ -1502,9 +1485,6 @@ impl NodeExt for Arc<Node> {
         self.vote_generators.stop();
         self.confirming_set.stop();
         self.telemetry.stop();
-        if let Some(ws_listener) = &self.websocket {
-            ws_listener.stop();
-        }
         self.bootstrap_server.stop();
         self.bootstrap_initiator.stop();
         self.wallets.stop();

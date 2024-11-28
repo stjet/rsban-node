@@ -1,4 +1,4 @@
-use crate::websocket::WebsocketConfig;
+use crate::config::websocket_config::WebsocketConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]

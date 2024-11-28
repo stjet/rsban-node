@@ -1,7 +1,4 @@
-use super::{
-    ConfirmationJsonOptions, ConfirmationOptions, Options,
-    VoteJsonOptions, VoteOptions,
-};
+use super::{ConfirmationJsonOptions, ConfirmationOptions, Options, VoteJsonOptions, VoteOptions};
 use crate::wallets::Wallets;
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::utils::SerdePropertyTree;

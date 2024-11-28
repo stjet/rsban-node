@@ -178,11 +178,7 @@ impl Node {
         Self::new(args, false, NodeIdKeyFile::default())
     }
 
-    fn new(
-        args: NodeArgs,
-        is_nulled: bool,
-        mut node_id_key_file: NodeIdKeyFile,
-    ) -> Self {
+    fn new(args: NodeArgs, is_nulled: bool, mut node_id_key_file: NodeIdKeyFile) -> Self {
         let network_params = args.network_params;
         let config = args.config;
         let flags = args.flags;
@@ -575,7 +571,7 @@ impl Node {
             &active_elections,
             &telemetry,
             &vote_processor,
-            &process_live_dispatcher
+            &process_live_dispatcher,
         );
 
         let mut bootstrap_publisher = MessagePublisher::new_with_buffer_size(

@@ -1,7 +1,11 @@
 #[macro_use]
 extern crate num_derive;
 
-use rsnano_core::{utils::{milliseconds_since_epoch, PropertyTree, SerdePropertyTree}, work::WorkThresholds, Block, BlockHash, DifficultyV1, WorkVersion};
+use rsnano_core::{
+    utils::{milliseconds_since_epoch, PropertyTree, SerdePropertyTree},
+    work::WorkThresholds,
+    Block, BlockHash, DifficultyV1, WorkVersion,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fmt::Debug, hash::Hash, time::Duration};

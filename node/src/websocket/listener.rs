@@ -1,7 +1,4 @@
-use super::{
-    ConfirmationJsonOptions, ConfirmationOptions, Options,
-    WebsocketSessionEntry,
-};
+use super::{ConfirmationJsonOptions, ConfirmationOptions, Options, WebsocketSessionEntry};
 use crate::{consensus::ElectionStatus, wallets::Wallets, websocket::WebsocketSession};
 use rsnano_core::{
     utils::{PropertyTree, SerdePropertyTree},

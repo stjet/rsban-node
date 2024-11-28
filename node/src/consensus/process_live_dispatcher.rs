@@ -9,14 +9,11 @@ use std::sync::{Arc, Mutex};
 pub struct ProcessLiveDispatcher {
     ledger: Arc<Ledger>,
     election_schedulers: Arc<ElectionSchedulers>,
-    new_unconfirmed_block_observer: Mutex<Vec<Box<dyn Fn(&Block) + Send + Sync>>>,    
+    new_unconfirmed_block_observer: Mutex<Vec<Box<dyn Fn(&Block) + Send + Sync>>>,
 }
 
 impl ProcessLiveDispatcher {
-    pub fn new(
-        ledger: Arc<Ledger>,
-        election_schedulers: Arc<ElectionSchedulers>,
-    ) -> Self {
+    pub fn new(ledger: Arc<Ledger>, election_schedulers: Arc<ElectionSchedulers>) -> Self {
         Self {
             ledger,
             election_schedulers,

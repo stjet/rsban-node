@@ -1,10 +1,14 @@
 use super::{WebsocketConfig, WebsocketListener};
 use crate::{
-    consensus::{ActiveElections, ElectionStatus, ElectionStatusType, ProcessLiveDispatcher, VoteProcessor},
+    consensus::{
+        ActiveElections, ElectionStatus, ElectionStatusType, ProcessLiveDispatcher, VoteProcessor,
+    },
     wallets::Wallets,
     Telemetry,
 };
-use rsnano_core::{Account, Amount, Block, BlockHash, BlockType, Vote, VoteCode, VoteWithWeightInfo};
+use rsnano_core::{
+    Account, Amount, Block, BlockHash, BlockType, Vote, VoteCode, VoteWithWeightInfo,
+};
 use rsnano_messages::TelemetryData;
 use rsnano_websocket_messages::{new_block_arrived_message, OutgoingMessageEnvelope, Topic};
 use serde::{Deserialize, Serialize};
@@ -22,7 +26,7 @@ pub fn create_websocket_server(
     active_elections: &ActiveElections,
     telemetry: &Telemetry,
     vote_processor: &VoteProcessor,
-    process_live_dispatcher: &ProcessLiveDispatcher
+    process_live_dispatcher: &ProcessLiveDispatcher,
 ) -> Option<Arc<WebsocketListener>> {
     if !config.enabled {
         return None;

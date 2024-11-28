@@ -1177,25 +1177,31 @@ impl Node {
                     .container_info()
                     .into_legacy("vote_processor"),
                 self.vote_cache_processor
-                    .collect_container_info("vote_cache_processor"),
-                self.rep_crawler.collect_container_info("rep_crawler"),
+                    .container_info()
+                    .into_legacy("vote_cache_processor"),
+                self.rep_crawler.container_info().into_legacy("rep_crawler"),
                 self.block_processor
                     .container_info()
                     .into_legacy("block_processor"),
                 online_reps,
-                self.history.collect_container_info("history"),
-                self.confirming_set.collect_container_info("confirming_set"),
+                self.history.container_info().into_legacy("history"),
+                self.confirming_set
+                    .container_info()
+                    .into_legacy("confirming_set"),
                 self.request_aggregator
                     .container_info()
                     .into_legacy("request_aggregator"),
                 self.election_schedulers
-                    .collect_container_info("election_scheduler"),
+                    .container_info()
+                    .into_legacy("election_scheduler"),
                 vote_cache,
-                self.vote_router.collect_container_info("vote_router"),
+                self.vote_router.container_info().into_legacy("vote_router"),
                 self.vote_generators
-                    .collect_container_info("vote_generators"),
+                    .container_info()
+                    .into_legacy("vote_generators"),
                 self.ascendboot
-                    .collect_container_info("bootstrap_ascending"),
+                    .container_info()
+                    .into_legacy("bootstrap_ascending"),
                 self.unchecked.collect_container_info("unchecked"),
                 self.local_block_broadcaster
                     .collect_container_info("local_block_broadcaster"),

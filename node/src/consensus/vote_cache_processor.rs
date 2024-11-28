@@ -1,7 +1,7 @@
 use super::{VoteCache, VoteProcessorConfig, VoteRouter};
 use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     BlockHash, VoteSource,
 };
 use std::{
@@ -93,15 +93,8 @@ impl VoteCacheProcessor {
         self.state.lock().unwrap().triggered.len()
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "triggered".to_owned(),
-                count: self.len(),
-                sizeof_element: std::mem::size_of::<BlockHash>(),
-            })],
-        )
+    pub fn container_info(&self) -> ContainerInfos {
+        [("triggered", self.len(), std::mem::size_of::<BlockHash>())].into()
     }
 }
 

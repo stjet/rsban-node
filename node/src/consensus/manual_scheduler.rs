@@ -1,7 +1,7 @@
 use super::{ActiveElections, ActiveElectionsExt, ElectionBehavior};
 use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     Amount, Block,
 };
 use std::{
@@ -88,18 +88,14 @@ impl ManualScheduler {
         }
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub fn container_info(&self) -> ContainerInfos {
         let guard = self.mutex.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "queue".to_string(),
-                count: guard.queue.len(),
-                sizeof_element: size_of::<Arc<Block>>()
-                    + size_of::<Option<Amount>>()
-                    + size_of::<ElectionBehavior>(),
-            })],
-        )
+        [(
+            "queue",
+            guard.queue.len(),
+            size_of::<Arc<Block>>() + size_of::<Option<Amount>>() + size_of::<ElectionBehavior>(),
+        )]
+        .into()
     }
 }
 

@@ -4,7 +4,7 @@ use crate::{
     utils::{ThreadPool, ThreadPoolImpl},
 };
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     Block, BlockHash,
 };
 use rsnano_ledger::{Ledger, WriteGuard, Writer};
@@ -121,16 +121,9 @@ impl ConfirmingSet {
         }
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub fn container_info(&self) -> ContainerInfos {
         let guard = self.thread.mutex.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "set".to_string(),
-                count: guard.set.len(),
-                sizeof_element: std::mem::size_of::<BlockHash>(),
-            })],
-        )
+        [("set", guard.set.len(), std::mem::size_of::<BlockHash>())].into()
     }
 }
 

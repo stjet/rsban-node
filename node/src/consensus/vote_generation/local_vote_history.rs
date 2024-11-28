@@ -1,5 +1,5 @@
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     BlockHash, Root, Vote,
 };
 use std::{
@@ -129,22 +129,13 @@ impl LocalVoteHistory {
         self.data.lock().unwrap().history.len()
     }
 
-    pub fn container_info(&self) -> (usize, usize) {
-        (
-            size_of::<LocalVote>(),
+    pub fn container_info(&self) -> ContainerInfos {
+        [(
+            "history",
             self.data.lock().unwrap().history.len(),
-        )
-    }
-
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "history".to_string(),
-                count: self.data.lock().unwrap().history.len(),
-                sizeof_element: size_of::<LocalVote>(),
-            })],
-        )
+            size_of::<LocalVote>(),
+        )]
+        .into()
     }
 }
 

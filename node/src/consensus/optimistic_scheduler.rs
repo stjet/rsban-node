@@ -5,7 +5,7 @@ use crate::{
     stats::{DetailType, StatType, Stats},
 };
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     Account, AccountInfo, ConfirmationHeightInfo,
 };
 use rsnano_ledger::Ledger;
@@ -138,16 +138,14 @@ impl OptimisticScheduler {
         }
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub fn container_info(&self) -> ContainerInfos {
         let guard = self.candidates.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "candidates".to_string(),
-                count: guard.len(),
-                sizeof_element: size_of::<Account>() * 2 + size_of::<Instant>(),
-            })],
-        )
+        [(
+            "candidates",
+            guard.len(),
+            size_of::<Account>() * 2 + size_of::<Instant>(),
+        )]
+        .into()
     }
 
     fn predicate(&self, candidates: &OrderedCandidates) -> bool {

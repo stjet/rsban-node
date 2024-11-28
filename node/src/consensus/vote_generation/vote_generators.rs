@@ -3,7 +3,10 @@ use crate::{
     config::NodeConfig, consensus::VoteBroadcaster, stats::Stats, transport::MessagePublisher,
     wallets::Wallets, NetworkParams,
 };
-use rsnano_core::{utils::ContainerInfoComponent, Block, BlockHash, Root};
+use rsnano_core::{
+    utils::{ContainerInfoComponent, ContainerInfos},
+    Block, BlockHash, Root,
+};
 use rsnano_ledger::Ledger;
 use rsnano_network::ChannelId;
 use std::{sync::Arc, time::Duration};
@@ -86,14 +89,10 @@ impl VoteGenerators {
         self.non_final_vote_generator.generate(blocks, channel_id)
     }
 
-    pub(crate) fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                self.non_final_vote_generator
-                    .collect_container_info("non_final"),
-                self.final_vote_generator.collect_container_info("final"),
-            ],
-        )
+    pub(crate) fn container_info(&self) -> ContainerInfos {
+        ContainerInfos::builder()
+            .node("non_final", self.non_final_vote_generator.container_info())
+            .node("final", self.final_vote_generator.container_info())
+            .finish()
     }
 }

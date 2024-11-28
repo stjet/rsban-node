@@ -1,5 +1,5 @@
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     Account, BlockHash, PendingKey,
 };
 use rsnano_ledger::Ledger;
@@ -51,22 +51,12 @@ impl DatabaseScan {
         self.accounts_iterator.warmed_up() && self.pending_iterator.warmed_up()
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "accounts_iterator".to_owned(),
-                    count: self.accounts_iterator.completed,
-                    sizeof_element: 0,
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "pending_iterator".to_owned(),
-                    count: self.pending_iterator.completed,
-                    sizeof_element: 0,
-                }),
-            ],
-        )
+    pub fn container_info(&self) -> ContainerInfos {
+        [
+            ("accounts_iterator", self.accounts_iterator.completed, 0),
+            ("pending_iterator", self.pending_iterator.completed, 0),
+        ]
+        .into()
     }
 }
 

@@ -8,7 +8,7 @@ use crate::{
 };
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent, Peer, NULL_ENDPOINT},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos, Peer, NULL_ENDPOINT},
     Account, BlockHash, Root, Vote,
 };
 use rsnano_ledger::Ledger;
@@ -455,23 +455,17 @@ impl RepCrawler {
         });
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub fn container_info(&self) -> ContainerInfos {
         let guard = self.rep_crawler_impl.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "queries".to_string(),
-                    count: guard.queries.len(),
-                    sizeof_element: OrderedQueries::ELEMENT_SIZE,
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "responses".to_string(),
-                    count: guard.responses.len(),
-                    sizeof_element: size_of::<Arc<Vote>>() * 2,
-                }),
-            ],
-        )
+        [
+            ("queries", guard.queries.len(), OrderedQueries::ELEMENT_SIZE),
+            (
+                "responses",
+                guard.responses.len(),
+                size_of::<Arc<Vote>>() * 2,
+            ),
+        ]
+        .into()
     }
 }
 

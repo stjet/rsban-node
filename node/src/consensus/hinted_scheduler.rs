@@ -6,7 +6,7 @@ use crate::{
     stats::{DetailType, StatType, Stats},
 };
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     Amount, BlockHash,
 };
 use rsnano_ledger::Ledger;
@@ -115,16 +115,14 @@ impl HintedScheduler {
         }
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub fn container_info(&self) -> ContainerInfos {
         let guard = self.cooldowns.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "cooldowns".to_string(),
-                count: guard.len(),
-                sizeof_element: (size_of::<BlockHash>() + size_of::<Instant>()) * 2,
-            })],
-        )
+        [(
+            "cooldowns",
+            guard.len(),
+            (size_of::<BlockHash>() + size_of::<Instant>()) * 2,
+        )]
+        .into()
     }
 
     fn predicate(&self) -> bool {

@@ -11,7 +11,8 @@ use super::{
     VoteCache,
 };
 use rsnano_core::{
-    utils::ContainerInfoComponent, Account, AccountInfo, Block, ConfirmationHeightInfo,
+    utils::{ContainerInfoComponent, ContainerInfos},
+    Account, AccountInfo, Block, ConfirmationHeightInfo,
 };
 use rsnano_ledger::Ledger;
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
@@ -128,15 +129,12 @@ impl ElectionSchedulers {
         self.priority.stop();
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                self.hinted.collect_container_info("hinted"),
-                self.manual.collect_container_info("manual"),
-                self.optimistic.collect_container_info("optimistic"),
-                self.priority.collect_container_info("priority"),
-            ],
-        )
+    pub fn container_info(&self) -> ContainerInfos {
+        ContainerInfos::builder()
+            .node("hinted", self.hinted.container_info())
+            .node("manual", self.manual.container_info())
+            .node("optimistic", self.optimistic.container_info())
+            .node("priority", self.priority.container_info())
+            .finish()
     }
 }

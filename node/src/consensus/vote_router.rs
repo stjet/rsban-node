@@ -1,7 +1,7 @@
 use super::{Election, RecentlyConfirmedCache, VoteApplier, VoteCache};
 use crate::consensus::VoteApplierExt;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     BlockHash, Vote, VoteCode, VoteSource,
 };
 use rsnano_ledger::RepWeightCache;
@@ -209,16 +209,14 @@ impl VoteRouter {
         }
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub fn container_info(&self) -> ContainerInfos {
         let guard = self.shared.1.lock().unwrap();
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![ContainerInfoComponent::Leaf(ContainerInfo {
-                name: "elections".to_owned(),
-                count: guard.elections.len(),
-                sizeof_element: size_of::<BlockHash>() + size_of::<Weak<Election>>(),
-            })],
-        )
+        [(
+            "elections",
+            guard.elections.len(),
+            size_of::<BlockHash>() + size_of::<Weak<Election>>(),
+        )]
+        .into()
     }
 }
 

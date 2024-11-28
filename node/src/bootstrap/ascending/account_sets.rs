@@ -5,7 +5,7 @@ use super::{
 };
 use crate::bootstrap::ascending::ordered_priorities::PriorityEntry;
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     Account, BlockHash,
 };
 use rsnano_nullable_clock::Timestamp;
@@ -319,30 +319,23 @@ impl AccountSets {
         return Priority::ZERO;
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub fn container_info(&self) -> ContainerInfos {
         // Count blocking entries with their dependency account unknown
         let blocking_unknown = self.blocking.count_by_dependency_account(&Account::zero());
-
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "priorities".to_string(),
-                    count: self.priorities.len(),
-                    sizeof_element: OrderedPriorities::ELEMENT_SIZE,
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "blocking".to_string(),
-                    count: self.blocking.len(),
-                    sizeof_element: OrderedBlocking::ELEMENT_SIZE,
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "blocking_unknown".to_string(),
-                    count: blocking_unknown,
-                    sizeof_element: 0,
-                }),
-            ],
-        )
+        [
+            (
+                "priorities",
+                self.priorities.len(),
+                OrderedPriorities::ELEMENT_SIZE,
+            ),
+            (
+                "blocking",
+                self.blocking.len(),
+                OrderedBlocking::ELEMENT_SIZE,
+            ),
+            ("blocking_unknown", blocking_unknown, 0),
+        ]
+        .into()
     }
 }
 

@@ -26,7 +26,7 @@ use ordered_tags::QuerySource;
 use priority::Priority;
 use rand::{thread_rng, RngCore};
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     Account, AccountInfo, Block, BlockHash, BlockType, HashOrAccount,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
@@ -673,8 +673,8 @@ impl BootstrapAscending {
         self.condition.notify_all();
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        self.mutex.lock().unwrap().collect_container_info(name)
+    pub fn container_info(&self) -> ContainerInfos {
+        self.mutex.lock().unwrap().container_info()
     }
 }
 
@@ -1001,29 +1001,14 @@ impl BootstrapAscendingLogic {
         }
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "tags".to_string(),
-                    count: self.tags.len(),
-                    sizeof_element: OrderedTags::ELEMENT_SIZE,
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "throttle".to_string(),
-                    count: self.throttle.len(),
-                    sizeof_element: 0,
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "throttle_success".to_string(),
-                    count: self.throttle.successes(),
-                    sizeof_element: 0,
-                }),
-                self.accounts.collect_container_info("accounts"),
-                self.database_scan.collect_container_info("database_scan"),
-            ],
-        )
+    pub fn container_info(&self) -> ContainerInfos {
+        ContainerInfos::builder()
+            .leaf("tags", self.tags.len(), OrderedTags::ELEMENT_SIZE)
+            .leaf("throttle", self.throttle.len(), 0)
+            .leaf("throttle_success", self.throttle.successes(), 0)
+            .node("accounts", self.accounts.container_info())
+            .node("database_scan", self.database_scan.container_info())
+            .finish()
     }
 }
 

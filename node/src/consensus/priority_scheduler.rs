@@ -1,7 +1,7 @@
 use super::{ActiveElections, Bucket, BucketExt, PriorityBucketConfig};
 use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{
-    utils::{ContainerInfo, ContainerInfoComponent},
+    utils::{ContainerInfo, ContainerInfoComponent, ContainerInfos},
     Account, AccountInfo, Amount, Block, ConfirmationHeightInfo,
 };
 use rsnano_ledger::Ledger;
@@ -248,31 +248,19 @@ impl PriorityScheduler {
         }
     }
 
-    pub fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
-        let mut bucket_infos = Vec::new();
-        let mut election_infos = Vec::new();
+    pub fn container_info(&self) -> ContainerInfos {
+        let mut bucket_infos = ContainerInfos::builder();
+        let mut election_infos = ContainerInfos::builder();
 
         for (id, bucket) in self.buckets.iter().enumerate() {
-            bucket_infos.push(ContainerInfoComponent::Leaf(ContainerInfo {
-                name: id.to_string(),
-                count: bucket.len(),
-                sizeof_element: 0,
-            }));
-
-            election_infos.push(ContainerInfoComponent::Leaf(ContainerInfo {
-                name: id.to_string(),
-                count: bucket.election_count(),
-                sizeof_element: 0,
-            }));
+            bucket_infos = bucket_infos.leaf(id.to_string(), bucket.len(), 0);
+            election_infos = election_infos.leaf(id.to_string(), bucket.election_count(), 0);
         }
 
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Composite("blocks".to_owned(), bucket_infos),
-                ContainerInfoComponent::Composite("elections".to_owned(), election_infos),
-            ],
-        )
+        ContainerInfos::builder()
+            .node("blocks", bucket_infos.finish())
+            .node("elections", election_infos.finish())
+            .finish()
     }
 }
 

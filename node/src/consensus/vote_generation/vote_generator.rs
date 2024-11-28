@@ -7,7 +7,7 @@ use crate::{
     wallets::Wallets,
 };
 use rsnano_core::{
-    utils::{milliseconds_since_epoch, ContainerInfo, ContainerInfoComponent},
+    utils::{milliseconds_since_epoch, ContainerInfo, ContainerInfoComponent, ContainerInfos},
     Block, BlockHash, Root, Vote,
 };
 use rsnano_ledger::{Ledger, Writer};
@@ -142,7 +142,7 @@ impl VoteGenerator {
         result
     }
 
-    pub(crate) fn collect_container_info(&self, name: impl Into<String>) -> ContainerInfoComponent {
+    pub(crate) fn container_info(&self) -> ContainerInfos {
         let candidates_count;
         let requests_count;
         {
@@ -150,21 +150,20 @@ impl VoteGenerator {
             candidates_count = guard.candidates.len();
             requests_count = guard.requests.len();
         }
-        ContainerInfoComponent::Composite(
-            name.into(),
-            vec![
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "candidates".to_string(),
-                    count: candidates_count,
-                    sizeof_element: size_of::<Root>() + size_of::<BlockHash>(),
-                }),
-                ContainerInfoComponent::Leaf(ContainerInfo {
-                    name: "requests".to_string(),
-                    count: requests_count,
-                    sizeof_element: size_of::<ChannelId>() + size_of::<Vec<(Root, BlockHash)>>(),
-                }),
-            ],
-        )
+
+        [
+            (
+                "candidates",
+                candidates_count,
+                size_of::<Root>() + size_of::<BlockHash>(),
+            ),
+            (
+                "requests",
+                requests_count,
+                size_of::<ChannelId>() + size_of::<Vec<(Root, BlockHash)>>(),
+            ),
+        ]
+        .into()
     }
 }
 

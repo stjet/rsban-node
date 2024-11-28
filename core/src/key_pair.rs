@@ -10,11 +10,11 @@ pub struct PrivateKey {
     private_key: ed25519_dalek::SigningKey,
 }
 
-pub struct KeyPairFactory {
+pub struct PrivateKeyFactory {
     rng: NullableRng,
 }
 
-impl KeyPairFactory {
+impl PrivateKeyFactory {
     #[allow(dead_code)]
     fn new(rng: NullableRng) -> Self {
         Self { rng }
@@ -38,7 +38,7 @@ impl KeyPairFactory {
     }
 }
 
-impl Default for KeyPairFactory {
+impl Default for PrivateKeyFactory {
     fn default() -> Self {
         Self {
             rng: NullableRng::thread_rng(),
@@ -48,7 +48,7 @@ impl Default for KeyPairFactory {
 
 impl Default for PrivateKey {
     fn default() -> Self {
-        KeyPairFactory::default().create_key_pair()
+        PrivateKeyFactory::default().create_key_pair()
     }
 }
 
@@ -247,7 +247,7 @@ mod tests {
                 0x11, 0x22, 0x33, 0x44,
             ];
             let rng = NullableRng::new_null_bytes(&random_data);
-            let mut key_pair_factory = KeyPairFactory::new(rng);
+            let mut key_pair_factory = PrivateKeyFactory::new(rng);
 
             let key_pair = key_pair_factory.create_key_pair();
 
@@ -256,7 +256,7 @@ mod tests {
 
         #[test]
         fn nullable() {
-            let mut key_pair_factory = KeyPairFactory::new_null();
+            let mut key_pair_factory = PrivateKeyFactory::new_null();
             let key_pair = key_pair_factory.create_key_pair();
             assert_ne!(key_pair.private_key(), RawKey::zero());
         }
@@ -264,7 +264,7 @@ mod tests {
         #[test]
         fn configured_response() {
             let expected = RawKey::from_bytes([3; 32]);
-            let mut key_pair_factory = KeyPairFactory::new_null_with(expected);
+            let mut key_pair_factory = PrivateKeyFactory::new_null_with(expected);
             assert_eq!(key_pair_factory.create_key_pair().private_key(), expected);
         }
     }

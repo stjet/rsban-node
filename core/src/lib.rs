@@ -29,7 +29,7 @@ pub use vote::*;
 
 mod key_pair;
 pub use key_pair::{
-    sign_message, validate_block_signature, validate_message, KeyPairFactory, PrivateKey,
+    sign_message, validate_block_signature, validate_message, PrivateKey, PrivateKeyFactory,
 };
 
 mod raw_key;

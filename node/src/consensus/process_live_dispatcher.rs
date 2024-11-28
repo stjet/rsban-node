@@ -1,34 +1,26 @@
 use super::election_schedulers::ElectionSchedulers;
-use crate::{
-    block_processing::BlockProcessor,
-    websocket::WebsocketListener,
-};
-use rsnano_core::{
-    utils::{PropertyTree, SerdePropertyTree},
-    Block,
-};
+use crate::block_processing::BlockProcessor;
+use rsnano_core::Block;
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_store_lmdb::LmdbReadTransaction;
-use rsnano_websocket_messages::{OutgoingMessageEnvelope, Topic};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /// Observes confirmed blocks and dispatches the process_live function.
 pub struct ProcessLiveDispatcher {
     ledger: Arc<Ledger>,
     election_schedulers: Arc<ElectionSchedulers>,
-    websocket: Option<Arc<WebsocketListener>>,
+    new_unconfirmed_block_observer: Mutex<Vec<Box<dyn Fn(&Block) + Send + Sync>>>,    
 }
 
 impl ProcessLiveDispatcher {
     pub fn new(
         ledger: Arc<Ledger>,
         election_schedulers: Arc<ElectionSchedulers>,
-        websocket: Option<Arc<WebsocketListener>>,
     ) -> Self {
         Self {
             ledger,
             election_schedulers,
-            websocket,
+            new_unconfirmed_block_observer: Mutex::new(Vec::new()),
         }
     }
 
@@ -44,11 +36,16 @@ impl ProcessLiveDispatcher {
             self.election_schedulers.activate(tx, &block.account());
         }
 
-        if let Some(websocket) = &self.websocket {
-            if websocket.any_subscriber(Topic::NewUnconfirmedBlock) {
-                websocket.broadcast(&new_block_arrived_message(block));
+        {
+            let callbacks = self.new_unconfirmed_block_observer.lock().unwrap();
+            for callback in callbacks.iter() {
+                (callback)(&block);
             }
         }
+    }
+
+    pub fn add_new_unconfirmed_block_callback(&self, f: Box<dyn Fn(&Block) + Send + Sync>) {
+        self.new_unconfirmed_block_observer.lock().unwrap().push(f);
     }
 }
 
@@ -69,14 +66,4 @@ impl ProcessLiveDispatcherExt for Arc<ProcessLiveDispatcher> {
             }
         }));
     }
-}
-
-fn new_block_arrived_message(block: &Block) -> OutgoingMessageEnvelope {
-    let mut json_block = SerdePropertyTree::new();
-    block.serialize_json(&mut json_block).unwrap();
-    let subtype = block.sideband().unwrap().details.subtype_str();
-    json_block.put_string("subtype", subtype).unwrap();
-    let mut result = OutgoingMessageEnvelope::new(Topic::NewUnconfirmedBlock, json_block.value);
-    result.hash = Some(block.hash());
-    result
 }

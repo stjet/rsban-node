@@ -10,12 +10,13 @@ use rsnano_node::{
     bootstrap::{BootstrapInitiatorExt, BootstrapStarted},
     config::{NetworkConstants, NodeConfig},
     websocket::{
-        vote_received, BlockConfirmed, OutgoingMessageEnvelope, TelemetryReceived, Topic,
+        vote_received, BlockConfirmed, TelemetryReceived,
         VoteReceived, WebsocketConfig,
     },
     Node,
 };
-use std::{sync::Arc, time::Duration};
+use rsnano_websocket_messages::{Topic, OutgoingMessageEnvelope};
+use std::{sync::Arc, thread::sleep, time::Duration};
 use test_helpers::{assert_timely, get_available_port, make_fake_channel, System};
 use tokio::{net::TcpStream, task::spawn_blocking, time::timeout};
 use tokio_tungstenite::{connect_async, tungstenite, MaybeTlsStream, WebSocketStream};

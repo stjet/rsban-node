@@ -1,12 +1,12 @@
 use super::{WebsocketConfig, WebsocketListener};
 use crate::{
-    consensus::{ActiveElections, ElectionStatus, ElectionStatusType, VoteProcessor},
+    consensus::{ActiveElections, ElectionStatus, ElectionStatusType, ProcessLiveDispatcher, VoteProcessor},
     wallets::Wallets,
     Telemetry,
 };
-use rsnano_core::{Account, Amount, BlockHash, BlockType, Vote, VoteCode, VoteWithWeightInfo};
+use rsnano_core::{Account, Amount, Block, BlockHash, BlockType, Vote, VoteCode, VoteWithWeightInfo};
 use rsnano_messages::TelemetryData;
-use rsnano_websocket_messages::{OutgoingMessageEnvelope, Topic};
+use rsnano_websocket_messages::{new_block_arrived_message, OutgoingMessageEnvelope, Topic};
 use serde::{Deserialize, Serialize};
 use std::{
     net::{IpAddr, SocketAddr, SocketAddrV6},
@@ -22,6 +22,7 @@ pub fn create_websocket_server(
     active_elections: &ActiveElections,
     telemetry: &Telemetry,
     vote_processor: &VoteProcessor,
+    process_live_dispatcher: &ProcessLiveDispatcher
 ) -> Option<Arc<WebsocketListener>> {
     if !config.enabled {
         return None;
@@ -105,6 +106,15 @@ pub fn create_websocket_server(
             }
         },
     ));
+
+    let server_w: std::sync::Weak<WebsocketListener> = Arc::downgrade(&server);
+    process_live_dispatcher.add_new_unconfirmed_block_callback(Box::new(move |block: &Block| {
+        if let Some(server) = server_w.upgrade() {
+            if server.any_subscriber(Topic::NewUnconfirmedBlock) {
+                server.broadcast(&new_block_arrived_message(block));
+            }
+        }
+    }));
 
     Some(server)
 }

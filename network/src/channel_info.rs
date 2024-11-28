@@ -1,7 +1,7 @@
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2},
-    PublicKey,
+    NodeId, PublicKey,
 };
 use rsnano_nullable_clock::Timestamp;
 use std::{
@@ -101,7 +101,7 @@ impl ChannelInfo {
         self.channel_id
     }
 
-    pub fn node_id(&self) -> Option<PublicKey> {
+    pub fn node_id(&self) -> Option<NodeId> {
         self.data.lock().unwrap().node_id
     }
 
@@ -193,7 +193,7 @@ impl ChannelInfo {
         }
     }
 
-    pub fn set_node_id(&self, node_id: PublicKey) {
+    pub fn set_node_id(&self, node_id: NodeId) {
         self.data.lock().unwrap().node_id = Some(node_id);
     }
 
@@ -228,7 +228,7 @@ impl ChannelInfo {
 }
 
 struct ChannelInfoData {
-    node_id: Option<PublicKey>,
+    node_id: Option<NodeId>,
     peering_addr: Option<SocketAddrV6>,
     write_queue: Option<Box<dyn WriteQueueAdapter>>,
 }

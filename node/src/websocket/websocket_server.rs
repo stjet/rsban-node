@@ -134,7 +134,7 @@ fn telemetry_received(data: &TelemetryData, endpoint: SocketAddrV6) -> OutgoingM
                 .as_millis()
                 .to_string(),
             active_difficulty: format!("{:016x}", data.active_difficulty),
-            node_id: data.node_id.to_node_id(),
+            node_id: data.node_id.to_string(),
             signature: data.signature.encode_hex(),
             address: endpoint.ip().to_string(),
             port: endpoint.port().to_string(),

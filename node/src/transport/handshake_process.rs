@@ -1,6 +1,6 @@
 use super::SynCookies;
 use crate::stats::{DetailType, Direction, StatType, Stats};
-use rsnano_core::{utils::TEST_ENDPOINT_1, BlockHash, KeyPair, PublicKey};
+use rsnano_core::{utils::TEST_ENDPOINT_1, BlockHash, KeyPair, NodeId};
 use rsnano_messages::{
     Message, MessageSerializer, NodeIdHandshake, NodeIdHandshakeQuery, NodeIdHandshakeResponse,
     ProtocolInfo,
@@ -19,7 +19,7 @@ pub enum HandshakeStatus {
     Abort,
     AbortOwnNodeId,
     Handshake,
-    Realtime(PublicKey),
+    Realtime(NodeId),
     Bootstrap,
 }
 
@@ -257,7 +257,7 @@ impl HandshakeProcess {
         remote_endpoint: &SocketAddrV6,
     ) -> Result<(), HandshakeResponseError> {
         // Prevent connection with ourselves
-        if response.node_id == self.node_id.public_key() {
+        if response.node_id == self.node_id.public_key().into() {
             return Err(HandshakeResponseError::OwnNodeId);
         }
 

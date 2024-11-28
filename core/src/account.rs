@@ -386,17 +386,4 @@ mod tests {
         .unwrap();
         assert_eq!(deserialized, Account::from(123));
     }
-
-    #[test]
-    fn decode_node_id() {
-        let node_id = "node_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3";
-        let account = Account::decode_node_id(node_id).expect("Failed to decode node ID");
-        assert_eq!(
-            account,
-            Account::decode_account(
-                "nano_1y7j5rdqhg99uyab1145gu3yur1ax35a3b6qr417yt8cd6n86uiw3d4whty3"
-            )
-            .expect("Failed to decode account")
-        );
-    }
 }

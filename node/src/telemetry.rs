@@ -351,7 +351,7 @@ impl Telemetry {
             .count_by_mode(ChannelMode::Realtime) as u32;
 
         let mut telemetry_data = TelemetryData {
-            node_id: self.node_id.public_key(),
+            node_id: self.node_id.public_key().into(),
             block_count: self.ledger.block_count(),
             cemented_count: self.ledger.cemented_count(),
             bandwidth_cap: self.node_config.bandwidth_limit as u64,

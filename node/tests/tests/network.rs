@@ -12,7 +12,6 @@ use rsnano_node::{
     consensus::VoteProcessorConfig,
     stats::{DetailType, Direction, StatType},
     wallets::WalletsExt,
-    Node,
 };
 use std::{ops::Deref, sync::Arc, thread::sleep, time::Duration};
 use test_helpers::{
@@ -52,7 +51,7 @@ fn last_contacted() {
         .network_info
         .read()
         .unwrap()
-        .find_node_id(&node1.node_id.public_key())
+        .find_node_id(&node1.node_id())
         .unwrap()
         .clone();
 
@@ -372,7 +371,7 @@ fn duplicate_vote_detection() {
         .network_info
         .read()
         .unwrap()
-        .find_node_id(&node1.node_id.public_key())
+        .find_node_id(&node1.node_id())
         .unwrap()
         .channel_id();
 
@@ -452,7 +451,7 @@ fn duplicate_revert_vote() {
         .network_info
         .read()
         .unwrap()
-        .find_node_id(&node1.node_id.public_key())
+        .find_node_id(&node1.node_id())
         .unwrap()
         .channel_id();
 
@@ -529,7 +528,7 @@ fn expire_duplicate_filter() {
         .network_info
         .read()
         .unwrap()
-        .find_node_id(&node1.node_id.public_key())
+        .find_node_id(&node1.node_id())
         .unwrap()
         .channel_id();
 

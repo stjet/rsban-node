@@ -16,7 +16,7 @@ fn ignore_rebroadcast() {
         .network_info
         .read()
         .unwrap()
-        .find_node_id(&node2.node_id.public_key())
+        .find_node_id(&node2.node_id())
         .expect("channel not found 1 to 2")
         .channel_id();
 
@@ -24,7 +24,7 @@ fn ignore_rebroadcast() {
         .network_info
         .read()
         .unwrap()
-        .find_node_id(&node1.node_id.public_key())
+        .find_node_id(&node1.node_id())
         .expect("channel not found 2 to 1")
         .channel_id();
 

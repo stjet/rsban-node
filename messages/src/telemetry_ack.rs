@@ -5,8 +5,7 @@ use rsnano_core::utils::{
     BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
 };
 use rsnano_core::{
-    sign_message, to_hex_string, validate_message, Account, BlockHash, KeyPair, PublicKey,
-    Signature,
+    sign_message, to_hex_string, validate_message, Account, BlockHash, KeyPair, NodeId, Signature,
 };
 use serde_derive::Serialize;
 use std::fmt::Display;
@@ -25,7 +24,7 @@ pub enum TelemetryMaker {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TelemetryData {
     pub signature: Signature,
-    pub node_id: PublicKey,
+    pub node_id: NodeId,
     pub block_count: u64,
     pub cemented_count: u64,
     pub unchecked_count: u64,
@@ -51,7 +50,7 @@ impl TelemetryData {
     pub fn new() -> Self {
         Self {
             signature: Signature::new(),
-            node_id: PublicKey::zero(),
+            node_id: NodeId::ZERO,
             block_count: 0,
             cemented_count: 0,
             unchecked_count: 0,
@@ -74,7 +73,7 @@ impl TelemetryData {
 
     pub fn new_test_instance() -> Self {
         let mut data = TelemetryData::new();
-        data.node_id = PublicKey::from(42);
+        data.node_id = NodeId::from(42);
         data.major_version = 20;
         data.minor_version = 1;
         data.patch_version = 5;
@@ -135,7 +134,7 @@ impl TelemetryData {
 
     pub fn deserialize(stream: &mut dyn Stream, payload_len: usize) -> anyhow::Result<Self> {
         let signature = Signature::deserialize(stream)?;
-        let node_id = PublicKey::deserialize(stream)?;
+        let node_id = NodeId::deserialize(stream)?;
         let block_count = stream.read_u64_be()?;
         let cemented_count = stream.read_u64_be()?;
         let unchecked_count = stream.read_u64_be()?;
@@ -186,7 +185,7 @@ impl TelemetryData {
     }
 
     pub fn sign(&mut self, keys: &KeyPair) -> Result<()> {
-        debug_assert!(keys.public_key() == self.node_id);
+        debug_assert!(keys.public_key() == self.node_id.into());
         let mut stream = MemoryStream::new();
         self.serialize_without_signature(&mut stream);
         self.signature = sign_message(&keys.private_key(), stream.as_bytes());
@@ -196,7 +195,7 @@ impl TelemetryData {
     pub fn validate_signature(&self) -> bool {
         let mut stream = MemoryStream::new();
         self.serialize_without_signature(&mut stream);
-        validate_message(&self.node_id, stream.as_bytes(), &self.signature).is_ok()
+        validate_message(&self.node_id.into(), stream.as_bytes(), &self.signature).is_ok()
     }
 
     pub fn to_json(&self) -> serde_json::Result<String> {
@@ -224,7 +223,7 @@ impl TelemetryData {
                 .to_string(),
             active_difficulty: to_hex_string(self.active_difficulty),
             node_id: if !ignore_identification_metrics {
-                Some(self.node_id.to_node_id())
+                Some(self.node_id.to_string())
             } else {
                 None
             },

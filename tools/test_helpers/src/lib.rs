@@ -135,13 +135,13 @@ impl System {
                     .network_info
                     .read()
                     .unwrap()
-                    .find_node_id(&other.node_id.public_key())
+                    .find_node_id(&other.node_id.public_key().into())
                     .is_some()
                     && other
                         .network_info
                         .read()
                         .unwrap()
-                        .find_node_id(&node.node_id.public_key())
+                        .find_node_id(&node.node_id.public_key().into())
                         .is_some()
                 {
                     break;
@@ -315,7 +315,7 @@ pub fn establish_tcp(node: &Node, peer: &Node) -> Arc<ChannelInfo> {
             node.network_info
                 .read()
                 .unwrap()
-                .find_node_id(&peer.node_id.public_key())
+                .find_node_id(&peer.node_id.public_key().into())
                 .is_some()
         },
         "node did not connect",
@@ -324,7 +324,7 @@ pub fn establish_tcp(node: &Node, peer: &Node) -> Arc<ChannelInfo> {
     node.network_info
         .read()
         .unwrap()
-        .find_node_id(&peer.node_id.public_key())
+        .find_node_id(&peer.node_id.public_key().into())
         .unwrap()
         .clone()
 }

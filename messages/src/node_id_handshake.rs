@@ -6,7 +6,7 @@ use rand::{thread_rng, Rng};
 use rsnano_core::{
     sign_message,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream},
-    validate_message, write_hex_bytes, Account, BlockHash, KeyPair, PublicKey, Signature,
+    validate_message, write_hex_bytes, Account, BlockHash, KeyPair, NodeId, Signature,
 };
 use serde::ser::SerializeStruct;
 use std::fmt::{Display, Write};
@@ -34,7 +34,7 @@ impl serde::Serialize for NodeIdHandshakeQuery {
 
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize)]
 pub struct NodeIdHandshakeResponse {
-    pub node_id: PublicKey,
+    pub node_id: NodeId,
     pub signature: Signature,
     pub v2: Option<V2Payload>,
 }
@@ -42,7 +42,7 @@ pub struct NodeIdHandshakeResponse {
 impl NodeIdHandshakeResponse {
     pub fn new_v1(cookie: &Cookie, node_id: &KeyPair) -> Self {
         let mut response = Self {
-            node_id: node_id.public_key(),
+            node_id: node_id.public_key().into(),
             signature: Signature::default(),
             v2: None,
         };
@@ -55,7 +55,7 @@ impl NodeIdHandshakeResponse {
         thread_rng().fill(&mut salt);
 
         let mut response = Self {
-            node_id: node_id.public_key(),
+            node_id: node_id.public_key().into(),
             signature: Signature::default(),
             v2: Some(V2Payload { salt, genesis }),
         };
@@ -64,7 +64,7 @@ impl NodeIdHandshakeResponse {
     }
 
     pub fn sign(&mut self, cookie: &Cookie, key: &KeyPair) {
-        debug_assert!(key.public_key() == self.node_id);
+        debug_assert!(NodeId::from(key.public_key()) == self.node_id);
         let data = self.data_to_sign(cookie);
         self.signature = sign_message(&key.private_key(), &data);
         debug_assert!(self.validate(cookie).is_ok());
@@ -72,7 +72,7 @@ impl NodeIdHandshakeResponse {
 
     pub fn validate(&self, cookie: &Cookie) -> anyhow::Result<()> {
         let data = self.data_to_sign(cookie);
-        validate_message(&self.node_id, &data, &self.signature)
+        validate_message(&self.node_id.into(), &data, &self.signature)
     }
 
     fn data_to_sign(&self, cookie: &Cookie) -> Vec<u8> {
@@ -90,7 +90,7 @@ impl NodeIdHandshakeResponse {
 
     pub fn deserialize(stream: &mut dyn Stream, extensions: BitArray<u16>) -> Result<Self> {
         if NodeIdHandshake::has_v2_flag(extensions) {
-            let node_id = PublicKey::deserialize(stream)?;
+            let node_id = NodeId::deserialize(stream)?;
             let mut salt = [0u8; 32];
             stream.read_bytes(&mut salt, 32)?;
             let genesis = BlockHash::deserialize(stream)?;
@@ -101,7 +101,7 @@ impl NodeIdHandshakeResponse {
                 v2: Some(V2Payload { salt, genesis }),
             })
         } else {
-            let node_id = PublicKey::deserialize(stream)?;
+            let node_id = NodeId::deserialize(stream)?;
             let signature = Signature::deserialize(stream)?;
             Ok(Self {
                 node_id,
@@ -229,7 +229,7 @@ impl NodeIdHandshake {
 
     pub fn new_test_response_v1() -> Self {
         let response = NodeIdHandshakeResponse {
-            node_id: PublicKey::from(1),
+            node_id: NodeId::from(1),
             signature: Signature::from_bytes([42; 64]),
             v2: None,
         };
@@ -242,7 +242,7 @@ impl NodeIdHandshake {
 
     pub fn new_test_response_v2() -> Self {
         let response = NodeIdHandshakeResponse {
-            node_id: PublicKey::from(1),
+            node_id: NodeId::from(1),
             signature: Signature::from_bytes([42; 64]),
             v2: Some(V2Payload {
                 salt: [7; 32],
@@ -325,7 +325,7 @@ mod tests {
     fn valid_v1_signature() {
         let key = KeyPair::new();
         let mut response = NodeIdHandshakeResponse {
-            node_id: key.public_key(),
+            node_id: key.public_key().into(),
             signature: Signature::default(),
             v2: None,
         };
@@ -340,7 +340,7 @@ mod tests {
         assert!(response.validate(&[1; 32]).is_err());
 
         // invalid node_id
-        response.node_id = PublicKey::from(1);
+        response.node_id = NodeId::from(1);
         assert!(response.validate(&cookie).is_err());
     }
 
@@ -348,7 +348,7 @@ mod tests {
     fn valid_v2_signature() {
         let key = KeyPair::new();
         let mut response = NodeIdHandshakeResponse {
-            node_id: key.public_key(),
+            node_id: key.public_key().into(),
             signature: Signature::default(),
             v2: Some(V2Payload {
                 salt: [1; 32],
@@ -367,7 +367,7 @@ mod tests {
 
         // invalid node_id
         let mut copy = response.clone();
-        copy.node_id = PublicKey::from(1);
+        copy.node_id = NodeId::from(1);
         assert!(copy.validate(&cookie).is_err());
 
         // invalid salt

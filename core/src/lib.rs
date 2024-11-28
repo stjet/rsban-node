@@ -12,6 +12,7 @@ extern crate static_assertions;
 mod account;
 mod amount;
 mod block_hash;
+mod node_id;
 mod vote;
 
 pub use account::Account;
@@ -21,6 +22,7 @@ use blake2::{
     Blake2bVar,
 };
 pub use block_hash::{BlockHash, BlockHashBuilder};
+pub use node_id::NodeId;
 use rand::{thread_rng, Rng};
 use serde::de::{Unexpected, Visitor};
 pub use vote::*;

@@ -43,8 +43,8 @@ use crate::{
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo, SerdePropertyTree},
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, Block, BlockHash, BlockType, KeyPair, Networks, PublicKey, Root, VoteCode,
-    VoteSource,
+    Account, Amount, Block, BlockHash, BlockType, KeyPair, Networks, NodeId, PublicKey, Root,
+    VoteCode, VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};
@@ -176,6 +176,10 @@ impl Node {
 
     pub(crate) fn new_with_args(args: NodeArgs) -> Self {
         Self::new(args, false, NodeIdKeyFile::default())
+    }
+
+    pub fn node_id(&self) -> NodeId {
+        self.node_id.public_key().into()
     }
 
     fn new(args: NodeArgs, is_nulled: bool, mut node_id_key_file: NodeIdKeyFile) -> Self {
@@ -1274,8 +1278,8 @@ impl Node {
             .unwrap_or_default()
     }
 
-    pub fn get_node_id(&self) -> PublicKey {
-        self.node_id.public_key()
+    pub fn get_node_id(&self) -> NodeId {
+        self.node_id.public_key().into()
     }
 
     pub fn work_generate_dev(&self, root: impl Into<Root>) -> u64 {

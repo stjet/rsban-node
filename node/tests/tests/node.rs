@@ -2207,7 +2207,7 @@ fn fork_no_vote_quorum() {
         .network_info
         .read()
         .unwrap()
-        .find_node_id(&node3.node_id.public_key())
+        .find_node_id(&node3.node_id())
         .unwrap()
         .clone();
     node2.message_publisher.lock().unwrap().try_send(

@@ -1225,9 +1225,14 @@ impl Node {
     }
 
     pub fn process_local(&self, block: Block) -> Option<BlockStatus> {
-        self.block_processor
+        let result = self
+            .block_processor
             .add_blocking(Arc::new(block), BlockSource::Local)
-            .map(|(status, _)| status)
+            .ok()?;
+        match result {
+            Ok(_) => Some(BlockStatus::Progress),
+            Err(status) => Some(status),
+        }
     }
 
     pub fn process(&self, mut block: Block) -> Result<SavedBlock, BlockStatus> {

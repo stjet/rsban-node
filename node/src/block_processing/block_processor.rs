@@ -293,7 +293,7 @@ impl BlockProcessor {
         &self,
         block: Arc<Block>,
         source: BlockSource,
-    ) -> Option<(BlockStatus, Block)> {
+    ) -> anyhow::Result<Result<Block, BlockStatus>> {
         self.processor_loop.add_blocking(block, source)
     }
 
@@ -465,7 +465,7 @@ impl BlockProcessorLoop {
         &self,
         block: Arc<Block>,
         source: BlockSource,
-    ) -> Option<(BlockStatus, Block)> {
+    ) -> anyhow::Result<Result<Block, BlockStatus>> {
         self.stats
             .inc(StatType::Blockprocessor, DetailType::ProcessBlocking);
         debug!(
@@ -484,12 +484,13 @@ impl BlockProcessorLoop {
         self.add_impl(ctx.clone(), ChannelId::LOOPBACK);
 
         match waiter.wait_result() {
-            Some(status) => Some((status, ctx.block.lock().unwrap().clone())),
+            Some(BlockStatus::Progress) => Ok(Ok(ctx.block.lock().unwrap().clone())),
+            Some(status) => Ok(Err(status)),
             None => {
                 self.stats
                     .inc(StatType::Blockprocessor, DetailType::ProcessBlockingTimeout);
                 error!("Block dropped when processing: {}", hash);
-                None
+                Err(anyhow!("Block dropped when processing"))
             }
         }
     }

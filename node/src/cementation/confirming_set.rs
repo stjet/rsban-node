@@ -3,7 +3,7 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     utils::{ThreadPool, ThreadPoolImpl},
 };
-use rsnano_core::{utils::ContainerInfo, Block, BlockHash, SavedBlock};
+use rsnano_core::{utils::ContainerInfo, BlockHash, SavedBlock};
 use rsnano_ledger::{Ledger, WriteGuard, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
@@ -384,7 +384,7 @@ mod tests {
         let block_hash = chain.add_state().hash();
         let ledger = Arc::new(
             Ledger::new_null_builder()
-                .blocks(chain.blocks())
+                .blocks2(chain.blocks())
                 .confirmation_height(
                     &chain.account(),
                     &ConfirmationHeightInfo {

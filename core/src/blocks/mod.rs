@@ -585,10 +585,6 @@ impl SavedBlock {
         }
     }
 
-    pub fn balance(&self) -> Amount {
-        self.sideband.balance
-    }
-
     pub fn epoch(&self) -> Epoch {
         self.sideband.details.epoch
     }
@@ -600,6 +596,14 @@ impl SavedBlock {
     pub fn serialize_with_sideband(&self) -> Vec<u8> {
         self.block.serialize_with_sideband()
     }
+
+    pub fn balance(&self) -> Amount {
+        match &self.block {
+            Block::LegacySend(b) => b.balance(),
+            Block::State(b) => b.balance(),
+            _ => self.sideband.balance,
+        }
+    }
 }
 
 impl Deref for SavedBlock {
@@ -607,6 +611,12 @@ impl Deref for SavedBlock {
 
     fn deref(&self) -> &Self::Target {
         &self.block
+    }
+}
+
+impl DerefMut for SavedBlock {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.block
     }
 }
 

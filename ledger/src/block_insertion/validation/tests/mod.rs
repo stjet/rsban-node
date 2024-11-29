@@ -118,7 +118,7 @@ impl BlockValidationTest {
         if self.chain.height() > 0 {
             validator.old_account_info = Some(self.chain.account_info());
             if !self.previous_block_missing {
-                validator.previous_block = Some(self.chain.latest_block2());
+                validator.previous_block = Some(self.chain.latest_block().clone());
             }
         };
         validator.seconds_since_epoch = self.seconds_since_epoch;

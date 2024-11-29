@@ -10,7 +10,7 @@ pub struct TestAccountChain {
     account: Account,
     balance: Amount,
     representative: PublicKey,
-    blocks: Vec<Block>,
+    blocks: Vec<SavedBlock>,
     epoch: Epoch,
 }
 
@@ -79,7 +79,7 @@ impl TestAccountChain {
         self.account
     }
 
-    pub fn blocks(&self) -> &[Block] {
+    pub fn blocks(&self) -> &[SavedBlock] {
         &self.blocks
     }
 
@@ -87,24 +87,15 @@ impl TestAccountChain {
         &self.blocks[height as usize - 1]
     }
 
-    pub fn try_get_block(&self, height: u64) -> Option<SavedBlock> {
+    pub fn try_get_block(&self, height: u64) -> Option<&SavedBlock> {
         if height == 0 {
             return None;
         }
-        self.blocks.get(height as usize - 1).map(|b| {
-            let sideband = b.sideband().unwrap().clone();
-            SavedBlock::new(b.clone(), sideband)
-        })
+        self.blocks.get(height as usize - 1)
     }
 
-    pub fn latest_block(&self) -> &Block {
+    pub fn latest_block(&self) -> &SavedBlock {
         self.blocks.last().unwrap()
-    }
-
-    pub fn latest_block2(&self) -> SavedBlock {
-        let latest = self.blocks.last().unwrap().clone();
-        let sideband = latest.sideband().unwrap().clone();
-        SavedBlock::new(latest, sideband)
     }
 
     pub fn add_legacy_change(&mut self, representative: impl Into<PublicKey>) -> &Block {
@@ -291,7 +282,7 @@ impl TestAccountChain {
             .sign(&self.keypair)
     }
 
-    pub fn take_blocks(self) -> Vec<Block> {
+    pub fn take_blocks(self) -> Vec<SavedBlock> {
         self.blocks
     }
 
@@ -300,7 +291,7 @@ impl TestAccountChain {
             head: self.frontier(),
             representative: self.representative,
             open_block: self.open(),
-            balance: self.latest_block2().balance(),
+            balance: self.latest_block().balance(),
             modified: 123,
             block_count: self.height(),
             epoch: self.epoch,
@@ -336,7 +327,7 @@ impl TestAccountChain {
             self.epoch = Epoch::Epoch2;
         }
 
-        block.set_sideband(BlockSideband {
+        let sideband = BlockSideband {
             height: self.height() + 1,
             timestamp: 1,
             successor: BlockHash::zero(),
@@ -344,7 +335,8 @@ impl TestAccountChain {
             balance: self.balance,
             details: BlockDetails::new(self.epoch, false, false, false),
             source_epoch,
-        });
+        };
+        block.set_sideband(sideband.clone());
 
         if !self.blocks.is_empty() {
             let previous = self.blocks.last_mut().unwrap();
@@ -357,7 +349,7 @@ impl TestAccountChain {
             self.representative = rep;
         }
 
-        self.blocks.push(block);
+        self.blocks.push(SavedBlock::new(block, sideband));
         self.blocks.last().unwrap()
     }
 
@@ -394,7 +386,7 @@ mod tests {
         let mut chain = TestAccountChain::new();
         genesis.add_legacy_send_to(chain.account, Amount::raw(10));
         chain.add_legacy_open_from_account(&genesis);
-        let block = chain.latest_block2();
+        let block = chain.latest_block();
         assert_eq!(block.account_field(), Some(chain.account()));
         assert_eq!(block.block_type(), BlockType::LegacyOpen);
         assert_eq!(block.height(), 1);

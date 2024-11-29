@@ -24,7 +24,7 @@ fn ledger_successor() {
     let mut chain = TestAccountChain::new_opened_chain();
     let send = chain.add_legacy_send().clone();
     let ledger = Ledger::new_null_builder()
-        .blocks(chain.blocks())
+        .blocks2(chain.blocks())
         .account_info(&chain.account(), &chain.account_info())
         .finish();
     let txn = ledger.read_txn();
@@ -43,7 +43,7 @@ fn ledger_successor_genesis() {
     let mut genesis = TestAccountChain::genesis();
     genesis.add_legacy_send();
     let ledger = Ledger::new_null_builder()
-        .blocks(genesis.blocks())
+        .blocks2(genesis.blocks())
         .account_info(&genesis.account(), &genesis.account_info())
         .finish();
     let txn = ledger.read_txn();
@@ -70,7 +70,7 @@ fn latest_root() {
     genesis.add_legacy_send();
 
     let ledger = Ledger::new_null_builder()
-        .blocks(genesis.blocks())
+        .blocks2(genesis.blocks())
         .account_info(&genesis.account(), &genesis.account_info())
         .finish();
     let txn = ledger.rw_txn();

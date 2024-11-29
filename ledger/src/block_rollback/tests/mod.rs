@@ -1,8 +1,6 @@
-use rsnano_core::{Account, BlockHash, ConfirmationHeightInfo, TestAccountChain};
-
-use crate::ledger_constants::LEDGER_CONSTANTS_STUB;
-
 use super::rollback_planner::{RollbackInstructions, RollbackPlanner, RollbackStep};
+use crate::ledger_constants::LEDGER_CONSTANTS_STUB;
+use rsnano_core::{Account, BlockHash, ConfirmationHeightInfo, TestAccountChain};
 
 mod rollback_tests;
 
@@ -38,11 +36,11 @@ impl<'a> RollbackTest<'a> {
 fn new_test_rollback_planner<'a>(chain: &'a TestAccountChain) -> RollbackPlanner<'a> {
     RollbackPlanner {
         epochs: &LEDGER_CONSTANTS_STUB.epochs,
-        head_block2: chain.latest_block2(),
+        head_block2: chain.latest_block().clone(),
         account: chain.account(),
         current_account_info: chain.account_info(),
         previous_representative: chain.representative_at_height(chain.height() - 1),
-        previous: chain.try_get_block(chain.height() - 1),
+        previous: chain.try_get_block(chain.height() - 1).cloned(),
         linked_account: Account::zero(),
         pending_receive: None,
         latest_block_for_destination: None,

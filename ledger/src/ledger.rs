@@ -140,6 +140,13 @@ impl NullLedgerBuilder {
         self
     }
 
+    pub fn blocks2<'a>(mut self, blocks: impl IntoIterator<Item = &'a SavedBlock>) -> Self {
+        for b in blocks.into_iter() {
+            self.blocks = self.blocks.block2(b);
+        }
+        self
+    }
+
     pub fn peers(mut self, peers: impl IntoIterator<Item = (SocketAddrV6, SystemTime)>) -> Self {
         for (peer, time) in peers.into_iter() {
             self.peers = self.peers.peer(peer, time)

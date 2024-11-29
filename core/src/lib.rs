@@ -28,9 +28,7 @@ use serde::de::{Unexpected, Visitor};
 pub use vote::*;
 
 mod private_key;
-pub use private_key::{
-    sign_message, validate_block_signature, validate_message, PrivateKey, PrivateKeyFactory,
-};
+pub use private_key::{validate_block_signature, validate_message, PrivateKey, PrivateKeyFactory};
 
 mod raw_key;
 pub use raw_key::RawKey;

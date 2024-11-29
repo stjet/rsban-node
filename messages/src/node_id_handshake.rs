@@ -4,7 +4,6 @@ use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
-    sign_message,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream},
     validate_message, write_hex_bytes, Account, BlockHash, NodeId, PrivateKey, Signature,
 };
@@ -66,7 +65,7 @@ impl NodeIdHandshakeResponse {
     pub fn sign(&mut self, cookie: &Cookie, key: &PrivateKey) {
         debug_assert!(NodeId::from(key.public_key()) == self.node_id);
         let data = self.data_to_sign(cookie);
-        self.signature = sign_message(&key.private_key(), &data);
+        self.signature = key.sign(&data);
         debug_assert!(self.validate(cookie).is_ok());
     }
 

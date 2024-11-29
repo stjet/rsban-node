@@ -1,5 +1,4 @@
 use super::{
-    sign_message,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Stream},
     validate_message, Account, BlockHash, BlockHashBuilder, FullHash, PrivateKey, Signature,
 };
@@ -68,15 +67,20 @@ impl Vote {
         Self::new(key, Self::TIMESTAMP_MAX, Self::DURATION_MAX, hashes)
     }
 
-    pub fn new(keys: &PrivateKey, timestamp: u64, duration: u8, hashes: Vec<BlockHash>) -> Self {
+    pub fn new(
+        priv_key: &PrivateKey,
+        timestamp: u64,
+        duration: u8,
+        hashes: Vec<BlockHash>,
+    ) -> Self {
         assert!(hashes.len() <= Self::MAX_HASHES);
         let mut result = Self {
-            voting_account: keys.public_key(),
+            voting_account: priv_key.public_key(),
             timestamp: packed_timestamp(timestamp, duration),
             signature: Signature::new(),
             hashes,
         };
-        result.signature = sign_message(&keys.private_key(), result.hash().as_bytes());
+        result.signature = priv_key.sign(result.hash().as_bytes());
         result
     }
 

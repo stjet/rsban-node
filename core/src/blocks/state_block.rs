@@ -1,9 +1,9 @@
 use super::{BlockBase, BlockSideband, BlockType};
 use crate::{
-    sign_message, to_hex_string, u64_from_hex_str,
+    to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, LazyBlockHash, Link, PrivateKey,
-    PublicKey, RawKey, Root, Signature, WorkNonce,
+    PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 
@@ -64,15 +64,7 @@ impl StateBlock {
         keys: &PrivateKey,
         work: u64,
     ) -> Self {
-        Self::new_obsolete(
-            account,
-            previous,
-            representative,
-            balance,
-            link,
-            &keys.private_key(),
-            work,
-        )
+        Self::new_obsolete(account, previous, representative, balance, link, keys, work)
     }
 
     // Don't use this anymore
@@ -82,7 +74,7 @@ impl StateBlock {
         representative: PublicKey,
         balance: Amount,
         link: Link,
-        prv_key: &RawKey,
+        prv_key: &PrivateKey,
         work: u64,
     ) -> Self {
         let hashables = StateHashables {
@@ -94,7 +86,7 @@ impl StateBlock {
         };
 
         let hash = LazyBlockHash::new();
-        let signature = sign_message(prv_key, hash.hash(&hashables).as_bytes());
+        let signature = prv_key.sign(hash.hash(&hashables).as_bytes());
 
         Self {
             work,

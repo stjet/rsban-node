@@ -134,13 +134,6 @@ impl From<&PrivateKey> for Account {
     }
 }
 
-pub fn sign_message(private_key: &RawKey, data: &[u8]) -> Signature {
-    let secret = ed25519_dalek::SecretKey::from(*private_key.as_bytes());
-    let mut signing_key = ed25519_dalek::SigningKey::from(&secret);
-    let signature = signing_key.sign(data);
-    Signature::from_bytes(signature.to_bytes())
-}
-
 pub fn validate_message(
     public_key: &PublicKey,
     message: &[u8],
@@ -188,10 +181,10 @@ mod tests {
 
     #[test]
     fn sign_message_test() -> anyhow::Result<()> {
-        let keypair = PrivateKey::new();
+        let prv_key = PrivateKey::new();
         let data = [0u8; 32];
-        let signature = sign_message(&keypair.private_key(), &data);
-        validate_message(&keypair.public_key(), &data, &signature)?;
+        let signature = prv_key.sign(&data);
+        validate_message(&prv_key.public_key(), &data, &signature)?;
         Ok(())
     }
 
@@ -200,10 +193,10 @@ mod tests {
         // the C++ implementation adds random bytes and a padding when signing for extra security and for making side channel attacks more difficult.
         // Currently the Rust impl does not do that.
         // In C++ signing the same message twice will produce different signatures. In Rust we get the same signature.
-        let keypair = PrivateKey::new();
+        let prv_key = PrivateKey::new();
         let data = [1, 2, 3];
-        let signature_a = sign_message(&keypair.private_key(), &data);
-        let signature_b = sign_message(&keypair.private_key(), &data);
+        let signature_a = prv_key.sign(&data);
+        let signature_b = prv_key.sign(&data);
         assert_eq!(signature_a, signature_b);
     }
 

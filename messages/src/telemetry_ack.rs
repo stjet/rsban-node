@@ -5,8 +5,7 @@ use rsnano_core::utils::{
     BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
 };
 use rsnano_core::{
-    sign_message, to_hex_string, validate_message, Account, BlockHash, NodeId, PrivateKey,
-    Signature,
+    to_hex_string, validate_message, Account, BlockHash, NodeId, PrivateKey, Signature,
 };
 use serde_derive::Serialize;
 use std::fmt::Display;
@@ -185,11 +184,11 @@ impl TelemetryData {
         Ok(data)
     }
 
-    pub fn sign(&mut self, keys: &PrivateKey) -> Result<()> {
-        debug_assert!(keys.public_key() == self.node_id.into());
+    pub fn sign(&mut self, key: &PrivateKey) -> Result<()> {
+        debug_assert!(key.public_key() == self.node_id.into());
         let mut stream = MemoryStream::new();
         self.serialize_without_signature(&mut stream);
-        self.signature = sign_message(&keys.private_key(), stream.as_bytes());
+        self.signature = key.sign(stream.as_bytes());
         Ok(())
     }
 

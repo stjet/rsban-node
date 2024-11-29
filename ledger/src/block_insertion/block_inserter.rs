@@ -40,9 +40,9 @@ impl<'a> BlockInserter<'a> {
     }
 
     pub(crate) fn insert(&mut self) {
-        self.set_block_sideband();
-        let saved_block =
-            SavedBlock::new(self.block.clone(), self.block.sideband().unwrap().clone());
+        let sideband = self.instructions.set_sideband.clone();
+        self.block.set_sideband(sideband.clone());
+        let saved_block = SavedBlock::new(self.block.clone(), sideband);
         self.ledger.store.block.put(self.txn, &saved_block);
         self.update_account();
         self.delete_old_pending_info();
@@ -56,11 +56,6 @@ impl<'a> BlockInserter<'a> {
             .cache
             .block_count
             .fetch_add(1, Ordering::SeqCst);
-    }
-
-    fn set_block_sideband(&mut self) {
-        self.block
-            .set_sideband(self.instructions.set_sideband.clone());
     }
 
     fn update_account(&mut self) {
@@ -165,7 +160,7 @@ mod tests {
         let new_representative = PublicKey::from(2222);
         let mut open = BlockBuilder::legacy_open()
             .representative(old_representative)
-            .build();
+            .build_saved();
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
             ..BlockSideband::new_test_instance()
@@ -265,7 +260,7 @@ mod tests {
     }
 
     fn state_block_instructions_for(
-        previous: &Block,
+        previous: &SavedBlock,
         block: Block,
     ) -> (Block, BlockInsertInstructions) {
         let sideband = BlockSideband {

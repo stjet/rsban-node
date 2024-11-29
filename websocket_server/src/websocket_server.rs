@@ -4,11 +4,8 @@ use rsnano_core::{
 };
 use rsnano_messages::TelemetryData;
 use rsnano_node::{
-    bootstrap::{BootstrapExited, BootstrapInitiator, BootstrapStarted},
-    config::WebsocketConfig,
-use super::{WebsocketConfig, WebsocketListener};
-use crate::{
     bootstrap::{BootstrapCallbackData, BootstrapExited, BootstrapInitiator, BootstrapStarted},
+    config::WebsocketConfig,
     consensus::{
         ActiveElections, ElectionStatus, ElectionStatusType, ProcessLiveDispatcher, VoteProcessor,
     },

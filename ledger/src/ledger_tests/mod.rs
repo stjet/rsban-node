@@ -1,9 +1,9 @@
 use std::sync::{atomic::Ordering, Arc};
 pub mod helpers;
 use crate::{
-    ledger_constants::{DEV_GENESIS_PUB_KEY, LEDGER_CONSTANTS_STUB},
+    ledger_constants::{DEV_GENESIS_BLOCK, DEV_GENESIS_PUB_KEY, LEDGER_CONSTANTS_STUB},
     ledger_tests::helpers::{setup_legacy_open_block, setup_open_block, AccountBlockFactory},
-    Ledger, LedgerContext, RepWeightCache, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+    Ledger, LedgerContext, RepWeightCache, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 use rsnano_core::{
     utils::{new_test_timestamp, TEST_ENDPOINT_1},
@@ -274,13 +274,17 @@ fn state_account() {
 
 mod dependents_confirmed {
     use super::*;
+    use crate::ledger_constants::DEV_GENESIS_BLOCK;
 
     #[test]
     fn genesis_is_confirmed() {
         let ctx = LedgerContext::empty();
         let txn = ctx.ledger.read_txn();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &DEV_GENESIS), true);
+        assert_eq!(
+            ctx.ledger.dependents_confirmed(&txn, &DEV_GENESIS_BLOCK),
+            true
+        );
     }
 
     #[test]
@@ -632,7 +636,7 @@ fn ledger_cache() {
 
 #[test]
 fn is_send_genesis() {
-    assert_eq!(DEV_GENESIS.is_send(), false);
+    assert_eq!(DEV_GENESIS_BLOCK.is_send(), false);
 }
 
 #[test]

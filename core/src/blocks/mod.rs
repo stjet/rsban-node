@@ -548,18 +548,47 @@ pub fn deserialize_block_json(ptree: &impl PropertyTree) -> anyhow::Result<Block
     }
 }
 
-pub struct BlockWithSideband {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SavedBlock {
     pub block: Block,
     pub sideband: BlockSideband,
 }
 
-impl crate::utils::Deserialize for BlockWithSideband {
+impl SavedBlock {
+    pub fn new(block: Block, sideband: BlockSideband) -> Self {
+        Self { block, sideband }
+    }
+
+    pub fn new_test_instance() -> Self {
+        let block = Block::new_test_instance();
+        let sideband = BlockSideband {
+            height: 1,
+            timestamp: 222222,
+            successor: BlockHash::zero(),
+            account: block.account_field().unwrap(),
+            balance: block.balance_field().unwrap(),
+            details: BlockDetails::new(Epoch::Epoch2, true, false, false),
+            source_epoch: Epoch::Epoch0,
+        };
+        Self::new(block, sideband)
+    }
+}
+
+impl Deref for SavedBlock {
+    type Target = Block;
+
+    fn deref(&self) -> &Self::Target {
+        &self.block
+    }
+}
+
+impl crate::utils::Deserialize for SavedBlock {
     type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
         let mut block = Block::deserialize(stream)?;
         let sideband = BlockSideband::from_stream(stream, block.block_type())?;
         block.as_block_mut().set_sideband(sideband.clone());
-        Ok(BlockWithSideband { block, sideband })
+        Ok(SavedBlock { block, sideband })
     }
 }
 

@@ -6,14 +6,14 @@ use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
 use rsnano_core::{
     utils::{BufferReader, FixedSizeSerialize},
-    Block, BlockHash, BlockSideband, BlockType, BlockWithSideband,
+    Block, BlockHash, BlockSideband, BlockType, SavedBlock,
 };
 use rsnano_nullable_lmdb::ConfiguredDatabase;
 #[cfg(feature = "output_tracking")]
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::sync::Arc;
 
-pub type BlockIterator<'txn> = BinaryDbIterator<'txn, BlockHash, BlockWithSideband>;
+pub type BlockIterator<'txn> = BinaryDbIterator<'txn, BlockHash, SavedBlock>;
 
 pub struct LmdbBlockStore {
     _env: Arc<LmdbEnv>,
@@ -72,18 +72,17 @@ impl LmdbBlockStore {
         self.put_listener.track()
     }
 
-    pub fn put(&self, txn: &mut LmdbWriteTransaction, block: &Block) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, block: &SavedBlock) {
         #[cfg(feature = "output_tracking")]
-        self.put_listener.emit(block.clone());
+        self.put_listener.emit(block.block.clone());
 
         let hash = block.hash();
         debug_assert!(
-            block.sideband().unwrap().successor.is_zero()
-                || self.exists(txn, &block.sideband().unwrap().successor)
+            block.sideband.successor.is_zero() || self.exists(txn, &block.sideband.successor)
         );
 
-        self.raw_put(txn, &block.serialize_with_sideband(), &hash);
-        self.update_predecessor(txn, block);
+        self.raw_put(txn, &block.block.serialize_with_sideband(), &hash);
+        self.update_predecessor(txn, &block.block);
     }
 
     pub fn exists(&self, transaction: &dyn Transaction, hash: &BlockHash) -> bool {
@@ -263,7 +262,7 @@ mod tests {
         let fixture = Fixture::new();
         let mut txn = fixture.env.tx_begin_write();
         let put_tracker = txn.track_puts();
-        let block = BlockBuilder::legacy_open().with_sideband().build();
+        let block = SavedBlock::new_test_instance();
 
         fixture.store.put(&mut txn, &block);
 
@@ -337,18 +336,13 @@ mod tests {
     #[test]
     fn track_inserted_blocks() {
         let fixture = Fixture::new();
-        let mut block = BlockBuilder::state().previous(BlockHash::zero()).build();
-        block.set_sideband(BlockSideband {
-            height: 1,
-            successor: BlockHash::zero(),
-            ..BlockSideband::new_test_instance()
-        });
+        let block = SavedBlock::new_test_instance();
         let mut txn = fixture.env.tx_begin_write();
         let put_tracker = fixture.store.track_puts();
 
         fixture.store.put(&mut txn, &block);
 
-        assert_eq!(put_tracker.output(), vec![block]);
+        assert_eq!(put_tracker.output(), vec![block.block]);
     }
 
     #[test]

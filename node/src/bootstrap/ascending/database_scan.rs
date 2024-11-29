@@ -195,8 +195,6 @@ mod tests {
 
     #[test]
     fn pending_database_scanner() {
-        const COUNT: usize = 4;
-
         // Prepare pending sends from genesis
         // 1 account with 1 pending
         // 1 account with 21 pendings

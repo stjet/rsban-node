@@ -5,7 +5,7 @@ use crate::{
 };
 use rsnano_core::{
     utils::ContainerInfo, work::WorkThresholds, Block, BlockType, Epoch, HashOrAccount, Networks,
-    UncheckedInfo,
+    SavedBlock, UncheckedInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
 use rsnano_network::{ChannelId, DeadChannelCleanupStep};
@@ -305,7 +305,7 @@ impl BlockProcessor {
 
     pub fn set_blocks_rolled_back_callback(
         &self,
-        callback: Box<dyn Fn(Vec<Block>, Block) + Send + Sync>,
+        callback: Box<dyn Fn(Vec<SavedBlock>, SavedBlock) + Send + Sync>,
     ) {
         self.processor_loop
             .set_blocks_rolled_back_callback(callback);
@@ -337,7 +337,7 @@ pub(crate) struct BlockProcessorLoop {
     unchecked_map: Arc<UncheckedMap>,
     config: BlockProcessorConfig,
     stats: Arc<Stats>,
-    blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<Block>, Block) + Send + Sync>>>,
+    blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<SavedBlock>, SavedBlock) + Send + Sync>>>,
     block_rolled_back: Mutex<Vec<Box<dyn Fn(&Block) + Send + Sync>>>,
     block_processed: Mutex<Vec<Box<dyn Fn(BlockStatus, &BlockProcessorContext) + Send + Sync>>>,
     batch_processed:
@@ -422,7 +422,7 @@ impl BlockProcessorLoop {
 
     pub fn set_blocks_rolled_back_callback(
         &self,
-        callback: Box<dyn Fn(Vec<Block>, Block) + Send + Sync>,
+        callback: Box<dyn Fn(Vec<SavedBlock>, SavedBlock) + Send + Sync>,
     ) {
         *self.blocks_rolled_back.lock().unwrap() = Some(callback);
     }
@@ -683,7 +683,7 @@ impl BlockProcessorLoop {
             if successor != hash {
                 // Replace our block with the winner and roll back any dependent blocks
                 debug!("Rolling back: {} and replacing with: {}", successor, hash);
-                let rollback_list = match self.ledger.rollback(transaction, &successor) {
+                let rollback_list = match self.ledger.rollback2(transaction, &successor) {
                     Ok(rollback_list) => {
                         self.stats.inc(StatType::Ledger, DetailType::Rollback);
                         debug!("Blocks rolled back: {}", rollback_list.len());
@@ -701,7 +701,7 @@ impl BlockProcessorLoop {
 
                 let callback_guard = self.blocks_rolled_back.lock().unwrap();
                 if let Some(callback) = callback_guard.as_ref() {
-                    callback(rollback_list, successor_block.block);
+                    callback(rollback_list, successor_block);
                 }
             }
         }

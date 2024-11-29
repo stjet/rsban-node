@@ -569,6 +569,15 @@ impl Ledger {
             .iter()
             .all(|hash| self.confirmed().block_exists_or_pruned(txn, hash))
     }
+    ///
+    /// Rollback blocks until `block' doesn't exist or it tries to penetrate the confirmation height
+    pub fn rollback2(
+        &self,
+        txn: &mut LmdbWriteTransaction,
+        block: &BlockHash,
+    ) -> anyhow::Result<Vec<SavedBlock>> {
+        BlockRollbackPerformer::new(self, txn).roll_back(block)
+    }
 
     /// Rollback blocks until `block' doesn't exist or it tries to penetrate the confirmation height
     pub fn rollback(
@@ -576,7 +585,8 @@ impl Ledger {
         txn: &mut LmdbWriteTransaction,
         block: &BlockHash,
     ) -> anyhow::Result<Vec<Block>> {
-        BlockRollbackPerformer::new(self, txn).roll_back(block)
+        self.rollback2(txn, block)
+            .map(|mut i| i.drain(..).map(|b| b.block).collect())
     }
 
     /// Returns the latest block with representative information

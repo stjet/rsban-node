@@ -70,7 +70,7 @@ impl<'a> RollbackPlannerFactory<'a> {
         Ok(if previous.is_zero() {
             None
         } else {
-            Some(self.load_block2(&previous)?)
+            Some(self.load_block(&previous)?)
         })
     }
 
@@ -95,18 +95,10 @@ impl<'a> RollbackPlannerFactory<'a> {
             .unwrap_or_default()
     }
 
-    fn load_block2(&self, block_hash: &BlockHash) -> anyhow::Result<SavedBlock> {
+    fn load_block(&self, block_hash: &BlockHash) -> anyhow::Result<SavedBlock> {
         self.ledger
             .any()
             .get_block(self.txn, block_hash)
-            .ok_or_else(|| anyhow!("block not found"))
-    }
-
-    fn load_block(&self, block_hash: &BlockHash) -> anyhow::Result<Block> {
-        self.ledger
-            .any()
-            .get_block(self.txn, block_hash)
-            .map(|b| b.block)
             .ok_or_else(|| anyhow!("block not found"))
     }
 

@@ -78,7 +78,7 @@ fn rollback_dependent_blocks_too() {
 
     // Rollback send block. This requires the rollback of the open block first.
     ctx.ledger
-        .rollback(&mut txn, &open.send_block.hash())
+        .rollback2(&mut txn, &open.send_block.hash())
         .unwrap();
 
     assert_eq!(
@@ -110,6 +110,6 @@ fn rollback_send_block<'a>(
     txn: &mut LmdbWriteTransaction,
 ) -> LegacySendBlockResult<'a> {
     let send = setup_legacy_send_block(ctx, txn);
-    ctx.ledger.rollback(txn, &send.send_block.hash()).unwrap();
+    ctx.ledger.rollback2(txn, &send.send_block.hash()).unwrap();
     send
 }

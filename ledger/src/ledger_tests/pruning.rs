@@ -176,7 +176,7 @@ fn pruning_source_rollback() {
     ctx.ledger.process(&mut txn, &mut receive1).unwrap();
 
     // Rollback receive block
-    ctx.ledger.rollback(&mut txn, &receive1.hash()).unwrap();
+    ctx.ledger.rollback2(&mut txn, &receive1.hash()).unwrap();
     let info2 = ctx
         .ledger
         .any()
@@ -242,7 +242,7 @@ fn pruning_source_rollback_legacy() {
     ctx.ledger.process(&mut txn, &mut receive1).unwrap();
 
     // Rollback receive block
-    ctx.ledger.rollback(&mut txn, &receive1.hash()).unwrap();
+    ctx.ledger.rollback2(&mut txn, &receive1.hash()).unwrap();
 
     let info3 = ctx
         .ledger
@@ -279,7 +279,7 @@ fn pruning_source_rollback_legacy() {
     ctx.ledger.process(&mut txn, &mut open1).unwrap();
 
     // Rollback open block
-    ctx.ledger.rollback(&mut txn, &open1.hash()).unwrap();
+    ctx.ledger.rollback2(&mut txn, &open1.hash()).unwrap();
 
     let info4 = ctx
         .ledger

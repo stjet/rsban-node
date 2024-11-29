@@ -4,7 +4,7 @@ use rsnano_core::{
 };
 use rsnano_messages::TelemetryData;
 use rsnano_node::{
-    bootstrap::{BootstrapCallbackData, BootstrapExited, BootstrapInitiator, BootstrapStarted},
+    bootstrap::{BootstrapCallbackData, BootstrapInitiator, BootstrapStarted, BootstrapStopped},
     config::WebsocketConfig,
     consensus::{
         ActiveElections, ElectionStatus, ElectionStatusType, ProcessLiveDispatcher, VoteProcessor,
@@ -133,10 +133,10 @@ pub fn create_websocket_server(
     }));
 
     let server_w: std::sync::Weak<WebsocketListener> = Arc::downgrade(&server);
-    bootstrap_initiator.on_bootstrap_ended(Arc::new(move |bootstrap_callback_data| {
+    bootstrap_initiator.on_bootstrap_stopped(Arc::new(move |bootstrap_callback_data| {
         if let Some(server) = server_w.upgrade() {
             if server.any_subscriber(Topic::Bootstrap) {
-                server.broadcast(&bootstrap_exited(bootstrap_callback_data));
+                server.broadcast(&bootstrap_stopped(bootstrap_callback_data));
             }
         }
     }));
@@ -256,10 +256,10 @@ pub struct VoteReceived {
     pub vote_type: String,
 }
 
-fn bootstrap_exited(bootstrap_callback_data: &BootstrapCallbackData) -> OutgoingMessageEnvelope {
+fn bootstrap_stopped(bootstrap_callback_data: &BootstrapCallbackData) -> OutgoingMessageEnvelope {
     OutgoingMessageEnvelope::new(
         Topic::Bootstrap,
-        BootstrapExited {
+        BootstrapStopped {
             reason: "exited".to_owned(),
             id: bootstrap_callback_data.id.clone(),
             mode: bootstrap_callback_data.mode.as_str().to_string(),

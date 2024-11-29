@@ -113,8 +113,8 @@ mod tests {
 
     #[test]
     fn block_exists() {
-        let block = BlockBuilder::state().with_sideband().build();
-        let ledger = Ledger::new_null_builder().block(&block).finish();
+        let block = BlockBuilder::state().build_saved();
+        let ledger = Ledger::new_null_builder().block2(&block).finish();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
         assert_eq!(validator.block_exists, true);
@@ -194,9 +194,9 @@ mod tests {
 
     #[test]
     fn source_block_exists() {
-        let source = BlockBuilder::state().with_sideband().build();
+        let source = BlockBuilder::state().build_saved();
         let block = BlockBuilder::state().link(source.hash()).build();
-        let ledger = Ledger::new_null_builder().block(&source).finish();
+        let ledger = Ledger::new_null_builder().block2(&source).finish();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
         assert_eq!(validator.source_block_exists, true);

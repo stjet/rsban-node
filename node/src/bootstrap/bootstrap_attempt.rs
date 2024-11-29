@@ -214,7 +214,7 @@ impl Drop for BootstrapAttempt {
         );
 
         self.bootstrap_callbacks
-            .bootstrap_stoped(&BootstrapCallbackData {
+            .bootstrap_stopped(&BootstrapCallbackData {
                 id: self.id.clone(),
                 mode: self.mode,
                 total_blocks: self.total_blocks.load(Ordering::SeqCst),
@@ -231,7 +231,7 @@ pub struct BootstrapStarted {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct BootstrapExited {
+pub struct BootstrapStopped {
     pub reason: String,
     pub id: String,
     pub mode: String,
@@ -242,14 +242,14 @@ pub struct BootstrapExited {
 #[derive(Clone)]
 pub struct BootstrapCallbacks {
     bootstrap_started_observer: Arc<Mutex<Vec<Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>>>>,
-    bootstrap_stoped_observer: Arc<Mutex<Vec<Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>>>>,
+    bootstrap_stopped_observer: Arc<Mutex<Vec<Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>>>>,
 }
 
 impl BootstrapCallbacks {
     pub(crate) fn new() -> Self {
         Self {
             bootstrap_started_observer: Arc::new(Mutex::new(Vec::new())),
-            bootstrap_stoped_observer: Arc::new(Mutex::new(Vec::new())),
+            bootstrap_stopped_observer: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -264,9 +264,9 @@ impl BootstrapCallbacks {
         }
     }
 
-    pub(crate) fn bootstrap_stoped(&self, data: &BootstrapCallbackData) {
+    pub(crate) fn bootstrap_stopped(&self, data: &BootstrapCallbackData) {
         let callbacks = {
-            let callbacks_guard = self.bootstrap_stoped_observer.lock().unwrap();
+            let callbacks_guard = self.bootstrap_stopped_observer.lock().unwrap();
             callbacks_guard.clone()
         };
 
@@ -282,11 +282,11 @@ impl BootstrapCallbacks {
         self.bootstrap_started_observer.lock().unwrap().push(f);
     }
 
-    pub(crate) fn add_bootstrap_stoped(
+    pub(crate) fn add_bootstrap_stopped(
         &self,
         f: Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>,
     ) {
-        self.bootstrap_stoped_observer.lock().unwrap().push(f);
+        self.bootstrap_stopped_observer.lock().unwrap().push(f);
     }
 }
 

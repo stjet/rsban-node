@@ -2,7 +2,7 @@ use crate::work::WorkPool;
 use crate::{work::STUB_WORK_POOL, BlockBase, StateBlock};
 use crate::{
     Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, Link, PrivateKey,
-    PublicKey, Signature,
+    PublicKey, SavedBlock, Signature,
 };
 use anyhow::Result;
 
@@ -16,7 +16,6 @@ pub struct StateBlockBuilder {
     work: Option<u64>,
     signature: Option<Signature>,
     previous_balance: Option<Amount>,
-    build_sideband: bool,
 }
 
 impl StateBlockBuilder {
@@ -30,7 +29,6 @@ impl StateBlockBuilder {
             link: Link::from(5),
             key_pair: key,
             previous_balance: None,
-            build_sideband: false,
             work: None,
             signature: None,
         }
@@ -126,11 +124,6 @@ impl StateBlockBuilder {
         self.signature(Signature::new())
     }
 
-    pub fn with_sideband(mut self) -> Self {
-        self.build_sideband = true;
-        self
-    }
-
     pub fn work(mut self, work: u64) -> Self {
         self.work = Some(work);
         self
@@ -157,7 +150,7 @@ impl StateBlockBuilder {
             STUB_WORK_POOL.generate_dev2(root).unwrap()
         });
 
-        let mut state = match self.signature {
+        let state = match self.signature {
             Some(signature) => StateBlock::with_signature(
                 self.account,
                 self.previous,
@@ -178,20 +171,23 @@ impl StateBlockBuilder {
             ),
         };
 
-        if self.build_sideband {
-            let details = BlockDetails::new(Epoch::Epoch0, true, false, false);
-            state.set_sideband(BlockSideband::new(
-                self.account,
-                BlockHash::zero(),
-                self.balance,
-                5,
-                6,
-                details,
-                Epoch::Epoch0,
-            ));
-        }
-
         Block::State(state)
+    }
+
+    pub fn build_saved(self) -> SavedBlock {
+        let block = self.build();
+
+        let details = BlockDetails::new(Epoch::Epoch0, true, false, false);
+        let sideband = BlockSideband::new(
+            block.account_field().unwrap(),
+            BlockHash::zero(),
+            block.balance_field().unwrap(),
+            5,
+            6,
+            details,
+            Epoch::Epoch0,
+        );
+        SavedBlock::new(block, sideband)
     }
 }
 

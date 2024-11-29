@@ -120,23 +120,13 @@ impl BootstrapAttempt {
             self.mode.as_str()
         );
 
-        let callbacks = {
-            let callbacks_guard = self
-                .bootstrap_callbacks
-                .bootstrap_started_observer
-                .lock()
-                .unwrap();
-            callbacks_guard.clone()
-        };
-
-        for callback in callbacks.iter() {
-            callback(BootstrapCallbackData::new(
-                self.id.clone(),
-                self.mode,
-                self.total_blocks.load(Ordering::SeqCst),
-                self.duration(),
-            ));
-        }
+        self.bootstrap_callbacks
+            .bootstrap_started(&BootstrapCallbackData {
+                id: self.id.clone(),
+                mode: self.mode,
+                total_blocks: self.total_blocks.load(Ordering::SeqCst),
+                duration: self.duration(),
+            });
 
         Ok(())
     }
@@ -223,23 +213,13 @@ impl Drop for BootstrapAttempt {
             self.mode.as_str()
         );
 
-        let callbacks = {
-            let callbacks_guard = self
-                .bootstrap_callbacks
-                .bootstrap_ended_observer
-                .lock()
-                .unwrap();
-            callbacks_guard.clone()
-        };
-
-        for callback in callbacks.iter() {
-            callback(BootstrapCallbackData::new(
-                self.id.clone(),
-                self.mode,
-                self.total_blocks.load(Ordering::SeqCst),
-                self.duration(),
-            ));
-        }
+        self.bootstrap_callbacks
+            .bootstrap_stoped(&BootstrapCallbackData {
+                id: self.id.clone(),
+                mode: self.mode,
+                total_blocks: self.total_blocks.load(Ordering::SeqCst),
+                duration: self.duration(),
+            });
     }
 }
 
@@ -261,18 +241,52 @@ pub struct BootstrapExited {
 
 #[derive(Clone)]
 pub struct BootstrapCallbacks {
-    pub(crate) bootstrap_started_observer:
-        Arc<Mutex<Vec<Arc<dyn Fn(BootstrapCallbackData) + Send + Sync>>>>,
-    pub(crate) bootstrap_ended_observer:
-        Arc<Mutex<Vec<Arc<dyn Fn(BootstrapCallbackData) + Send + Sync>>>>,
+    bootstrap_started_observer: Arc<Mutex<Vec<Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>>>>,
+    bootstrap_stoped_observer: Arc<Mutex<Vec<Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>>>>,
 }
 
 impl BootstrapCallbacks {
     pub(crate) fn new() -> Self {
         Self {
             bootstrap_started_observer: Arc::new(Mutex::new(Vec::new())),
-            bootstrap_ended_observer: Arc::new(Mutex::new(Vec::new())),
+            bootstrap_stoped_observer: Arc::new(Mutex::new(Vec::new())),
         }
+    }
+
+    pub(crate) fn bootstrap_started(&self, data: &BootstrapCallbackData) {
+        let callbacks = {
+            let callbacks_guard = self.bootstrap_started_observer.lock().unwrap();
+            callbacks_guard.clone()
+        };
+
+        for callback in callbacks.iter() {
+            callback(data);
+        }
+    }
+
+    pub(crate) fn bootstrap_stoped(&self, data: &BootstrapCallbackData) {
+        let callbacks = {
+            let callbacks_guard = self.bootstrap_stoped_observer.lock().unwrap();
+            callbacks_guard.clone()
+        };
+
+        for callback in callbacks.iter() {
+            callback(data);
+        }
+    }
+
+    pub(crate) fn add_bootstrap_started(
+        &self,
+        f: Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>,
+    ) {
+        self.bootstrap_started_observer.lock().unwrap().push(f);
+    }
+
+    pub(crate) fn add_bootstrap_stoped(
+        &self,
+        f: Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>,
+    ) {
+        self.bootstrap_stoped_observer.lock().unwrap().push(f);
     }
 }
 
@@ -281,15 +295,4 @@ pub struct BootstrapCallbackData {
     pub(crate) mode: BootstrapMode,
     pub(crate) total_blocks: u64,
     pub(crate) duration: Duration,
-}
-
-impl BootstrapCallbackData {
-    fn new(id: String, mode: BootstrapMode, total_blocks: u64, duration: Duration) -> Self {
-        Self {
-            id,
-            mode,
-            total_blocks,
-            duration,
-        }
-    }
 }

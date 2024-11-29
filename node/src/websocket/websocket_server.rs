@@ -123,7 +123,7 @@ pub fn create_websocket_server(
     }));
 
     let server_w: std::sync::Weak<WebsocketListener> = Arc::downgrade(&server);
-    bootstrap_initiator.add_bootstrap_started_callback(Arc::new(move |bootstrap_callback_data| {
+    bootstrap_initiator.on_bootstrap_started(Arc::new(move |bootstrap_callback_data| {
         if let Some(server) = server_w.upgrade() {
             if server.any_subscriber(Topic::Bootstrap) {
                 server.broadcast(&bootstrap_started(bootstrap_callback_data));
@@ -132,7 +132,7 @@ pub fn create_websocket_server(
     }));
 
     let server_w: std::sync::Weak<WebsocketListener> = Arc::downgrade(&server);
-    bootstrap_initiator.add_bootstrap_ended_callback(Arc::new(move |bootstrap_callback_data| {
+    bootstrap_initiator.on_bootstrap_ended(Arc::new(move |bootstrap_callback_data| {
         if let Some(server) = server_w.upgrade() {
             if server.any_subscriber(Topic::Bootstrap) {
                 server.broadcast(&bootstrap_exited(bootstrap_callback_data));
@@ -255,12 +255,12 @@ pub struct VoteReceived {
     pub vote_type: String,
 }
 
-fn bootstrap_exited(bootstrap_callback_data: BootstrapCallbackData) -> OutgoingMessageEnvelope {
+fn bootstrap_exited(bootstrap_callback_data: &BootstrapCallbackData) -> OutgoingMessageEnvelope {
     OutgoingMessageEnvelope::new(
         Topic::Bootstrap,
         BootstrapExited {
             reason: "exited".to_owned(),
-            id: bootstrap_callback_data.id,
+            id: bootstrap_callback_data.id.clone(),
             mode: bootstrap_callback_data.mode.as_str().to_string(),
             total_blocks: bootstrap_callback_data.total_blocks.to_string(),
             duration: bootstrap_callback_data.duration.as_secs().to_string(),
@@ -268,12 +268,12 @@ fn bootstrap_exited(bootstrap_callback_data: BootstrapCallbackData) -> OutgoingM
     )
 }
 
-fn bootstrap_started(bootstrap_callback_data: BootstrapCallbackData) -> OutgoingMessageEnvelope {
+fn bootstrap_started(bootstrap_callback_data: &BootstrapCallbackData) -> OutgoingMessageEnvelope {
     OutgoingMessageEnvelope::new(
         Topic::Bootstrap,
         BootstrapStarted {
             reason: "started".to_owned(),
-            id: bootstrap_callback_data.id,
+            id: bootstrap_callback_data.id.clone(),
             mode: bootstrap_callback_data.mode.as_str().to_string(),
         },
     )

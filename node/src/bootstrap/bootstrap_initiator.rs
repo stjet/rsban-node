@@ -239,26 +239,12 @@ impl BootstrapInitiator {
         [("pulls_cache", cache_count, PullsCache::ELEMENT_SIZE)].into()
     }
 
-    pub fn add_bootstrap_started_callback(
-        &self,
-        f: Arc<dyn Fn(BootstrapCallbackData) + Send + Sync>,
-    ) {
-        self.bootstrap_callbacks
-            .bootstrap_started_observer
-            .lock()
-            .unwrap()
-            .push(f);
+    pub fn on_bootstrap_started(&self, f: Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>) {
+        self.bootstrap_callbacks.add_bootstrap_started(f);
     }
 
-    pub fn add_bootstrap_ended_callback(
-        &self,
-        f: Arc<dyn Fn(BootstrapCallbackData) + Send + Sync>,
-    ) {
-        self.bootstrap_callbacks
-            .bootstrap_ended_observer
-            .lock()
-            .unwrap()
-            .push(f);
+    pub fn on_bootstrap_ended(&self, f: Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>) {
+        self.bootstrap_callbacks.add_bootstrap_stoped(f);
     }
 }
 

@@ -115,37 +115,16 @@ fn genesis_sideband(genesis_account: Account) -> BlockSideband {
 
 impl LedgerConstants {
     pub fn new(work: WorkThresholds, network: Networks) -> Self {
-        let mut dev_genesis_block = parse_block_from_genesis_data(DEV_GENESIS_DATA).unwrap();
-        let mut beta_genesis_block = parse_block_from_genesis_data(BETA_GENESIS_DATA).unwrap();
-        let mut live_genesis_block = parse_block_from_genesis_data(LIVE_GENESIS_DATA).unwrap();
-        let mut test_genesis_block =
-            parse_block_from_genesis_data(TEST_GENESIS_DATA.as_str()).unwrap();
-
-        let beta_genesis_account = beta_genesis_block.account_field().unwrap();
-        beta_genesis_block
-            .as_block_mut()
-            .set_sideband(genesis_sideband(beta_genesis_account));
-
-        let dev_genesis_account = dev_genesis_block.account_field().unwrap();
-        dev_genesis_block
-            .as_block_mut()
-            .set_sideband(genesis_sideband(dev_genesis_account));
-
-        let live_genesis_account = live_genesis_block.account_field().unwrap();
-        live_genesis_block
-            .as_block_mut()
-            .set_sideband(genesis_sideband(live_genesis_account));
-
-        let test_genesis_account = test_genesis_block.account_field().unwrap();
-        test_genesis_block
-            .as_block_mut()
-            .set_sideband(genesis_sideband(test_genesis_account));
+        let dev_genesis_block = parse_block_from_genesis_data(DEV_GENESIS_DATA).unwrap();
+        let beta_genesis_block = parse_block_from_genesis_data(BETA_GENESIS_DATA).unwrap();
+        let live_genesis_block = parse_block_from_genesis_data(LIVE_GENESIS_DATA).unwrap();
+        let test_genesis_block = parse_block_from_genesis_data(TEST_GENESIS_DATA.as_str()).unwrap();
 
         let genesis_block = match network {
-            Networks::NanoDevNetwork => dev_genesis_block.clone(),
-            Networks::NanoBetaNetwork => beta_genesis_block.clone(),
-            Networks::NanoTestNetwork => test_genesis_block.clone(),
-            Networks::NanoLiveNetwork => live_genesis_block.clone(),
+            Networks::NanoDevNetwork => dev_genesis_block,
+            Networks::NanoBetaNetwork => beta_genesis_block,
+            Networks::NanoTestNetwork => test_genesis_block,
+            Networks::NanoLiveNetwork => live_genesis_block,
             Networks::Invalid => panic!("invalid network"),
         };
         let genesis_account = genesis_block.account_field().unwrap();
@@ -174,8 +153,7 @@ impl LedgerConstants {
         epochs.add(Epoch::Epoch1, epoch_1_signer, epoch_link_v1);
         epochs.add(Epoch::Epoch2, epoch_2_signer, epoch_link_v2);
 
-        let sideband = genesis_block.sideband().unwrap().clone();
-        let genesis_block = SavedBlock::new(genesis_block, sideband);
+        let genesis_block = SavedBlock::new(genesis_block, genesis_sideband(genesis_account));
 
         Self {
             work,

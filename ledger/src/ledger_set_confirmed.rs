@@ -137,22 +137,19 @@ impl<'a> Iterator for ConfirmedReceivableIterator<'a> {
 mod tests {
     use crate::Ledger;
     use rsnano_core::{
-        Account, Block, BlockHash, BlockSideband, ConfirmationHeightInfo, PendingInfo, PendingKey,
+        Account, BlockHash, ConfirmationHeightInfo, PendingInfo, PendingKey, SavedBlock,
     };
 
     #[test]
     fn iter_receivables() {
         let account = Account::from(1);
 
-        let mut block1 = Block::new_test_instance_with_key(42);
-        block1.set_sideband(BlockSideband::new_test_instance());
-        let mut block2 = Block::new_test_instance_with_key(43);
-        block2.set_sideband(BlockSideband::new_test_instance());
-        let mut block3 = Block::new_test_instance_with_key(44);
-        block3.set_sideband(BlockSideband::new_test_instance());
+        let block1 = SavedBlock::new_test_instance_with_key(42);
+        let block2 = SavedBlock::new_test_instance_with_key(43);
+        let block3 = SavedBlock::new_test_instance_with_key(44);
 
         let ledger = Ledger::new_null_builder()
-            .blocks([&block1, &block2, &block3])
+            .blocks2([&block1, &block2, &block3])
             .confirmation_height(
                 &block1.account(),
                 &ConfirmationHeightInfo::new(9999, BlockHash::zero()),

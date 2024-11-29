@@ -552,8 +552,19 @@ impl SavedBlock {
     }
 
     pub fn new_test_instance() -> Self {
-        let mut block = Block::new_test_instance();
-        let sideband = BlockSideband {
+        let block = Block::new_test_instance();
+        let sideband = Self::test_sideband(&block);
+        Self::new(block, sideband)
+    }
+
+    pub fn new_test_instance_with_key(key: impl Into<PrivateKey>) -> Self {
+        let block = Block::new_test_instance_with_key(key);
+        let sideband = Self::test_sideband(&block);
+        Self::new(block, sideband)
+    }
+
+    fn test_sideband(block: &Block) -> BlockSideband {
+        BlockSideband {
             height: 2,
             timestamp: 222222,
             successor: BlockHash::zero(),
@@ -561,9 +572,7 @@ impl SavedBlock {
             balance: block.balance_field().unwrap(),
             details: BlockDetails::new(Epoch::Epoch2, true, false, false),
             source_epoch: Epoch::Epoch0,
-        };
-        block.set_sideband(sideband.clone());
-        Self::new(block, sideband)
+        }
     }
 
     pub fn set_sideband(&mut self, sideband: BlockSideband) {

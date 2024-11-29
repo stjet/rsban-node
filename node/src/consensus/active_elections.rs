@@ -439,8 +439,7 @@ impl ActiveElections {
     }
 
     pub fn active(&self, block: &Block) -> bool {
-        let guard = self.mutex.lock().unwrap();
-        guard.roots.get(&block.qualified_root()).is_some()
+        self.active_root(&block.qualified_root())
     }
 
     pub fn replace_by_weight<'a>(

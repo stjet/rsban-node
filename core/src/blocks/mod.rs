@@ -531,7 +531,8 @@ pub struct SavedBlock {
 }
 
 impl SavedBlock {
-    pub fn new(block: Block, sideband: BlockSideband) -> Self {
+    pub fn new(mut block: Block, sideband: BlockSideband) -> Self {
+        block.set_sideband(sideband.clone());
         Self { block, sideband }
     }
 
@@ -563,6 +564,11 @@ impl SavedBlock {
         };
         block.set_sideband(sideband.clone());
         Self::new(block, sideband)
+    }
+
+    pub fn set_sideband(&mut self, sideband: BlockSideband) {
+        self.block.set_sideband(sideband.clone());
+        self.sideband = sideband;
     }
 
     pub fn height(&self) -> u64 {

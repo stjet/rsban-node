@@ -61,13 +61,15 @@ impl LegacyOpenBlockBuilder {
     }
 
     pub fn build_saved(self) -> SavedBlock {
-        let mut block = self.build();
+        let block = self.build();
+
         let details = BlockDetails {
             epoch: Epoch::Epoch0,
             is_send: false,
             is_receive: true,
             is_epoch: false,
         };
+
         let sideband = BlockSideband::new(
             block.account(),
             BlockHash::zero(),
@@ -77,7 +79,7 @@ impl LegacyOpenBlockBuilder {
             details,
             Epoch::Epoch0,
         );
-        block.set_sideband(sideband.clone());
+
         SavedBlock::new(block, sideband)
     }
 }

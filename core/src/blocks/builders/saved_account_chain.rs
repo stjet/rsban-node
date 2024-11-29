@@ -243,7 +243,6 @@ impl SavedAccountChain {
 
     pub fn new_legacy_send_block(&self) -> LegacySendBlockBuilder {
         BlockBuilder::legacy_send()
-            .account(self.account)
             .previous(self.frontier())
             .destination(Account::from(42))
             .previous_balance(self.balance)

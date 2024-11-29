@@ -87,11 +87,14 @@ impl TestAccountChain {
         &self.blocks[height as usize - 1]
     }
 
-    pub fn try_get_block(&self, height: u64) -> Option<&Block> {
+    pub fn try_get_block(&self, height: u64) -> Option<SavedBlock> {
         if height == 0 {
             return None;
         }
-        self.blocks.get(height as usize - 1)
+        self.blocks.get(height as usize - 1).map(|b| {
+            let sideband = b.sideband().unwrap().clone();
+            SavedBlock::new(b.clone(), sideband)
+        })
     }
 
     pub fn latest_block(&self) -> &Block {

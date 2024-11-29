@@ -42,7 +42,7 @@ fn new_test_rollback_planner<'a>(chain: &'a TestAccountChain) -> RollbackPlanner
         account: chain.account(),
         current_account_info: chain.account_info(),
         previous_representative: chain.representative_at_height(chain.height() - 1),
-        previous: chain.try_get_block(chain.height() - 1).cloned(),
+        previous: chain.try_get_block(chain.height() - 1),
         linked_account: Account::zero(),
         pending_receive: None,
         latest_block_for_destination: None,

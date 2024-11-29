@@ -23,7 +23,6 @@ use rsnano_store_lmdb::{
 use std::{
     collections::{HashMap, VecDeque},
     net::SocketAddrV6,
-    ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -310,7 +309,7 @@ impl Ledger {
     fn add_genesis_block(&self, txn: &mut LmdbWriteTransaction) {
         let genesis_hash = self.constants.genesis_block.hash();
         let genesis_account = self.constants.genesis_account;
-        self.store.block.put2(txn, &self.constants.genesis_block);
+        self.store.block.put(txn, &self.constants.genesis_block);
 
         self.store.confirmation_height.put(
             txn,

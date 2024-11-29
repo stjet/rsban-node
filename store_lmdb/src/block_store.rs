@@ -72,7 +72,7 @@ impl LmdbBlockStore {
         self.put_listener.track()
     }
 
-    pub fn put2(&self, txn: &mut LmdbWriteTransaction, block: &SavedBlock) {
+    pub fn put(&self, txn: &mut LmdbWriteTransaction, block: &SavedBlock) {
         #[cfg(feature = "output_tracking")]
         self.put_listener.emit(block.block.clone());
 
@@ -83,12 +83,6 @@ impl LmdbBlockStore {
 
         self.raw_put(txn, &block.block.serialize_with_sideband(), &hash);
         self.update_predecessor(txn, &block.block);
-    }
-
-    // TODO use put2, then rename put2 to put
-    pub fn put(&self, txn: &mut LmdbWriteTransaction, block: &Block) {
-        let block = SavedBlock::new(block.clone(), block.sideband().unwrap().clone());
-        self.put2(txn, &block);
     }
 
     pub fn exists(&self, transaction: &dyn Transaction, hash: &BlockHash) -> bool {
@@ -270,7 +264,7 @@ mod tests {
         let put_tracker = txn.track_puts();
         let block = SavedBlock::new_test_instance();
 
-        fixture.store.put2(&mut txn, &block);
+        fixture.store.put(&mut txn, &block);
 
         assert_eq!(
             put_tracker.output(),

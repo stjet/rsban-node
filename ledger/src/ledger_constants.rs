@@ -6,10 +6,7 @@ use rsnano_core::{
     Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, Epochs, Networks,
     PublicKey, SavedBlock, DEV_GENESIS_KEY,
 };
-use std::{
-    ops::Deref,
-    sync::{Arc, LazyLock},
-};
+use std::sync::LazyLock;
 
 static BETA_PUBLIC_KEY_DATA: &str =
     "259A438A8F9F9226130C84D902C237AF3E57C0981C7D709C288046B110D8C8AC";

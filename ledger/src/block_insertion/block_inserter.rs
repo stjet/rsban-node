@@ -43,7 +43,7 @@ impl<'a> BlockInserter<'a> {
         self.set_block_sideband();
         let saved_block =
             SavedBlock::new(self.block.clone(), self.block.sideband().unwrap().clone());
-        self.ledger.store.block.put2(self.txn, &saved_block);
+        self.ledger.store.block.put(self.txn, &saved_block);
         self.update_account();
         self.delete_old_pending_info();
         self.insert_new_pending_info();

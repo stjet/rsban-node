@@ -293,7 +293,7 @@ impl BlockProcessor {
         &self,
         block: Arc<Block>,
         source: BlockSource,
-    ) -> anyhow::Result<Result<Block, BlockStatus>> {
+    ) -> anyhow::Result<Result<SavedBlock, BlockStatus>> {
         self.processor_loop.add_blocking(block, source)
     }
 
@@ -465,7 +465,7 @@ impl BlockProcessorLoop {
         &self,
         block: Arc<Block>,
         source: BlockSource,
-    ) -> anyhow::Result<Result<Block, BlockStatus>> {
+    ) -> anyhow::Result<Result<SavedBlock, BlockStatus>> {
         self.stats
             .inc(StatType::Blockprocessor, DetailType::ProcessBlocking);
         debug!(
@@ -484,7 +484,7 @@ impl BlockProcessorLoop {
         self.add_impl(ctx.clone(), ChannelId::LOOPBACK);
 
         match waiter.wait_result() {
-            Some(BlockStatus::Progress) => Ok(Ok(ctx.block.lock().unwrap().clone())),
+            Some(BlockStatus::Progress) => Ok(Ok(ctx.saved_block.lock().unwrap().clone().unwrap())),
             Some(status) => Ok(Err(status)),
             None => {
                 self.stats
@@ -603,7 +603,10 @@ impl BlockProcessorLoop {
         let hash = block.hash();
 
         let result = match self.ledger.process(txn, &mut block) {
-            Ok(_) => BlockStatus::Progress,
+            Ok(saved) => {
+                *context.saved_block.lock().unwrap() = Some(saved);
+                BlockStatus::Progress
+            }
             Err(r) => r,
         };
 

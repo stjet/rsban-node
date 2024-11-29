@@ -17,7 +17,7 @@ use rsnano_core::{
     Account, Amount, Block, BlockDetails, BlockHash, Epoch, KeyDerivationFunction, Link, NoValue,
     PendingKey, PrivateKey, PublicKey, RawKey, Root, SavedBlock, StateBlock, WalletId,
 };
-use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
+use rsnano_ledger::{Ledger, RepWeightCache};
 use rsnano_messages::{Message, Publish};
 use rsnano_network::DropPolicy;
 use rsnano_nullable_lmdb::{DatabaseFlags, LmdbDatabase, WriteFlags};
@@ -951,7 +951,7 @@ pub trait WalletsExt {
         account: Account,
         generate_work: bool,
         details: &BlockDetails,
-    ) -> anyhow::Result<Block>;
+    ) -> anyhow::Result<SavedBlock>;
 
     fn ongoing_compute_reps(&self);
 
@@ -1327,7 +1327,7 @@ impl WalletsExt for Arc<Wallets> {
         account: Account,
         generate_work: bool,
         details: &BlockDetails,
-    ) -> anyhow::Result<Block> {
+    ) -> anyhow::Result<SavedBlock> {
         // Unschedule any work caching for this account
         self.delayed_work.lock().unwrap().remove(&account);
         let hash = block.hash();
@@ -1451,9 +1451,9 @@ impl WalletsExt for Arc<Wallets> {
 
         match result {
             PreparedSend::Cached(block) => Ok(block.into()),
-            PreparedSend::New(block, details) => {
-                self.action_complete(Arc::clone(wallet), block, source, generate_work, &details)
-            }
+            PreparedSend::New(block, details) => self
+                .action_complete(Arc::clone(wallet), block, source, generate_work, &details)
+                .map(|b| b.into()),
         }
     }
 
@@ -1504,6 +1504,7 @@ impl WalletsExt for Arc<Wallets> {
         let details = BlockDetails::new(epoch, false, false, false);
         self.action_complete(Arc::clone(&wallet), block, source, generate_work, &details)
             .ok()
+            .map(|b| b.into())
     }
 
     fn change_action2(
@@ -1596,6 +1597,7 @@ impl WalletsExt for Arc<Wallets> {
         let details = BlockDetails::new(epoch, false, true, false);
         self.action_complete(Arc::clone(wallet), block, account, generate_work, &details)
             .ok()
+            .map(|b| b.into())
     }
 
     fn receive_async_wallet(

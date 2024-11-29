@@ -114,7 +114,7 @@ pub fn create_websocket_server(
     ));
 
     let server_w: std::sync::Weak<WebsocketListener> = Arc::downgrade(&server);
-    process_live_dispatcher.add_new_unconfirmed_block_callback(Box::new(move |block: &Block| {
+    process_live_dispatcher.add_new_unconfirmed_block_callback(Arc::new(move |block: &Block| {
         if let Some(server) = server_w.upgrade() {
             if server.any_subscriber(Topic::NewUnconfirmedBlock) {
                 server.broadcast(&new_block_arrived_message(block));

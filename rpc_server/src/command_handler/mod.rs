@@ -174,6 +174,7 @@ impl RpcCommandHandler {
             .any()
             .get_block(txn, hash)
             .ok_or_else(|| anyhow!(Self::BLOCK_NOT_FOUND))
+            .map(|b| b.block)
     }
 
     fn load_account(

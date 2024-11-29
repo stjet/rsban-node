@@ -294,7 +294,7 @@ impl ConfirmingSetThread {
                             added_len as u64,
                         );
                         for block in added {
-                            cemented.push_back((block, hash));
+                            cemented.push_back((block.block, hash));
                         }
                     } else {
                         self.stats

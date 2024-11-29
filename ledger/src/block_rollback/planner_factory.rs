@@ -2,7 +2,7 @@ use super::rollback_planner::RollbackPlanner;
 use crate::Ledger;
 use rsnano_core::{
     utils::seconds_since_epoch, Account, AccountInfo, Block, BlockHash, ConfirmationHeightInfo,
-    PendingInfo, PendingKey, PublicKey,
+    PendingInfo, PendingKey, PublicKey, SavedBlock,
 };
 use rsnano_store_lmdb::Transaction;
 
@@ -29,7 +29,7 @@ impl<'a> RollbackPlannerFactory<'a> {
             account,
             current_account_info: self.load_account(&account),
             previous_representative: self.get_previous_representative()?,
-            previous: self.load_previous_block()?,
+            previous: self.load_previous_block2()?,
             linked_account: self.load_linked_account(),
             pending_receive: self.load_pending_receive(),
             latest_block_for_destination: self.latest_block_for_destination(),
@@ -62,6 +62,15 @@ impl<'a> RollbackPlannerFactory<'a> {
             .unwrap_or_default()
     }
 
+    fn load_previous_block2(&self) -> anyhow::Result<Option<SavedBlock>> {
+        let previous = self.head_block.previous();
+        Ok(if previous.is_zero() {
+            None
+        } else {
+            Some(self.load_block2(&previous)?)
+        })
+    }
+
     fn load_previous_block(&self) -> anyhow::Result<Option<Block>> {
         let previous = self.head_block.previous();
         Ok(if previous.is_zero() {
@@ -92,10 +101,18 @@ impl<'a> RollbackPlannerFactory<'a> {
             .unwrap_or_default()
     }
 
+    fn load_block2(&self, block_hash: &BlockHash) -> anyhow::Result<SavedBlock> {
+        self.ledger
+            .any()
+            .get_block(self.txn, block_hash)
+            .ok_or_else(|| anyhow!("block not found"))
+    }
+
     fn load_block(&self, block_hash: &BlockHash) -> anyhow::Result<Block> {
         self.ledger
             .any()
             .get_block(self.txn, block_hash)
+            .map(|b| b.block)
             .ok_or_else(|| anyhow!("block not found"))
     }
 

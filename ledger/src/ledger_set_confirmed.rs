@@ -14,7 +14,7 @@ impl<'a> LedgerSetConfirmed<'a> {
         let block = self.store.block.get(tx, hash)?;
         let info = self.store.confirmation_height.get(tx, &block.account())?;
         if block.sideband().unwrap().height <= info.height {
-            Some(block)
+            Some(block.block)
         } else {
             None
         }

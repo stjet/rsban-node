@@ -1267,7 +1267,7 @@ impl Node {
 
     pub fn block(&self, hash: &BlockHash) -> Option<Block> {
         let tx = self.ledger.read_txn();
-        self.ledger.any().get_block(&tx, hash)
+        self.ledger.any().get_block(&tx, hash).map(|b| b.block)
     }
 
     pub fn latest(&self, account: &Account) -> BlockHash {

@@ -10,7 +10,7 @@ use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{seconds_since_epoch, ContainerInfo},
     Account, AccountInfo, Amount, Block, BlockHash, BlockSubType, ConfirmationHeightInfo,
-    DependentBlocks, Epoch, Link, PendingInfo, PendingKey, PublicKey, Root,
+    DependentBlocks, Epoch, Link, PendingInfo, PendingKey, PublicKey, Root, SavedBlock,
 };
 use rsnano_store_lmdb::{
     ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
@@ -485,7 +485,7 @@ impl Ledger {
         while let Some(current) = possible_receive_block {
             if current.is_receive() && Some(*send_block_hash) == current.source() {
                 // we have a match
-                return Some(current);
+                return Some(current.block);
             }
 
             possible_receive_block = self.any().get_block(txn, &current.previous());
@@ -597,7 +597,7 @@ impl Ledger {
         Ok(())
     }
 
-    pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
+    pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<SavedBlock> {
         self.store.block.get(txn, hash)
     }
 
@@ -617,7 +617,7 @@ impl Ledger {
         self.store.confirmation_height.get(txn, account)
     }
 
-    pub fn confirm(&self, txn: &mut LmdbWriteTransaction, hash: BlockHash) -> VecDeque<Block> {
+    pub fn confirm(&self, txn: &mut LmdbWriteTransaction, hash: BlockHash) -> Vec<SavedBlock> {
         self.confirm_max(txn, hash, 1024 * 128)
     }
 
@@ -628,7 +628,7 @@ impl Ledger {
         txn: &mut LmdbWriteTransaction,
         target_hash: BlockHash,
         max_blocks: usize,
-    ) -> VecDeque<Block> {
+    ) -> Vec<SavedBlock> {
         BlockCementer::new(&self.store, self.observer.as_ref(), &self.constants).confirm(
             txn,
             target_hash,

@@ -701,7 +701,7 @@ impl BlockProcessorLoop {
 
                 let callback_guard = self.blocks_rolled_back.lock().unwrap();
                 if let Some(callback) = callback_guard.as_ref() {
-                    callback(rollback_list, successor_block);
+                    callback(rollback_list, successor_block.block);
                 }
             }
         }

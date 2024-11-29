@@ -77,6 +77,7 @@ impl<'a> BlockRollbackPerformer<'a> {
         self.ledger
             .any()
             .get_block(self.txn, block_hash)
+            .map(|b| b.block)
             .ok_or_else(|| anyhow!("block not found"))
     }
 }

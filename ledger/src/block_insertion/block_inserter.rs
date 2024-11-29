@@ -1,5 +1,7 @@
 use crate::Ledger;
-use rsnano_core::{Account, AccountInfo, Amount, Block, BlockSideband, PendingInfo, PendingKey};
+use rsnano_core::{
+    Account, AccountInfo, Amount, Block, BlockSideband, PendingInfo, PendingKey, SavedBlock,
+};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::sync::atomic::Ordering;
 
@@ -39,7 +41,9 @@ impl<'a> BlockInserter<'a> {
 
     pub(crate) fn insert(&mut self) {
         self.set_block_sideband();
-        self.ledger.store.block.put(self.txn, self.block);
+        let saved_block =
+            SavedBlock::new(self.block.clone(), self.block.sideband().unwrap().clone());
+        self.ledger.store.block.put2(self.txn, &saved_block);
         self.update_account();
         self.delete_old_pending_info();
         self.insert_new_pending_info();

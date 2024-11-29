@@ -72,6 +72,19 @@ impl LmdbBlockStore {
         self.put_listener.track()
     }
 
+    pub fn put2(&self, txn: &mut LmdbWriteTransaction, block: &SavedBlock) {
+        #[cfg(feature = "output_tracking")]
+        self.put_listener.emit(block.block.clone());
+
+        let hash = block.hash();
+        debug_assert!(
+            block.sideband.successor.is_zero() || self.exists(txn, &block.sideband.successor)
+        );
+
+        self.raw_put(txn, &block.block.serialize_with_sideband(), &hash);
+        self.update_predecessor(txn, &block.block);
+    }
+
     pub fn put(&self, txn: &mut LmdbWriteTransaction, block: &Block) {
         #[cfg(feature = "output_tracking")]
         self.put_listener.emit(block.clone());

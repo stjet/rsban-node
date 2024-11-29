@@ -553,6 +553,20 @@ pub struct SavedBlock {
     pub sideband: BlockSideband,
 }
 
+impl SavedBlock {
+    pub fn new(block: Block, sideband: BlockSideband) -> Self {
+        Self { block, sideband }
+    }
+}
+
+impl Deref for SavedBlock {
+    type Target = Block;
+
+    fn deref(&self) -> &Self::Target {
+        &self.block
+    }
+}
+
 impl crate::utils::Deserialize for SavedBlock {
     type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {

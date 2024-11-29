@@ -43,8 +43,8 @@ use crate::{
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo, SerdePropertyTree},
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, Block, BlockHash, BlockType, Networks, NodeId, PrivateKey, PublicKey, Root,
-    VoteCode, VoteSource,
+    Account, Amount, Block, BlockHash, BlockType, Networks, NodeId, PrivateKey, Root, VoteCode,
+    VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};

@@ -21,7 +21,6 @@ use send_block::JsonSendBlock;
 pub use send_block::{valid_send_block_predecessor, SendBlock, SendHashables};
 
 mod state_block;
-use serde::{Deserialize, Serialize};
 use state_block::JsonStateBlock;
 pub use state_block::{StateBlock, StateHashables};
 
@@ -29,7 +28,10 @@ mod builders;
 pub use builders::*;
 
 use crate::{
-    utils::{BufferReader, BufferWriter, MemoryStream, PropertyTree, SerdePropertyTree, Stream},
+    utils::{
+        BufferReader, BufferWriter, Deserialize, MemoryStream, PropertyTree, SerdePropertyTree,
+        Stream,
+    },
     Account, Amount, BlockHash, BlockHashBuilder, Epoch, Epochs, FullHash, Link, PrivateKey,
     PublicKey, QualifiedRoot, Root, Signature,
 };
@@ -208,6 +210,10 @@ impl Block {
         Self::State(StateBlock::new_test_instance())
     }
 
+    pub fn new_test_open() -> Self {
+        Self::State(StateBlock::new_test_open())
+    }
+
     pub fn new_test_instance_with_key(key: impl Into<PrivateKey>) -> Self {
         Self::State(StateBlock::new_test_instance_with_key(key.into()))
     }
@@ -370,36 +376,6 @@ impl Block {
         stream.to_vec()
     }
 
-    pub fn deserialize_with_sideband(bytes: &[u8]) -> anyhow::Result<Block> {
-        let mut stream = BufferReader::new(bytes);
-        let mut block = Block::deserialize(&mut stream)?;
-        let mut sideband = BlockSideband::from_stream(&mut stream, block.block_type())?;
-        // BlockSideband does not serialize all data depending on the block type.
-        // That's why we fill in the missing data here:
-        match &block {
-            Block::LegacySend(i) => {
-                sideband.balance = i.balance();
-                sideband.details = BlockDetails::new(Epoch::Epoch0, true, false, false)
-            }
-            Block::LegacyOpen(open) => {
-                sideband.account = open.account();
-                sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
-            }
-            Block::LegacyReceive(_) => {
-                sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
-            }
-            Block::LegacyChange(_) => {
-                sideband.details = BlockDetails::new(Epoch::Epoch0, false, false, false)
-            }
-            Block::State(state) => {
-                sideband.account = state.account();
-                sideband.balance = state.balance();
-            }
-        }
-        block.as_block_mut().set_sideband(sideband);
-        Ok(block)
-    }
-
     pub fn deserialize_block_type(
         block_type: BlockType,
         stream: &mut dyn Stream,
@@ -492,7 +468,7 @@ impl serde::Serialize for Block {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum JsonBlock {
     Open(JsonOpenBlock),
@@ -548,6 +524,9 @@ pub fn deserialize_block_json(ptree: &impl PropertyTree) -> anyhow::Result<Block
     }
 }
 
+/// A block with additional data about that block (the "sideband")
+/// which is only known when the block is saved.
+/// The sideband contains additional data like block height, block time, etc.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SavedBlock {
     pub block: Block,
@@ -559,10 +538,25 @@ impl SavedBlock {
         Self { block, sideband }
     }
 
-    pub fn new_test_instance() -> Self {
-        let block = Block::new_test_instance();
+    pub fn new_test_open_block() -> Self {
+        let mut block = Block::new_test_open();
         let sideband = BlockSideband {
             height: 1,
+            timestamp: 222222,
+            successor: BlockHash::zero(),
+            account: block.account_field().unwrap(),
+            balance: block.balance_field().unwrap(),
+            details: BlockDetails::new(Epoch::Epoch2, false, true, false),
+            source_epoch: Epoch::Epoch0,
+        };
+        block.set_sideband(sideband.clone());
+        Self::new(block, sideband)
+    }
+
+    pub fn new_test_instance() -> Self {
+        let mut block = Block::new_test_instance();
+        let sideband = BlockSideband {
+            height: 2,
             timestamp: 222222,
             successor: BlockHash::zero(),
             account: block.account_field().unwrap(),
@@ -570,6 +564,7 @@ impl SavedBlock {
             details: BlockDetails::new(Epoch::Epoch2, true, false, false),
             source_epoch: Epoch::Epoch0,
         };
+        block.set_sideband(sideband.clone());
         Self::new(block, sideband)
     }
 }
@@ -586,7 +581,29 @@ impl crate::utils::Deserialize for SavedBlock {
     type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
         let mut block = Block::deserialize(stream)?;
-        let sideband = BlockSideband::from_stream(stream, block.block_type())?;
+        let mut sideband = BlockSideband::from_stream(stream, block.block_type())?;
+        // BlockSideband does not serialize all data depending on the block type.
+        // That's why we fill in the missing data here:
+        match &block {
+            Block::LegacySend(i) => {
+                sideband.balance = i.balance();
+                sideband.details = BlockDetails::new(Epoch::Epoch0, true, false, false)
+            }
+            Block::LegacyOpen(open) => {
+                sideband.account = open.account();
+                sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
+            }
+            Block::LegacyReceive(_) => {
+                sideband.details = BlockDetails::new(Epoch::Epoch0, false, true, false)
+            }
+            Block::LegacyChange(_) => {
+                sideband.details = BlockDetails::new(Epoch::Epoch0, false, false, false)
+            }
+            Block::State(state) => {
+                sideband.account = state.account();
+                sideband.balance = state.balance();
+            }
+        }
         block.as_block_mut().set_sideband(sideband.clone());
         Ok(SavedBlock { block, sideband })
     }
@@ -674,8 +691,8 @@ mod tests {
 
     fn assert_serializable(block: Block) {
         let bytes = block.serialize_with_sideband();
-        let deserialized = Block::deserialize_with_sideband(&bytes).unwrap();
-
-        assert_eq!(deserialized, block);
+        let mut stream = BufferReader::new(&bytes);
+        let deserialized = SavedBlock::deserialize(&mut stream).unwrap();
+        assert_eq!(deserialized.block, block);
     }
 }

@@ -138,6 +138,19 @@ impl StateBlock {
         }
     }
 
+    pub fn new_test_open() -> Self {
+        let key = PrivateKey::from(42);
+        Self::new(
+            key.account(),
+            BlockHash::zero(),
+            PublicKey::from(789),
+            Amount::raw(420),
+            Link::from(111),
+            &key,
+            69420,
+        )
+    }
+
     pub fn verify_signature(&self) -> anyhow::Result<()> {
         self.account()
             .as_key()

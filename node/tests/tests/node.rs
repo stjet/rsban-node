@@ -1387,7 +1387,7 @@ fn search_receivable_confirmed() {
         )
         .unwrap();
     assert_timely(Duration::from_secs(5), || {
-        node.blocks_confirmed(&[send1.clone()])
+        node.block_hashes_confirmed(&[send1.hash()])
     });
 
     let send2 = node
@@ -1403,7 +1403,7 @@ fn search_receivable_confirmed() {
         )
         .unwrap();
     assert_timely(Duration::from_secs(5), || {
-        node.blocks_confirmed(&[send2.clone()])
+        node.block_hashes_confirmed(&[send2.hash()])
     });
 
     node.wallets

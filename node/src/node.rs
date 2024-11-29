@@ -1331,6 +1331,13 @@ impl Node {
         self.ledger.confirmed().block_exists(&tx, hash)
     }
 
+    pub fn block_hashes_confirmed(&self, blocks: &[BlockHash]) -> bool {
+        let tx = self.ledger.read_txn();
+        blocks
+            .iter()
+            .all(|b| self.ledger.confirmed().block_exists(&tx, b))
+    }
+
     pub fn blocks_confirmed(&self, blocks: &[Block]) -> bool {
         let tx = self.ledger.read_txn();
         blocks

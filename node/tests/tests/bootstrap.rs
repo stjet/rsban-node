@@ -766,10 +766,10 @@ mod bootstrap_processor {
 
         // All blocks should be propagated & confirmed
         assert_timely(Duration::from_secs(5), || {
-            node1.blocks_confirmed(&[send.clone(), receive.clone().into()])
+            node1.block_hashes_confirmed(&[send.hash(), receive.hash()])
         });
         assert_timely(Duration::from_secs(5), || {
-            node2.blocks_confirmed(&[send.clone(), receive.clone().into()])
+            node2.block_hashes_confirmed(&[send.hash(), receive.hash()])
         });
         assert_timely(Duration::from_secs(5), || node1.active.len() == 0);
         assert_timely(Duration::from_secs(5), || node2.active.len() == 0);

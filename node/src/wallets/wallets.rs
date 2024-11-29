@@ -979,7 +979,7 @@ pub trait WalletsExt {
         work: u64,
         generate_work: bool,
         id: Option<String>,
-    ) -> anyhow::Result<Block>;
+    ) -> anyhow::Result<SavedBlock>;
 
     fn send_action2(
         &self,
@@ -990,7 +990,7 @@ pub trait WalletsExt {
         work: u64,
         generate_work: bool,
         id: Option<String>,
-    ) -> Result<Block, WalletsError>;
+    ) -> Result<SavedBlock, WalletsError>;
 
     fn change_action(
         &self,
@@ -1421,7 +1421,7 @@ impl WalletsExt for Arc<Wallets> {
         work: u64,
         generate_work: bool,
         id: Option<String>,
-    ) -> Result<Block, WalletsError> {
+    ) -> Result<SavedBlock, WalletsError> {
         let guard = self.mutex.lock().unwrap();
         let wallet = Wallets::get_wallet(&guard, &wallet_id)?;
         self.send_action(wallet, source, account, amount, work, generate_work, id)
@@ -1437,7 +1437,7 @@ impl WalletsExt for Arc<Wallets> {
         work: u64,
         generate_work: bool,
         id: Option<String>,
-    ) -> anyhow::Result<Block> {
+    ) -> anyhow::Result<SavedBlock> {
         let result = match id {
             Some(id) => {
                 let mut tx = self.env.tx_begin_write();
@@ -1450,10 +1450,10 @@ impl WalletsExt for Arc<Wallets> {
         };
 
         match result {
-            PreparedSend::Cached(block) => Ok(block.into()),
-            PreparedSend::New(block, details) => self
-                .action_complete(Arc::clone(wallet), block, source, generate_work, &details)
-                .map(|b| b.into()),
+            PreparedSend::Cached(block) => Ok(block),
+            PreparedSend::New(block, details) => {
+                self.action_complete(Arc::clone(wallet), block, source, generate_work, &details)
+            }
         }
     }
 
@@ -1725,7 +1725,8 @@ impl WalletsExt for Arc<Wallets> {
                         generate_work,
                         id.clone(),
                     )
-                    .ok();
+                    .ok()
+                    .map(|b| b.into());
                 action(block);
             }),
         );

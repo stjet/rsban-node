@@ -120,7 +120,7 @@ mod votes {
         ));
         node1.vote_router.vote(&vote1, VoteSource::Live);
         // Block is already processed from vote
-        assert!(node1.active.publish_block(&send1.clone().into()));
+        assert!(node1.active.publish_block(&send1));
         assert_eq!(
             election1
                 .mutex
@@ -142,7 +142,7 @@ mod votes {
             &DEV_GENESIS_KEY,
             node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
-        assert_eq!(node1.active.publish_block(&send2.clone().into()), false);
+        assert_eq!(node1.active.publish_block(&send2), false);
         assert_timely(Duration::from_secs(5), || node1.active.active(&send2));
         let vote2 = Arc::new(Vote::new(
             &DEV_GENESIS_KEY,

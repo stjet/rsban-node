@@ -1107,7 +1107,7 @@ pub trait ActiveElectionsExt {
         block: &Block,
         confirmation_root: &BlockHash,
     );
-    fn publish_block(&self, block: &Arc<Block>) -> bool;
+    fn publish_block(&self, block: &Block) -> bool;
     fn insert(
         &self,
         block: Block,
@@ -1138,11 +1138,11 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         let self_w = Arc::downgrade(self);
         // Notify elections about alternative (forked) blocks
         self.block_processor
-            .add_block_processed_observer(Box::new(move |status, context| {
+            .on_block_processed(Box::new(move |status, context| {
                 if matches!(status, BlockStatus::Fork) {
                     if let Some(active) = self_w.upgrade() {
                         let block = context.block.lock().unwrap().clone();
-                        active.publish_block(&block.into());
+                        active.publish_block(&block);
                     }
                 }
             }));
@@ -1251,7 +1251,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         }
     }
 
-    fn publish_block(&self, block: &Arc<Block>) -> bool {
+    fn publish_block(&self, block: &Block) -> bool {
         let mut guard = self.mutex.lock().unwrap();
         let root = block.qualified_root();
         let mut result = true;

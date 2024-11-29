@@ -254,7 +254,7 @@ impl BlockProcessor {
         self.processor_loop.queue_len(source)
     }
 
-    pub fn add_block_processed_observer(
+    pub fn on_block_processed(
         &self,
         observer: Box<dyn Fn(BlockStatus, &BlockProcessorContext) + Send + Sync>,
     ) {

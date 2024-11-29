@@ -73,6 +73,11 @@ impl std::error::Error for WalletsError {}
 
 pub type WalletsIterator<'txn> = BinaryDbIterator<'txn, [u8; 64], NoValue>;
 
+pub enum PreparedSend {
+    Cached(SavedBlock),
+    New(Block, BlockDetails),
+}
+
 pub struct Wallets {
     db: Option<LmdbDatabase>,
     send_action_ids_handle: Option<LmdbDatabase>,
@@ -607,43 +612,41 @@ impl Wallets {
         account: Account,
         amount: Amount,
         mut work: u64,
-    ) -> (Option<Block>, bool, bool, BlockDetails) {
+    ) -> anyhow::Result<PreparedSend> {
         let block_tx = self.ledger.read_txn();
-        let mut details = BlockDetails::new(Epoch::Epoch0, true, false, false);
-        let mut block = None;
-        if wallet.store.valid_password(tx) {
-            let balance = self
-                .ledger
-                .any()
-                .account_balance(&block_tx, &source)
-                .unwrap_or_default();
-            if !balance.is_zero() && balance >= amount {
-                let info = self.ledger.account_info(&block_tx, &source).unwrap();
-                let prv_key = wallet.store.fetch(tx, &source.into()).unwrap();
-                if work == 0 {
-                    work = wallet
-                        .store
-                        .work_get(tx, &source.into())
-                        .unwrap_or_default();
-                }
-                let keys = PrivateKey::from(prv_key);
-                let state_block = Block::State(StateBlock::new(
-                    source,
-                    info.head,
-                    info.representative,
-                    balance - amount,
-                    account.into(),
-                    &keys,
-                    work,
-                ));
-                block = Some(state_block);
-                details = BlockDetails::new(info.epoch, true, false, false);
-            }
+        if !wallet.store.valid_password(tx) {
+            bail!("invalid password");
+        }
+        let balance = self
+            .ledger
+            .any()
+            .account_balance(&block_tx, &source)
+            .unwrap_or_default();
+
+        if balance.is_zero() || balance < amount {
+            bail!("insufficient balance");
         }
 
-        let error = false;
-        let cached_block = false;
-        (block, error, cached_block, details)
+        let info = self.ledger.account_info(&block_tx, &source).unwrap();
+        let prv_key = wallet.store.fetch(tx, &source.into()).unwrap();
+        if work == 0 {
+            work = wallet
+                .store
+                .work_get(tx, &source.into())
+                .unwrap_or_default();
+        }
+        let keys = PrivateKey::from(prv_key);
+        let state_block = Block::State(StateBlock::new(
+            source,
+            info.head,
+            info.representative,
+            balance - amount,
+            account.into(),
+            &keys,
+            work,
+        ));
+        let details = BlockDetails::new(info.epoch, true, false, false);
+        Ok(PreparedSend::New(state_block, details))
     }
 
     fn prepare_send_with_id(
@@ -655,72 +658,58 @@ impl Wallets {
         account: Account,
         amount: Amount,
         mut work: u64,
-    ) -> (Option<Block>, bool, bool, BlockDetails) {
+    ) -> anyhow::Result<PreparedSend> {
         let block_tx = self.ledger.read_txn();
-        let mut details = BlockDetails::new(Epoch::Epoch0, true, false, false);
 
-        let mut block: Option<Block> = match self.get_block_hash(tx, id) {
-            Ok(Some(hash)) => Some(
-                self.ledger
-                    .any()
-                    .get_block(&block_tx, &hash)
-                    .unwrap()
-                    .into(),
-            ),
-            Ok(None) => None,
-            _ => {
-                return (None, true, false, details);
-            }
+        let block = match self.get_block_hash(tx, id)? {
+            Some(hash) => Some(self.ledger.any().get_block(&block_tx, &hash).unwrap()),
+            None => None,
         };
 
-        let cached_block: bool;
-        let mut error = false;
-
-        if let Some(block) = &block {
-            cached_block = true;
+        if let Some(block) = block {
             let msg = Message::Publish(Publish::new_forward(block.clone().into()));
             self.message_publisher
                 .lock()
                 .unwrap()
                 .flood(&msg, DropPolicy::ShouldNotDrop, 1.0);
+            Ok(PreparedSend::Cached(block))
         } else {
-            cached_block = false;
-            if wallet.store.valid_password(tx) {
-                let balance = self
-                    .ledger
-                    .any()
-                    .account_balance(&block_tx, &source)
-                    .unwrap_or_default();
-                if !balance.is_zero() && balance >= amount {
-                    let info = self.ledger.account_info(&block_tx, &source).unwrap();
-                    let prv_key = wallet.store.fetch(tx, &source.into()).unwrap();
-                    if work == 0 {
-                        work = wallet
-                            .store
-                            .work_get(tx, &source.into())
-                            .unwrap_or_default();
-                    }
-                    let keys = PrivateKey::from(prv_key);
-                    let state_block = Block::State(StateBlock::new(
-                        source,
-                        info.head,
-                        info.representative,
-                        balance - amount,
-                        account.into(),
-                        &keys,
-                        work,
-                    ));
-                    details = BlockDetails::new(info.epoch, true, false, false);
-                    if self.set_block_hash(tx, id, &state_block.hash()).is_err() {
-                        error = true;
-                    } else {
-                        block = Some(state_block);
-                    }
-                }
+            if !wallet.store.valid_password(tx) {
+                bail!("invalid password");
             }
-        }
 
-        (block, error, cached_block, details)
+            let balance = self
+                .ledger
+                .any()
+                .account_balance(&block_tx, &source)
+                .unwrap_or_default();
+
+            if balance.is_zero() || balance < amount {
+                bail!("insufficient balance");
+            }
+
+            let info = self.ledger.account_info(&block_tx, &source).unwrap();
+            let prv_key = wallet.store.fetch(tx, &source.into()).unwrap();
+            if work == 0 {
+                work = wallet
+                    .store
+                    .work_get(tx, &source.into())
+                    .unwrap_or_default();
+            }
+            let keys = PrivateKey::from(prv_key);
+            let state_block = Block::State(StateBlock::new(
+                source,
+                info.head,
+                info.representative,
+                balance - amount,
+                account.into(),
+                &keys,
+                work,
+            ));
+            let details = BlockDetails::new(info.epoch, true, false, false);
+            self.set_block_hash(tx, id, &state_block.hash())?;
+            Ok(PreparedSend::New(state_block, details))
+        }
     }
 
     pub fn work_get(&self, wallet_id: &WalletId, pub_key: &PublicKey) -> u64 {
@@ -958,11 +947,11 @@ pub trait WalletsExt {
     fn action_complete(
         &self,
         wallet: Arc<Wallet>,
-        block: Option<Block>,
+        block: Block,
         account: Account,
         generate_work: bool,
         details: &BlockDetails,
-    ) -> anyhow::Result<Option<Block>>;
+    ) -> anyhow::Result<Block>;
 
     fn ongoing_compute_reps(&self);
 
@@ -990,7 +979,7 @@ pub trait WalletsExt {
         work: u64,
         generate_work: bool,
         id: Option<String>,
-    ) -> Option<Block>;
+    ) -> anyhow::Result<Block>;
 
     fn send_action2(
         &self,
@@ -1334,16 +1323,13 @@ impl WalletsExt for Arc<Wallets> {
     fn action_complete(
         &self,
         wallet: Arc<Wallet>,
-        block: Option<Block>,
+        mut block: Block,
         account: Account,
         generate_work: bool,
         details: &BlockDetails,
-    ) -> anyhow::Result<Option<Block>> {
+    ) -> anyhow::Result<Block> {
         // Unschedule any work caching for this account
         self.delayed_work.lock().unwrap().remove(&account);
-        let Some(mut block) = block else {
-            return Ok(None);
-        };
         let hash = block.hash();
         let required_difficulty = self.network_params.work.threshold(details);
         if self.network_params.work.difficulty_block(&block) < required_difficulty {
@@ -1372,7 +1358,7 @@ impl WalletsExt for Arc<Wallets> {
             // Pregenerate work for next block based on the block just created
             self.work_ensure(&wallet, account, hash.into());
         }
-        Ok(Some(block))
+        Ok(block)
     }
 
     fn ongoing_compute_reps(&self) {
@@ -1445,7 +1431,7 @@ impl WalletsExt for Arc<Wallets> {
         let guard = self.mutex.lock().unwrap();
         let wallet = Wallets::get_wallet(&guard, &wallet_id)?;
         self.send_action(wallet, source, account, amount, work, generate_work, id)
-            .ok_or(WalletsError::Generic)
+            .map_err(|_| WalletsError::Generic)
     }
 
     fn send_action(
@@ -1457,34 +1443,24 @@ impl WalletsExt for Arc<Wallets> {
         work: u64,
         generate_work: bool,
         id: Option<String>,
-    ) -> Option<Block> {
-        let (block, error, cached_block, details) = match id {
+    ) -> anyhow::Result<Block> {
+        let result = match id {
             Some(id) => {
                 let mut tx = self.env.tx_begin_write();
-                self.prepare_send_with_id(&mut tx, &id, wallet, source, account, amount, work)
+                self.prepare_send_with_id(&mut tx, &id, wallet, source, account, amount, work)?
             }
             None => {
                 let tx = self.env.tx_begin_read();
-                self.prepare_send(&tx, wallet, source, account, amount, work)
+                self.prepare_send(&tx, wallet, source, account, amount, work)?
             }
         };
 
-        let block = block?;
-
-        if !error && !cached_block {
-            match self.action_complete(
-                Arc::clone(wallet),
-                Some(block),
-                source,
-                generate_work,
-                &details,
-            ) {
-                Ok(b) => return b,
-                Err(_) => return None,
+        match result {
+            PreparedSend::Cached(block) => Ok(block.into()),
+            PreparedSend::New(block, details) => {
+                self.action_complete(Arc::clone(wallet), block, source, generate_work, &details)
             }
-        };
-
-        Some(block)
+        }
     }
 
     fn change_action(
@@ -1532,16 +1508,8 @@ impl WalletsExt for Arc<Wallets> {
         let block = block?;
 
         let details = BlockDetails::new(epoch, false, false, false);
-        match self.action_complete(
-            Arc::clone(&wallet),
-            Some(block),
-            source,
-            generate_work,
-            &details,
-        ) {
-            Ok(b) => return b,
-            Err(_) => return None,
-        }
+        self.action_complete(Arc::clone(&wallet), block, source, generate_work, &details)
+            .ok()
     }
 
     fn change_action2(
@@ -1632,16 +1600,8 @@ impl WalletsExt for Arc<Wallets> {
 
         let block = block?;
         let details = BlockDetails::new(epoch, false, true, false);
-        match self.action_complete(
-            Arc::clone(wallet),
-            Some(block),
-            account,
-            generate_work,
-            &details,
-        ) {
-            Ok(b) => b,
-            Err(_) => None,
-        }
+        self.action_complete(Arc::clone(wallet), block, account, generate_work, &details)
+            .ok()
     }
 
     fn receive_async_wallet(
@@ -1759,15 +1719,17 @@ impl WalletsExt for Arc<Wallets> {
             HIGH_PRIORITY,
             wallet,
             Box::new(move |wallet| {
-                let block = self_l.send_action(
-                    &wallet,
-                    source,
-                    account,
-                    amount,
-                    work,
-                    generate_work,
-                    id.clone(),
-                );
+                let block = self_l
+                    .send_action(
+                        &wallet,
+                        source,
+                        account,
+                        amount,
+                        work,
+                        generate_work,
+                        id.clone(),
+                    )
+                    .ok();
                 action(block);
             }),
         );

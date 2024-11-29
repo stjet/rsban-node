@@ -41,7 +41,7 @@ fn quorum_minimum_update_weight_before_quorum_checks() {
     ));
     node1.process_active(send1.clone());
     assert_timely(Duration::from_secs(5), || {
-        node1.block2(&send1.hash()).is_some()
+        node1.block(&send1.hash()).is_some()
     });
 
     let open1 = Block::State(StateBlock::new(
@@ -111,7 +111,7 @@ fn quorum_minimum_update_weight_before_quorum_checks() {
         .set_online(config.online_weight_minimum + Amount::raw(20));
     node1.vote_router.vote(&vote2, VoteSource::Live);
     assert_timely(Duration::from_secs(5), || node1.active.confirmed(&election));
-    assert!(node1.block2(&send1.hash()).is_some());
+    assert!(node1.block(&send1.hash()).is_some());
 }
 
 #[test]
@@ -203,7 +203,7 @@ fn quorum_minimum_confirm_fail() {
     std::thread::sleep(Duration::from_secs(1));
 
     // It should not confirm because there should not be enough quorum
-    assert!(node1.block2(&send1.hash()).is_some());
+    assert!(node1.block(&send1.hash()).is_some());
     assert_eq!(node1.active.confirmed(&election), false);
 }
 

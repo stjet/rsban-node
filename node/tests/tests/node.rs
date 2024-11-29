@@ -153,9 +153,7 @@ fn pruning_automatic() {
 
     node1.process_active(send2.clone().into());
 
-    assert_timely(Duration::from_secs(5), || {
-        node1.block(&send2.hash()).is_some()
-    });
+    assert_timely(Duration::from_secs(5), || node1.block_exists(&send2.hash()));
 
     node1.confirm(send1.hash().clone());
     assert_timely(Duration::from_secs(5), || {
@@ -281,10 +279,10 @@ fn deferred_dependent_elections() {
     node1.process_local(send2.clone().into()).unwrap();
 
     assert_timely(std::time::Duration::from_secs(5), || {
-        node1.block(&open.hash()).is_some()
+        node1.block_exists(&open.hash())
     });
     assert_timely(std::time::Duration::from_secs(5), || {
-        node1.block(&send2.hash()).is_some()
+        node1.block_exists(&send2.hash())
     });
 
     assert_never(std::time::Duration::from_millis(500), || {
@@ -293,10 +291,10 @@ fn deferred_dependent_elections() {
     });
 
     assert_timely(std::time::Duration::from_secs(5), || {
-        node2.block(&open.hash()).is_some()
+        node2.block_exists(&open.hash())
     });
     assert_timely(std::time::Duration::from_secs(5), || {
-        node2.block(&send2.hash()).is_some()
+        node2.block_exists(&send2.hash())
     });
 
     node1.process_local(open.clone().into()).unwrap();
@@ -355,11 +353,11 @@ fn deferred_dependent_elections() {
         .ledger
         .rollback(&mut node1.store.tx_begin_write(), &receive.hash())
         .unwrap();
-    assert!(node1.block(&receive.hash()).is_none());
+    assert!(!node1.block_exists(&receive.hash()));
 
     node1.process_local(receive.clone().into()).unwrap();
     assert_timely(std::time::Duration::from_secs(5), || {
-        node1.block(&receive.hash()).is_some()
+        node1.block_exists(&receive.hash())
     });
 
     assert_never(std::time::Duration::from_millis(500), || {
@@ -450,7 +448,7 @@ fn rollback_gap_source() {
         node.process_local(fork1a.clone()).unwrap()
     );
 
-    assert!(node.block(&send2.hash()).is_none());
+    assert!(!node.block_exists(&send2.hash()));
     node.block_processor.force(fork1b.clone());
 
     assert_timely_eq(
@@ -468,12 +466,12 @@ fn rollback_gap_source() {
         1,
     );
 
-    assert!(node.block(&fork1b.hash()).is_none());
+    assert!(!node.block_exists(&fork1b.hash()));
 
     node.process_active(fork1a.clone());
     assert_timely_eq(
         Duration::from_secs(5),
-        || node.block(&fork1a.hash()).is_some(),
+        || node.block_exists(&fork1a.hash()),
         true,
     );
 
@@ -494,11 +492,11 @@ fn rollback_gap_source() {
 
     assert_timely_eq(
         Duration::from_secs(5),
-        || node.block(&fork1b.hash()).is_some(),
+        || node.block_exists(&fork1b.hash()),
         true,
     );
 
-    assert!(node.block(&fork1a.hash()).is_none());
+    assert!(!node.block_exists(&fork1a.hash()));
 }
 
 #[test]
@@ -2085,7 +2083,7 @@ fn local_block_broadcast() {
 
     // The other node should not have received a block
     assert_never(Duration::from_millis(500), || {
-        node2.block(&send_hash).is_some()
+        node2.block_exists(&send_hash)
     });
 
     // Connect the nodes and check that the block is propagated
@@ -2106,7 +2104,7 @@ fn local_block_broadcast() {
     );
     assert_timely_msg(
         Duration::from_secs(10),
-        || node2.block(&send_hash).is_some(),
+        || node2.block_exists(&send_hash),
         "block not received",
     )
 }
@@ -3672,7 +3670,7 @@ fn block_processor_signatures() {
     node.process_active(receive3.clone());
 
     assert_timely(Duration::from_secs(5), || {
-        node.block(&receive2.hash()).is_some()
+        node.block_exists(&receive2.hash())
     });
 
     assert_timely_eq(Duration::from_secs(5), || node.unchecked.len(), 0);

@@ -761,7 +761,7 @@ mod bootstrap_processor {
         });
 
         let receive = node2
-            .block2(&node2.latest(&key2.public_key().into()))
+            .block(&node2.latest(&key2.public_key().into()))
             .unwrap();
 
         // All blocks should be propagated & confirmed

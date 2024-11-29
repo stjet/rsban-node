@@ -365,7 +365,7 @@ impl Observers {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{ConfirmationHeightInfo, TestAccountChain};
+    use rsnano_core::{ConfirmationHeightInfo, SavedAccountChain};
     use std::time::Duration;
 
     #[test]
@@ -380,7 +380,7 @@ mod tests {
 
     #[test]
     fn process_one() {
-        let mut chain = TestAccountChain::genesis();
+        let mut chain = SavedAccountChain::genesis();
         let block_hash = chain.add_state().hash();
         let ledger = Arc::new(
             Ledger::new_null_builder()

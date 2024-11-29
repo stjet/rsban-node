@@ -5,7 +5,8 @@ use crate::{
     StateBlockBuilder, DEV_GENESIS_KEY,
 };
 
-pub struct TestAccountChain {
+/// Builds blocks with sideband data as if they were saved in the ledger
+pub struct SavedAccountChain {
     keypair: PrivateKey,
     account: Account,
     balance: Amount,
@@ -14,7 +15,7 @@ pub struct TestAccountChain {
     epoch: Epoch,
 }
 
-impl TestAccountChain {
+impl SavedAccountChain {
     pub fn new() -> Self {
         Self::with_keys(PrivateKey::new())
     }
@@ -106,13 +107,13 @@ impl TestAccountChain {
         self.add_block(block, Epoch::Epoch0)
     }
 
-    pub fn add_legacy_open_from_account(&mut self, sender_chain: &TestAccountChain) -> &Block {
+    pub fn add_legacy_open_from_account(&mut self, sender_chain: &SavedAccountChain) -> &Block {
         self.add_legacy_open_from_account_block(sender_chain, sender_chain.height())
     }
 
     pub fn add_legacy_open_from_account_block(
         &mut self,
-        sender_chain: &TestAccountChain,
+        sender_chain: &SavedAccountChain,
         height: u64,
     ) -> &Block {
         let send_block = sender_chain.block(height);
@@ -129,7 +130,7 @@ impl TestAccountChain {
         self.add_block(open_block, send_block.epoch())
     }
 
-    pub fn add_legacy_receive_from_account(&mut self, sender_chain: &TestAccountChain) -> &Block {
+    pub fn add_legacy_receive_from_account(&mut self, sender_chain: &SavedAccountChain) -> &Block {
         self.add_legacy_receive_from_account_block(sender_chain, sender_chain.height())
     }
 
@@ -142,7 +143,7 @@ impl TestAccountChain {
 
     pub fn add_legacy_receive_from_account_block(
         &mut self,
-        sender: &TestAccountChain,
+        sender: &SavedAccountChain,
         height: u64,
     ) -> &Block {
         let send_block = sender.block(height);
@@ -362,7 +363,7 @@ impl TestAccountChain {
     }
 }
 
-impl Default for TestAccountChain {
+impl Default for SavedAccountChain {
     fn default() -> Self {
         Self::new()
     }
@@ -375,15 +376,15 @@ mod tests {
 
     #[test]
     fn default_account() {
-        let chain1 = TestAccountChain::new();
-        let chain2 = TestAccountChain::new();
+        let chain1 = SavedAccountChain::new();
+        let chain2 = SavedAccountChain::new();
         assert_ne!(chain1.account, chain2.account);
     }
 
     #[test]
     fn add_legacy_open() {
-        let mut genesis = TestAccountChain::genesis();
-        let mut chain = TestAccountChain::new();
+        let mut genesis = SavedAccountChain::genesis();
+        let mut chain = SavedAccountChain::new();
         genesis.add_legacy_send_to(chain.account, Amount::raw(10));
         chain.add_legacy_open_from_account(&genesis);
         let block = chain.latest_block();

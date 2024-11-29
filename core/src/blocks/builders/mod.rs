@@ -10,7 +10,7 @@ pub use legacy_open_block_builder::LegacyOpenBlockBuilder;
 pub use legacy_receive_block_builder::LegacyReceiveBlockBuilder;
 pub use legacy_send_block_builder::LegacySendBlockBuilder;
 pub use state_block_builder::StateBlockBuilder;
-pub use test_account_chain::TestAccountChain;
+pub use test_account_chain::SavedAccountChain;
 
 pub struct BlockBuilder {}
 

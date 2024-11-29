@@ -7,7 +7,7 @@ use crate::{
 };
 use rsnano_core::{
     utils::{new_test_timestamp, TEST_ENDPOINT_1},
-    Account, Amount, BlockBuilder, BlockHash, PublicKey, QualifiedRoot, Root, TestAccountChain,
+    Account, Amount, BlockBuilder, BlockHash, PublicKey, QualifiedRoot, Root, SavedAccountChain,
     DEV_GENESIS_KEY,
 };
 
@@ -21,7 +21,7 @@ mod rollback_state;
 
 #[test]
 fn ledger_successor() {
-    let mut chain = TestAccountChain::new_opened_chain();
+    let mut chain = SavedAccountChain::new_opened_chain();
     let send = chain.add_legacy_send().clone();
     let ledger = Ledger::new_null_builder()
         .blocks2(chain.blocks())
@@ -40,7 +40,7 @@ fn ledger_successor() {
 
 #[test]
 fn ledger_successor_genesis() {
-    let mut genesis = TestAccountChain::genesis();
+    let mut genesis = SavedAccountChain::genesis();
     genesis.add_legacy_send();
     let ledger = Ledger::new_null_builder()
         .blocks2(genesis.blocks())
@@ -66,7 +66,7 @@ fn latest_root_empty() {
 
 #[test]
 fn latest_root() {
-    let mut genesis = TestAccountChain::genesis();
+    let mut genesis = SavedAccountChain::genesis();
     genesis.add_legacy_send();
 
     let ledger = Ledger::new_null_builder()

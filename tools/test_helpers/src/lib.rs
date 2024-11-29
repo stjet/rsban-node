@@ -347,7 +347,7 @@ pub fn start_election(node: &Node, hash: &BlockHash) -> Arc<Election> {
     );
 
     let block = node.block(hash).unwrap();
-    node.election_schedulers.add_manual(block.block.clone());
+    node.election_schedulers.add_manual(block.clone().into());
     // wait for the election to appear
     assert_timely_msg(
         Duration::from_secs(5),

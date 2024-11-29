@@ -93,7 +93,7 @@ impl RpcCommandHandler {
 
                         for hash in dest_hashes.iter().rev().take(destinations) {
                             if let Some(b) = self.node.ledger.any().get_block(&tx, &hash) {
-                                republish_bundle.push(b.block.clone());
+                                republish_bundle.push(b.into());
                                 blocks.push(*hash);
                             }
                         }

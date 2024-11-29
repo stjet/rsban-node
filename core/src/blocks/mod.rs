@@ -526,7 +526,7 @@ pub fn deserialize_block_json(ptree: &impl PropertyTree) -> anyhow::Result<Block
 /// The sideband contains additional data like block height, block time, etc.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SavedBlock {
-    pub block: Block,
+    block: Block,
     sideband: BlockSideband,
 }
 
@@ -595,6 +595,10 @@ impl SavedBlock {
 
     pub fn source_epoch(&self) -> Epoch {
         self.sideband.source_epoch
+    }
+
+    pub fn serialize_with_sideband(&self) -> Vec<u8> {
+        self.block.serialize_with_sideband()
     }
 }
 

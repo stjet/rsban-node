@@ -123,6 +123,11 @@ impl NullLedgerBuilder {
         }
     }
 
+    pub fn block2(mut self, block: &SavedBlock) -> Self {
+        self.blocks = self.blocks.block(block);
+        self
+    }
+
     pub fn block(mut self, block: &Block) -> Self {
         self.blocks = self.blocks.block(block);
         self

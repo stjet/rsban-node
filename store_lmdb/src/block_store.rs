@@ -33,6 +33,14 @@ impl ConfiguredBlockDatabaseBuilder {
         }
     }
 
+    pub fn block2(mut self, block: &SavedBlock) -> Self {
+        self.database.entries.insert(
+            block.hash().as_bytes().to_vec(),
+            block.serialize_with_sideband(),
+        );
+        self
+    }
+
     pub fn block(mut self, block: &Block) -> Self {
         self.database.entries.insert(
             block.hash().as_bytes().to_vec(),
@@ -81,8 +89,8 @@ impl LmdbBlockStore {
             block.successor().is_none() || self.exists(txn, &block.successor().unwrap_or_default())
         );
 
-        self.raw_put(txn, &block.block.serialize_with_sideband(), &hash);
-        self.update_predecessor(txn, &block.block);
+        self.raw_put(txn, &block.serialize_with_sideband(), &hash);
+        self.update_predecessor(txn, &block);
     }
 
     pub fn exists(&self, transaction: &dyn Transaction, hash: &BlockHash) -> bool {
@@ -183,7 +191,7 @@ impl LmdbBlockStore {
     }
 
     /// Update the "successor" value of the block's predecesssor
-    fn update_predecessor(&self, txn: &mut LmdbWriteTransaction, block: &Block) {
+    fn update_predecessor(&self, txn: &mut LmdbWriteTransaction, block: &SavedBlock) {
         if block.previous().is_zero() {
             return;
         }

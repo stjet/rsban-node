@@ -548,6 +548,7 @@ pub fn deserialize_block_json(ptree: &impl PropertyTree) -> anyhow::Result<Block
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SavedBlock {
     pub block: Block,
     pub sideband: BlockSideband,

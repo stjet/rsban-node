@@ -85,18 +85,10 @@ impl LmdbBlockStore {
         self.update_predecessor(txn, &block.block);
     }
 
+    // TODO use put2, then rename put2 to put
     pub fn put(&self, txn: &mut LmdbWriteTransaction, block: &Block) {
-        #[cfg(feature = "output_tracking")]
-        self.put_listener.emit(block.clone());
-
-        let hash = block.hash();
-        debug_assert!(
-            block.sideband().unwrap().successor.is_zero()
-                || self.exists(txn, &block.sideband().unwrap().successor)
-        );
-
-        self.raw_put(txn, &block.serialize_with_sideband(), &hash);
-        self.update_predecessor(txn, block);
+        let block = SavedBlock::new(block.clone(), block.sideband().unwrap().clone());
+        self.put2(txn, &block);
     }
 
     pub fn exists(&self, transaction: &dyn Transaction, hash: &BlockHash) -> bool {

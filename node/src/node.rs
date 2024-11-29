@@ -1359,7 +1359,7 @@ impl NodeExt for Arc<Node> {
 
         if !self.ledger.any().block_exists_or_pruned(
             &self.ledger.read_txn(),
-            &self.network_params.ledger.genesis.hash(),
+            &self.network_params.ledger.genesis_block.hash(),
         ) {
             error!("Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, and also the ledger backend node config option. If using a read-only CLI command a ledger must already exist, start the node with --daemon first.");
 

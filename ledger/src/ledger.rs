@@ -308,10 +308,9 @@ impl Ledger {
     }
 
     fn add_genesis_block(&self, txn: &mut LmdbWriteTransaction) {
-        let genesis_block = self.constants.genesis.deref();
-        let genesis_hash = genesis_block.hash();
+        let genesis_hash = self.constants.genesis_block.hash();
         let genesis_account = self.constants.genesis_account;
-        self.store.block.put(txn, genesis_block);
+        self.store.block.put2(txn, &self.constants.genesis_block);
 
         self.store.confirmation_height.put(
             txn,
@@ -538,7 +537,7 @@ impl Ledger {
     ) -> u64 {
         let mut pruned_count = 0;
         let mut hash = *hash;
-        let genesis_hash = self.constants.genesis.hash();
+        let genesis_hash = self.constants.genesis_block.hash();
 
         while !hash.is_zero() && hash != genesis_hash {
             if let Some(block) = self.any().get_block(txn, &hash) {

@@ -78,7 +78,7 @@ impl LmdbBlockStore {
 
         let hash = block.hash();
         debug_assert!(
-            block.sideband.successor.is_zero() || self.exists(txn, &block.sideband.successor)
+            block.successor().is_none() || self.exists(txn, &block.successor().unwrap_or_default())
         );
 
         self.raw_put(txn, &block.block.serialize_with_sideband(), &hash);

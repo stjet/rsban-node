@@ -527,7 +527,7 @@ pub fn deserialize_block_json(ptree: &impl PropertyTree) -> anyhow::Result<Block
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SavedBlock {
     pub block: Block,
-    pub sideband: BlockSideband,
+    sideband: BlockSideband,
 }
 
 impl SavedBlock {
@@ -719,6 +719,6 @@ mod tests {
         let bytes = block.serialize_with_sideband();
         let mut stream = BufferReader::new(&bytes);
         let deserialized = SavedBlock::deserialize(&mut stream).unwrap();
-        assert_eq!(deserialized.block, block);
+        assert_eq!(deserialized.deref(), &block);
     }
 }

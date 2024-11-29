@@ -617,7 +617,7 @@ impl Ledger {
         self.store.confirmation_height.get(txn, account)
     }
 
-    pub fn confirm(&self, txn: &mut LmdbWriteTransaction, hash: BlockHash) -> VecDeque<Block> {
+    pub fn confirm(&self, txn: &mut LmdbWriteTransaction, hash: BlockHash) -> Vec<SavedBlock> {
         self.confirm_max(txn, hash, 1024 * 128)
     }
 
@@ -628,7 +628,7 @@ impl Ledger {
         txn: &mut LmdbWriteTransaction,
         target_hash: BlockHash,
         max_blocks: usize,
-    ) -> VecDeque<Block> {
+    ) -> Vec<SavedBlock> {
         BlockCementer::new(&self.store, self.observer.as_ref(), &self.constants).confirm(
             txn,
             target_hash,

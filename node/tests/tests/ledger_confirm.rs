@@ -47,8 +47,8 @@ fn single() {
     assert_eq!(conf_height.frontier, send1.hash());
 
     // Rollbacks should fail as these blocks have been cemented
-    assert!(node.ledger.rollback2(&mut tx, &latest1).is_err());
-    assert!(node.ledger.rollback2(&mut tx, &send1.hash()).is_err());
+    assert!(node.ledger.rollback(&mut tx, &latest1).is_err());
+    assert!(node.ledger.rollback(&mut tx, &send1.hash()).is_err());
     assert_eq!(
         node.stats.count(
             StatType::ConfirmationHeight,
@@ -276,18 +276,18 @@ fn multiple_accounts() {
 
     // The accounts for key1 and key2 have 1 more block in the chain than is confirmed.
     // So this can be rolled back, but the one before that cannot. Check that this is the case
-    assert!(node.ledger.rollback2(&mut tx, &receive2.hash()).is_ok());
-    assert!(node.ledger.rollback2(&mut tx, &send5.hash()).is_ok());
-    assert!(node.ledger.rollback2(&mut tx, &send4.hash()).is_err());
-    assert!(node.ledger.rollback2(&mut tx, &send6.hash()).is_err());
+    assert!(node.ledger.rollback(&mut tx, &receive2.hash()).is_ok());
+    assert!(node.ledger.rollback(&mut tx, &send5.hash()).is_ok());
+    assert!(node.ledger.rollback(&mut tx, &send4.hash()).is_err());
+    assert!(node.ledger.rollback(&mut tx, &send6.hash()).is_err());
 
     // Confirm the other latest can't be rolled back either
-    assert!(node.ledger.rollback2(&mut tx, &receive3.hash()).is_err());
-    assert!(node.ledger.rollback2(&mut tx, &send3.hash()).is_err());
+    assert!(node.ledger.rollback(&mut tx, &receive3.hash()).is_err());
+    assert!(node.ledger.rollback(&mut tx, &send3.hash()).is_err());
 
     // Attempt some others which have been cemented
-    assert!(node.ledger.rollback2(&mut tx, &open1.hash()).is_err());
-    assert!(node.ledger.rollback2(&mut tx, &send2.hash()).is_err());
+    assert!(node.ledger.rollback(&mut tx, &open1.hash()).is_err());
+    assert!(node.ledger.rollback(&mut tx, &send2.hash()).is_err());
 }
 
 #[test]

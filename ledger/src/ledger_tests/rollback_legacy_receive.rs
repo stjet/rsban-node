@@ -11,7 +11,7 @@ fn clear_successor() {
     let receive = setup_legacy_receive_block(&ctx, &mut txn);
 
     ctx.ledger
-        .rollback2(&mut txn, &receive.receive_block.hash())
+        .rollback(&mut txn, &receive.receive_block.hash())
         .unwrap();
 
     assert_eq!(
@@ -30,7 +30,7 @@ fn update_account_info() {
     let receive = setup_legacy_receive_block(&ctx, &mut txn);
 
     ctx.ledger
-        .rollback2(&mut txn, &receive.receive_block.hash())
+        .rollback(&mut txn, &receive.receive_block.hash())
         .unwrap();
 
     let account_info = ctx
@@ -53,7 +53,7 @@ fn rollback_pending_info() {
     let receive = setup_legacy_receive_block(&ctx, &mut txn);
 
     ctx.ledger
-        .rollback2(&mut txn, &receive.receive_block.hash())
+        .rollback(&mut txn, &receive.receive_block.hash())
         .unwrap();
 
     let pending = ctx
@@ -76,7 +76,7 @@ fn rollback_vote_weight() {
     let receive = setup_legacy_receive_block(&ctx, &mut txn);
 
     ctx.ledger
-        .rollback2(&mut txn, &receive.receive_block.hash())
+        .rollback(&mut txn, &receive.receive_block.hash())
         .unwrap();
 
     assert_eq!(

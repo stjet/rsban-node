@@ -606,6 +606,12 @@ impl Deref for SavedBlock {
     }
 }
 
+impl From<SavedBlock> for Block {
+    fn from(value: SavedBlock) -> Self {
+        value.block
+    }
+}
+
 impl Deserialize for SavedBlock {
     type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {

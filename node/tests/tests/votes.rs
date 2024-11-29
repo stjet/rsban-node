@@ -412,7 +412,7 @@ fn vote_spacing_vote_generator() {
     });
 
     node.ledger
-        .rollback2(&mut node.store.tx_begin_write(), &send1.hash())
+        .rollback(&mut node.store.tx_begin_write(), &send1.hash())
         .unwrap();
     node.ledger
         .process(&mut node.store.tx_begin_write(), &mut send2)
@@ -499,7 +499,7 @@ fn vote_spacing_rapid() {
     });
 
     node.ledger
-        .rollback2(&mut node.ledger.rw_txn(), &send1.hash())
+        .rollback(&mut node.ledger.rw_txn(), &send1.hash())
         .unwrap();
     node.ledger
         .process(&mut node.ledger.rw_txn(), &mut send2)

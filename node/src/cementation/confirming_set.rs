@@ -3,7 +3,7 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     utils::{ThreadPool, ThreadPoolImpl},
 };
-use rsnano_core::{utils::ContainerInfo, Block, BlockHash};
+use rsnano_core::{utils::ContainerInfo, Block, BlockHash, SavedBlock};
 use rsnano_ledger::{Ledger, WriteGuard, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
@@ -200,7 +200,7 @@ impl ConfirmingSetThread {
 
     fn notify(
         &self,
-        cemented: &mut VecDeque<(Block, BlockHash)>,
+        cemented: &mut VecDeque<(SavedBlock, BlockHash)>,
         already_cemented: &mut VecDeque<BlockHash>,
     ) {
         let mut notification = CementedNotification {
@@ -241,7 +241,7 @@ impl ConfirmingSetThread {
         &self,
         mut write_guard: WriteGuard,
         mut tx: LmdbWriteTransaction,
-        cemented: &mut VecDeque<(Block, BlockHash)>,
+        cemented: &mut VecDeque<(SavedBlock, BlockHash)>,
         already_cemented: &mut VecDeque<BlockHash>,
     ) -> (WriteGuard, LmdbWriteTransaction) {
         if cemented.len() >= self.config.max_blocks {
@@ -294,7 +294,7 @@ impl ConfirmingSetThread {
                             added_len as u64,
                         );
                         for block in added {
-                            cemented.push_back((block.block, hash));
+                            cemented.push_back((block, hash));
                         }
                     } else {
                         self.stats
@@ -338,7 +338,7 @@ impl ConfirmingSetImpl {
 }
 
 pub(crate) struct CementedNotification {
-    pub cemented: VecDeque<(Block, BlockHash)>, // block + confirmation root
+    pub cemented: VecDeque<(SavedBlock, BlockHash)>, // block + confirmation root
     pub already_cemented: VecDeque<BlockHash>,
 }
 
@@ -352,7 +352,7 @@ impl Observers {
     fn notify_batch(&mut self, notification: CementedNotification) {
         for (block, _) in &notification.cemented {
             for observer in &mut self.cemented {
-                observer(&Arc::new(block.clone()));
+                observer(&Arc::new(block.clone().into()));
             }
         }
 

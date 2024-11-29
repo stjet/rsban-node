@@ -2,7 +2,7 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::{FairQueue, MessagePublisher},
 };
-use rsnano_core::{Block, BlockHash, Frontier};
+use rsnano_core::{Block, BlockHash, Frontier, SavedBlock};
 use rsnano_ledger::Ledger;
 use rsnano_messages::{
     AccountInfoAckPayload, AccountInfoReqPayload, AscPullAck, AscPullAckType, AscPullReq,
@@ -358,7 +358,7 @@ impl BootstrapServerImpl {
             let mut current = self.ledger.any().get_block(tx, &start_block);
             while let Some(c) = current.take() {
                 let successor = c.successor().unwrap_or_default();
-                result.push_back(c.block);
+                result.push_back(c.into());
 
                 if result.len() == count {
                     break;

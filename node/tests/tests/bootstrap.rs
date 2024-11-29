@@ -757,21 +757,19 @@ mod bootstrap_processor {
 
         // wait for the receive block on node2
         assert_timely(Duration::from_secs(5), || {
-            node2
-                .block(&node2.latest(&key2.public_key().into()))
-                .is_some()
+            node2.block_exists(&node2.latest(&key2.public_key().into()))
         });
 
         let receive = node2
-            .block(&node2.latest(&key2.public_key().into()))
+            .block2(&node2.latest(&key2.public_key().into()))
             .unwrap();
 
         // All blocks should be propagated & confirmed
         assert_timely(Duration::from_secs(5), || {
-            node1.blocks_confirmed(&[send.clone(), receive.clone()])
+            node1.blocks_confirmed(&[send.clone(), receive.clone().into()])
         });
         assert_timely(Duration::from_secs(5), || {
-            node2.blocks_confirmed(&[send.clone(), receive.clone()])
+            node2.blocks_confirmed(&[send.clone(), receive.clone().into()])
         });
         assert_timely(Duration::from_secs(5), || node1.active.len() == 0);
         assert_timely(Duration::from_secs(5), || node2.active.len() == 0);

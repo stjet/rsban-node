@@ -202,7 +202,7 @@ impl OptimisticScheduler {
                 // We check for AEC vacancy inside our predicate
                 let (inserted, _) =
                     self.active
-                        .insert(block.block, ElectionBehavior::Optimistic, None);
+                        .insert(block.into(), ElectionBehavior::Optimistic, None);
                 self.stats.inc(
                     StatType::OptimisticScheduler,
                     if inserted {

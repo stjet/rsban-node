@@ -43,8 +43,8 @@ use crate::{
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo, SerdePropertyTree},
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, Block, BlockHash, BlockType, Networks, NodeId, PrivateKey, Root, VoteCode,
-    VoteSource,
+    Account, Amount, Block, BlockHash, BlockType, Networks, NodeId, PrivateKey, Root, SavedBlock,
+    VoteCode, VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{ConfirmAck, Message, Publish};
@@ -1263,6 +1263,11 @@ impl Node {
                 panic!("could not process block!");
             }
         }
+    }
+
+    pub fn block2(&self, hash: &BlockHash) -> Option<SavedBlock> {
+        let tx = self.ledger.read_txn();
+        self.ledger.any().get_block(&tx, hash)
     }
 
     pub fn block(&self, hash: &BlockHash) -> Option<Block> {

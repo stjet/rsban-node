@@ -256,7 +256,7 @@ impl BulkPullServerImpl {
          */
         self.include_start = false;
 
-        result.map(|b| b.block)
+        result.map(|b| b.into())
     }
 
     pub fn send_finished(&self, server_impl: Arc<Mutex<Self>>) {

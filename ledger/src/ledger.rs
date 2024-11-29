@@ -476,7 +476,7 @@ impl Ledger {
         txn: &dyn Transaction,
         destination: &Account,
         send_block_hash: &BlockHash,
-    ) -> Option<Block> {
+    ) -> Option<SavedBlock> {
         // get the cemented frontier
         let info = self.store.confirmation_height.get(txn, destination)?;
         let mut possible_receive_block = self.any().get_block(txn, &info.frontier);
@@ -485,7 +485,7 @@ impl Ledger {
         while let Some(current) = possible_receive_block {
             if current.is_receive() && Some(*send_block_hash) == current.source() {
                 // we have a match
-                return Some(current.block);
+                return Some(current);
             }
 
             possible_receive_block = self.any().get_block(txn, &current.previous());
@@ -571,22 +571,12 @@ impl Ledger {
     }
     ///
     /// Rollback blocks until `block' doesn't exist or it tries to penetrate the confirmation height
-    pub fn rollback2(
+    pub fn rollback(
         &self,
         txn: &mut LmdbWriteTransaction,
         block: &BlockHash,
     ) -> anyhow::Result<Vec<SavedBlock>> {
         BlockRollbackPerformer::new(self, txn).roll_back(block)
-    }
-
-    /// Rollback blocks until `block' doesn't exist or it tries to penetrate the confirmation height
-    pub fn rollback(
-        &self,
-        txn: &mut LmdbWriteTransaction,
-        block: &BlockHash,
-    ) -> anyhow::Result<Vec<Block>> {
-        self.rollback2(txn, block)
-            .map(|mut i| i.drain(..).map(|b| b.block).collect())
     }
 
     /// Returns the latest block with representative information

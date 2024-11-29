@@ -38,7 +38,7 @@ impl<'a> RequestAggregatorImpl<'a> {
                 if let Some(b) = &block {
                     if final_vote_hashes.len() > 1 {
                         // WTF? This shouldn't be done like this
-                        self.to_generate_final.push(Arc::new(b.block.clone()));
+                        self.to_generate_final.push(Arc::new(b.clone().into()));
                         block = self.ledger.any().get_block(self.tx, &final_vote_hashes[1]);
                         debug_assert!(final_vote_hashes.len() == 2);
                     }
@@ -83,7 +83,7 @@ impl<'a> RequestAggregatorImpl<'a> {
 
             if let Some(block) = block {
                 if generate_final_vote {
-                    self.to_generate_final.push(Arc::new(block.block));
+                    self.to_generate_final.push(Arc::new(block.into()));
                     self.stats
                         .inc(StatType::Requests, DetailType::RequestsFinal);
                 } else {

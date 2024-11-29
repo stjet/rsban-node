@@ -353,7 +353,7 @@ fn deferred_dependent_elections() {
 
     node1
         .ledger
-        .rollback2(&mut node1.store.tx_begin_write(), &receive.hash())
+        .rollback(&mut node1.store.tx_begin_write(), &receive.hash())
         .unwrap();
     assert!(node1.block(&receive.hash()).is_none());
 

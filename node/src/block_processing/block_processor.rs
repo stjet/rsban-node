@@ -683,7 +683,7 @@ impl BlockProcessorLoop {
             if successor != hash {
                 // Replace our block with the winner and roll back any dependent blocks
                 debug!("Rolling back: {} and replacing with: {}", successor, hash);
-                let rollback_list = match self.ledger.rollback2(transaction, &successor) {
+                let rollback_list = match self.ledger.rollback(transaction, &successor) {
                     Ok(rollback_list) => {
                         self.stats.inc(StatType::Ledger, DetailType::Rollback);
                         debug!("Blocks rolled back: {}", rollback_list.len());

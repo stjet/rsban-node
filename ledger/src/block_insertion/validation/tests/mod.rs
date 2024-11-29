@@ -118,7 +118,7 @@ impl BlockValidationTest {
         if self.chain.height() > 0 {
             validator.old_account_info = Some(self.chain.account_info());
             if !self.previous_block_missing {
-                validator.previous_block = Some(self.chain.latest_block().clone());
+                validator.previous_block = Some(self.chain.latest_block2());
             }
         };
         validator.seconds_since_epoch = self.seconds_since_epoch;
@@ -142,7 +142,6 @@ fn new_test_validator<'a>(block: &'a Block, account: Account) -> BlockValidator 
         account,
         old_account_info: None,
         previous_block: None,
-        previous_block2: None,
         pending_receive_info: None,
         any_pending_exists: false,
         source_block_exists: false,

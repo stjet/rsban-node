@@ -48,8 +48,7 @@ impl<'a> BlockValidatorFactory<'a> {
             pending_receive_info,
             any_pending_exists: self.ledger.any().receivable_exists(self.txn, account),
             source_block_exists,
-            previous_block: previous_block.as_ref().map(|b| b.block.clone()),
-            previous_block2: previous_block,
+            previous_block,
             seconds_since_epoch: seconds_since_epoch(),
         }
     }
@@ -95,7 +94,7 @@ mod tests {
         assert_eq!(validator.pending_receive_info, None);
         assert_eq!(validator.any_pending_exists, false);
         assert_eq!(validator.source_block_exists, false);
-        assert_eq!(validator.previous_block2, None);
+        assert_eq!(validator.previous_block, None);
         assert!(validator.seconds_since_epoch >= seconds_since_epoch());
     }
 
@@ -224,6 +223,6 @@ mod tests {
         let ledger = Ledger::new_null_builder().block(&previous).finish();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
-        assert_eq!(validator.previous_block2, Some(previous));
+        assert_eq!(validator.previous_block, Some(previous));
     }
 }

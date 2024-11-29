@@ -1,8 +1,8 @@
 use crate::{
     epoch_v1_link, epoch_v2_link, Account, AccountInfo, Amount, Block, BlockBuilder, BlockDetails,
     BlockHash, BlockSideband, Epoch, LegacyChangeBlockBuilder, LegacyOpenBlockBuilder,
-    LegacyReceiveBlockBuilder, LegacySendBlockBuilder, PrivateKey, PublicKey, StateBlockBuilder,
-    DEV_GENESIS_KEY,
+    LegacyReceiveBlockBuilder, LegacySendBlockBuilder, PrivateKey, PublicKey, SavedBlock,
+    StateBlockBuilder, DEV_GENESIS_KEY,
 };
 
 pub struct TestAccountChain {
@@ -96,6 +96,12 @@ impl TestAccountChain {
 
     pub fn latest_block(&self) -> &Block {
         self.blocks.last().unwrap()
+    }
+
+    pub fn latest_block2(&self) -> SavedBlock {
+        let latest = self.blocks.last().unwrap().clone();
+        let sideband = latest.sideband().unwrap().clone();
+        SavedBlock::new(latest, sideband)
     }
 
     pub fn add_legacy_change(&mut self, representative: impl Into<PublicKey>) -> &Block {

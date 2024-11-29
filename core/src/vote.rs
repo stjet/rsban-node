@@ -1,6 +1,6 @@
 use super::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Stream},
-    validate_message, Account, BlockHash, BlockHashBuilder, FullHash, PrivateKey, Signature,
+    Account, BlockHash, BlockHashBuilder, FullHash, PrivateKey, Signature,
 };
 use crate::{utils::Serialize, Amount, PublicKey};
 use anyhow::Result;

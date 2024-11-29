@@ -133,19 +133,6 @@ impl From<&PrivateKey> for Account {
     }
 }
 
-pub fn validate_message(
-    public_key: &PublicKey,
-    message: &[u8],
-    signature: &Signature,
-) -> anyhow::Result<()> {
-    public_key.verify(message, signature)
-}
-
-pub fn validate_block_signature(block: &StateBlock) -> anyhow::Result<()> {
-    let pub_key: PublicKey = block.account().into();
-    pub_key.verify(block.hash().as_bytes(), block.block_signature())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

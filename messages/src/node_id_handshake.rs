@@ -5,8 +5,7 @@ use bitvec::prelude::BitArray;
 use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream},
-    validate_message, write_hex_bytes, Account, BlockHash, NodeId, PrivateKey, PublicKey,
-    Signature,
+    write_hex_bytes, Account, BlockHash, NodeId, PrivateKey, PublicKey, Signature,
 };
 use serde::ser::SerializeStruct;
 use std::fmt::{Display, Write};

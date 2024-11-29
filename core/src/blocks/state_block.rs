@@ -138,6 +138,12 @@ impl StateBlock {
         }
     }
 
+    pub fn verify_signature(&self) -> anyhow::Result<()> {
+        self.account()
+            .as_key()
+            .verify(self.hash().as_bytes(), self.block_signature())
+    }
+
     pub fn account(&self) -> Account {
         self.hashables.account
     }

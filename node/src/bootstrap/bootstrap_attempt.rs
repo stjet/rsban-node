@@ -231,7 +231,7 @@ pub struct BootstrapStarted {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct BootstrapExited {
+pub struct BootstrapStopped {
     pub reason: String,
     pub id: String,
     pub mode: String,

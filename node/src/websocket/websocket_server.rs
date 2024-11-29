@@ -1,6 +1,6 @@
 use super::{WebsocketConfig, WebsocketListener};
 use crate::{
-    bootstrap::{BootstrapCallbackData, BootstrapExited, BootstrapInitiator, BootstrapStarted},
+    bootstrap::{BootstrapCallbackData, BootstrapInitiator, BootstrapStarted, BootstrapStopped},
     consensus::{
         ActiveElections, ElectionStatus, ElectionStatusType, ProcessLiveDispatcher, VoteProcessor,
     },
@@ -132,7 +132,7 @@ pub fn create_websocket_server(
     }));
 
     let server_w: std::sync::Weak<WebsocketListener> = Arc::downgrade(&server);
-    bootstrap_initiator.on_bootstrap_ended(Arc::new(move |bootstrap_callback_data| {
+    bootstrap_initiator.on_bootstrap_stopped(Arc::new(move |bootstrap_callback_data| {
         if let Some(server) = server_w.upgrade() {
             if server.any_subscriber(Topic::Bootstrap) {
                 server.broadcast(&bootstrap_exited(bootstrap_callback_data));
@@ -258,7 +258,7 @@ pub struct VoteReceived {
 fn bootstrap_exited(bootstrap_callback_data: &BootstrapCallbackData) -> OutgoingMessageEnvelope {
     OutgoingMessageEnvelope::new(
         Topic::Bootstrap,
-        BootstrapExited {
+        BootstrapStopped {
             reason: "exited".to_owned(),
             id: bootstrap_callback_data.id.clone(),
             mode: bootstrap_callback_data.mode.as_str().to_string(),

@@ -243,7 +243,7 @@ impl BootstrapInitiator {
         self.bootstrap_callbacks.add_bootstrap_started(f);
     }
 
-    pub fn on_bootstrap_ended(&self, f: Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>) {
+    pub fn on_bootstrap_stopped(&self, f: Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>) {
         self.bootstrap_callbacks.add_bootstrap_stoped(f);
     }
 }

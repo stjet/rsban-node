@@ -592,6 +592,10 @@ impl SavedBlock {
     pub fn epoch(&self) -> Epoch {
         self.sideband.details.epoch
     }
+
+    pub fn source_epoch(&self) -> Epoch {
+        self.sideband.source_epoch
+    }
 }
 
 impl Deref for SavedBlock {

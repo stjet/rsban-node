@@ -300,7 +300,7 @@ impl TestAccountChain {
             head: self.frontier(),
             representative: self.representative,
             open_block: self.open(),
-            balance: self.latest_block().balance(),
+            balance: self.latest_block2().balance(),
             modified: 123,
             block_count: self.height(),
             epoch: self.epoch,
@@ -394,10 +394,10 @@ mod tests {
         let mut chain = TestAccountChain::new();
         genesis.add_legacy_send_to(chain.account, Amount::raw(10));
         chain.add_legacy_open_from_account(&genesis);
-        let block = chain.latest_block();
+        let block = chain.latest_block2();
         assert_eq!(block.account_field(), Some(chain.account()));
         assert_eq!(block.block_type(), BlockType::LegacyOpen);
-        assert_eq!(block.sideband().unwrap().height, 1);
+        assert_eq!(block.height(), 1);
         assert_eq!(chain.frontier(), block.hash());
         assert_eq!(chain.height(), 1);
         assert_eq!(

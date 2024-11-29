@@ -38,7 +38,7 @@ impl<'a> RollbackTest<'a> {
 fn new_test_rollback_planner<'a>(chain: &'a TestAccountChain) -> RollbackPlanner<'a> {
     RollbackPlanner {
         epochs: &LEDGER_CONSTANTS_STUB.epochs,
-        head_block: chain.latest_block(),
+        head_block2: chain.latest_block2(),
         account: chain.account(),
         current_account_info: chain.account_info(),
         previous_representative: chain.representative_at_height(chain.height() - 1),

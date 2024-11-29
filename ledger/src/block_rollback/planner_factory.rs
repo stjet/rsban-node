@@ -25,11 +25,14 @@ impl<'a> RollbackPlannerFactory<'a> {
         let account = self.get_account(self.head_block)?;
         let planner = RollbackPlanner {
             epochs: &self.ledger.constants.epochs,
-            head_block: self.head_block,
+            head_block2: SavedBlock::new(
+                self.head_block.clone(),
+                self.head_block.sideband().unwrap().clone(),
+            ),
             account,
             current_account_info: self.load_account(&account),
             previous_representative: self.get_previous_representative()?,
-            previous: self.load_previous_block2()?,
+            previous: self.load_previous_block()?,
             linked_account: self.load_linked_account(),
             pending_receive: self.load_pending_receive(),
             latest_block_for_destination: self.latest_block_for_destination(),
@@ -62,21 +65,12 @@ impl<'a> RollbackPlannerFactory<'a> {
             .unwrap_or_default()
     }
 
-    fn load_previous_block2(&self) -> anyhow::Result<Option<SavedBlock>> {
+    fn load_previous_block(&self) -> anyhow::Result<Option<SavedBlock>> {
         let previous = self.head_block.previous();
         Ok(if previous.is_zero() {
             None
         } else {
             Some(self.load_block2(&previous)?)
-        })
-    }
-
-    fn load_previous_block(&self) -> anyhow::Result<Option<Block>> {
-        let previous = self.head_block.previous();
-        Ok(if previous.is_zero() {
-            None
-        } else {
-            Some(self.load_block(&previous)?)
         })
     }
 

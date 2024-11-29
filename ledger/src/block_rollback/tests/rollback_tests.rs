@@ -90,7 +90,7 @@ fn rollback_legacy_open() {
         Some((
             PendingKey::new(
                 chain.account(),
-                chain.latest_block().source_or_link().into()
+                chain.latest_block2().source_or_link().into()
             ),
             PendingInfo {
                 source: linked_account,

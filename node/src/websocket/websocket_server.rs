@@ -135,7 +135,7 @@ pub fn create_websocket_server(
     bootstrap_initiator.on_bootstrap_stopped(Arc::new(move |bootstrap_callback_data| {
         if let Some(server) = server_w.upgrade() {
             if server.any_subscriber(Topic::Bootstrap) {
-                server.broadcast(&bootstrap_exited(bootstrap_callback_data));
+                server.broadcast(&bootstrap_stopped(bootstrap_callback_data));
             }
         }
     }));
@@ -255,7 +255,7 @@ pub struct VoteReceived {
     pub vote_type: String,
 }
 
-fn bootstrap_exited(bootstrap_callback_data: &BootstrapCallbackData) -> OutgoingMessageEnvelope {
+fn bootstrap_stopped(bootstrap_callback_data: &BootstrapCallbackData) -> OutgoingMessageEnvelope {
     OutgoingMessageEnvelope::new(
         Topic::Bootstrap,
         BootstrapStopped {

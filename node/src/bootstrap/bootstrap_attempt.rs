@@ -7,7 +7,6 @@ use anyhow::Result;
 use rsnano_core::{encode_hex, utils::PropertyTree, Account, Block};
 use rsnano_ledger::Ledger;
 use rsnano_network::ChannelId;
-use rsnano_websocket_messages::{OutgoingMessageEnvelope, Topic};
 use serde::{Deserialize, Serialize};
 use std::{
     sync::{
@@ -71,9 +70,7 @@ pub(crate) struct BootstrapAttempt {
     pub started: AtomicBool,
     pub stopped: AtomicBool,
     pub frontiers_received: AtomicBool,
-    bootstrap_started_observer: Arc<Mutex<Vec<Box<dyn Fn(String, String) + Send + Sync>>>>,
-    bootstrap_ended_observer:
-        Arc<Mutex<Vec<Box<dyn Fn(String, String, String, String) + Send + Sync>>>>,
+    bootstrap_callbacks: BootstrapCallbacks,
 }
 
 impl BootstrapAttempt {
@@ -84,10 +81,7 @@ impl BootstrapAttempt {
         id: String,
         mode: BootstrapMode,
         incremental_id: u64,
-        bootstrap_started_observer: Arc<Mutex<Vec<Box<dyn Fn(String, String) + Send + Sync>>>>,
-        bootstrap_ended_observer: Arc<
-            Mutex<Vec<Box<dyn Fn(String, String, String, String) + Send + Sync>>>,
-        >,
+        bootstrap_callbacks: BootstrapCallbacks,
     ) -> Result<Self> {
         let id = if id.is_empty() {
             encode_hex(HardenedConstants::get().random_128)
@@ -112,8 +106,7 @@ impl BootstrapAttempt {
             stopped: AtomicBool::new(false),
             requeued_pulls: AtomicU32::new(0),
             frontiers_received: AtomicBool::new(false),
-            bootstrap_started_observer,
-            bootstrap_ended_observer,
+            bootstrap_callbacks,
         };
 
         result.start()?;
@@ -126,37 +119,26 @@ impl BootstrapAttempt {
             "Starting bootstrap attempt with ID: {id} (mode: {}) ",
             self.mode.as_str()
         );
-        {
-            let callbacks = self.bootstrap_started_observer.lock().unwrap();
-            for callback in callbacks.iter() {
-                (callback)(self.id.clone(), self.mode.as_str().to_string());
-            }
+
+        let callbacks = {
+            let callbacks_guard = self
+                .bootstrap_callbacks
+                .bootstrap_started_observer
+                .lock()
+                .unwrap();
+            callbacks_guard.clone()
+        };
+
+        for callback in callbacks.iter() {
+            callback(BootstrapCallbackData::new(
+                self.id.clone(),
+                self.mode,
+                self.total_blocks.load(Ordering::SeqCst),
+                self.duration(),
+            ));
         }
+
         Ok(())
-    }
-
-    fn bootstrap_started(&self) -> OutgoingMessageEnvelope {
-        OutgoingMessageEnvelope::new(
-            Topic::Bootstrap,
-            BootstrapStarted {
-                reason: "started".to_owned(),
-                id: self.id.clone(),
-                mode: self.mode.as_str().to_owned(),
-            },
-        )
-    }
-
-    fn bootstrap_exited(&self) -> OutgoingMessageEnvelope {
-        OutgoingMessageEnvelope::new(
-            Topic::Bootstrap,
-            BootstrapExited {
-                reason: "exited".to_owned(),
-                id: self.id.clone(),
-                mode: self.mode.as_str().to_owned(),
-                total_blocks: self.total_blocks.load(Ordering::SeqCst).to_string(),
-                duration: self.duration().as_secs().to_string(),
-            },
-        )
     }
 
     pub fn stop(&self) {
@@ -231,17 +213,6 @@ impl BootstrapAttempt {
     pub fn duration(&self) -> Duration {
         self.attempt_start.elapsed()
     }
-
-    pub fn add_bootstrap_started_callback(&self, f: Box<dyn Fn(String, String) + Send + Sync>) {
-        self.bootstrap_started_observer.lock().unwrap().push(f);
-    }
-
-    pub fn add_bootstrap_ended_callback(
-        &self,
-        f: Box<dyn Fn(String, String, String, String) + Send + Sync>,
-    ) {
-        self.bootstrap_ended_observer.lock().unwrap().push(f);
-    }
 }
 
 impl Drop for BootstrapAttempt {
@@ -253,14 +224,18 @@ impl Drop for BootstrapAttempt {
         );
 
         {
-            let callbacks = self.bootstrap_ended_observer.lock().unwrap();
+            let callbacks = self
+                .bootstrap_callbacks
+                .bootstrap_ended_observer
+                .lock()
+                .unwrap();
             for callback in callbacks.iter() {
-                (callback)(
+                (callback)(BootstrapCallbackData::new(
                     self.id.clone(),
-                    self.mode.as_str().to_string(),
-                    self.total_blocks.load(Ordering::SeqCst).to_string(),
-                    self.duration().as_secs().to_string(),
-                )
+                    self.mode,
+                    self.total_blocks.load(Ordering::SeqCst),
+                    self.duration(),
+                ))
             }
         }
     }
@@ -280,4 +255,39 @@ pub struct BootstrapExited {
     pub mode: String,
     pub total_blocks: String,
     pub duration: String,
+}
+
+#[derive(Clone)]
+pub struct BootstrapCallbacks {
+    pub(crate) bootstrap_started_observer:
+        Arc<Mutex<Vec<Arc<dyn Fn(BootstrapCallbackData) + Send + Sync>>>>,
+    pub(crate) bootstrap_ended_observer:
+        Arc<Mutex<Vec<Arc<dyn Fn(BootstrapCallbackData) + Send + Sync>>>>,
+}
+
+impl BootstrapCallbacks {
+    pub(crate) fn new() -> Self {
+        Self {
+            bootstrap_started_observer: Arc::new(Mutex::new(Vec::new())),
+            bootstrap_ended_observer: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+}
+
+pub struct BootstrapCallbackData {
+    pub(crate) id: String,
+    pub(crate) mode: BootstrapMode,
+    pub(crate) total_blocks: u64,
+    pub(crate) duration: Duration,
+}
+
+impl BootstrapCallbackData {
+    fn new(id: String, mode: BootstrapMode, total_blocks: u64, duration: Duration) -> Self {
+        Self {
+            id,
+            mode,
+            total_blocks,
+            duration,
+        }
+    }
 }

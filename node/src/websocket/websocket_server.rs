@@ -1,6 +1,6 @@
 use super::{WebsocketConfig, WebsocketListener};
 use crate::{
-    bootstrap::{BootstrapExited, BootstrapInitiator, BootstrapStarted},
+    bootstrap::{BootstrapCallbackData, BootstrapExited, BootstrapInitiator, BootstrapStarted},
     consensus::{
         ActiveElections, ElectionStatus, ElectionStatusType, ProcessLiveDispatcher, VoteProcessor,
     },
@@ -123,26 +123,22 @@ pub fn create_websocket_server(
     }));
 
     let server_w: std::sync::Weak<WebsocketListener> = Arc::downgrade(&server);
-    bootstrap_initiator.add_bootstrap_started_callback(Box::new(
-        move |id: String, mode: String| {
-            if let Some(server) = server_w.upgrade() {
-                if server.any_subscriber(Topic::Bootstrap) {
-                    server.broadcast(&bootstrap_started(id, mode));
-                }
+    bootstrap_initiator.add_bootstrap_started_callback(Arc::new(move |bootstrap_callback_data| {
+        if let Some(server) = server_w.upgrade() {
+            if server.any_subscriber(Topic::Bootstrap) {
+                server.broadcast(&bootstrap_started(bootstrap_callback_data));
             }
-        },
-    ));
+        }
+    }));
 
     let server_w: std::sync::Weak<WebsocketListener> = Arc::downgrade(&server);
-    bootstrap_initiator.add_bootstrap_ended_callback(Box::new(
-        move |id: String, mode: String, total_blocks: String, duration: String| {
-            if let Some(server) = server_w.upgrade() {
-                if server.any_subscriber(Topic::Bootstrap) {
-                    server.broadcast(&bootstrap_exited(id, mode, total_blocks, duration));
-                }
+    bootstrap_initiator.add_bootstrap_ended_callback(Arc::new(move |bootstrap_callback_data| {
+        if let Some(server) = server_w.upgrade() {
+            if server.any_subscriber(Topic::Bootstrap) {
+                server.broadcast(&bootstrap_exited(bootstrap_callback_data));
             }
-        },
-    ));
+        }
+    }));
 
     Some(server)
 }
@@ -259,31 +255,26 @@ pub struct VoteReceived {
     pub vote_type: String,
 }
 
-fn bootstrap_exited(
-    id: String,
-    mode: String,
-    total_blocks: String,
-    duration: String,
-) -> OutgoingMessageEnvelope {
+fn bootstrap_exited(bootstrap_callback_data: BootstrapCallbackData) -> OutgoingMessageEnvelope {
     OutgoingMessageEnvelope::new(
         Topic::Bootstrap,
         BootstrapExited {
             reason: "exited".to_owned(),
-            id,
-            mode,
-            total_blocks,
-            duration,
+            id: bootstrap_callback_data.id,
+            mode: bootstrap_callback_data.mode.as_str().to_string(),
+            total_blocks: bootstrap_callback_data.total_blocks.to_string(),
+            duration: bootstrap_callback_data.duration.as_secs().to_string(),
         },
     )
 }
 
-fn bootstrap_started(id: String, mode: String) -> OutgoingMessageEnvelope {
+fn bootstrap_started(bootstrap_callback_data: BootstrapCallbackData) -> OutgoingMessageEnvelope {
     OutgoingMessageEnvelope::new(
         Topic::Bootstrap,
         BootstrapStarted {
             reason: "started".to_owned(),
-            id,
-            mode,
+            id: bootstrap_callback_data.id,
+            mode: bootstrap_callback_data.mode.as_str().to_string(),
         },
     )
 }

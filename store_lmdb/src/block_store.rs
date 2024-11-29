@@ -19,7 +19,7 @@ pub struct LmdbBlockStore {
     _env: Arc<LmdbEnv>,
     database: LmdbDatabase,
     #[cfg(feature = "output_tracking")]
-    put_listener: OutputListenerMt<Block>,
+    put_listener: OutputListenerMt<SavedBlock>,
 }
 
 pub struct ConfiguredBlockDatabaseBuilder {
@@ -68,13 +68,13 @@ impl LmdbBlockStore {
     }
 
     #[cfg(feature = "output_tracking")]
-    pub fn track_puts(&self) -> Arc<OutputTrackerMt<Block>> {
+    pub fn track_puts(&self) -> Arc<OutputTrackerMt<SavedBlock>> {
         self.put_listener.track()
     }
 
     pub fn put(&self, txn: &mut LmdbWriteTransaction, block: &SavedBlock) {
         #[cfg(feature = "output_tracking")]
-        self.put_listener.emit(block.block.clone());
+        self.put_listener.emit(block.clone());
 
         let hash = block.hash();
         debug_assert!(
@@ -113,11 +113,21 @@ impl LmdbBlockStore {
         self.raw_put(txn, &data, hash)
     }
 
+    // TODO: use get2 instead
     pub fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
         self.block_raw_get(txn, hash).map(|bytes| {
             Block::deserialize_with_sideband(bytes)
                 .unwrap_or_else(|_| panic!("Could not deserialize block {}!", hash))
         })
+    }
+
+    pub fn get2(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<SavedBlock> {
+        let block = self.block_raw_get(txn, hash).map(|bytes| {
+            Block::deserialize_with_sideband(bytes)
+                .unwrap_or_else(|_| panic!("Could not deserialize block {}!", hash))
+        })?;
+        let sideband = block.sideband().unwrap().clone();
+        Some(SavedBlock::new(block, sideband))
     }
 
     pub fn get_no_sideband(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
@@ -342,7 +352,7 @@ mod tests {
 
         fixture.store.put(&mut txn, &block);
 
-        assert_eq!(put_tracker.output(), vec![block.block]);
+        assert_eq!(put_tracker.output(), vec![block]);
     }
 
     #[test]

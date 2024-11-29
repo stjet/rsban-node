@@ -15,7 +15,7 @@ impl<'a> LedgerSetAny<'a> {
     }
 
     pub fn get_block(&self, tx: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
-        self.store.block.get(tx, hash)
+        self.store.block.get(tx, hash).map(|b| b.block)
     }
 
     pub fn get_account(&self, tx: &dyn Transaction, account: &Account) -> Option<AccountInfo> {

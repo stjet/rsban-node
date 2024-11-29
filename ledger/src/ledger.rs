@@ -598,7 +598,7 @@ impl Ledger {
     }
 
     pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
-        self.store.block.get(txn, hash)
+        self.store.block.get(txn, hash).map(|b| b.block)
     }
 
     pub fn account_info(

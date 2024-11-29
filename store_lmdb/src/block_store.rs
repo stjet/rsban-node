@@ -113,15 +113,7 @@ impl LmdbBlockStore {
         self.raw_put(txn, &data, hash)
     }
 
-    // TODO: use get2 instead
-    pub fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
-        self.block_raw_get(txn, hash).map(|bytes| {
-            Block::deserialize_with_sideband(bytes)
-                .unwrap_or_else(|_| panic!("Could not deserialize block {}!", hash))
-        })
-    }
-
-    pub fn get2(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<SavedBlock> {
+    pub fn get(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<SavedBlock> {
         let block = self.block_raw_get(txn, hash).map(|bytes| {
             Block::deserialize_with_sideband(bytes)
                 .unwrap_or_else(|_| panic!("Could not deserialize block {}!", hash))
@@ -253,7 +245,7 @@ mod tests {
 
     #[test]
     fn load_block_by_hash() {
-        let block = BlockBuilder::legacy_open().with_sideband().build();
+        let block = SavedBlock::new_test_instance();
 
         let env = LmdbEnv::new_null_with()
             .database("blocks", LmdbDatabase::new_null(100))
@@ -357,7 +349,7 @@ mod tests {
 
     #[test]
     fn can_be_nulled() {
-        let block = BlockBuilder::state().with_sideband().build();
+        let block = SavedBlock::new_test_instance();
         let configured_responses = LmdbBlockStore::configured_responses().block(&block).build();
         let env = LmdbEnv::new_null_with()
             .configured_database(configured_responses)

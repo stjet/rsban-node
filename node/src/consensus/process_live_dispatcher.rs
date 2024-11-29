@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 pub struct ProcessLiveDispatcher {
     ledger: Arc<Ledger>,
     election_schedulers: Arc<ElectionSchedulers>,
-    new_unconfirmed_block_observer: Mutex<Vec<Box<dyn Fn(&Block) + Send + Sync>>>,
+    new_unconfirmed_block_observer: Mutex<Vec<Arc<dyn Fn(&Block) + Send + Sync>>>,
 }
 
 impl ProcessLiveDispatcher {
@@ -33,15 +33,17 @@ impl ProcessLiveDispatcher {
             self.election_schedulers.activate(tx, &block.account());
         }
 
-        {
-            let callbacks = self.new_unconfirmed_block_observer.lock().unwrap();
-            for callback in callbacks.iter() {
-                (callback)(&block);
-            }
+        let callbacks = {
+            let callbacks_guard = self.new_unconfirmed_block_observer.lock().unwrap();
+            callbacks_guard.clone()
+        };
+
+        for callback in callbacks.iter() {
+            callback(block);
         }
     }
 
-    pub fn add_new_unconfirmed_block_callback(&self, f: Box<dyn Fn(&Block) + Send + Sync>) {
+    pub fn add_new_unconfirmed_block_callback(&self, f: Arc<dyn Fn(&Block) + Send + Sync>) {
         self.new_unconfirmed_block_observer.lock().unwrap().push(f);
     }
 }

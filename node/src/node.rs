@@ -763,7 +763,7 @@ impl Node {
         let schedulers_weak = Arc::downgrade(&election_schedulers);
         wallets.set_start_election_callback(Box::new(move |block| {
             if let Some(schedulers) = schedulers_weak.upgrade() {
-                schedulers.add_manual(block);
+                schedulers.add_manual(block.into());
             }
         }));
 

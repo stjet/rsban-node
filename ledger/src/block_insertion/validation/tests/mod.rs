@@ -142,6 +142,7 @@ fn new_test_validator<'a>(block: &'a Block, account: Account) -> BlockValidator 
         account,
         old_account_info: None,
         previous_block: None,
+        previous_block2: None,
         pending_receive_info: None,
         any_pending_exists: false,
         source_block_exists: false,

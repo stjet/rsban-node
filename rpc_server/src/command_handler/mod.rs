@@ -168,16 +168,7 @@ impl RpcCommandHandler {
         }
     }
 
-    fn load_block_any(&self, txn: &dyn Transaction, hash: &BlockHash) -> anyhow::Result<Block> {
-        self.node
-            .ledger
-            .any()
-            .get_block(txn, hash)
-            .ok_or_else(|| anyhow!(Self::BLOCK_NOT_FOUND))
-            .map(|b| b.block)
-    }
-
-    fn load_block_any2(
+    fn load_block_any(
         &self,
         txn: &dyn Transaction,
         hash: &BlockHash,

@@ -10,7 +10,7 @@ use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{seconds_since_epoch, ContainerInfo},
     Account, AccountInfo, Amount, Block, BlockHash, BlockSubType, ConfirmationHeightInfo,
-    DependentBlocks, Epoch, Link, PendingInfo, PendingKey, PublicKey, Root,
+    DependentBlocks, Epoch, Link, PendingInfo, PendingKey, PublicKey, Root, SavedBlock,
 };
 use rsnano_store_lmdb::{
     ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
@@ -597,8 +597,8 @@ impl Ledger {
         Ok(())
     }
 
-    pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
-        self.store.block.get(txn, hash).map(|b| b.block)
+    pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<SavedBlock> {
+        self.store.block.get(txn, hash)
     }
 
     pub fn account_info(

@@ -17,12 +17,12 @@ impl RpcCommandHandler {
                 self.node
                     .election_schedulers
                     .manual
-                    .push(block.clone(), None);
+                    .push(block.clone().into(), None);
             }
         } else {
             // Add record in confirmation history for confirmed block
             let mut status = ElectionStatus::default();
-            status.winner = Some(block.clone());
+            status.winner = Some(block.clone().into());
             status.election_end = std::time::SystemTime::now();
             status.block_count = 1;
             status.election_status_type = ElectionStatusType::ActiveConfirmationHeight;

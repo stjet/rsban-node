@@ -10,7 +10,7 @@ use rand::{thread_rng, Rng};
 use rsnano_core::{
     utils::{seconds_since_epoch, ContainerInfo},
     Account, AccountInfo, Amount, Block, BlockHash, BlockSubType, ConfirmationHeightInfo,
-    DependentBlocks, Epoch, Link, PendingInfo, PendingKey, PublicKey, Root,
+    DependentBlocks, Epoch, Link, PendingInfo, PendingKey, PublicKey, Root, SavedBlock,
 };
 use rsnano_store_lmdb::{
     ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
@@ -23,7 +23,6 @@ use rsnano_store_lmdb::{
 use std::{
     collections::{HashMap, VecDeque},
     net::SocketAddrV6,
-    ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -124,6 +123,11 @@ impl NullLedgerBuilder {
         }
     }
 
+    pub fn block2(mut self, block: &SavedBlock) -> Self {
+        self.blocks = self.blocks.block(block);
+        self
+    }
+
     pub fn block(mut self, block: &Block) -> Self {
         self.blocks = self.blocks.block(block);
         self
@@ -132,6 +136,13 @@ impl NullLedgerBuilder {
     pub fn blocks<'a>(mut self, blocks: impl IntoIterator<Item = &'a Block>) -> Self {
         for b in blocks.into_iter() {
             self.blocks = self.blocks.block(b);
+        }
+        self
+    }
+
+    pub fn blocks2<'a>(mut self, blocks: impl IntoIterator<Item = &'a SavedBlock>) -> Self {
+        for b in blocks.into_iter() {
+            self.blocks = self.blocks.block2(b);
         }
         self
     }
@@ -308,10 +319,9 @@ impl Ledger {
     }
 
     fn add_genesis_block(&self, txn: &mut LmdbWriteTransaction) {
-        let genesis_block = self.constants.genesis.deref();
-        let genesis_hash = genesis_block.hash();
+        let genesis_hash = self.constants.genesis_block.hash();
         let genesis_account = self.constants.genesis_account;
-        self.store.block.put(txn, genesis_block);
+        self.store.block.put(txn, &self.constants.genesis_block);
 
         self.store.confirmation_height.put(
             txn,
@@ -478,7 +488,7 @@ impl Ledger {
         txn: &dyn Transaction,
         destination: &Account,
         send_block_hash: &BlockHash,
-    ) -> Option<Block> {
+    ) -> Option<SavedBlock> {
         // get the cemented frontier
         let info = self.store.confirmation_height.get(txn, destination)?;
         let mut possible_receive_block = self.any().get_block(txn, &info.frontier);
@@ -538,7 +548,7 @@ impl Ledger {
     ) -> u64 {
         let mut pruned_count = 0;
         let mut hash = *hash;
-        let genesis_hash = self.constants.genesis.hash();
+        let genesis_hash = self.constants.genesis_block.hash();
 
         while !hash.is_zero() && hash != genesis_hash {
             if let Some(block) = self.any().get_block(txn, &hash) {
@@ -571,13 +581,13 @@ impl Ledger {
             .iter()
             .all(|hash| self.confirmed().block_exists_or_pruned(txn, hash))
     }
-
+    ///
     /// Rollback blocks until `block' doesn't exist or it tries to penetrate the confirmation height
     pub fn rollback(
         &self,
         txn: &mut LmdbWriteTransaction,
         block: &BlockHash,
-    ) -> anyhow::Result<Vec<Block>> {
+    ) -> anyhow::Result<Vec<SavedBlock>> {
         BlockRollbackPerformer::new(self, txn).roll_back(block)
     }
 
@@ -599,7 +609,7 @@ impl Ledger {
         Ok(())
     }
 
-    pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
+    pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<SavedBlock> {
         self.store.block.get(txn, hash)
     }
 
@@ -619,7 +629,7 @@ impl Ledger {
         self.store.confirmation_height.get(txn, account)
     }
 
-    pub fn confirm(&self, txn: &mut LmdbWriteTransaction, hash: BlockHash) -> VecDeque<Block> {
+    pub fn confirm(&self, txn: &mut LmdbWriteTransaction, hash: BlockHash) -> Vec<SavedBlock> {
         self.confirm_max(txn, hash, 1024 * 128)
     }
 
@@ -630,7 +640,7 @@ impl Ledger {
         txn: &mut LmdbWriteTransaction,
         target_hash: BlockHash,
         max_blocks: usize,
-    ) -> VecDeque<Block> {
+    ) -> Vec<SavedBlock> {
         BlockCementer::new(&self.store, self.observer.as_ref(), &self.constants).confirm(
             txn,
             target_hash,

@@ -14,7 +14,7 @@ use std::{
     net::SocketAddr,
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc, Mutex, Weak,
+        Arc, Condvar, Mutex, Weak,
     },
     time::UNIX_EPOCH,
 };
@@ -32,6 +32,8 @@ pub struct WebsocketListener {
     topic_subscriber_count: Arc<[AtomicUsize; 11]>,
     sessions: Arc<Mutex<Vec<Weak<WebsocketSessionEntry>>>>,
     tokio: tokio::runtime::Handle,
+    bound: Mutex<bool>,
+    bound_condition: Condvar,
 }
 
 impl WebsocketListener {
@@ -43,6 +45,8 @@ impl WebsocketListener {
             topic_subscriber_count: Arc::new(std::array::from_fn(|_| AtomicUsize::new(0))),
             sessions: Arc::new(Mutex::new(Vec::new())),
             tokio,
+            bound: Mutex::new(false),
+            bound_condition: Condvar::new(),
         }
     }
 
@@ -54,17 +58,24 @@ impl WebsocketListener {
         self.topic_subscriber_count[topic as usize].load(Ordering::SeqCst)
     }
 
+    fn set_bound(&self) {
+        *self.bound.lock().unwrap() = true;
+        self.bound_condition.notify_one();
+    }
+
     async fn run(&self) {
         let endpoint = self.endpoint.lock().unwrap().clone();
         let listener = match TcpListener::bind(endpoint).await {
             Ok(s) => s,
             Err(e) => {
+                self.set_bound();
                 warn!("Listen failed: {:?}", e);
                 return;
             }
         };
         let ep = listener.local_addr().unwrap();
         *self.endpoint.lock().unwrap() = ep;
+        self.set_bound();
         info!("Websocket listener started on {}", ep);
 
         let (tx_stop, rx_stop) = oneshot::channel::<()>();
@@ -210,6 +221,8 @@ impl WebsocketListenerExt for Arc<WebsocketListener> {
         self.tokio.spawn(async move {
             self_l.run().await;
         });
+        let guard = self.bound.lock().unwrap();
+        drop(self.bound_condition.wait_while(guard, |bound| !*bound));
     }
 
     fn stop(&self) {

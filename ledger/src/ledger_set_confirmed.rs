@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount, Block, BlockHash, PendingInfo, PendingKey};
+use rsnano_core::{Account, Amount, Block, BlockHash, PendingInfo, PendingKey, SavedBlock};
 use rsnano_store_lmdb::{LmdbStore, Transaction};
 
 pub struct LedgerSetConfirmed<'a> {
@@ -10,7 +10,7 @@ impl<'a> LedgerSetConfirmed<'a> {
         Self { store }
     }
 
-    pub fn get_block(&self, tx: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
+    pub fn get_block(&self, tx: &dyn Transaction, hash: &BlockHash) -> Option<SavedBlock> {
         let block = self.store.block.get(tx, hash)?;
         let info = self.store.confirmation_height.get(tx, &block.account())?;
         if block.sideband().unwrap().height <= info.height {
@@ -30,7 +30,7 @@ impl<'a> LedgerSetConfirmed<'a> {
             return 0;
         };
         self.get_block(tx, &head)
-            .map(|b| b.sideband().unwrap().height)
+            .map(|b| b.height())
             .expect("Head block not in ledger!")
     }
 

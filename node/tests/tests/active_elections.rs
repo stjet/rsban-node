@@ -939,7 +939,7 @@ fn broadcast_block_on_activation() {
 
     // The second node should not have the block
     assert_never(Duration::from_millis(500), || {
-        node2.block(&send1.hash()).is_some()
+        node2.block_exists(&send1.hash())
     });
 
     // Activating the election should broadcast the block

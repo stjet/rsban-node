@@ -5,7 +5,7 @@ use crate::{
 };
 use rsnano_core::{
     utils::ContainerInfo, work::WorkThresholds, Block, BlockType, Epoch, HashOrAccount, Networks,
-    UncheckedInfo,
+    SavedBlock, UncheckedInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger, Writer};
 use rsnano_network::{ChannelId, DeadChannelCleanupStep};
@@ -305,7 +305,7 @@ impl BlockProcessor {
 
     pub fn set_blocks_rolled_back_callback(
         &self,
-        callback: Box<dyn Fn(Vec<Block>, Block) + Send + Sync>,
+        callback: Box<dyn Fn(Vec<SavedBlock>, SavedBlock) + Send + Sync>,
     ) {
         self.processor_loop
             .set_blocks_rolled_back_callback(callback);
@@ -337,7 +337,7 @@ pub(crate) struct BlockProcessorLoop {
     unchecked_map: Arc<UncheckedMap>,
     config: BlockProcessorConfig,
     stats: Arc<Stats>,
-    blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<Block>, Block) + Send + Sync>>>,
+    blocks_rolled_back: Mutex<Option<Box<dyn Fn(Vec<SavedBlock>, SavedBlock) + Send + Sync>>>,
     block_rolled_back: Mutex<Vec<Box<dyn Fn(&Block) + Send + Sync>>>,
     block_processed: Mutex<Vec<Box<dyn Fn(BlockStatus, &BlockProcessorContext) + Send + Sync>>>,
     batch_processed:
@@ -422,7 +422,7 @@ impl BlockProcessorLoop {
 
     pub fn set_blocks_rolled_back_callback(
         &self,
-        callback: Box<dyn Fn(Vec<Block>, Block) + Send + Sync>,
+        callback: Box<dyn Fn(Vec<SavedBlock>, SavedBlock) + Send + Sync>,
     ) {
         *self.blocks_rolled_back.lock().unwrap() = Some(callback);
     }

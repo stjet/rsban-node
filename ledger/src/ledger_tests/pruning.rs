@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::ledger_tests::helpers::upgrade_genesis_to_epoch_v1;
 use crate::ledger_tests::LedgerContext;
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_HASH};
@@ -66,8 +68,8 @@ fn pruning_action() {
         None
     );
     let receive1_stored = ctx.ledger.any().get_block(&txn, &receive1.hash()).unwrap();
-    assert_eq!(receive1, receive1_stored);
-    assert_eq!(receive1_stored.sideband().unwrap().height, 4);
+    assert_eq!(&receive1, &*receive1_stored);
+    assert_eq!(receive1_stored.height(), 4);
     assert_eq!(
         receive1_stored.sideband().unwrap().details,
         BlockDetails::new(Epoch::Epoch0, false, true, false)

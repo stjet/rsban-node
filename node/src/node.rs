@@ -42,7 +42,7 @@ use crate::{
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo, SerdePropertyTree},
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, Block, BlockHash, BlockType, Networks, NodeId, PrivateKey, PublicKey, Root,
+    Account, Amount, Block, BlockHash, BlockType, Networks, NodeId, PrivateKey, Root, SavedBlock,
     VoteCode, VoteSource,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
@@ -750,7 +750,7 @@ impl Node {
         let schedulers_weak = Arc::downgrade(&election_schedulers);
         wallets.set_start_election_callback(Box::new(move |block| {
             if let Some(schedulers) = schedulers_weak.upgrade() {
-                schedulers.add_manual(block);
+                schedulers.add_manual(block.into());
             }
         }));
 
@@ -1251,7 +1251,7 @@ impl Node {
         }
     }
 
-    pub fn block(&self, hash: &BlockHash) -> Option<Block> {
+    pub fn block(&self, hash: &BlockHash) -> Option<SavedBlock> {
         let tx = self.ledger.read_txn();
         self.ledger.any().get_block(&tx, hash)
     }
@@ -1345,7 +1345,7 @@ impl NodeExt for Arc<Node> {
 
         if !self.ledger.any().block_exists_or_pruned(
             &self.ledger.read_txn(),
-            &self.network_params.ledger.genesis.hash(),
+            &self.network_params.ledger.genesis_block.hash(),
         ) {
             error!("Genesis block not found. This commonly indicates a configuration issue, check that the --network or --data_path command line arguments are correct, and also the ledger backend node config option. If using a read-only CLI command a ledger must already exist, start the node with --daemon first.");
 

@@ -2,7 +2,7 @@ use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_core::{
     Account, Amount, Block, BlockDetails, BlockHash, ChangeBlock, Epoch, OpenBlock, PendingKey,
-    PrivateKey, PublicKey, ReceiveBlock, Root, SendBlock, StateBlock,
+    PrivateKey, PublicKey, ReceiveBlock, Root, SavedBlock, SendBlock, StateBlock,
 };
 use rsnano_node::Node;
 use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateResponse, BlockTypeDto};
@@ -241,7 +241,7 @@ pub fn difficulty_ledger(node: Arc<Node>, block: &Block) -> u64 {
     let tx = node.store.tx_begin_read();
 
     // Previous block find
-    let mut block_previous: Option<Block> = None;
+    let mut block_previous: Option<SavedBlock> = None;
     let previous = block.previous();
     if !previous.is_zero() {
         block_previous = node.ledger.any().get_block(&tx, &previous);
@@ -254,14 +254,14 @@ pub fn difficulty_ledger(node: Arc<Node>, block: &Block) -> u64 {
             .any()
             .block_balance(&tx, &previous)
             .unwrap_or_default()
-            > block.balance_field().unwrap();
+            > block.balance();
         details = BlockDetails::new(Epoch::Epoch0, is_send, false, false);
         details_found = true;
     }
 
     // Epoch check
     if let Some(prev_block) = &block_previous {
-        let epoch = prev_block.sideband().unwrap().details.epoch;
+        let epoch = prev_block.epoch();
         details = BlockDetails::new(epoch, details.is_send, details.is_receive, details.is_epoch);
     }
 
@@ -276,8 +276,7 @@ pub fn difficulty_ledger(node: Arc<Node>, block: &Block) -> u64 {
                     .get_pending(&tx, &PendingKey::new(account, link.into()))
                     .is_some()
                 {
-                    let epoch =
-                        std::cmp::max(details.epoch, block_link.sideband().unwrap().details.epoch);
+                    let epoch = std::cmp::max(details.epoch, block_link.epoch());
                     details = BlockDetails::new(epoch, details.is_send, true, details.is_epoch);
                     details_found = true;
                 }

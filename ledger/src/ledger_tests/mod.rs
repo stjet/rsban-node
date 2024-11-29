@@ -1,13 +1,13 @@
 use std::sync::{atomic::Ordering, Arc};
 pub mod helpers;
 use crate::{
-    ledger_constants::{DEV_GENESIS_PUB_KEY, LEDGER_CONSTANTS_STUB},
+    ledger_constants::{DEV_GENESIS_BLOCK, DEV_GENESIS_PUB_KEY, LEDGER_CONSTANTS_STUB},
     ledger_tests::helpers::{setup_legacy_open_block, setup_open_block, AccountBlockFactory},
-    Ledger, LedgerContext, RepWeightCache, DEV_GENESIS, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
+    Ledger, LedgerContext, RepWeightCache, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
 use rsnano_core::{
     utils::{new_test_timestamp, TEST_ENDPOINT_1},
-    Account, Amount, BlockBuilder, BlockHash, PublicKey, QualifiedRoot, Root, TestAccountChain,
+    Account, Amount, BlockBuilder, BlockHash, PublicKey, QualifiedRoot, Root, SavedAccountChain,
     DEV_GENESIS_KEY,
 };
 
@@ -21,10 +21,10 @@ mod rollback_state;
 
 #[test]
 fn ledger_successor() {
-    let mut chain = TestAccountChain::new_opened_chain();
+    let mut chain = SavedAccountChain::new_opened_chain();
     let send = chain.add_legacy_send().clone();
     let ledger = Ledger::new_null_builder()
-        .blocks(chain.blocks())
+        .blocks2(chain.blocks())
         .account_info(&chain.account(), &chain.account_info())
         .finish();
     let txn = ledger.read_txn();
@@ -40,10 +40,10 @@ fn ledger_successor() {
 
 #[test]
 fn ledger_successor_genesis() {
-    let mut genesis = TestAccountChain::genesis();
+    let mut genesis = SavedAccountChain::genesis();
     genesis.add_legacy_send();
     let ledger = Ledger::new_null_builder()
-        .blocks(genesis.blocks())
+        .blocks2(genesis.blocks())
         .account_info(&genesis.account(), &genesis.account_info())
         .finish();
     let txn = ledger.read_txn();
@@ -66,11 +66,11 @@ fn latest_root_empty() {
 
 #[test]
 fn latest_root() {
-    let mut genesis = TestAccountChain::genesis();
+    let mut genesis = SavedAccountChain::genesis();
     genesis.add_legacy_send();
 
     let ledger = Ledger::new_null_builder()
-        .blocks(genesis.blocks())
+        .blocks2(genesis.blocks())
         .account_info(&genesis.account(), &genesis.account_info())
         .finish();
     let txn = ledger.rw_txn();
@@ -274,13 +274,17 @@ fn state_account() {
 
 mod dependents_confirmed {
     use super::*;
+    use crate::ledger_constants::DEV_GENESIS_BLOCK;
 
     #[test]
     fn genesis_is_confirmed() {
         let ctx = LedgerContext::empty();
         let txn = ctx.ledger.read_txn();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &DEV_GENESIS), true);
+        assert_eq!(
+            ctx.ledger.dependents_confirmed(&txn, &DEV_GENESIS_BLOCK),
+            true
+        );
     }
 
     #[test]
@@ -632,7 +636,7 @@ fn ledger_cache() {
 
 #[test]
 fn is_send_genesis() {
-    assert_eq!(DEV_GENESIS.is_send(), false);
+    assert_eq!(DEV_GENESIS_BLOCK.is_send(), false);
 }
 
 #[test]
@@ -700,7 +704,7 @@ fn sideband_height() {
 
     let assert_sideband_height = |hash: &BlockHash, expected_height: u64| {
         let block = ctx.ledger.any().get_block(&txn, hash).unwrap();
-        assert_eq!(block.sideband().unwrap().height, expected_height);
+        assert_eq!(block.height(), expected_height);
     };
 
     assert_sideband_height(&DEV_GENESIS_HASH, 1);

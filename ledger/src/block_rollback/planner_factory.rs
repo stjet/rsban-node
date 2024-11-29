@@ -2,7 +2,7 @@ use super::rollback_planner::RollbackPlanner;
 use crate::Ledger;
 use rsnano_core::{
     utils::seconds_since_epoch, Account, AccountInfo, Block, BlockHash, ConfirmationHeightInfo,
-    PendingInfo, PendingKey, PublicKey,
+    PendingInfo, PendingKey, PublicKey, SavedBlock,
 };
 use rsnano_store_lmdb::Transaction;
 
@@ -25,7 +25,10 @@ impl<'a> RollbackPlannerFactory<'a> {
         let account = self.get_account(self.head_block)?;
         let planner = RollbackPlanner {
             epochs: &self.ledger.constants.epochs,
-            head_block: self.head_block,
+            head_block2: SavedBlock::new(
+                self.head_block.clone(),
+                self.head_block.sideband().unwrap().clone(),
+            ),
             account,
             current_account_info: self.load_account(&account),
             previous_representative: self.get_previous_representative()?,
@@ -62,7 +65,7 @@ impl<'a> RollbackPlannerFactory<'a> {
             .unwrap_or_default()
     }
 
-    fn load_previous_block(&self) -> anyhow::Result<Option<Block>> {
+    fn load_previous_block(&self) -> anyhow::Result<Option<SavedBlock>> {
         let previous = self.head_block.previous();
         Ok(if previous.is_zero() {
             None
@@ -92,7 +95,7 @@ impl<'a> RollbackPlannerFactory<'a> {
             .unwrap_or_default()
     }
 
-    fn load_block(&self, block_hash: &BlockHash) -> anyhow::Result<Block> {
+    fn load_block(&self, block_hash: &BlockHash) -> anyhow::Result<SavedBlock> {
         self.ledger
             .any()
             .get_block(self.txn, block_hash)

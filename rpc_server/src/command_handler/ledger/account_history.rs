@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::anyhow;
-use rsnano_core::{Account, Block, BlockBase, BlockHash};
+use rsnano_core::{Account, Block, BlockBase, BlockHash, SavedBlock};
 use rsnano_ledger::Ledger;
 use rsnano_rpc_messages::{
     unwrap_bool_or_false, unwrap_u64_or_zero, AccountHistoryArgs, AccountHistoryResponse,
@@ -107,7 +107,7 @@ impl<'a> AccountHistoryHelper<'a> {
         Ok(self.create_response(history))
     }
 
-    fn go_to_next_block(&mut self, tx: &LmdbReadTransaction, block: &Block) -> Option<Block> {
+    fn go_to_next_block(&mut self, tx: &LmdbReadTransaction, block: &Block) -> Option<SavedBlock> {
         self.current_block_hash = if self.reverse {
             self.ledger
                 .any()

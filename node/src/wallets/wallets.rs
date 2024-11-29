@@ -15,7 +15,7 @@ use rsnano_core::{
     utils::{get_env_or_default_string, ContainerInfo},
     work::{WorkPoolImpl, WorkThresholds},
     Account, Amount, Block, BlockDetails, BlockHash, Epoch, KeyDerivationFunction, Link, NoValue,
-    PendingKey, PrivateKey, PublicKey, RawKey, Root, StateBlock, WalletId,
+    PendingKey, PrivateKey, PublicKey, RawKey, Root, SavedBlock, StateBlock, WalletId,
 };
 use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
 use rsnano_messages::{Message, Publish};
@@ -91,7 +91,7 @@ pub struct Wallets {
     pub representative_wallets: Mutex<WalletRepresentatives>,
     online_reps: Arc<Mutex<OnlineReps>>,
     pub kdf: KeyDerivationFunction,
-    start_election: Mutex<Option<Box<dyn Fn(Block) + Send + Sync>>>,
+    start_election: Mutex<Option<Box<dyn Fn(SavedBlock) + Send + Sync>>>,
     confirming_set: Arc<ConfirmingSet>,
     message_publisher: Mutex<MessagePublisher>,
 }
@@ -175,7 +175,7 @@ impl Wallets {
         self.wallet_actions.stop();
     }
 
-    pub fn set_start_election_callback(&self, callback: Box<dyn Fn(Block) + Send + Sync>) {
+    pub fn set_start_election_callback(&self, callback: Box<dyn Fn(SavedBlock) + Send + Sync>) {
         *self.start_election.lock().unwrap() = Some(callback);
     }
 
@@ -659,8 +659,14 @@ impl Wallets {
         let block_tx = self.ledger.read_txn();
         let mut details = BlockDetails::new(Epoch::Epoch0, true, false, false);
 
-        let mut block = match self.get_block_hash(tx, id) {
-            Ok(Some(hash)) => Some(self.ledger.any().get_block(&block_tx, &hash).unwrap()),
+        let mut block: Option<Block> = match self.get_block_hash(tx, id) {
+            Ok(Some(hash)) => Some(
+                self.ledger
+                    .any()
+                    .get_block(&block_tx, &hash)
+                    .unwrap()
+                    .into(),
+            ),
             Ok(None) => None,
             _ => {
                 return (None, true, false, details);
@@ -672,7 +678,7 @@ impl Wallets {
 
         if let Some(block) = &block {
             cached_block = true;
-            let msg = Message::Publish(Publish::new_forward(block.clone()));
+            let msg = Message::Publish(Publish::new_forward(block.clone().into()));
             self.message_publisher
                 .lock()
                 .unwrap()

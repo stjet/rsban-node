@@ -1,4 +1,4 @@
-use rsnano_core::{utils::seconds_since_epoch, Account, Block, PendingKey};
+use rsnano_core::{utils::seconds_since_epoch, Account, Block, PendingKey, SavedBlock};
 use rsnano_store_lmdb::Transaction;
 
 use crate::Ledger;
@@ -53,7 +53,7 @@ impl<'a> BlockValidatorFactory<'a> {
         }
     }
 
-    fn get_account(&self, previous: &Option<Block>) -> Option<Account> {
+    fn get_account(&self, previous: &Option<SavedBlock>) -> Option<Account> {
         match self.block.account_field() {
             Some(account) => Some(account),
             None => match previous {
@@ -63,7 +63,7 @@ impl<'a> BlockValidatorFactory<'a> {
         }
     }
 
-    fn load_previous_block(&self) -> Option<Block> {
+    fn load_previous_block(&self) -> Option<SavedBlock> {
         if !self.block.previous().is_zero() {
             self.ledger
                 .any()
@@ -100,11 +100,11 @@ mod tests {
 
     #[test]
     fn get_account_from_previous_block() {
-        let previous = BlockBuilder::legacy_send().with_sideband().build();
+        let previous = BlockBuilder::legacy_send().build_saved();
         let block = BlockBuilder::legacy_send()
             .previous(previous.hash())
             .build();
-        let ledger = Ledger::new_null_builder().block(&previous).finish();
+        let ledger = Ledger::new_null_builder().block2(&previous).finish();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
 
@@ -159,17 +159,14 @@ mod tests {
     #[test]
     fn pending_receive_info_for_legacy_receive() {
         let account = Account::from(1111);
-        let previous = BlockBuilder::legacy_open()
-            .account(account)
-            .with_sideband()
-            .build();
+        let previous = BlockBuilder::legacy_open().account(account).build_saved();
         let block = BlockBuilder::legacy_receive()
             .previous(previous.hash())
             .source(BlockHash::from(42))
             .build();
         let pending_info = PendingInfo::new_test_instance();
         let ledger = Ledger::new_null_builder()
-            .block(&previous)
+            .block2(&previous)
             .pending(
                 &PendingKey::new(account, BlockHash::from(42)),
                 &pending_info,
@@ -218,7 +215,7 @@ mod tests {
 
     #[test]
     fn previous_block() {
-        let previous = BlockBuilder::state().with_sideband().build();
+        let previous = SavedBlock::new_test_instance();
         let block = BlockBuilder::state().previous(previous.hash()).build();
         let ledger = Ledger::new_null_builder().block(&previous).finish();
         let txn = ledger.read_txn();

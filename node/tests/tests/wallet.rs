@@ -1455,7 +1455,7 @@ fn search_receivable() {
         .account_head(&node.ledger.read_txn(), &DEV_GENESIS_ACCOUNT)
         .unwrap();
     let receive = node.block(&receive_hash).unwrap();
-    assert_eq!(receive.sideband().unwrap().height, 3);
+    assert_eq!(receive.height(), 3);
     assert_eq!(receive.source().unwrap(), send.hash());
 }
 

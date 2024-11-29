@@ -568,16 +568,6 @@ impl Node {
             election_schedulers.clone(),
         ));
 
-        let websocket = create_websocket_server(
-            config.websocket_config.clone(),
-            wallets.clone(),
-            runtime.clone(),
-            &active_elections,
-            &telemetry,
-            &vote_processor,
-            &process_live_dispatcher,
-        );
-
         let mut bootstrap_publisher = MessagePublisher::new_with_buffer_size(
             online_reps.clone(),
             network.clone(),
@@ -601,13 +591,23 @@ impl Node {
             network_params.clone(),
             stats.clone(),
             block_processor.clone(),
-            websocket.clone(),
             ledger.clone(),
             bootstrap_publisher,
             steady_clock.clone(),
         ));
         bootstrap_initiator.initialize();
         bootstrap_initiator.start();
+
+        let websocket = create_websocket_server(
+            config.websocket_config.clone(),
+            wallets.clone(),
+            runtime.clone(),
+            &active_elections,
+            &telemetry,
+            &vote_processor,
+            &process_live_dispatcher,
+            &bootstrap_initiator,
+        );
 
         let latest_keepalives = Arc::new(Mutex::new(LatestKeepalives::default()));
         dead_channel_cleanup.add_step(LatestKeepalivesCleanup::new(latest_keepalives.clone()));

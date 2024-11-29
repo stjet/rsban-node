@@ -1,7 +1,7 @@
 use super::{
-    BootstrapAttemptLazy, BootstrapAttemptLegacy, BootstrapAttempts, BootstrapConnections,
-    BootstrapConnectionsExt, BootstrapMode, BootstrapStrategy, LegacyBootstrapConfig, PullInfo,
-    PullsCache,
+    BootstrapAttemptLazy, BootstrapAttemptLegacy, BootstrapAttempts, BootstrapCallbackData,
+    BootstrapCallbacks, BootstrapConnections, BootstrapConnectionsExt, BootstrapMode,
+    BootstrapStrategy, LegacyBootstrapConfig, PullInfo, PullsCache,
 };
 use crate::{
     block_processing::BlockProcessor,
@@ -10,7 +10,6 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     transport::MessagePublisher,
     utils::ThreadPool,
-    websocket::WebsocketListener,
     NetworkParams,
 };
 use rsnano_core::{
@@ -95,7 +94,6 @@ pub struct BootstrapInitiator {
     pub cache: Arc<Mutex<PullsCache>>,
     stats: Arc<Stats>,
     pub attempts: Arc<Mutex<BootstrapAttempts>>,
-    websocket: Option<Arc<WebsocketListener>>,
     block_processor: Arc<BlockProcessor>,
     ledger: Arc<Ledger>,
     network_params: NetworkParams,
@@ -104,6 +102,7 @@ pub struct BootstrapInitiator {
     workers: Arc<dyn ThreadPool>,
     tokio: tokio::runtime::Handle,
     clock: Arc<SteadyClock>,
+    bootstrap_callbacks: BootstrapCallbacks,
 }
 
 impl BootstrapInitiator {
@@ -118,7 +117,6 @@ impl BootstrapInitiator {
         network_params: NetworkParams,
         stats: Arc<Stats>,
         block_processor: Arc<BlockProcessor>,
-        websocket: Option<Arc<WebsocketListener>>,
         ledger: Arc<Ledger>,
         message_publisher: MessagePublisher,
         clock: Arc<SteadyClock>,
@@ -136,7 +134,6 @@ impl BootstrapInitiator {
             cache: Arc::clone(&cache),
             stats: Arc::clone(&stats),
             attempts: Arc::clone(&attempts),
-            websocket,
             block_processor: Arc::clone(&block_processor),
             ledger,
             network_params: network_params.clone(),
@@ -159,6 +156,7 @@ impl BootstrapInitiator {
                 message_publisher,
                 clock,
             )),
+            bootstrap_callbacks: BootstrapCallbacks::new(),
         }
     }
 
@@ -239,6 +237,14 @@ impl BootstrapInitiator {
     pub fn container_info(&self) -> ContainerInfo {
         let cache_count = self.cache.lock().unwrap().size();
         [("pulls_cache", cache_count, PullsCache::ELEMENT_SIZE)].into()
+    }
+
+    pub fn on_bootstrap_started(&self, f: Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>) {
+        self.bootstrap_callbacks.add_bootstrap_started(f);
+    }
+
+    pub fn on_bootstrap_ended(&self, f: Arc<dyn Fn(&BootstrapCallbackData) + Send + Sync>) {
+        self.bootstrap_callbacks.add_bootstrap_stoped(f);
     }
 }
 
@@ -322,7 +328,6 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
             let self_w = Arc::downgrade(self);
             let legacy_attempt = Arc::new(
                 BootstrapAttemptLegacy::new(
-                    self.websocket.as_ref().cloned(),
                     Arc::downgrade(&self.block_processor),
                     self_w,
                     self.ledger.clone(),
@@ -335,6 +340,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     self.tokio.clone(),
                     frontiers_age_a,
                     start_account_a,
+                    self.bootstrap_callbacks.clone(),
                 )
                 .unwrap(),
             );
@@ -359,7 +365,6 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
             let incremental_id = self.attempts.lock().unwrap().get_incremental_id();
             let legacy_attempt = Arc::new(
                 BootstrapAttemptLegacy::new(
-                    self.websocket.as_ref().cloned(),
                     Arc::downgrade(&self.block_processor),
                     self_w,
                     self.ledger.clone(),
@@ -372,6 +377,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     self.tokio.clone(),
                     u32::MAX,
                     Account::zero(),
+                    self.bootstrap_callbacks.clone(),
                 )
                 .unwrap(),
             );
@@ -418,7 +424,6 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                 };
 
                 let lazy_attempt = BootstrapAttemptLazy::new(
-                    self.websocket.clone(),
                     self.block_processor.clone(),
                     Arc::downgrade(self),
                     self.ledger.clone(),
@@ -427,6 +432,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     self.flags.clone(),
                     self.connections.clone(),
                     self.network_params.clone(),
+                    self.bootstrap_callbacks.clone(),
                 )
                 .unwrap();
 
@@ -470,7 +476,6 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
             let incremental_id = self.attempts.lock().unwrap().get_incremental_id();
             let wallet_attempt = Arc::new(
                 BootstrapAttemptWallet::new(
-                    self.websocket.clone(),
                     self.block_processor.clone(),
                     Arc::clone(self),
                     self.ledger.clone(),
@@ -481,6 +486,7 @@ impl BootstrapInitiatorExt for Arc<BootstrapInitiator> {
                     self.config.receive_minimum,
                     self.stats.clone(),
                     self.tokio.clone(),
+                    self.bootstrap_callbacks.clone(),
                 )
                 .unwrap(),
             );

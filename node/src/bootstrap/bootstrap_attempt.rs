@@ -223,20 +223,22 @@ impl Drop for BootstrapAttempt {
             self.mode.as_str()
         );
 
-        {
-            let callbacks = self
+        let callbacks = {
+            let callbacks_guard = self
                 .bootstrap_callbacks
                 .bootstrap_ended_observer
                 .lock()
                 .unwrap();
-            for callback in callbacks.iter() {
-                (callback)(BootstrapCallbackData::new(
-                    self.id.clone(),
-                    self.mode,
-                    self.total_blocks.load(Ordering::SeqCst),
-                    self.duration(),
-                ))
-            }
+            callbacks_guard.clone()
+        };
+
+        for callback in callbacks.iter() {
+            callback(BootstrapCallbackData::new(
+                self.id.clone(),
+                self.mode,
+                self.total_blocks.load(Ordering::SeqCst),
+                self.duration(),
+            ));
         }
     }
 }

@@ -2,7 +2,6 @@ use super::{PublicKey, RawKey, Signature};
 use crate::{Account, BlockBase, Link, Root, StateBlock};
 use anyhow::Context;
 use ed25519_dalek::ed25519::signature::SignerMut;
-use ed25519_dalek::Verifier;
 use rsnano_nullable_random::NullableRng;
 
 pub struct PrivateKeyFactory {
@@ -139,21 +138,12 @@ pub fn validate_message(
     message: &[u8],
     signature: &Signature,
 ) -> anyhow::Result<()> {
-    let public = ed25519_dalek::VerifyingKey::from_bytes(public_key.as_bytes())
-        .map_err(|_| anyhow!("could not extract public key"))?;
-    let sig = ed25519_dalek::Signature::from_bytes(signature.as_bytes());
-    public
-        .verify(message, &sig)
-        .map_err(|_| anyhow!("could not verify message"))?;
-    Ok(())
+    public_key.verify(message, signature)
 }
 
 pub fn validate_block_signature(block: &StateBlock) -> anyhow::Result<()> {
-    validate_message(
-        &block.account().into(),
-        block.hash().as_bytes(),
-        block.block_signature(),
-    )
+    let pub_key: PublicKey = block.account().into();
+    pub_key.verify(block.hash().as_bytes(), block.block_signature())
 }
 
 #[cfg(test)]
@@ -184,7 +174,7 @@ mod tests {
         let prv_key = PrivateKey::new();
         let data = [0u8; 32];
         let signature = prv_key.sign(&data);
-        validate_message(&prv_key.public_key(), &data, &signature)?;
+        prv_key.public_key().verify(&data, &signature)?;
         Ok(())
     }
 
@@ -216,7 +206,7 @@ mod tests {
 
         let signature = Signature::decode_hex("3C14AF3E82BFC7DFD04EDF1639CDBF3580C02450CED478F269A4169A941617097D73A77721B62847558659371DBC3F6830724A7A55117750E5743562D1CF671E").unwrap();
 
-        validate_message(&public_key, hash.as_bytes(), &signature).unwrap();
+        public_key.verify(hash.as_bytes(), &signature).unwrap();
     }
 
     // This block signature caused issues during live bootstrap. This was fixed by using verify() instead of verify_strict()
@@ -236,7 +226,7 @@ mod tests {
 
         let signature = Signature::decode_hex("1A8CFB63796525E47EBAF0B8696D95E2B893CBCC13454CB34530A59A3725C1A9FEA02A1F072BADE964BE5378CFA5AD50E743F167987444B1C9E3D7B3E6009F07").unwrap();
 
-        validate_message(&public_key, hash.as_bytes(), &signature).unwrap();
+        public_key.verify(hash.as_bytes(), &signature).unwrap();
     }
 
     mod key_pair_factory {

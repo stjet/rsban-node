@@ -180,11 +180,8 @@ impl Vote {
     }
 
     pub fn validate(&self) -> Result<()> {
-        validate_message(
-            &self.voting_account,
-            self.hash().as_bytes(),
-            &self.signature,
-        )
+        self.voting_account
+            .verify(self.hash().as_bytes(), &self.signature)
     }
 
     pub fn serialized_size(count: usize) -> usize {

@@ -204,7 +204,7 @@ impl Default for StateBlockBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{validate_message, BlockBuilder, StateBlock};
+    use crate::{BlockBuilder, StateBlock};
 
     #[test]
     fn state_block() {
@@ -279,12 +279,12 @@ mod tests {
 
         let zero_block_build = BlockBuilder::state().zero().sign(&key).build();
         assert_eq!(zero_block_manual.hash(), zero_block_build.hash());
-        validate_message(
-            &key.public_key(),
-            zero_block_build.hash().as_bytes(),
-            zero_block_build.block_signature(),
-        )
-        .unwrap();
+        key.public_key()
+            .verify(
+                zero_block_build.hash().as_bytes(),
+                zero_block_build.block_signature(),
+            )
+            .unwrap();
     }
 
     // original test: block_builder.state

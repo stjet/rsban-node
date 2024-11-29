@@ -4,9 +4,7 @@ use bitvec::prelude::BitArray;
 use rsnano_core::utils::{
     BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
 };
-use rsnano_core::{
-    to_hex_string, validate_message, Account, BlockHash, NodeId, PrivateKey, Signature,
-};
+use rsnano_core::{to_hex_string, Account, BlockHash, NodeId, PrivateKey, Signature};
 use serde_derive::Serialize;
 use std::fmt::Display;
 use std::mem::size_of;
@@ -195,7 +193,10 @@ impl TelemetryData {
     pub fn validate_signature(&self) -> bool {
         let mut stream = MemoryStream::new();
         self.serialize_without_signature(&mut stream);
-        validate_message(&self.node_id.into(), stream.as_bytes(), &self.signature).is_ok()
+        self.node_id
+            .as_key()
+            .verify(stream.as_bytes(), &self.signature)
+            .is_ok()
     }
 
     pub fn to_json(&self) -> serde_json::Result<String> {

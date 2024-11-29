@@ -962,9 +962,7 @@ fn no_work() {
     assert_ne!(block.work(), 0);
     assert!(
         DEV_NETWORK_PARAMS.work.difficulty_block(&block)
-            >= DEV_NETWORK_PARAMS
-                .work
-                .threshold(&block.sideband().unwrap().details)
+            >= DEV_NETWORK_PARAMS.work.threshold(block.details())
     );
     let cached_work = node1.wallets.work_get(&wallet_id, &DEV_GENESIS_PUB_KEY);
     assert_eq!(cached_work, 0);

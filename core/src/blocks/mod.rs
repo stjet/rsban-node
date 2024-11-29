@@ -627,6 +627,10 @@ impl SavedBlock {
             _ => self.sideband.balance,
         }
     }
+
+    pub fn details(&self) -> &BlockDetails {
+        &self.sideband.details
+    }
 }
 
 impl Deref for SavedBlock {

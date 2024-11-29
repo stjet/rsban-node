@@ -347,7 +347,7 @@ impl SavedAccountChain {
 
         if !self.blocks.is_empty() {
             let previous = self.blocks.last_mut().unwrap();
-            let mut sideband = previous.sideband().unwrap().clone();
+            let mut sideband = previous.sideband.clone();
             sideband.successor = block.hash();
             previous.set_sideband(sideband);
         }

@@ -707,7 +707,6 @@ impl DependentBlocks {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::BufferReader;
 
     #[test]
     fn serialize_legacy_open() {
@@ -717,32 +716,32 @@ mod tests {
 
     #[test]
     fn serialize_legacy_receive() {
-        let block = BlockBuilder::legacy_receive().with_sideband().build();
+        let block = BlockBuilder::legacy_receive().build();
         assert_serializable(block);
     }
 
     #[test]
     fn serialize_legacy_send() {
-        let block = BlockBuilder::legacy_send().with_sideband().build();
+        let block = BlockBuilder::legacy_send().build();
         assert_serializable(block);
     }
 
     #[test]
     fn serialize_legacy_change() {
-        let block = BlockBuilder::legacy_change().with_sideband().build();
+        let block = BlockBuilder::legacy_change().build();
         assert_serializable(block);
     }
 
     #[test]
     fn serialize_state() {
-        let block = BlockBuilder::state().with_sideband().build();
+        let block = BlockBuilder::state().build();
         assert_serializable(block);
     }
 
     fn assert_serializable(block: Block) {
-        let bytes = block.serialize_with_sideband();
-        let mut stream = BufferReader::new(&bytes);
-        let deserialized = SavedBlock::deserialize(&mut stream).unwrap();
-        assert_eq!(deserialized.deref(), &block);
+        let mut buffer = MemoryStream::new();
+        block.serialize(&mut buffer);
+        let deserialized = Block::deserialize(&mut buffer).unwrap();
+        assert_eq!(deserialized, block);
     }
 }

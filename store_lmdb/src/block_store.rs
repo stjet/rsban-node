@@ -268,9 +268,9 @@ mod tests {
         let fixture = Fixture::new();
         let mut txn = fixture.env.tx_begin_write();
         let put_tracker = txn.track_puts();
-        let block = BlockBuilder::legacy_open().with_sideband().build();
+        let block = SavedBlock::new_test_instance();
 
-        fixture.store.put(&mut txn, &block);
+        fixture.store.put2(&mut txn, &block);
 
         assert_eq!(
             put_tracker.output(),
@@ -342,18 +342,13 @@ mod tests {
     #[test]
     fn track_inserted_blocks() {
         let fixture = Fixture::new();
-        let mut block = BlockBuilder::state().previous(BlockHash::zero()).build();
-        block.set_sideband(BlockSideband {
-            height: 1,
-            successor: BlockHash::zero(),
-            ..BlockSideband::new_test_instance()
-        });
+        let block = SavedBlock::new_test_instance();
         let mut txn = fixture.env.tx_begin_write();
         let put_tracker = fixture.store.track_puts();
 
         fixture.store.put(&mut txn, &block);
 
-        assert_eq!(put_tracker.output(), vec![block]);
+        assert_eq!(put_tracker.output(), vec![block.block]);
     }
 
     #[test]

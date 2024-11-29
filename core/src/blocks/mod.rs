@@ -558,6 +558,20 @@ impl SavedBlock {
     pub fn new(block: Block, sideband: BlockSideband) -> Self {
         Self { block, sideband }
     }
+
+    pub fn new_test_instance() -> Self {
+        let block = Block::new_test_instance();
+        let sideband = BlockSideband {
+            height: 1,
+            timestamp: 222222,
+            successor: BlockHash::zero(),
+            account: block.account_field().unwrap(),
+            balance: block.balance_field().unwrap(),
+            details: BlockDetails::new(Epoch::Epoch2, true, false, false),
+            source_epoch: Epoch::Epoch0,
+        };
+        Self::new(block, sideband)
+    }
 }
 
 impl Deref for SavedBlock {

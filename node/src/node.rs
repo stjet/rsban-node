@@ -118,7 +118,7 @@ pub struct Node {
     pub backlog_population: Arc<BacklogPopulation>,
     ascendboot: Arc<BootstrapAscending>,
     pub local_block_broadcaster: Arc<LocalBlockBroadcaster>,
-    _process_live_dispatcher: Arc<ProcessLiveDispatcher>,
+    process_live_dispatcher: Arc<ProcessLiveDispatcher>,
     message_processor: Mutex<MessageProcessor>,
     network_threads: Arc<Mutex<NetworkThreads>>,
     ledger_pruning: Arc<LedgerPruning>,
@@ -364,7 +364,6 @@ impl Node {
             node_id.clone(),
             steady_clock.clone(),
         ));
-        dead_channel_cleanup.add_step(TelemetryDeadChannelCleanup(telemetry.clone()));
 
         let bootstrap_server = Arc::new(BootstrapServer::new(
             config.bootstrap_server.clone(),
@@ -549,6 +548,26 @@ impl Node {
         ));
 
         active_elections.initialize();
+
+        let election_schedulers = Arc::new(ElectionSchedulers::new(
+            &config,
+            network_params.network.clone(),
+            active_elections.clone(),
+            ledger.clone(),
+            stats.clone(),
+            vote_cache.clone(),
+            confirming_set.clone(),
+            online_reps.clone(),
+        ));
+
+        active_elections.set_election_schedulers(&election_schedulers);
+        vote_applier.set_election_schedulers(&election_schedulers);
+
+        let process_live_dispatcher = Arc::new(ProcessLiveDispatcher::new(
+            ledger.clone(),
+            election_schedulers.clone(),
+        ));
+
         let websocket = create_websocket_server(
             config.websocket_config.clone(),
             wallets.clone(),
@@ -556,6 +575,7 @@ impl Node {
             &active_elections,
             &telemetry,
             &vote_processor,
+            &process_live_dispatcher,
         );
 
         let mut bootstrap_publisher = MessagePublisher::new_with_buffer_size(
@@ -648,20 +668,6 @@ impl Node {
             response_server_spawner.clone(),
         ));
 
-        let election_schedulers = Arc::new(ElectionSchedulers::new(
-            &config,
-            network_params.network.clone(),
-            active_elections.clone(),
-            ledger.clone(),
-            stats.clone(),
-            vote_cache.clone(),
-            confirming_set.clone(),
-            online_reps.clone(),
-        ));
-
-        active_elections.set_election_schedulers(&election_schedulers);
-        vote_applier.set_election_schedulers(&election_schedulers);
-
         let request_aggregator = Arc::new(RequestAggregator::new(
             config.request_aggregator.clone(),
             stats.clone(),
@@ -700,12 +706,6 @@ impl Node {
             !flags.disable_block_processor_republishing,
         ));
         local_block_broadcaster.initialize();
-
-        let process_live_dispatcher = Arc::new(ProcessLiveDispatcher::new(
-            ledger.clone(),
-            election_schedulers.clone(),
-            websocket.clone(),
-        ));
 
         let realtime_message_handler = Arc::new(RealtimeMessageHandler::new(
             stats.clone(),
@@ -1125,7 +1125,7 @@ impl Node {
             backlog_population,
             ascendboot,
             local_block_broadcaster,
-            _process_live_dispatcher: process_live_dispatcher, // needs to stay alive
+            process_live_dispatcher, // needs to stay alive
             ledger_pruning,
             network_threads,
             message_processor,

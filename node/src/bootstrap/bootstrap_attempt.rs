@@ -4,11 +4,11 @@ use crate::{
     utils::HardenedConstants,
     websocket::WebsocketListener,
 };
-use rsnano_websocket_messages::{Topic, OutgoingMessageEnvelope};
 use anyhow::Result;
 use rsnano_core::{encode_hex, utils::PropertyTree, Account, Block};
 use rsnano_ledger::Ledger;
 use rsnano_network::ChannelId;
+use rsnano_websocket_messages::{OutgoingMessageEnvelope, Topic};
 use serde::{Deserialize, Serialize};
 use std::{
     sync::{

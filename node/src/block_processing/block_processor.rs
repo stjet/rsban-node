@@ -52,6 +52,7 @@ pub type BlockProcessorCallback = Box<dyn Fn(BlockStatus) + Send + Sync>;
 
 pub struct BlockProcessorContext {
     pub block: Mutex<Block>,
+    pub saved_block: Mutex<Option<SavedBlock>>,
     pub source: BlockSource,
     callback: Option<BlockProcessorCallback>,
     pub arrival: Instant,
@@ -66,6 +67,7 @@ impl BlockProcessorContext {
     ) -> Self {
         Self {
             block: Mutex::new(block),
+            saved_block: Mutex::new(None),
             source,
             arrival: Instant::now(),
             callback,
@@ -600,7 +602,7 @@ impl BlockProcessorLoop {
         let hash = block.hash();
 
         let result = match self.ledger.process(txn, &mut block) {
-            Ok(()) => BlockStatus::Progress,
+            Ok(_) => BlockStatus::Progress,
             Err(r) => r,
         };
 

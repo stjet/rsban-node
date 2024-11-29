@@ -602,11 +602,11 @@ impl Ledger {
         &self,
         txn: &mut LmdbWriteTransaction,
         block: &mut Block,
-    ) -> Result<(), BlockStatus> {
+    ) -> Result<SavedBlock, BlockStatus> {
         let validator = BlockValidatorFactory::new(self, txn, block).create_validator();
         let instructions = validator.validate()?;
-        BlockInserter::new(self, txn, block, &instructions).insert();
-        Ok(())
+        let inserted = BlockInserter::new(self, txn, block, &instructions).insert();
+        Ok(inserted)
     }
 
     pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<SavedBlock> {

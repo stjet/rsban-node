@@ -38,7 +38,7 @@ use crate::{
     websocket::{create_websocket_server, WebsocketListenerExt},
     work::DistributedWorkFactory,
     NetworkParams, NodeCallbacks, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry,
-    TelemetryDeadChannelCleanup, BUILD_INFO, VERSION_STRING,
+    BUILD_INFO, VERSION_STRING,
 };
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo, SerdePropertyTree},
@@ -1230,7 +1230,7 @@ impl Node {
             .map(|(status, _)| status)
     }
 
-    pub fn process(&self, mut block: Block) -> Result<(), BlockStatus> {
+    pub fn process(&self, mut block: Block) -> Result<SavedBlock, BlockStatus> {
         let mut tx = self.ledger.rw_txn();
         self.ledger.process(&mut tx, &mut block)
     }

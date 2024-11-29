@@ -711,8 +711,8 @@ mod tests {
 
     #[test]
     fn serialize_legacy_open() {
-        let block = BlockBuilder::legacy_open().with_sideband().build();
-        assert_serializable(block);
+        let block = BlockBuilder::legacy_open().build_saved();
+        assert_serializable(block.into());
     }
 
     #[test]

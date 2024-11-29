@@ -17,11 +17,11 @@ pub struct SavedAccountChain {
 
 impl SavedAccountChain {
     pub fn new() -> Self {
-        Self::with_keys(PrivateKey::new())
+        Self::with_priv_key(PrivateKey::new())
     }
 
     pub fn genesis() -> Self {
-        let mut result = Self::with_keys(DEV_GENESIS_KEY.clone());
+        let mut result = Self::with_priv_key(DEV_GENESIS_KEY.clone());
         result.balance = Amount::MAX;
         result.add_block(
             BlockBuilder::legacy_open()
@@ -53,13 +53,13 @@ impl SavedAccountChain {
         );
     }
 
-    pub fn with_keys(keypair: PrivateKey) -> Self {
+    pub fn with_priv_key(key: PrivateKey) -> Self {
         Self {
-            account: keypair.account(),
+            account: key.account(),
             balance: Amount::zero(),
             blocks: Vec::new(),
             representative: PublicKey::zero(),
-            keypair,
+            keypair: key,
             epoch: Epoch::Epoch0,
         }
     }
@@ -84,7 +84,7 @@ impl SavedAccountChain {
         &self.blocks
     }
 
-    pub fn block(&self, height: u64) -> &Block {
+    pub fn block(&self, height: u64) -> &SavedBlock {
         &self.blocks[height as usize - 1]
     }
 
@@ -99,7 +99,7 @@ impl SavedAccountChain {
         self.blocks.last().unwrap()
     }
 
-    pub fn add_legacy_change(&mut self, representative: impl Into<PublicKey>) -> &Block {
+    pub fn add_legacy_change(&mut self, representative: impl Into<PublicKey>) -> &SavedBlock {
         let block = self
             .new_legacy_change_block()
             .representative(representative.into())
@@ -107,7 +107,10 @@ impl SavedAccountChain {
         self.add_block(block, Epoch::Epoch0)
     }
 
-    pub fn add_legacy_open_from_account(&mut self, sender_chain: &SavedAccountChain) -> &Block {
+    pub fn add_legacy_open_from_account(
+        &mut self,
+        sender_chain: &SavedAccountChain,
+    ) -> &SavedBlock {
         self.add_legacy_open_from_account_block(sender_chain, sender_chain.height())
     }
 
@@ -115,7 +118,7 @@ impl SavedAccountChain {
         &mut self,
         sender_chain: &SavedAccountChain,
         height: u64,
-    ) -> &Block {
+    ) -> &SavedBlock {
         let send_block = sender_chain.block(height);
         let amount = sender_chain.amount_of_block(height);
         assert_eq!(self.height(), 0);
@@ -130,11 +133,14 @@ impl SavedAccountChain {
         self.add_block(open_block, send_block.epoch())
     }
 
-    pub fn add_legacy_receive_from_account(&mut self, sender_chain: &SavedAccountChain) -> &Block {
+    pub fn add_legacy_receive_from_account(
+        &mut self,
+        sender_chain: &SavedAccountChain,
+    ) -> &SavedBlock {
         self.add_legacy_receive_from_account_block(sender_chain, sender_chain.height())
     }
 
-    pub fn add_legacy_receive_from_self(&mut self) -> &Block {
+    pub fn add_legacy_receive_from_self(&mut self) -> &SavedBlock {
         let send_block = self.block(self.height());
         let amount = self.amount_of_block(self.height());
         assert_eq!(send_block.destination_or_link(), self.account);
@@ -145,7 +151,7 @@ impl SavedAccountChain {
         &mut self,
         sender: &SavedAccountChain,
         height: u64,
-    ) -> &Block {
+    ) -> &SavedBlock {
         let send_block = sender.block(height);
         let amount = sender.amount_of_block(height);
         assert_eq!(send_block.destination_or_link(), self.account);
@@ -157,7 +163,7 @@ impl SavedAccountChain {
         source: BlockHash,
         amount: Amount,
         source_epoch: Epoch,
-    ) -> &Block {
+    ) -> &SavedBlock {
         assert!(amount > Amount::zero());
         let block_builder = BlockBuilder::legacy_receive()
             .previous(self.frontier())
@@ -167,11 +173,11 @@ impl SavedAccountChain {
         self.add_block(block_builder.build(), source_epoch)
     }
 
-    pub fn add_legacy_send(&mut self) -> &Block {
+    pub fn add_legacy_send(&mut self) -> &SavedBlock {
         self.add_legacy_send_to(Account::from(42), Amount::raw(1))
     }
 
-    pub fn add_legacy_send_to(&mut self, destination: Account, amount: Amount) -> &Block {
+    pub fn add_legacy_send_to(&mut self, destination: Account, amount: Amount) -> &SavedBlock {
         let block = self
             .new_legacy_send_block()
             .amount(amount)
@@ -180,17 +186,17 @@ impl SavedAccountChain {
         self.add_block(block, Epoch::Epoch0)
     }
 
-    pub fn add_state(&mut self) -> &Block {
+    pub fn add_state(&mut self) -> &SavedBlock {
         let state = self.new_state_block().build();
         self.add_block(state, Epoch::Epoch0)
     }
 
-    pub fn add_epoch_v1(&mut self) -> &Block {
+    pub fn add_epoch_v1(&mut self) -> &SavedBlock {
         let epoch_block = self.new_epoch1_block().build();
         self.add_block(epoch_block, Epoch::Epoch0)
     }
 
-    pub fn add_epoch_v2(&mut self) -> &Block {
+    pub fn add_epoch_v2(&mut self) -> &SavedBlock {
         let epoch_block = self.new_epoch2_block().build();
         self.add_block(epoch_block, Epoch::Epoch0)
     }
@@ -317,7 +323,7 @@ impl SavedAccountChain {
         }
     }
 
-    pub fn add_block(&mut self, mut block: Block, source_epoch: Epoch) -> &Block {
+    pub fn add_block(&mut self, mut block: Block, source_epoch: Epoch) -> &SavedBlock {
         if let Some(new_balance) = block.balance_field() {
             self.balance = new_balance;
         }

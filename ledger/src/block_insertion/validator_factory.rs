@@ -159,17 +159,14 @@ mod tests {
     #[test]
     fn pending_receive_info_for_legacy_receive() {
         let account = Account::from(1111);
-        let previous = BlockBuilder::legacy_open()
-            .account(account)
-            .with_sideband()
-            .build();
+        let previous = BlockBuilder::legacy_open().account(account).build_saved();
         let block = BlockBuilder::legacy_receive()
             .previous(previous.hash())
             .source(BlockHash::from(42))
             .build();
         let pending_info = PendingInfo::new_test_instance();
         let ledger = Ledger::new_null_builder()
-            .block(&previous)
+            .block2(&previous)
             .pending(
                 &PendingKey::new(account, BlockHash::from(42)),
                 &pending_info,

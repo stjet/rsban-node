@@ -1,5 +1,5 @@
 use super::{PublicKey, RawKey, Signature};
-use crate::{Account, BlockBase, Link, Root, StateBlock};
+use crate::{Account, Link, Root};
 use anyhow::Context;
 use ed25519_dalek::ed25519::signature::SignerMut;
 use rsnano_nullable_random::NullableRng;

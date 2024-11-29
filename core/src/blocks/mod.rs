@@ -548,18 +548,18 @@ pub fn deserialize_block_json(ptree: &impl PropertyTree) -> anyhow::Result<Block
     }
 }
 
-pub struct BlockWithSideband {
+pub struct SavedBlock {
     pub block: Block,
     pub sideband: BlockSideband,
 }
 
-impl crate::utils::Deserialize for BlockWithSideband {
+impl crate::utils::Deserialize for SavedBlock {
     type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
         let mut block = Block::deserialize(stream)?;
         let sideband = BlockSideband::from_stream(stream, block.block_type())?;
         block.as_block_mut().set_sideband(sideband.clone());
-        Ok(BlockWithSideband { block, sideband })
+        Ok(SavedBlock { block, sideband })
     }
 }
 

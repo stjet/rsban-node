@@ -95,7 +95,8 @@ impl<'a> RollbackPlannerFactory<'a> {
     fn load_block(&self, block_hash: &BlockHash) -> anyhow::Result<Block> {
         self.ledger
             .any()
-            .get_block(self.txn, block_hash)
+            .get_block2(self.txn, block_hash)
+            .map(|b| b.block)
             .ok_or_else(|| anyhow!("block not found"))
     }
 

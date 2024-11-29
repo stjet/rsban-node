@@ -225,7 +225,7 @@ impl BulkPullServerImpl {
         if send_current {
             {
                 let txn = self.ledger.read_txn();
-                result = self.ledger.any().get_block(&txn, &self.current);
+                result = self.ledger.any().get_block2(&txn, &self.current);
             }
 
             if let Some(result) = &result {
@@ -256,7 +256,7 @@ impl BulkPullServerImpl {
          */
         self.include_start = false;
 
-        result
+        result.map(|b| b.block)
     }
 
     pub fn send_finished(&self, server_impl: Arc<Mutex<Self>>) {

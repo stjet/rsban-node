@@ -1,6 +1,7 @@
 use rsnano_core::{
     utils::{BufferReader, Deserialize},
     Account, AccountInfo, Amount, Block, BlockHash, PendingInfo, PendingKey, QualifiedRoot,
+    SavedBlock,
 };
 use rsnano_store_lmdb::{LmdbIterator, LmdbPendingStore, LmdbStore, Transaction};
 use std::ops::{Deref, RangeBounds};
@@ -14,8 +15,13 @@ impl<'a> LedgerSetAny<'a> {
         Self { store }
     }
 
+    // TODO use get_block2
     pub fn get_block(&self, tx: &dyn Transaction, hash: &BlockHash) -> Option<Block> {
         self.store.block.get(tx, hash).map(|b| b.block)
+    }
+
+    pub fn get_block2(&self, tx: &dyn Transaction, hash: &BlockHash) -> Option<SavedBlock> {
+        self.store.block.get(tx, hash)
     }
 
     pub fn get_account(&self, tx: &dyn Transaction, account: &Account) -> Option<AccountInfo> {
@@ -28,24 +34,24 @@ impl<'a> LedgerSetAny<'a> {
 
     pub fn account_balance(&self, tx: &dyn Transaction, account: &Account) -> Option<Amount> {
         let head = self.account_head(tx, account)?;
-        self.get_block(tx, &head).map(|b| b.balance())
+        self.get_block2(tx, &head).map(|b| b.balance())
     }
 
     pub fn account_height(&self, tx: &dyn Transaction, account: &Account) -> u64 {
         let Some(head) = self.account_head(tx, account) else {
             return 0;
         };
-        self.get_block(tx, &head)
-            .map(|b| b.sideband().unwrap().height)
+        self.get_block2(tx, &head)
+            .map(|b| b.height())
             .expect("Head block not in ledger!")
     }
 
     pub fn block_account(&self, tx: &dyn Transaction, hash: &BlockHash) -> Option<Account> {
-        self.get_block(tx, hash).map(|b| b.account())
+        self.get_block2(tx, hash).map(|b| b.account())
     }
 
     pub fn block_amount(&self, tx: &dyn Transaction, hash: &BlockHash) -> Option<Amount> {
-        let block = self.get_block(tx, hash)?;
+        let block = self.get_block2(tx, hash)?;
         self.block_amount_for(tx, &block)
     }
 
@@ -68,7 +74,7 @@ impl<'a> LedgerSetAny<'a> {
             return None;
         }
 
-        self.get_block(tx, hash).map(|b| b.balance())
+        self.get_block2(tx, hash).map(|b| b.balance())
     }
 
     pub fn block_exists(&self, tx: &dyn Transaction, hash: &BlockHash) -> bool {
@@ -84,8 +90,8 @@ impl<'a> LedgerSetAny<'a> {
     }
 
     pub fn block_height(&self, tx: &dyn Transaction, hash: &BlockHash) -> u64 {
-        self.get_block(tx, hash)
-            .map(|b| b.sideband().unwrap().height)
+        self.get_block2(tx, hash)
+            .map(|b| b.height())
             .unwrap_or_default()
     }
 

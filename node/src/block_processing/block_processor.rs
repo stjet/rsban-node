@@ -678,7 +678,7 @@ impl BlockProcessorLoop {
             let successor_block = self
                 .ledger
                 .any()
-                .get_block(transaction, &successor)
+                .get_block2(transaction, &successor)
                 .unwrap();
             if successor != hash {
                 // Replace our block with the winner and roll back any dependent blocks
@@ -701,7 +701,7 @@ impl BlockProcessorLoop {
 
                 let callback_guard = self.blocks_rolled_back.lock().unwrap();
                 if let Some(callback) = callback_guard.as_ref() {
-                    callback(rollback_list, successor_block);
+                    callback(rollback_list, successor_block.block);
                 }
             }
         }

@@ -1,4 +1,4 @@
-use rsnano_core::{utils::seconds_since_epoch, Account, Block, PendingKey};
+use rsnano_core::{utils::seconds_since_epoch, Account, Block, PendingKey, SavedBlock};
 use rsnano_store_lmdb::Transaction;
 
 use crate::Ledger;
@@ -48,12 +48,12 @@ impl<'a> BlockValidatorFactory<'a> {
             pending_receive_info,
             any_pending_exists: self.ledger.any().receivable_exists(self.txn, account),
             source_block_exists,
-            previous_block,
+            previous_block: previous_block.map(|b| b.block),
             seconds_since_epoch: seconds_since_epoch(),
         }
     }
 
-    fn get_account(&self, previous: &Option<Block>) -> Option<Account> {
+    fn get_account(&self, previous: &Option<SavedBlock>) -> Option<Account> {
         match self.block.account_field() {
             Some(account) => Some(account),
             None => match previous {
@@ -63,11 +63,11 @@ impl<'a> BlockValidatorFactory<'a> {
         }
     }
 
-    fn load_previous_block(&self) -> Option<Block> {
+    fn load_previous_block(&self) -> Option<SavedBlock> {
         if !self.block.previous().is_zero() {
             self.ledger
                 .any()
-                .get_block(self.txn, &self.block.previous())
+                .get_block2(self.txn, &self.block.previous())
         } else {
             None
         }

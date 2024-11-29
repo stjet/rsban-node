@@ -17,7 +17,7 @@ fn rollback_dependent_blocks_too() {
 
     ctx.ledger.rollback(&mut txn, &change.hash()).unwrap();
 
-    assert_eq!(ctx.ledger.any().get_block(&txn, &send.hash()), None);
+    assert_eq!(ctx.ledger.any().get_block2(&txn, &send.hash()), None);
 
     assert_eq!(
         ctx.ledger.weight(&DEV_GENESIS_PUB_KEY),

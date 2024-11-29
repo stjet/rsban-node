@@ -38,7 +38,7 @@ impl<'a> BlockCementer<'a> {
         let mut stack = VecDeque::new();
         stack.push_back(target_hash);
         while let Some(&hash) = stack.back() {
-            let block = self.any.get_block(txn, &hash).unwrap();
+            let block = self.any.get_block2(txn, &hash).unwrap();
 
             let dependents =
                 block.dependent_blocks(&self.constants.epochs, &self.constants.genesis_account);
@@ -62,7 +62,7 @@ impl<'a> BlockCementer<'a> {
                     // We must only confirm blocks that have their dependencies confirmed
 
                     let conf_height =
-                        ConfirmationHeightInfo::new(block.sideband().unwrap().height, block.hash());
+                        ConfirmationHeightInfo::new(block.sideband.height, block.hash());
 
                     // Update store
                     self.store
@@ -75,7 +75,7 @@ impl<'a> BlockCementer<'a> {
 
                     self.observer.blocks_cemented(1);
 
-                    result.push_back(block);
+                    result.push_back(block.block);
                 }
             } else {
                 // Unconfirmed dependencies were added

@@ -28,10 +28,7 @@ mod builders;
 pub use builders::*;
 
 use crate::{
-    utils::{
-        BufferReader, BufferWriter, Deserialize, MemoryStream, PropertyTree, SerdePropertyTree,
-        Stream,
-    },
+    utils::{BufferWriter, Deserialize, MemoryStream, PropertyTree, SerdePropertyTree, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, Epoch, Epochs, FullHash, Link, PrivateKey,
     PublicKey, QualifiedRoot, Root, Signature,
 };
@@ -567,6 +564,18 @@ impl SavedBlock {
         block.set_sideband(sideband.clone());
         Self::new(block, sideband)
     }
+
+    pub fn height(&self) -> u64 {
+        self.sideband.height
+    }
+
+    pub fn successor(&self) -> Option<BlockHash> {
+        if self.sideband.successor.is_zero() {
+            None
+        } else {
+            Some(self.sideband.successor)
+        }
+    }
 }
 
 impl Deref for SavedBlock {
@@ -577,7 +586,7 @@ impl Deref for SavedBlock {
     }
 }
 
-impl crate::utils::Deserialize for SavedBlock {
+impl Deserialize for SavedBlock {
     type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
         let mut block = Block::deserialize(stream)?;
@@ -658,6 +667,7 @@ impl DependentBlocks {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::BufferReader;
 
     #[test]
     fn serialize_legacy_open() {

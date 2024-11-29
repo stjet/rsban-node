@@ -141,7 +141,7 @@ impl HintedScheduler {
             tx.refresh_if_needed();
 
             // Check if block exists
-            if let Some(block) = self.ledger.any().get_block(tx, &current_hash) {
+            if let Some(block) = self.ledger.any().get_block2(tx, &current_hash) {
                 // Ensure block is not already confirmed
                 if self.confirming_set.exists(&current_hash)
                     || self
@@ -172,7 +172,9 @@ impl HintedScheduler {
                 }
 
                 // Try to insert it into AEC as hinted election
-                let (inserted, _) = self.active.insert(block, ElectionBehavior::Hinted, None);
+                let (inserted, _) = self
+                    .active
+                    .insert(block.block, ElectionBehavior::Hinted, None);
                 self.stats.inc(
                     StatType::Hinting,
                     if inserted {

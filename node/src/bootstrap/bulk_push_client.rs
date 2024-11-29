@@ -136,7 +136,7 @@ impl BulkPushClientExt for Arc<BulkPushClient> {
             if !finished {
                 {
                     let txn = self.ledger.read_txn();
-                    block = self.ledger.any().get_block(&txn, &guard.current_target.0);
+                    block = self.ledger.any().get_block2(&txn, &guard.current_target.0);
                 }
                 if block.is_none() {
                     guard.current_target.0 = BlockHash::zero();

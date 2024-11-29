@@ -129,7 +129,7 @@ impl PriorityScheduler {
                 .unwrap(),
         };
 
-        let block = self.ledger.any().get_block(tx, &hash).unwrap();
+        let block = self.ledger.any().get_block2(tx, &hash).unwrap();
 
         if !self.ledger.dependents_confirmed(tx, &block) {
             self.stats
@@ -147,7 +147,7 @@ impl PriorityScheduler {
 
         let added = self
             .find_bucket(balance_priority)
-            .push(account_info.modified, block);
+            .push(account_info.modified, block.block);
 
         if added {
             self.stats

@@ -23,7 +23,7 @@ fn get_genesis_block() {
     let block = ctx
         .ledger
         .any()
-        .get_block(&txn, &DEV_GENESIS_HASH)
+        .get_block2(&txn, &DEV_GENESIS_HASH)
         .expect("genesis block not found");
 
     assert_eq!(block.block_type(), BlockType::LegacyOpen);

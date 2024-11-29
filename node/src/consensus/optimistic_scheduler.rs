@@ -190,7 +190,7 @@ impl OptimisticScheduler {
         let Some(head) = any.account_head(tx, &account) else {
             return;
         };
-        if let Some(block) = any.get_block(tx, &head) {
+        if let Some(block) = any.get_block2(tx, &head) {
             // Ensure block is not already confirmed
             if !self.confirming_set.exists(&block.hash())
                 || self
@@ -200,9 +200,9 @@ impl OptimisticScheduler {
             {
                 // Try to insert it into AEC
                 // We check for AEC vacancy inside our predicate
-                let (inserted, _) = self
-                    .active
-                    .insert(block, ElectionBehavior::Optimistic, None);
+                let (inserted, _) =
+                    self.active
+                        .insert(block.block, ElectionBehavior::Optimistic, None);
                 self.stats.inc(
                     StatType::OptimisticScheduler,
                     if inserted {

@@ -703,8 +703,8 @@ fn sideband_height() {
     ctx.ledger.process(&mut txn, &mut open).unwrap();
 
     let assert_sideband_height = |hash: &BlockHash, expected_height: u64| {
-        let block = ctx.ledger.any().get_block(&txn, hash).unwrap();
-        assert_eq!(block.sideband().unwrap().height, expected_height);
+        let block = ctx.ledger.any().get_block2(&txn, hash).unwrap();
+        assert_eq!(block.height(), expected_height);
     };
 
     assert_sideband_height(&DEV_GENESIS_HASH, 1);

@@ -355,7 +355,7 @@ impl VoteApplierExt for Arc<VoteApplier> {
             * 4;
         let block = {
             let tx = self.ledger.read_txn();
-            self.ledger.any().get_block2(&tx, &hash)
+            self.ledger.any().get_block(&tx, &hash)
         };
         if let Some(block) = block {
             trace!(block = ?block,"process confirmed");

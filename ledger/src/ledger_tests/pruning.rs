@@ -65,7 +65,7 @@ fn pruning_action() {
             .get_pending(&txn, &PendingKey::new(genesis.account(), send1.hash())),
         None
     );
-    let receive1_stored = ctx.ledger.any().get_block2(&txn, &receive1.hash()).unwrap();
+    let receive1_stored = ctx.ledger.any().get_block(&txn, &receive1.hash()).unwrap();
     assert_eq!(receive1, receive1_stored.block);
     assert_eq!(receive1_stored.height(), 4);
     assert_eq!(

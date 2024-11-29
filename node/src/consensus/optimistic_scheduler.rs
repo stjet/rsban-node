@@ -190,7 +190,7 @@ impl OptimisticScheduler {
         let Some(head) = any.account_head(tx, &account) else {
             return;
         };
-        if let Some(block) = any.get_block2(tx, &head) {
+        if let Some(block) = any.get_block(tx, &head) {
             // Ensure block is not already confirmed
             if !self.confirming_set.exists(&block.hash())
                 || self

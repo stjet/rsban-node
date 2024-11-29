@@ -678,7 +678,7 @@ impl BlockProcessorLoop {
             let successor_block = self
                 .ledger
                 .any()
-                .get_block2(transaction, &successor)
+                .get_block(transaction, &successor)
                 .unwrap();
             if successor != hash {
                 // Replace our block with the winner and roll back any dependent blocks

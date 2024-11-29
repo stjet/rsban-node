@@ -38,7 +38,7 @@ impl<'a> BlockCementer<'a> {
         let mut stack = VecDeque::new();
         stack.push_back(target_hash);
         while let Some(&hash) = stack.back() {
-            let block = self.any.get_block2(txn, &hash).unwrap();
+            let block = self.any.get_block(txn, &hash).unwrap();
 
             let dependents =
                 block.dependent_blocks(&self.constants.epochs, &self.constants.genesis_account);

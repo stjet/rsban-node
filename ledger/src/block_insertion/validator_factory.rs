@@ -67,7 +67,7 @@ impl<'a> BlockValidatorFactory<'a> {
         if !self.block.previous().is_zero() {
             self.ledger
                 .any()
-                .get_block2(self.txn, &self.block.previous())
+                .get_block(self.txn, &self.block.previous())
         } else {
             None
         }

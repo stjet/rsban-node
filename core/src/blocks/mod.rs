@@ -569,12 +569,28 @@ impl SavedBlock {
         self.sideband.height
     }
 
+    pub fn timestamp(&self) -> u64 {
+        self.sideband.timestamp
+    }
+
+    pub fn subtype(&self) -> BlockSubType {
+        self.sideband.details.subtype()
+    }
+
     pub fn successor(&self) -> Option<BlockHash> {
         if self.sideband.successor.is_zero() {
             None
         } else {
             Some(self.sideband.successor)
         }
+    }
+
+    pub fn balance(&self) -> Amount {
+        self.sideband.balance
+    }
+
+    pub fn epoch(&self) -> Epoch {
+        self.sideband.details.epoch
     }
 }
 

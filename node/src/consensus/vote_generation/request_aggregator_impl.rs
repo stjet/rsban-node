@@ -33,13 +33,13 @@ impl<'a> RequestAggregatorImpl<'a> {
             let final_vote_hashes = self.ledger.store.final_vote.get(self.tx, *root);
             if !final_vote_hashes.is_empty() {
                 generate_final_vote = true;
-                block = self.ledger.any().get_block2(self.tx, &final_vote_hashes[0]);
+                block = self.ledger.any().get_block(self.tx, &final_vote_hashes[0]);
                 // Allow same root vote
                 if let Some(b) = &block {
                     if final_vote_hashes.len() > 1 {
                         // WTF? This shouldn't be done like this
                         self.to_generate_final.push(Arc::new(b.block.clone()));
-                        block = self.ledger.any().get_block2(self.tx, &final_vote_hashes[1]);
+                        block = self.ledger.any().get_block(self.tx, &final_vote_hashes[1]);
                         debug_assert!(final_vote_hashes.len() == 2);
                     }
                 }
@@ -47,7 +47,7 @@ impl<'a> RequestAggregatorImpl<'a> {
 
             // 4. Ledger by hash
             if block.is_none() {
-                block = self.ledger.any().get_block2(self.tx, hash);
+                block = self.ledger.any().get_block(self.tx, hash);
                 // Confirmation status. Generate final votes for confirmed
                 if let Some(b) = &block {
                     let conf_height = self
@@ -65,8 +65,7 @@ impl<'a> RequestAggregatorImpl<'a> {
                 // Search for block root
                 let successor = self.ledger.any().block_successor(self.tx, &(*root).into());
                 if let Some(successor) = successor {
-                    let successor_block =
-                        self.ledger.any().get_block2(self.tx, &successor).unwrap();
+                    let successor_block = self.ledger.any().get_block(self.tx, &successor).unwrap();
                     block = Some(successor_block);
 
                     // Confirmation status. Generate final votes for confirmed successor

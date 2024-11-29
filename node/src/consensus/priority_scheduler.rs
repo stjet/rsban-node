@@ -129,7 +129,7 @@ impl PriorityScheduler {
                 .unwrap(),
         };
 
-        let block = self.ledger.any().get_block2(tx, &hash).unwrap();
+        let block = self.ledger.any().get_block(tx, &hash).unwrap();
 
         if !self.ledger.dependents_confirmed(tx, &block) {
             self.stats

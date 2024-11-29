@@ -355,7 +355,7 @@ impl BootstrapServerImpl {
     ) -> VecDeque<Block> {
         let mut result = VecDeque::new();
         if !start_block.is_zero() {
-            let mut current = self.ledger.any().get_block2(tx, &start_block);
+            let mut current = self.ledger.any().get_block(tx, &start_block);
             while let Some(c) = current.take() {
                 let successor = c.successor().unwrap_or_default();
                 result.push_back(c.block);
@@ -363,7 +363,7 @@ impl BootstrapServerImpl {
                 if result.len() == count {
                     break;
                 }
-                current = self.ledger.any().get_block2(tx, &successor);
+                current = self.ledger.any().get_block(tx, &successor);
             }
         }
         result

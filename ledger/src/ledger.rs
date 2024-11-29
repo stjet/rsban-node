@@ -399,7 +399,7 @@ impl Ledger {
 
     pub fn block_text(&self, hash: &BlockHash) -> anyhow::Result<String> {
         let txn = self.store.tx_begin_read();
-        match self.any().get_block2(&txn, hash) {
+        match self.any().get_block(&txn, hash) {
             Some(block) => block.to_json(),
             None => Ok(String::new()),
         }
@@ -455,7 +455,7 @@ impl Ledger {
 
     pub fn version(&self, txn: &dyn Transaction, hash: &BlockHash) -> Epoch {
         self.any()
-            .get_block2(txn, hash)
+            .get_block(txn, hash)
             .map(|block| block.epoch())
             .unwrap_or(Epoch::Epoch0)
     }
@@ -479,7 +479,7 @@ impl Ledger {
     ) -> Option<Block> {
         // get the cemented frontier
         let info = self.store.confirmation_height.get(txn, destination)?;
-        let mut possible_receive_block = self.any().get_block2(txn, &info.frontier);
+        let mut possible_receive_block = self.any().get_block(txn, &info.frontier);
 
         // walk down the chain until the source field of a receive block matches the send block hash
         while let Some(current) = possible_receive_block {
@@ -488,7 +488,7 @@ impl Ledger {
                 return Some(current.block);
             }
 
-            possible_receive_block = self.any().get_block2(txn, &current.previous());
+            possible_receive_block = self.any().get_block(txn, &current.previous());
         }
 
         None
@@ -539,7 +539,7 @@ impl Ledger {
         let genesis_hash = self.constants.genesis_block.hash();
 
         while !hash.is_zero() && hash != genesis_hash {
-            if let Some(block) = self.any().get_block2(txn, &hash) {
+            if let Some(block) = self.any().get_block(txn, &hash) {
                 assert!(self.confirmed().block_exists_or_pruned(txn, &hash));
                 self.store.block.del(txn, &hash);
                 self.store.pruned.put(txn, &hash);

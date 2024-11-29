@@ -608,6 +608,10 @@ impl SavedBlock {
         self.sideband.details.is_epoch
     }
 
+    pub fn is_receive(&self) -> bool {
+        self.sideband.details.is_receive
+    }
+
     pub fn source_epoch(&self) -> Epoch {
         self.sideband.source_epoch
     }

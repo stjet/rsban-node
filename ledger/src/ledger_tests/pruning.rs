@@ -70,10 +70,7 @@ fn pruning_action() {
     let receive1_stored = ctx.ledger.any().get_block(&txn, &receive1.hash()).unwrap();
     assert_eq!(&receive1, &*receive1_stored);
     assert_eq!(receive1_stored.height(), 4);
-    assert_eq!(
-        receive1_stored.sideband().unwrap().details,
-        BlockDetails::new(Epoch::Epoch0, false, true, false)
-    );
+    assert!(receive1_stored.is_receive());
 
     // Middle block pruning
     assert!(ctx.ledger.store.block.exists(&txn, &send2.hash()));

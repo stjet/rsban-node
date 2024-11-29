@@ -504,8 +504,8 @@ fn unchecked_epoch_invalid() {
     let epoch2_store = node1.block(&epoch2.hash()).unwrap();
     assert_eq!(epoch2_store.epoch(), Epoch::Epoch0);
     assert!(epoch2_store.is_send());
-    assert_eq!(epoch2_store.sideband().unwrap().details.is_epoch, false);
-    assert_eq!(epoch2_store.sideband().unwrap().details.is_receive, false);
+    assert_eq!(epoch2_store.is_epoch(), false);
+    assert_eq!(epoch2_store.is_receive(), false);
 }
 
 #[test]

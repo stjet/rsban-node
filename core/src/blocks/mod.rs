@@ -28,7 +28,7 @@ mod builders;
 pub use builders::*;
 
 use crate::{
-    utils::{BufferWriter, Deserialize, MemoryStream, PropertyTree, SerdePropertyTree, Stream},
+    utils::{BufferWriter, Deserialize, MemoryStream, PropertyTree, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, Epoch, Epochs, FullHash, Link, PrivateKey,
     PublicKey, QualifiedRoot, Root, Signature,
 };
@@ -155,9 +155,7 @@ pub trait BlockBase: FullHash {
     fn serialize_without_block_type(&self, writer: &mut dyn BufferWriter);
     fn serialize_json(&self, writer: &mut dyn PropertyTree) -> anyhow::Result<()>;
     fn to_json(&self) -> anyhow::Result<String> {
-        let mut writer = SerdePropertyTree::new();
-        self.serialize_json(&mut writer)?;
-        Ok(writer.to_json())
+        Ok(serde_json::to_string(&self.json_representation())?)
     }
     fn json_representation(&self) -> JsonBlock;
     fn root(&self) -> Root;

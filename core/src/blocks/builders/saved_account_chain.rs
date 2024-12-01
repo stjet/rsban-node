@@ -342,7 +342,6 @@ impl SavedAccountChain {
             details: BlockDetails::new(self.epoch, false, false, false),
             source_epoch,
         };
-        block.set_sideband(sideband.clone());
 
         if !self.blocks.is_empty() {
             let previous = self.blocks.last_mut().unwrap();

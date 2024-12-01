@@ -1019,7 +1019,7 @@ pub trait WalletsExt {
         account: Account,
         work: u64,
         generate_work: bool,
-    ) -> Result<Option<Block>, WalletsError>;
+    ) -> Result<Option<SavedBlock>, WalletsError>;
 
     fn receive_action(
         &self,
@@ -1030,7 +1030,7 @@ pub trait WalletsExt {
         account: Account,
         work: u64,
         generate_work: bool,
-    ) -> Option<Block>;
+    ) -> Option<SavedBlock>;
 
     fn receive_async_wallet(
         &self,
@@ -1039,7 +1039,7 @@ pub trait WalletsExt {
         representative: PublicKey,
         amount: Amount,
         account: Account,
-        action: Box<dyn Fn(Option<Block>) + Send + Sync>,
+        action: Box<dyn Fn(Option<SavedBlock>) + Send + Sync>,
         work: u64,
         generate_work: bool,
     );
@@ -1051,7 +1051,7 @@ pub trait WalletsExt {
         representative: PublicKey,
         amount: Amount,
         account: Account,
-        action: Box<dyn Fn(Option<Block>) + Send + Sync>,
+        action: Box<dyn Fn(Option<SavedBlock>) + Send + Sync>,
         work: u64,
         generate_work: bool,
     ) -> Result<(), WalletsError>;
@@ -1065,7 +1065,7 @@ pub trait WalletsExt {
         account: Account,
         work: u64,
         generate_work: bool,
-    ) -> Result<Block, ()>;
+    ) -> Result<SavedBlock, ()>;
 
     fn send_async_wallet(
         &self,
@@ -1172,7 +1172,7 @@ impl WalletsExt for Arc<Wallets> {
         account: Account,
         work: u64,
         generate_work: bool,
-    ) -> Result<Option<Block>, WalletsError> {
+    ) -> Result<Option<SavedBlock>, WalletsError> {
         let guard = self.mutex.lock().unwrap();
         let wallet = Wallets::get_wallet(&guard, wallet_id)?;
         let tx = self.env.tx_begin_read();
@@ -1529,7 +1529,7 @@ impl WalletsExt for Arc<Wallets> {
         account: Account,
         mut work: u64,
         generate_work: bool,
-    ) -> Option<Block> {
+    ) -> Option<SavedBlock> {
         if amount < self.node_config.receive_minimum {
             warn!(
                 "Not receiving block {} due to minimum receive threshold",
@@ -1597,7 +1597,6 @@ impl WalletsExt for Arc<Wallets> {
         let details = BlockDetails::new(epoch, false, true, false);
         self.action_complete(Arc::clone(wallet), block, account, generate_work, &details)
             .ok()
-            .map(|b| b.into())
     }
 
     fn receive_async_wallet(
@@ -1607,7 +1606,7 @@ impl WalletsExt for Arc<Wallets> {
         representative: PublicKey,
         amount: Amount,
         account: Account,
-        action: Box<dyn Fn(Option<Block>) + Send + Sync>,
+        action: Box<dyn Fn(Option<SavedBlock>) + Send + Sync>,
         work: u64,
         generate_work: bool,
     ) {
@@ -1637,7 +1636,7 @@ impl WalletsExt for Arc<Wallets> {
         representative: PublicKey,
         amount: Amount,
         account: Account,
-        action: Box<dyn Fn(Option<Block>) + Send + Sync>,
+        action: Box<dyn Fn(Option<SavedBlock>) + Send + Sync>,
         work: u64,
         generate_work: bool,
     ) -> Result<(), WalletsError> {
@@ -1674,7 +1673,7 @@ impl WalletsExt for Arc<Wallets> {
         account: Account,
         work: u64,
         generate_work: bool,
-    ) -> Result<Block, ()> {
+    ) -> Result<SavedBlock, ()> {
         let result = Arc::new((Condvar::new(), Mutex::new((false, None)))); // done, result
         let result_clone = Arc::clone(&result);
         self.receive_async_wallet(

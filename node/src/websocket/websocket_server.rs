@@ -8,7 +8,7 @@ use crate::{
     Telemetry,
 };
 use rsnano_core::{
-    Account, Amount, Block, BlockHash, BlockType, Vote, VoteCode, VoteWithWeightInfo,
+    Account, Amount, Block, BlockHash, BlockType, SavedBlock, Vote, VoteCode, VoteWithWeightInfo,
 };
 use rsnano_messages::TelemetryData;
 use rsnano_websocket_messages::{new_block_arrived_message, OutgoingMessageEnvelope, Topic};
@@ -114,13 +114,15 @@ pub fn create_websocket_server(
     ));
 
     let server_w: std::sync::Weak<WebsocketListener> = Arc::downgrade(&server);
-    process_live_dispatcher.add_new_unconfirmed_block_callback(Arc::new(move |block: &Block| {
-        if let Some(server) = server_w.upgrade() {
-            if server.any_subscriber(Topic::NewUnconfirmedBlock) {
-                server.broadcast(&new_block_arrived_message(block));
+    process_live_dispatcher.add_new_unconfirmed_block_callback(Arc::new(
+        move |block: &SavedBlock| {
+            if let Some(server) = server_w.upgrade() {
+                if server.any_subscriber(Topic::NewUnconfirmedBlock) {
+                    server.broadcast(&new_block_arrived_message(block));
+                }
             }
-        }
-    }));
+        },
+    ));
 
     let server_w: std::sync::Weak<WebsocketListener> = Arc::downgrade(&server);
     bootstrap_initiator.on_bootstrap_started(Arc::new(move |bootstrap_callback_data| {

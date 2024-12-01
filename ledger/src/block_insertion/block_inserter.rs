@@ -115,7 +115,6 @@ mod tests {
         let result = insert(&ledger, &mut block, &instructions);
 
         let expected_block = SavedBlock::new(block.clone(), instructions.set_sideband.clone());
-        assert_eq!(block.sideband().unwrap(), &instructions.set_sideband);
         assert_eq!(result.saved_blocks, vec![expected_block]);
         assert_eq!(
             result.saved_accounts,

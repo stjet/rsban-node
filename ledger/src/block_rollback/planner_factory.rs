@@ -9,11 +9,15 @@ use rsnano_store_lmdb::Transaction;
 pub(crate) struct RollbackPlannerFactory<'a> {
     ledger: &'a Ledger,
     txn: &'a dyn Transaction,
-    head_block: &'a Block,
+    head_block: &'a SavedBlock,
 }
 
 impl<'a> RollbackPlannerFactory<'a> {
-    pub(crate) fn new(ledger: &'a Ledger, txn: &'a dyn Transaction, head_block: &'a Block) -> Self {
+    pub(crate) fn new(
+        ledger: &'a Ledger,
+        txn: &'a dyn Transaction,
+        head_block: &'a SavedBlock,
+    ) -> Self {
         Self {
             ledger,
             txn,
@@ -25,10 +29,7 @@ impl<'a> RollbackPlannerFactory<'a> {
         let account = self.get_account(self.head_block)?;
         let planner = RollbackPlanner {
             epochs: &self.ledger.constants.epochs,
-            head_block2: SavedBlock::new(
-                self.head_block.clone(),
-                self.head_block.sideband().unwrap().clone(),
-            ),
+            head_block: self.head_block.clone(),
             account,
             current_account_info: self.load_account(&account),
             previous_representative: self.get_previous_representative()?,

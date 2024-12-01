@@ -1126,8 +1126,8 @@ fn epoch_2_validation() {
                 None,
             )
             .unwrap();
-        assert_eq!(send.sideband().unwrap().details.epoch, Epoch::Epoch2);
-        assert_eq!(send.sideband().unwrap().source_epoch, Epoch::Epoch0); // Not used for send state blocks
+        assert_eq!(send.epoch(), Epoch::Epoch2);
+        assert_eq!(send.source_epoch(), Epoch::Epoch0); // Not used for send state blocks
 
         let receive = node
             .wallets
@@ -1147,8 +1147,8 @@ fn epoch_2_validation() {
                 DEV_NETWORK_PARAMS.work.difficulty_block(&receive)
                     >= DEV_NETWORK_PARAMS.work.epoch_2_receive
             );
-            assert_eq!(receive.sideband().unwrap().details.epoch, Epoch::Epoch2);
-            assert_eq!(receive.sideband().unwrap().source_epoch, Epoch::Epoch2);
+            assert_eq!(receive.epoch(), Epoch::Epoch2);
+            assert_eq!(receive.source_epoch(), Epoch::Epoch2);
             break;
         }
     }
@@ -1256,7 +1256,7 @@ fn epoch_2_receive_propagation() {
             );
             let tx = node.ledger.read_txn();
             assert_eq!(node.ledger.version(&tx, &receive2.hash()), Epoch::Epoch2);
-            assert_eq!(receive2.sideband().unwrap().source_epoch, Epoch::Epoch2);
+            assert_eq!(receive2.source_epoch(), Epoch::Epoch2);
             break;
         }
     }
@@ -1345,7 +1345,7 @@ fn epoch_2_receive_unopened() {
             );
             let tx = node.ledger.read_txn();
             assert_eq!(node.ledger.version(&tx, &receive1.hash()), Epoch::Epoch2);
-            assert_eq!(receive1.sideband().unwrap().source_epoch, Epoch::Epoch1);
+            assert_eq!(receive1.source_epoch(), Epoch::Epoch1);
             break;
         }
     }

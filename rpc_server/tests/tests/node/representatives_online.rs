@@ -66,7 +66,7 @@ fn representatives_online() {
         )
         .unwrap()
         .unwrap();
-    node2.process_active(receive.clone());
+    node2.process_active(receive.clone().into());
 
     // Ensure both nodes process the receive
     assert_timely_msg(

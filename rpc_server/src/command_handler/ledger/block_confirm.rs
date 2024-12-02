@@ -14,10 +14,7 @@ impl RpcCommandHandler {
         {
             // Start new confirmation for unconfirmed (or not being confirmed) block
             if !self.node.confirming_set.exists(&args.hash) {
-                self.node
-                    .election_schedulers
-                    .manual
-                    .push(block.clone().into(), None);
+                self.node.election_schedulers.manual.push(block, None);
             }
         } else {
             // Add record in confirmation history for confirmed block

@@ -105,7 +105,7 @@ impl ElectionSchedulers {
     }
 
     pub fn add_manual(&self, block: SavedBlock) {
-        self.manual.push(block.into(), None);
+        self.manual.push(block, None);
     }
 
     pub fn start(&self, priority_scheduler_enabled: bool) {

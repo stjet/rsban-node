@@ -3347,12 +3347,7 @@ fn fork_open_flip() {
     assert_ne!(open1.hash(), open2.hash());
 
     // give block open1 to node1, manually trigger an election for open1 and ensure it is in the ledger
-    node1.process_active(open1.clone());
-    assert_timely_msg(
-        Duration::from_secs(5),
-        || node1.block_exists(&open1.hash()),
-        "open1 not found on node1",
-    );
+    let open1 = node1.process(open1).unwrap();
     node1.election_schedulers.manual.push(open1.clone(), None);
     assert_timely_msg(
         Duration::from_secs(5),
@@ -3368,6 +3363,7 @@ fn fork_open_flip() {
     system.initialization_blocks.push(open2.clone());
     let node2 = system.make_node();
     system.initialization_blocks.clear();
+    let open2 = node2.block(&open2.hash()).unwrap();
 
     // ensure open2 is in node2 ledger (and therefore has sideband) and manually trigger an election for open2
     assert_timely_msg(
@@ -3399,8 +3395,8 @@ fn fork_open_flip() {
     );
 
     // Notify both nodes of both blocks, both nodes will become aware that a fork exists
-    node1.process_active(open2.clone());
-    node2.process_active(open1.clone());
+    node1.process_active(open2.clone().into());
+    node2.process_active(open1.clone().into());
 
     assert_timely_eq(Duration::from_secs(5), || election.vote_count(), 2); // one more than expected due to elections having dummy votes
 

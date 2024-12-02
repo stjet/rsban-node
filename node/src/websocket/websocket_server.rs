@@ -8,7 +8,7 @@ use crate::{
     Telemetry,
 };
 use rsnano_core::{
-    Account, Amount, Block, BlockHash, BlockType, SavedBlock, Vote, VoteCode, VoteWithWeightInfo,
+    Account, Amount, BlockHash, BlockType, SavedBlock, Vote, VoteCode, VoteWithWeightInfo,
 };
 use rsnano_messages::TelemetryData;
 use rsnano_websocket_messages::{new_block_arrived_message, OutgoingMessageEnvelope, Topic};

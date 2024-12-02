@@ -28,7 +28,7 @@ mod votes {
             &DEV_GENESIS_KEY,
             node1.work_generate_dev(*DEV_GENESIS_HASH),
         ));
-        node1.process(send1.clone()).unwrap();
+        let send1 = node1.process(send1).unwrap();
         node1
             .election_schedulers
             .manual

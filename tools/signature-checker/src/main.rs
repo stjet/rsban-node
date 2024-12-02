@@ -1,4 +1,4 @@
-use rsnano_core::{Block, Epochs, PublicKey, SavedBlock, Signature};
+use rsnano_core::{Epochs, PublicKey, SavedBlock, Signature};
 use rsnano_ledger::LedgerConstants;
 use rsnano_store_lmdb::LmdbStore;
 use std::{

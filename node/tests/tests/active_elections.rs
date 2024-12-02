@@ -935,7 +935,7 @@ fn broadcast_block_on_activation() {
     ));
 
     // Adds a block to the first node
-    node1.process_active(send1.clone());
+    let send1 = node1.process(send1.clone()).unwrap();
 
     // The second node should not have the block
     assert_never(Duration::from_millis(500), || {
@@ -943,7 +943,7 @@ fn broadcast_block_on_activation() {
     });
 
     // Activating the election should broadcast the block
-    node1.election_schedulers.add_manual(send1.clone().into());
+    node1.election_schedulers.add_manual(send1.clone());
     assert_timely(Duration::from_secs(5), || {
         node1.active.active_root(&send1.qualified_root())
     });

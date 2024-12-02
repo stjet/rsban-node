@@ -28,7 +28,7 @@ mod builders;
 pub use builders::*;
 
 use crate::{
-    utils::{BufferWriter, Deserialize, MemoryStream, PropertyTree, SerdePropertyTree, Stream},
+    utils::{BufferWriter, Deserialize, MemoryStream, PropertyTree, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, Epoch, Epochs, FullHash, Link, PrivateKey,
     PublicKey, QualifiedRoot, Root, Signature,
 };
@@ -155,9 +155,7 @@ pub trait BlockBase: FullHash {
     fn serialize_without_block_type(&self, writer: &mut dyn BufferWriter);
     fn serialize_json(&self, writer: &mut dyn PropertyTree) -> anyhow::Result<()>;
     fn to_json(&self) -> anyhow::Result<String> {
-        let mut writer = SerdePropertyTree::new();
-        self.serialize_json(&mut writer)?;
-        Ok(writer.to_json())
+        Ok(serde_json::to_string(&self.json_representation())?)
     }
     fn json_representation(&self) -> JsonBlock;
     fn root(&self) -> Root;
@@ -608,6 +606,10 @@ impl SavedBlock {
         self.sideband.details.is_epoch
     }
 
+    pub fn is_receive(&self) -> bool {
+        self.sideband.details.is_receive
+    }
+
     pub fn source_epoch(&self) -> Epoch {
         self.sideband.source_epoch
     }
@@ -622,6 +624,10 @@ impl SavedBlock {
             Block::State(b) => b.balance(),
             _ => self.sideband.balance,
         }
+    }
+
+    pub fn details(&self) -> &BlockDetails {
+        &self.sideband.details
     }
 }
 

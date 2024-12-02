@@ -52,6 +52,7 @@ pub type BlockProcessorCallback = Box<dyn Fn(BlockStatus) + Send + Sync>;
 
 pub struct BlockProcessorContext {
     pub block: Mutex<Block>,
+    pub saved_block: Mutex<Option<SavedBlock>>,
     pub source: BlockSource,
     callback: Option<BlockProcessorCallback>,
     pub arrival: Instant,
@@ -66,6 +67,7 @@ impl BlockProcessorContext {
     ) -> Self {
         Self {
             block: Mutex::new(block),
+            saved_block: Mutex::new(None),
             source,
             arrival: Instant::now(),
             callback,
@@ -254,7 +256,7 @@ impl BlockProcessor {
         self.processor_loop.queue_len(source)
     }
 
-    pub fn add_block_processed_observer(
+    pub fn on_block_processed(
         &self,
         observer: Box<dyn Fn(BlockStatus, &BlockProcessorContext) + Send + Sync>,
     ) {
@@ -291,7 +293,7 @@ impl BlockProcessor {
         &self,
         block: Arc<Block>,
         source: BlockSource,
-    ) -> Option<(BlockStatus, Block)> {
+    ) -> anyhow::Result<Result<SavedBlock, BlockStatus>> {
         self.processor_loop.add_blocking(block, source)
     }
 
@@ -463,7 +465,7 @@ impl BlockProcessorLoop {
         &self,
         block: Arc<Block>,
         source: BlockSource,
-    ) -> Option<(BlockStatus, Block)> {
+    ) -> anyhow::Result<Result<SavedBlock, BlockStatus>> {
         self.stats
             .inc(StatType::Blockprocessor, DetailType::ProcessBlocking);
         debug!(
@@ -482,12 +484,13 @@ impl BlockProcessorLoop {
         self.add_impl(ctx.clone(), ChannelId::LOOPBACK);
 
         match waiter.wait_result() {
-            Some(status) => Some((status, ctx.block.lock().unwrap().clone())),
+            Some(BlockStatus::Progress) => Ok(Ok(ctx.saved_block.lock().unwrap().clone().unwrap())),
+            Some(status) => Ok(Err(status)),
             None => {
                 self.stats
                     .inc(StatType::Blockprocessor, DetailType::ProcessBlockingTimeout);
                 error!("Block dropped when processing: {}", hash);
-                None
+                Err(anyhow!("Block dropped when processing"))
             }
         }
     }
@@ -598,12 +601,18 @@ impl BlockProcessorLoop {
     ) -> BlockStatus {
         let mut block = context.block.lock().unwrap().clone();
         let hash = block.hash();
+        let mut saved_block = None;
 
         let result = match self.ledger.process(txn, &mut block) {
-            Ok(()) => BlockStatus::Progress,
+            Ok(saved) => {
+                saved_block = Some(saved.clone());
+                *context.saved_block.lock().unwrap() = Some(saved);
+                BlockStatus::Progress
+            }
             Err(r) => r,
         };
 
+        // reassign to copy sideband
         *context.block.lock().unwrap() = block.clone();
 
         self.stats
@@ -618,10 +627,11 @@ impl BlockProcessorLoop {
                 /* For send blocks check epoch open unchecked (gap pending).
                 For state blocks check only send subtype and only if block epoch is not last epoch.
                 If epoch is last, then pending entry shouldn't trigger same epoch open block for destination account. */
+                let block = saved_block.unwrap();
                 if block.block_type() == BlockType::LegacySend
                     || block.block_type() == BlockType::State
                         && block.is_send()
-                        && block.sideband().unwrap().details.epoch < Epoch::MAX
+                        && block.epoch() < Epoch::MAX
                 {
                     /* block->destination () for legacy send blocks
                     block->link () for state blocks (send subtype) */

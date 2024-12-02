@@ -21,7 +21,7 @@ use rsnano_store_lmdb::{
     LmdbRepWeightStore, LmdbStore, LmdbVersionStore, LmdbWriteTransaction, Transaction,
 };
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::HashMap,
     net::SocketAddrV6,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -572,15 +572,34 @@ impl Ledger {
         pruned_count
     }
 
-    pub fn dependent_blocks(&self, txn: &dyn Transaction, block: &Block) -> DependentBlocks {
-        DependentBlocksFinder::new(self, txn).find_dependent_blocks(block)
-    }
-
-    pub fn dependents_confirmed(&self, txn: &dyn Transaction, block: &Block) -> bool {
+    pub fn dependents_confirmed(&self, txn: &dyn Transaction, block: &SavedBlock) -> bool {
         self.dependent_blocks(txn, block)
             .iter()
             .all(|hash| self.confirmed().block_exists_or_pruned(txn, hash))
     }
+
+    pub fn dependent_blocks(&self, txn: &dyn Transaction, block: &SavedBlock) -> DependentBlocks {
+        DependentBlocksFinder::new(self, txn).find_dependent_blocks(block)
+    }
+
+    pub fn dependents_confirmed_for_unsaved_block(
+        &self,
+        txn: &dyn Transaction,
+        block: &Block,
+    ) -> bool {
+        self.dependent_blocks_for_unsaved_block(txn, block)
+            .iter()
+            .all(|hash| self.confirmed().block_exists_or_pruned(txn, hash))
+    }
+
+    fn dependent_blocks_for_unsaved_block(
+        &self,
+        txn: &dyn Transaction,
+        block: &Block,
+    ) -> DependentBlocks {
+        DependentBlocksFinder::new(self, txn).find_dependent_blocks_for_unsaved_block(block)
+    }
+
     ///
     /// Rollback blocks until `block' doesn't exist or it tries to penetrate the confirmation height
     pub fn rollback(
@@ -602,11 +621,11 @@ impl Ledger {
         &self,
         txn: &mut LmdbWriteTransaction,
         block: &mut Block,
-    ) -> Result<(), BlockStatus> {
+    ) -> Result<SavedBlock, BlockStatus> {
         let validator = BlockValidatorFactory::new(self, txn, block).create_validator();
         let instructions = validator.validate()?;
-        BlockInserter::new(self, txn, block, &instructions).insert();
-        Ok(())
+        let inserted = BlockInserter::new(self, txn, block, &instructions).insert();
+        Ok(inserted)
     }
 
     pub fn get_block(&self, txn: &dyn Transaction, hash: &BlockHash) -> Option<SavedBlock> {

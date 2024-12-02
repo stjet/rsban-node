@@ -39,7 +39,7 @@ impl<'a> BlockInserter<'a> {
         }
     }
 
-    pub(crate) fn insert(&mut self) {
+    pub(crate) fn insert(&mut self) -> SavedBlock {
         let sideband = self.instructions.set_sideband.clone();
         self.block.set_sideband(sideband.clone());
         let saved_block = SavedBlock::new(self.block.clone(), sideband);
@@ -56,6 +56,8 @@ impl<'a> BlockInserter<'a> {
             .cache
             .block_count
             .fetch_add(1, Ordering::SeqCst);
+
+        saved_block
     }
 
     fn update_account(&mut self) {
@@ -113,7 +115,6 @@ mod tests {
         let result = insert(&ledger, &mut block, &instructions);
 
         let expected_block = SavedBlock::new(block.clone(), instructions.set_sideband.clone());
-        assert_eq!(block.sideband().unwrap(), &instructions.set_sideband);
         assert_eq!(result.saved_blocks, vec![expected_block]);
         assert_eq!(
             result.saved_accounts,

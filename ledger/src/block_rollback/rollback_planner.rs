@@ -1,6 +1,6 @@
 use rsnano_core::{
-    Account, AccountInfo, Amount, Block, BlockHash, BlockSubType, ConfirmationHeightInfo, Epoch,
-    Epochs, PendingInfo, PendingKey, PublicKey, SavedBlock,
+    Account, AccountInfo, Amount, BlockHash, BlockSubType, ConfirmationHeightInfo, Epoch, Epochs,
+    PendingInfo, PendingKey, PublicKey, SavedBlock,
 };
 
 pub(crate) enum RollbackStep {
@@ -26,7 +26,7 @@ pub(crate) struct RollbackInstructions {
 /// Create RollbackInstructions for a given block
 pub(crate) struct RollbackPlanner<'a> {
     pub epochs: &'a Epochs,
-    pub head_block2: SavedBlock,
+    pub head_block: SavedBlock,
     pub account: Account,
     pub current_account_info: AccountInfo,
     pub previous_representative: Option<PublicKey>,
@@ -50,7 +50,7 @@ impl<'a> RollbackPlanner<'a> {
         }
 
         let instructions = RollbackInstructions {
-            block_hash: self.head_block2.hash(),
+            block_hash: self.head_block.hash(),
             account: self.account,
             old_account_info: self.current_account_info.clone(),
             new_representative: self.previous_representative,
@@ -66,7 +66,7 @@ impl<'a> RollbackPlanner<'a> {
     }
 
     fn ensure_block_is_not_confirmed(&self) -> anyhow::Result<()> {
-        if self.head_block2.height() <= self.confirmation_height.height {
+        if self.head_block.height() <= self.confirmation_height.height {
             bail!("Only unconfirmed blocks can be rolled back")
         }
 
@@ -92,14 +92,14 @@ impl<'a> RollbackPlanner<'a> {
     fn add_pending(&self) -> Option<(PendingKey, PendingInfo)> {
         match self.block_sub_type() {
             BlockSubType::Open | BlockSubType::Receive => {
-                let source_hash = self.head_block2.source_or_link();
+                let source_hash = self.head_block.source_or_link();
                 // Pending account entry can be incorrect if source block was pruned. But it's not affecting correct ledger processing
                 Some((
                     PendingKey::new(self.account, source_hash),
                     PendingInfo::new(
                         self.linked_account,
                         self.current_account_info.balance - self.previous_balance(),
-                        self.head_block2.source_epoch(),
+                        self.head_block.source_epoch(),
                     ),
                 ))
             }
@@ -110,8 +110,8 @@ impl<'a> RollbackPlanner<'a> {
     fn remove_pending(&self) -> Option<PendingKey> {
         if self.block_sub_type() == BlockSubType::Send {
             Some(PendingKey::new(
-                self.head_block2.destination_or_link(),
-                self.head_block2.hash(),
+                self.head_block.destination_or_link(),
+                self.head_block.hash(),
             ))
         } else {
             None
@@ -122,14 +122,14 @@ impl<'a> RollbackPlanner<'a> {
         if self.current_account_info.balance < self.previous_balance() {
             BlockSubType::Send
         } else if self.current_account_info.balance > self.previous_balance() {
-            if self.head_block2.is_open() {
+            if self.head_block.is_open() {
                 BlockSubType::Open
             } else {
                 BlockSubType::Receive
             }
         } else if self
             .epochs
-            .is_epoch_link(&self.head_block2.link_field().unwrap_or_default())
+            .is_epoch_link(&self.head_block.link_field().unwrap_or_default())
         {
             BlockSubType::Epoch
         } else {
@@ -138,11 +138,11 @@ impl<'a> RollbackPlanner<'a> {
     }
 
     fn previous_account_info(&self) -> AccountInfo {
-        if self.head_block2.previous().is_zero() {
+        if self.head_block.previous().is_zero() {
             Default::default()
         } else {
             AccountInfo {
-                head: self.head_block2.previous(),
+                head: self.head_block.previous(),
                 representative: self.previous_representative(),
                 open_block: self.current_account_info.open_block,
                 balance: self.previous_balance(),

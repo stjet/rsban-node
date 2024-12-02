@@ -37,7 +37,7 @@ use crate::{
     wallets::{Wallets, WalletsExt},
     work::DistributedWorkFactory,
     NetworkParams, NodeCallbacks, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry,
-    TelemetryDeadChannelCleanup, BUILD_INFO, VERSION_STRING,
+    BUILD_INFO, VERSION_STRING,
 };
 use rsnano_core::{
     utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo, SerdePropertyTree},
@@ -750,7 +750,7 @@ impl Node {
         let schedulers_weak = Arc::downgrade(&election_schedulers);
         wallets.set_start_election_callback(Box::new(move |block| {
             if let Some(schedulers) = schedulers_weak.upgrade() {
-                schedulers.add_manual(block.into());
+                schedulers.add_manual(block);
             }
         }));
 
@@ -1211,12 +1211,17 @@ impl Node {
     }
 
     pub fn process_local(&self, block: Block) -> Option<BlockStatus> {
-        self.block_processor
+        let result = self
+            .block_processor
             .add_blocking(Arc::new(block), BlockSource::Local)
-            .map(|(status, _)| status)
+            .ok()?;
+        match result {
+            Ok(_) => Some(BlockStatus::Progress),
+            Err(status) => Some(status),
+        }
     }
 
-    pub fn process(&self, mut block: Block) -> Result<(), BlockStatus> {
+    pub fn process(&self, mut block: Block) -> Result<SavedBlock, BlockStatus> {
         let mut tx = self.ledger.rw_txn();
         self.ledger.process(&mut tx, &mut block)
     }
@@ -1310,6 +1315,13 @@ impl Node {
     pub fn block_confirmed(&self, hash: &BlockHash) -> bool {
         let tx = self.ledger.read_txn();
         self.ledger.confirmed().block_exists(&tx, hash)
+    }
+
+    pub fn block_hashes_confirmed(&self, blocks: &[BlockHash]) -> bool {
+        let tx = self.ledger.read_txn();
+        blocks
+            .iter()
+            .all(|b| self.ledger.confirmed().block_exists(&tx, b))
     }
 
     pub fn blocks_confirmed(&self, blocks: &[Block]) -> bool {

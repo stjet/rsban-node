@@ -282,7 +282,8 @@ mod dependents_confirmed {
         let txn = ctx.ledger.read_txn();
 
         assert_eq!(
-            ctx.ledger.dependents_confirmed(&txn, &DEV_GENESIS_BLOCK),
+            ctx.ledger
+                .dependents_confirmed_for_unsaved_block(&txn, &DEV_GENESIS_BLOCK),
             true
         );
     }
@@ -300,7 +301,11 @@ mod dependents_confirmed {
             .build();
         ctx.ledger.process(&mut txn, &mut send).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &send), true);
+        assert_eq!(
+            ctx.ledger
+                .dependents_confirmed_for_unsaved_block(&txn, &send),
+            true
+        );
     }
 
     #[test]
@@ -314,7 +319,11 @@ mod dependents_confirmed {
         let mut send2 = ctx.genesis_block_factory().send(&txn).build();
         ctx.ledger.process(&mut txn, &mut send2).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &send2), false);
+        assert_eq!(
+            ctx.ledger
+                .dependents_confirmed_for_unsaved_block(&txn, &send2),
+            false
+        );
     }
 
     #[test]
@@ -333,7 +342,11 @@ mod dependents_confirmed {
         let mut open = destination.open(&txn, send.hash()).build();
         ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &open), false);
+        assert_eq!(
+            ctx.ledger
+                .dependents_confirmed_for_unsaved_block(&txn, &open),
+            false
+        );
     }
 
     #[test]
@@ -353,7 +366,11 @@ mod dependents_confirmed {
         let mut open = destination.open(&txn, send.hash()).build();
         ctx.ledger.process(&mut txn, &mut open).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &open), true);
+        assert_eq!(
+            ctx.ledger
+                .dependents_confirmed_for_unsaved_block(&txn, &open),
+            true
+        );
     }
 
     #[test]
@@ -385,7 +402,11 @@ mod dependents_confirmed {
         let mut receive = destination.receive(&txn, send2.hash()).build();
         ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &receive), false);
+        assert_eq!(
+            ctx.ledger
+                .dependents_confirmed_for_unsaved_block(&txn, &receive),
+            false
+        );
     }
 
     #[test]
@@ -417,7 +438,11 @@ mod dependents_confirmed {
         let mut receive = destination.receive(&txn, send2.hash()).build();
         ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &receive), false);
+        assert_eq!(
+            ctx.ledger
+                .dependents_confirmed_for_unsaved_block(&txn, &receive),
+            false
+        );
     }
 
     #[test]
@@ -450,7 +475,11 @@ mod dependents_confirmed {
         let mut receive = destination.receive(&txn, send2.hash()).build();
         ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
-        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &receive), true);
+        assert_eq!(
+            ctx.ledger
+                .dependents_confirmed_for_unsaved_block(&txn, &receive),
+            true
+        );
     }
 
     #[test]
@@ -486,7 +515,11 @@ mod dependents_confirmed {
             .link(send1.hash())
             .sign(&destination.key)
             .build();
-        assert_eq!(ctx.ledger.dependents_confirmed(&txn, &receive1), true);
+        assert_eq!(
+            ctx.ledger
+                .dependents_confirmed_for_unsaved_block(&txn, &receive1),
+            true
+        );
     }
 }
 

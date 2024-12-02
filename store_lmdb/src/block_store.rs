@@ -288,12 +288,12 @@ mod tests {
 
     #[test]
     fn clear_successor() {
-        let mut block = BlockBuilder::legacy_open().build();
+        let block = BlockBuilder::legacy_open().build();
         let sideband = BlockSideband {
             successor: BlockHash::from(123),
             ..BlockSideband::new_test_instance()
         };
-        block.set_sideband(sideband.clone());
+        let block = SavedBlock::new(block, sideband.clone());
 
         let env = LmdbEnv::new_null_with()
             .database("blocks", LmdbDatabase::new_null(100))

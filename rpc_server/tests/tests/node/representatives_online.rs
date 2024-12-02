@@ -43,7 +43,7 @@ fn representatives_online() {
             None,
         )
         .unwrap();
-    node.process_active(send.clone());
+    node.process_active(send.clone().into());
 
     // Ensure both nodes process the send
     assert_timely_msg(
@@ -66,7 +66,7 @@ fn representatives_online() {
         )
         .unwrap()
         .unwrap();
-    node2.process_active(receive.clone());
+    node2.process_active(receive.clone().into());
 
     // Ensure both nodes process the receive
     assert_timely_msg(

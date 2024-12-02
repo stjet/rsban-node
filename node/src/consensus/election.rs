@@ -3,7 +3,7 @@ use crate::{
     stats::{DetailType, StatType},
     utils::HardenedConstants,
 };
-use rsnano_core::{Amount, Block, BlockHash, PublicKey, QualifiedRoot, Root};
+use rsnano_core::{Amount, Block, BlockHash, PublicKey, QualifiedRoot, Root, SavedBlock};
 use std::{
     collections::HashMap,
     fmt::Debug,
@@ -39,18 +39,18 @@ impl Election {
 
     pub fn new(
         id: usize,
-        block: Block,
+        block: SavedBlock,
         behavior: ElectionBehavior,
         confirmation_action: Box<dyn Fn(Block) + Send + Sync>,
         live_vote_action: Box<dyn Fn(PublicKey) + Send + Sync>,
     ) -> Self {
         let root = block.root();
         let qualified_root = block.qualified_root();
-        let height = block.sideband().map(|s| s.height).unwrap_or_default();
+        let height = block.height();
 
         let data = ElectionData {
             status: ElectionStatus {
-                winner: Some(block.clone()),
+                winner: Some(block.clone().into()),
                 election_end: SystemTime::now(),
                 block_count: 1,
                 election_status_type: super::ElectionStatusType::Ongoing,
@@ -60,7 +60,7 @@ impl Election {
                 HardenedConstants::get().not_an_account_key,
                 VoteInfo::new(0, block.hash()),
             )]),
-            last_blocks: HashMap::from([(block.hash(), block)]),
+            last_blocks: HashMap::from([(block.hash(), block.into())]),
             state: ElectionState::Passive,
             state_start: Instant::now(),
             last_tally: HashMap::new(),

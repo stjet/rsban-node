@@ -104,7 +104,7 @@ mod tests {
         let block = BlockBuilder::legacy_send()
             .previous(previous.hash())
             .build();
-        let ledger = Ledger::new_null_builder().block2(&previous).finish();
+        let ledger = Ledger::new_null_builder().block(&previous).finish();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
 
@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn block_exists() {
         let block = BlockBuilder::state().build_saved();
-        let ledger = Ledger::new_null_builder().block2(&block).finish();
+        let ledger = Ledger::new_null_builder().block(&block).finish();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
         assert_eq!(validator.block_exists, true);
@@ -166,7 +166,7 @@ mod tests {
             .build();
         let pending_info = PendingInfo::new_test_instance();
         let ledger = Ledger::new_null_builder()
-            .block2(&previous)
+            .block(&previous)
             .pending(
                 &PendingKey::new(account, BlockHash::from(42)),
                 &pending_info,
@@ -196,7 +196,7 @@ mod tests {
     fn source_block_exists() {
         let source = BlockBuilder::state().build_saved();
         let block = BlockBuilder::state().link(source.hash()).build();
-        let ledger = Ledger::new_null_builder().block2(&source).finish();
+        let ledger = Ledger::new_null_builder().block(&source).finish();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
         assert_eq!(validator.source_block_exists, true);
@@ -216,7 +216,9 @@ mod tests {
     #[test]
     fn previous_block() {
         let previous = SavedBlock::new_test_instance();
-        let block = BlockBuilder::state().previous(previous.hash()).build();
+        let block = BlockBuilder::state()
+            .previous(previous.hash())
+            .build_saved();
         let ledger = Ledger::new_null_builder().block(&previous).finish();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();

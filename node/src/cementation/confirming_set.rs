@@ -384,7 +384,7 @@ mod tests {
         let block_hash = chain.add_state().hash();
         let ledger = Arc::new(
             Ledger::new_null_builder()
-                .blocks2(chain.blocks())
+                .blocks(chain.blocks())
                 .confirmation_height(
                     &chain.account(),
                     &ConfirmationHeightInfo {

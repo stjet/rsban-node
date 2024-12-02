@@ -149,7 +149,7 @@ mod tests {
         let block3 = SavedBlock::new_test_instance_with_key(44);
 
         let ledger = Ledger::new_null_builder()
-            .blocks2([&block1, &block2, &block3])
+            .blocks([&block1, &block2, &block3])
             .confirmation_height(
                 &block1.account(),
                 &ConfirmationHeightInfo::new(9999, BlockHash::zero()),

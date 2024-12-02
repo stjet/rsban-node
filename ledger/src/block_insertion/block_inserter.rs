@@ -159,14 +159,14 @@ mod tests {
     fn update_representative() {
         let old_representative = PublicKey::from(1111);
         let new_representative = PublicKey::from(2222);
-        let mut open = BlockBuilder::legacy_open()
+        let open = BlockBuilder::legacy_open()
             .representative(old_representative)
-            .build_saved();
+            .build();
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
             ..BlockSideband::new_test_instance()
         };
-        open.set_sideband(sideband.clone());
+        let open = SavedBlock::new(open, sideband.clone());
 
         let state = BlockBuilder::state()
             .previous(open.hash())

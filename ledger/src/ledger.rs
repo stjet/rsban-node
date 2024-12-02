@@ -123,26 +123,14 @@ impl NullLedgerBuilder {
         }
     }
 
-    pub fn block2(mut self, block: &SavedBlock) -> Self {
+    pub fn block(mut self, block: &SavedBlock) -> Self {
         self.blocks = self.blocks.block(block);
         self
     }
 
-    pub fn block(mut self, block: &Block) -> Self {
-        self.blocks = self.blocks.block(block);
-        self
-    }
-
-    pub fn blocks<'a>(mut self, blocks: impl IntoIterator<Item = &'a Block>) -> Self {
+    pub fn blocks<'a>(mut self, blocks: impl IntoIterator<Item = &'a SavedBlock>) -> Self {
         for b in blocks.into_iter() {
             self.blocks = self.blocks.block(b);
-        }
-        self
-    }
-
-    pub fn blocks2<'a>(mut self, blocks: impl IntoIterator<Item = &'a SavedBlock>) -> Self {
-        for b in blocks.into_iter() {
-            self.blocks = self.blocks.block2(b);
         }
         self
     }

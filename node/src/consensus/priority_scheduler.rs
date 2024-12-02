@@ -1,7 +1,7 @@
 use super::{ActiveElections, Bucket, BucketExt, PriorityBucketConfig};
 use crate::stats::{DetailType, StatType, Stats};
 use rsnano_core::{
-    utils::ContainerInfo, Account, AccountInfo, Amount, Block, ConfirmationHeightInfo, SavedBlock,
+    utils::ContainerInfo, Account, AccountInfo, Amount, ConfirmationHeightInfo, SavedBlock,
 };
 use rsnano_ledger::Ledger;
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};

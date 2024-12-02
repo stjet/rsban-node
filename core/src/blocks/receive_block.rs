@@ -124,10 +124,6 @@ impl PartialEq for ReceiveBlock {
 impl Eq for ReceiveBlock {}
 
 impl BlockBase for ReceiveBlock {
-    fn sideband(&'_ self) -> Option<&'_ BlockSideband> {
-        self.sideband.as_ref()
-    }
-
     fn set_sideband(&mut self, sideband: BlockSideband) {
         self.sideband = Some(sideband)
     }

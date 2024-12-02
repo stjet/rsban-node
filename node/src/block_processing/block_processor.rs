@@ -654,8 +654,10 @@ impl BlockProcessorLoop {
             }
             BlockStatus::GapEpochOpenPending => {
                 // Specific unchecked key starting with epoch open block account public key
-                self.unchecked_map
-                    .put(block.account().into(), UncheckedInfo::new(block));
+                self.unchecked_map.put(
+                    block.account_field().unwrap().into(),
+                    UncheckedInfo::new(block),
+                );
                 self.stats.inc(StatType::Ledger, DetailType::GapSource);
             }
             BlockStatus::Old => {

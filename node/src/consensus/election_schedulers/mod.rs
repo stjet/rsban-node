@@ -10,9 +10,7 @@ use super::{
     OptimisticScheduler, OptimisticSchedulerExt, PriorityScheduler, PrioritySchedulerExt,
     VoteCache,
 };
-use rsnano_core::{
-    utils::ContainerInfo, Account, AccountInfo, Block, ConfirmationHeightInfo, SavedBlock,
-};
+use rsnano_core::{utils::ContainerInfo, Account, AccountInfo, ConfirmationHeightInfo, SavedBlock};
 use rsnano_ledger::Ledger;
 use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};

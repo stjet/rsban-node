@@ -147,10 +147,6 @@ impl PartialEq for OpenBlock {
 impl Eq for OpenBlock {}
 
 impl BlockBase for OpenBlock {
-    fn sideband(&'_ self) -> Option<&'_ BlockSideband> {
-        self.sideband.as_ref()
-    }
-
     fn set_sideband(&mut self, sideband: BlockSideband) {
         self.sideband = Some(sideband);
     }

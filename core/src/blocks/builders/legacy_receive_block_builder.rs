@@ -1,7 +1,6 @@
 use crate::{
     work::{WorkPool, STUB_WORK_POOL},
-    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, PrivateKey,
-    ReceiveBlock,
+    Block, BlockHash, PrivateKey, ReceiveBlock,
 };
 
 pub struct LegacyReceiveBlockBuilder {

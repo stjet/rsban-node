@@ -44,8 +44,6 @@ pub type ElectionEndCallback = Box<
     dyn Fn(&ElectionStatus, &Vec<VoteWithWeightInfo>, Account, Amount, bool, bool) + Send + Sync,
 >;
 
-pub type BalanceChangedCallback = Box<dyn Fn(&Account, bool) + Send + Sync>;
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct ActiveElectionsConfig {
     /// Maximum number of simultaneous active elections (AEC size)
@@ -98,7 +96,6 @@ pub struct ActiveElections {
     active_started_observer: Mutex<Vec<Box<dyn Fn(BlockHash) + Send + Sync>>>,
     active_stopped_observer: Mutex<Vec<Box<dyn Fn(BlockHash) + Send + Sync>>>,
     election_end: Mutex<Vec<ElectionEndCallback>>,
-    account_balance_changed: BalanceChangedCallback,
     online_reps: Arc<Mutex<OnlineReps>>,
     thread: Mutex<Option<JoinHandle<()>>>,
     flags: NodeFlags,
@@ -122,7 +119,6 @@ impl ActiveElections {
         vote_cache: Arc<Mutex<VoteCache>>,
         stats: Arc<Stats>,
         election_end: ElectionEndCallback,
-        account_balance_changed: BalanceChangedCallback,
         online_reps: Arc<Mutex<OnlineReps>>,
         flags: NodeFlags,
         recently_confirmed: Arc<RecentlyConfirmedCache>,
@@ -161,7 +157,6 @@ impl ActiveElections {
             active_started_observer: Mutex::new(Vec::new()),
             active_stopped_observer: Mutex::new(Vec::new()),
             election_end: Mutex::new(vec![election_end]),
-            account_balance_changed,
             online_reps,
             thread: Mutex::new(None),
             flags,
@@ -280,6 +275,9 @@ impl ActiveElections {
         votes: &Vec<VoteWithWeightInfo>,
     ) {
         let block = status.winner.as_ref().unwrap();
+        let SavedOrUnsavedBlock::Saved(block) = block else {
+            return;
+        };
         let account = block.account();
 
         match status.election_status_type {
@@ -312,10 +310,8 @@ impl ActiveElections {
             let mut is_state_send = false;
             let mut is_state_epoch = false;
             if block.block_type() == BlockType::State {
-                if let SavedOrUnsavedBlock::Saved(block) = block {
-                    is_state_send = block.block_type() == BlockType::State && block.is_send();
-                    is_state_epoch = block.block_type() == BlockType::State && block.is_epoch();
-                }
+                is_state_send = block.block_type() == BlockType::State && block.is_send();
+                is_state_epoch = block.block_type() == BlockType::State && block.is_epoch();
             }
 
             let ended_callbacks = self.election_end.lock().unwrap();
@@ -328,13 +324,6 @@ impl ActiveElections {
                     is_state_send,
                     is_state_epoch,
                 );
-            }
-        }
-
-        (self.account_balance_changed)(&account, false);
-        if let SavedOrUnsavedBlock::Saved(block) = block {
-            if block.is_send() {
-                (self.account_balance_changed)(&block.destination().unwrap(), true);
             }
         }
     }

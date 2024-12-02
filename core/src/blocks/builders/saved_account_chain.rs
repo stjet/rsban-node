@@ -322,7 +322,7 @@ impl SavedAccountChain {
         }
     }
 
-    pub fn add_block(&mut self, mut block: Block, source_epoch: Epoch) -> &SavedBlock {
+    pub fn add_block(&mut self, block: Block, source_epoch: Epoch) -> &SavedBlock {
         if let Some(new_balance) = block.balance_field() {
             self.balance = new_balance;
         }

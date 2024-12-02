@@ -518,11 +518,6 @@ impl Node {
             .on_election_end
             .unwrap_or_else(|| Box::new(|_, _, _, _, _, _| {}));
 
-        let on_balance_changed = args
-            .callbacks
-            .on_balance_changed
-            .unwrap_or_else(|| Box::new(|_, _| {}));
-
         let active_elections = Arc::new(ActiveElections::new(
             network_params.clone(),
             wallets.clone(),
@@ -536,7 +531,6 @@ impl Node {
             vote_cache.clone(),
             stats.clone(),
             on_election_end,
-            on_balance_changed,
             online_reps.clone(),
             flags.clone(),
             recently_confirmed,

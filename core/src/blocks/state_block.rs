@@ -255,10 +255,6 @@ impl PartialEq for StateBlock {
 impl Eq for StateBlock {}
 
 impl BlockBase for StateBlock {
-    fn sideband(&'_ self) -> Option<&'_ BlockSideband> {
-        self.sideband.as_ref()
-    }
-
     fn set_sideband(&mut self, sideband: BlockSideband) {
         self.sideband = Some(sideband);
     }

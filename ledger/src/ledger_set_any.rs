@@ -1,7 +1,6 @@
 use rsnano_core::{
     utils::{BufferReader, Deserialize},
-    Account, AccountInfo, Amount, Block, BlockHash, PendingInfo, PendingKey, QualifiedRoot,
-    SavedBlock,
+    Account, AccountInfo, Amount, BlockHash, PendingInfo, PendingKey, QualifiedRoot, SavedBlock,
 };
 use rsnano_store_lmdb::{LmdbIterator, LmdbPendingStore, LmdbStore, Transaction};
 use std::ops::{Deref, RangeBounds};

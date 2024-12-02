@@ -137,13 +137,6 @@ impl std::fmt::Debug for LazyBlockHash {
 pub trait BlockBase: FullHash {
     fn block_type(&self) -> BlockType;
     fn account_field(&self) -> Option<Account>;
-
-    /**
-     * Contextual details about a block, some fields may or may not be set depending on block type.
-     * This field is set via sideband_set in ledger processing or deserializing blocks from the database.
-     * Otherwise it may be null (for example, an old block or fork).
-     */
-    fn sideband(&'_ self) -> Option<&'_ BlockSideband>;
     fn set_sideband(&mut self, sideband: BlockSideband);
     fn hash(&self) -> BlockHash;
     fn link_field(&self) -> Option<Link>;
@@ -265,13 +258,6 @@ impl Block {
     pub fn destination_or_link(&self) -> Account {
         self.destination_field()
             .unwrap_or_else(|| self.link_field().unwrap_or_default().into())
-    }
-
-    pub fn account(&self) -> Account {
-        match self.account_field() {
-            Some(account) => account,
-            None => self.sideband().unwrap().account,
-        }
     }
 
     pub fn serialize(&self, stream: &mut dyn BufferWriter) {

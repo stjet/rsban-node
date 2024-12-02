@@ -1,5 +1,5 @@
 use crate::stats::DetailType;
-use rsnano_core::{Amount, Block, SavedOrUnsavedBlock};
+use rsnano_core::{Amount, SavedOrUnsavedBlock};
 use std::time::{Duration, SystemTime};
 
 /**

@@ -1,4 +1,4 @@
-use rsnano_core::{AccountInfo, Block, BlockHash, SavedBlock};
+use rsnano_core::{AccountInfo, BlockHash, SavedBlock};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 
 use crate::Ledger;

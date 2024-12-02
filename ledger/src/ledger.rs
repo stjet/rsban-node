@@ -40,15 +40,22 @@ pub enum BlockStatus {
     Fork,          // Malicious fork based on previous
     /// Source block doesn't exist, has already been received, or requires an account upgrade (epoch blocks)
     Unreceivable,
-    GapPrevious,         // Block marked as previous is unknown
-    GapSource,           // Block marked as source is unknown
-    GapEpochOpenPending, // Block marked as pending blocks required for epoch open block are unknown
-    OpenedBurnAccount,   // Block attempts to open the burn account
+    /// Block marked as previous is unknown
+    GapPrevious,
+    /// Block marked as source is unknown
+    GapSource,
+    /// Block marked as pending blocks required for epoch open block are unknown
+    GapEpochOpenPending,
+    /// Block attempts to open the burn account
+    OpenedBurnAccount,
     /// Balance and amount delta don't match
     BalanceMismatch,
-    RepresentativeMismatch, // Representative is changed when it is not allowed
-    BlockPosition,          // This block cannot follow the previous block
-    InsufficientWork, // Insufficient work for this block, even though it passed the minimal validation
+    /// Representative is changed when it is not allowed
+    RepresentativeMismatch,
+    /// This block cannot follow the previous block
+    BlockPosition,
+    /// Insufficient work for this block, even though it passed the minimal validation
+    InsufficientWork,
 }
 
 impl BlockStatus {

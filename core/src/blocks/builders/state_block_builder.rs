@@ -1,5 +1,5 @@
 use crate::work::WorkPool;
-use crate::{work::STUB_WORK_POOL, BlockBase, StateBlock};
+use crate::{work::STUB_WORK_POOL, StateBlock};
 use crate::{
     Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, Link, PrivateKey,
     PublicKey, SavedBlock, Signature,
@@ -200,7 +200,7 @@ impl Default for StateBlockBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BlockBuilder, StateBlock};
+    use crate::{BlockBase, BlockBuilder, StateBlock};
 
     #[test]
     fn state_block() {

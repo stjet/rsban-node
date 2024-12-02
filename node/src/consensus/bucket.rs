@@ -3,7 +3,7 @@ use crate::{
     consensus::ActiveElectionsExt,
     stats::{DetailType, StatType, Stats},
 };
-use rsnano_core::{Amount, Block, QualifiedRoot};
+use rsnano_core::{Amount, Block, QualifiedRoot, SavedBlock};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet, HashMap},
@@ -120,10 +120,13 @@ impl Bucket {
         }
     }
 
-    pub fn push(&self, time: u64, block: Block) -> bool {
+    pub fn push(&self, time: u64, block: SavedBlock) -> bool {
         let hash = block.hash();
         let mut guard = self.data.lock().unwrap();
-        let inserted = guard.queue.insert(BlockEntry { time, block });
+        let inserted = guard.queue.insert(BlockEntry {
+            time,
+            block: block.into(),
+        });
         if guard.queue.len() > self.config.max_blocks {
             if let Some(removed) = guard.queue.pop_last() {
                 inserted && !(removed.time == time && removed.block.hash() == hash)

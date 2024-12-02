@@ -4,7 +4,7 @@ use test_helpers::System;
 
 mod bucket {
     use super::*;
-    use rsnano_core::Block;
+    use rsnano_core::SavedBlock;
 
     #[test]
     fn construction() {
@@ -36,7 +36,7 @@ mod bucket {
             node.stats.clone(),
         );
 
-        assert!(bucket.push(1000, Block::new_test_instance()));
+        assert!(bucket.push(1000, SavedBlock::new_test_instance()));
         assert_eq!(bucket.len(), 1);
     }
 
@@ -52,7 +52,7 @@ mod bucket {
             node.stats.clone(),
         );
 
-        let block = Block::new_test_instance();
+        let block = SavedBlock::new_test_instance();
         assert_eq!(bucket.push(1000, block.clone()), true);
         assert_eq!(bucket.push(1000, block), false);
     }
@@ -69,10 +69,10 @@ mod bucket {
             node.stats.clone(),
         );
 
-        let block0 = Block::new_test_instance_with_key(1);
-        let block1 = Block::new_test_instance_with_key(2);
-        let block2 = Block::new_test_instance_with_key(3);
-        let block3 = Block::new_test_instance_with_key(3);
+        let block0 = SavedBlock::new_test_instance_with_key(1);
+        let block1 = SavedBlock::new_test_instance_with_key(2);
+        let block2 = SavedBlock::new_test_instance_with_key(3);
+        let block3 = SavedBlock::new_test_instance_with_key(3);
         assert!(bucket.push(2000, block0.clone()));
         assert!(bucket.push(1001, block1.clone()));
         assert!(bucket.push(1000, block2.clone()));
@@ -82,10 +82,10 @@ mod bucket {
         let blocks = bucket.blocks();
         assert_eq!(blocks.len(), 4);
         // Ensure correct order
-        assert_eq!(blocks[0], block3);
-        assert_eq!(blocks[1], block2);
-        assert_eq!(blocks[2], block1);
-        assert_eq!(blocks[3], block0);
+        assert_eq!(blocks[0], block3.into());
+        assert_eq!(blocks[1], block2.into());
+        assert_eq!(blocks[2], block1.into());
+        assert_eq!(blocks[3], block0.into());
     }
 
     #[test]
@@ -104,10 +104,10 @@ mod bucket {
             node.stats.clone(),
         );
 
-        let block0 = Block::new_test_instance_with_key(1);
-        let block1 = Block::new_test_instance_with_key(2);
-        let block2 = Block::new_test_instance_with_key(3);
-        let block3 = Block::new_test_instance_with_key(3);
+        let block0 = SavedBlock::new_test_instance_with_key(1);
+        let block1 = SavedBlock::new_test_instance_with_key(2);
+        let block2 = SavedBlock::new_test_instance_with_key(3);
+        let block3 = SavedBlock::new_test_instance_with_key(3);
 
         assert_eq!(bucket.push(2000, block0.clone()), true);
         assert_eq!(bucket.push(900, block1.clone()), true);
@@ -118,8 +118,8 @@ mod bucket {
         assert_eq!(bucket.len(), 2);
         let blocks = bucket.blocks();
         // Ensure correct order
-        assert_eq!(blocks[0], block1);
-        assert_eq!(blocks[1], block0);
+        assert_eq!(blocks[0], block1.into());
+        assert_eq!(blocks[1], block0.into());
     }
 }
 

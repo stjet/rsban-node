@@ -266,7 +266,7 @@ mod tests {
     ) -> (Block, BlockInsertInstructions) {
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
-            balance: block.balance(),
+            balance: block.balance_field().unwrap(),
             account: block.account_field().unwrap(),
             ..BlockSideband::new_test_instance()
         };

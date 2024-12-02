@@ -50,7 +50,7 @@ impl<'a> LedgerSetAny<'a> {
         self.block_amount_for(tx, &block)
     }
 
-    pub fn block_amount_for(&self, tx: &dyn Transaction, block: &Block) -> Option<Amount> {
+    pub fn block_amount_for(&self, tx: &dyn Transaction, block: &SavedBlock) -> Option<Amount> {
         let block_balance = block.balance();
         if block.previous().is_zero() {
             Some(block_balance)

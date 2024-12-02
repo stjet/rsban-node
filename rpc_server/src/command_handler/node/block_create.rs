@@ -254,7 +254,7 @@ pub fn difficulty_ledger(node: Arc<Node>, block: &Block) -> u64 {
             .any()
             .block_balance(&tx, &previous)
             .unwrap_or_default()
-            > block.balance();
+            > block.balance_field().unwrap();
         details = BlockDetails::new(Epoch::Epoch0, is_send, false, false);
         details_found = true;
     }

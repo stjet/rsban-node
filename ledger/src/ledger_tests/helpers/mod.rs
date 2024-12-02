@@ -2,7 +2,7 @@ mod account_block_factory;
 
 use crate::LedgerContext;
 pub(crate) use account_block_factory::AccountBlockFactory;
-use rsnano_core::{Amount, Block};
+use rsnano_core::{Amount, Block, SavedBlock};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 
 pub(crate) fn upgrade_genesis_to_epoch_v1(
@@ -43,7 +43,7 @@ pub(crate) fn setup_legacy_send_block<'a>(
 pub(crate) struct LegacyOpenBlockResult<'a> {
     pub destination: AccountBlockFactory<'a>,
     pub send_block: Block,
-    pub open_block: Block,
+    pub open_block: SavedBlock,
     pub expected_balance: Amount,
 }
 
@@ -54,7 +54,7 @@ pub(crate) fn setup_legacy_open_block<'a>(
     let send = setup_legacy_send_block(ctx, txn);
 
     let mut open_block = send.destination.legacy_open(send.send_block.hash()).build();
-    ctx.ledger.process(txn, &mut open_block).unwrap();
+    let open_block = ctx.ledger.process(txn, &mut open_block).unwrap();
 
     LegacyOpenBlockResult {
         destination: send.destination,
@@ -66,7 +66,7 @@ pub(crate) fn setup_legacy_open_block<'a>(
 
 pub(crate) struct LegacyReceiveBlockResult<'a> {
     pub destination: AccountBlockFactory<'a>,
-    pub open_block: Block,
+    pub open_block: SavedBlock,
     pub send_block: Block,
     pub receive_block: Block,
     pub expected_balance: Amount,

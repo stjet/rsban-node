@@ -239,7 +239,7 @@ fn deferred_dependent_elections() {
         .account(*DEV_GENESIS_ACCOUNT)
         .from(&send1_state_block)
         .previous(send1.hash())
-        .balance(send1.balance() - Amount::raw(1))
+        .balance(send1.balance_field().unwrap() - Amount::raw(1))
         .link(key.account())
         .sign(&DEV_GENESIS_KEY)
         .work(node1.work_generate_dev(send1.hash()))
@@ -421,7 +421,7 @@ fn rollback_gap_source() {
         .account(*DEV_GENESIS_ACCOUNT)
         .from(&send1_state_block)
         .previous(send1.hash())
-        .balance(send1.balance() - Amount::raw(1))
+        .balance(send1.balance_field().unwrap() - Amount::raw(1))
         .link(key.account())
         .sign(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(send1.hash()))
@@ -2754,7 +2754,7 @@ fn rollback_vote_self() {
         key.account(),
         open.hash(),
         key.public_key(),
-        open.balance() - Amount::raw(1),
+        open.balance_field().unwrap() - Amount::raw(1),
         (*DEV_GENESIS_ACCOUNT).into(),
         &key,
         node.work_generate_dev(open.hash()),
@@ -2765,7 +2765,7 @@ fn rollback_vote_self() {
         key.account(),
         open.hash(),
         key.public_key(),
-        open.balance() - Amount::raw(2),
+        open.balance_field().unwrap() - Amount::raw(2),
         (*DEV_GENESIS_ACCOUNT).into(),
         &key,
         node.work_generate_dev(open.hash()),

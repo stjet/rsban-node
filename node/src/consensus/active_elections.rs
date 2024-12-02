@@ -247,8 +247,10 @@ impl ActiveElections {
         let mut is_state_epoch = false;
         if amount.is_some() {
             if block.block_type() == BlockType::State {
-                is_state_send = block.is_send();
-                is_state_epoch = block.is_epoch();
+                if let SavedOrUnsavedBlock::Saved(block) = block {
+                    is_state_send = block.is_send();
+                    is_state_epoch = block.is_epoch();
+                }
             }
         }
 
@@ -307,8 +309,14 @@ impl ActiveElections {
                 .block_amount(tx, &block.hash())
                 .unwrap_or_default();
 
-            let is_state_send = block.block_type() == BlockType::State && block.is_send();
-            let is_state_epoch = block.block_type() == BlockType::State && block.is_epoch();
+            let mut is_state_send = false;
+            let mut is_state_epoch = false;
+            if block.block_type() == BlockType::State {
+                if let SavedOrUnsavedBlock::Saved(block) = block {
+                    is_state_send = block.block_type() == BlockType::State && block.is_send();
+                    is_state_epoch = block.block_type() == BlockType::State && block.is_epoch();
+                }
+            }
 
             let ended_callbacks = self.election_end.lock().unwrap();
             for callback in ended_callbacks.iter() {

@@ -221,7 +221,7 @@ mod tests {
                     STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
                 ));
                 latest = send.hash();
-                balance = send.balance();
+                balance = send.balance_field().unwrap();
                 blocks.push(send);
             }
             // 1 account with 21 pendings
@@ -236,7 +236,7 @@ mod tests {
                     STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
                 ));
                 latest = send.hash();
-                balance = send.balance();
+                balance = send.balance_field().unwrap();
                 blocks.push(send);
             }
             // 2 accounts with 1 pending each
@@ -251,7 +251,7 @@ mod tests {
                     STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
                 ));
                 latest = send.hash();
-                balance = send.balance();
+                balance = send.balance_field().unwrap();
                 blocks.push(send);
             }
             {
@@ -349,7 +349,7 @@ mod tests {
                     STUB_WORK_POOL.generate_dev2(key.account().into()).unwrap(),
                 ));
                 latest = send.hash();
-                balance = send.balance();
+                balance = send.balance_field().unwrap();
                 blocks.push(send);
                 blocks.push(open);
                 keys.push(key);

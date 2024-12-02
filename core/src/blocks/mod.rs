@@ -237,16 +237,6 @@ impl Block {
         }
     }
 
-    pub fn balance(&self) -> Amount {
-        match self {
-            Block::LegacySend(b) => b.balance(),
-            Block::LegacyReceive(b) => b.sideband().unwrap().balance,
-            Block::LegacyOpen(b) => b.sideband().unwrap().balance,
-            Block::LegacyChange(b) => b.sideband().unwrap().balance,
-            Block::State(b) => b.balance(),
-        }
-    }
-
     pub fn is_open(&self) -> bool {
         match &self {
             Block::LegacyOpen(_) => true,
@@ -259,25 +249,10 @@ impl Block {
         !matches!(self, Block::State(_))
     }
 
-    pub fn is_epoch(&self) -> bool {
-        match self {
-            Block::State(_) => self.sideband().unwrap().details.is_epoch,
-            _ => false,
-        }
-    }
-
     pub fn is_send(&self) -> bool {
         match self {
             Block::LegacySend(_) => true,
             Block::State(_) => self.sideband().unwrap().details.is_send,
-            _ => false,
-        }
-    }
-
-    pub fn is_receive(&self) -> bool {
-        match self {
-            Block::LegacyReceive(_) | Block::LegacyOpen(_) => true,
-            Block::State(_) => self.sideband().unwrap().details.is_receive,
             _ => false,
         }
     }
@@ -336,39 +311,10 @@ impl Block {
         }
     }
 
-    pub fn height(&self) -> u64 {
-        self.sideband().map(|s| s.height).unwrap_or_default()
-    }
-
-    pub fn successor(&self) -> Option<BlockHash> {
-        if let Some(sideband) = self.sideband() {
-            if !sideband.successor.is_zero() {
-                Some(sideband.successor)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-
-    pub fn epoch(&self) -> Epoch {
-        self.sideband().unwrap().details.epoch
-    }
-
     pub fn serialize(&self, stream: &mut dyn BufferWriter) {
         let block_type = self.block_type() as u8;
         stream.write_u8_safe(block_type);
         self.serialize_without_block_type(stream);
-    }
-
-    pub fn serialize_with_sideband(&self) -> Vec<u8> {
-        let mut stream = MemoryStream::new();
-        self.serialize(&mut stream);
-        self.sideband()
-            .unwrap()
-            .serialize(&mut stream, self.block_type());
-        stream.to_vec()
     }
 
     pub fn deserialize_block_type(
@@ -615,7 +561,11 @@ impl SavedBlock {
     }
 
     pub fn serialize_with_sideband(&self) -> Vec<u8> {
-        self.block.serialize_with_sideband()
+        let mut stream = MemoryStream::new();
+        self.block.serialize(&mut stream);
+        self.sideband
+            .serialize(&mut stream, self.block.block_type());
+        stream.to_vec()
     }
 
     pub fn balance(&self) -> Amount {

@@ -260,18 +260,18 @@ impl BlockProcessor {
         &self,
         observer: Box<dyn Fn(BlockStatus, &BlockProcessorContext) + Send + Sync>,
     ) {
-        self.processor_loop.add_block_processed_observer(observer);
+        self.processor_loop.on_block_processed(observer);
     }
 
     pub fn add_batch_processed_observer(
         &self,
         observer: Box<dyn Fn(&[(BlockStatus, Arc<BlockProcessorContext>)]) + Send + Sync>,
     ) {
-        self.processor_loop.add_batch_processed_observer(observer);
+        self.processor_loop.on_batch_processed(observer);
     }
 
     pub fn add_rolled_back_observer(&self, observer: Box<dyn Fn(&Block) + Send + Sync>) {
-        self.processor_loop.add_rolled_back_observer(observer);
+        self.processor_loop.on_rolled_back(observer);
     }
 
     pub fn add(&self, block: Block, source: BlockSource, channel_id: ChannelId) -> bool {
@@ -309,8 +309,7 @@ impl BlockProcessor {
         &self,
         callback: Box<dyn Fn(Vec<SavedBlock>, SavedBlock) + Send + Sync>,
     ) {
-        self.processor_loop
-            .set_blocks_rolled_back_callback(callback);
+        self.processor_loop.on_blocks_rolled_back(callback);
     }
     pub fn force(&self, block: Block) {
         self.processor_loop.force(block);
@@ -398,21 +397,21 @@ impl BlockProcessorLoop {
         }
     }
 
-    pub fn add_block_processed_observer(
+    pub fn on_block_processed(
         &self,
         observer: Box<dyn Fn(BlockStatus, &BlockProcessorContext) + Send + Sync>,
     ) {
         self.block_processed.lock().unwrap().push(observer);
     }
 
-    pub fn add_batch_processed_observer(
+    pub fn on_batch_processed(
         &self,
         observer: Box<dyn Fn(&[(BlockStatus, Arc<BlockProcessorContext>)]) + Send + Sync>,
     ) {
         self.batch_processed.lock().unwrap().push(observer);
     }
 
-    pub fn add_rolled_back_observer(&self, observer: Box<dyn Fn(&Block) + Send + Sync>) {
+    pub fn on_rolled_back(&self, observer: Box<dyn Fn(&Block) + Send + Sync>) {
         self.block_rolled_back.lock().unwrap().push(observer);
     }
 
@@ -422,7 +421,7 @@ impl BlockProcessorLoop {
         }
     }
 
-    pub fn set_blocks_rolled_back_callback(
+    pub fn on_blocks_rolled_back(
         &self,
         callback: Box<dyn Fn(Vec<SavedBlock>, SavedBlock) + Send + Sync>,
     ) {

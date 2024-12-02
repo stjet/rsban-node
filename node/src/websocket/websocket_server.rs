@@ -43,7 +43,7 @@ pub fn create_websocket_server(
     let server = Arc::new(WebsocketListener::new(endpoint, wallets, tokio.clone()));
 
     let server_w = Arc::downgrade(&server);
-    active_elections.add_election_end_callback(Box::new(
+    active_elections.on_election_ended(Box::new(
         move |status: &ElectionStatus,
               votes: &Vec<VoteWithWeightInfo>,
               account: Account,
@@ -76,7 +76,7 @@ pub fn create_websocket_server(
     ));
 
     let server_w = Arc::downgrade(&server);
-    active_elections.add_active_started_callback(Box::new(move |hash| {
+    active_elections.on_active_started(Box::new(move |hash| {
         if let Some(server) = server_w.upgrade() {
             if server.any_subscriber(Topic::StartedElection) {
                 server.broadcast(&started_election(&hash));
@@ -85,7 +85,7 @@ pub fn create_websocket_server(
     }));
 
     let server_w = Arc::downgrade(&server);
-    active_elections.add_active_stopped_callback(Box::new(move |hash| {
+    active_elections.on_active_stopped(Box::new(move |hash| {
         if let Some(server) = server_w.upgrade() {
             if server.any_subscriber(Topic::StoppedElection) {
                 server.broadcast(&stopped_election(&hash));

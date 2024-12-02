@@ -193,15 +193,15 @@ impl ActiveElections {
         }
     }
 
-    pub fn add_election_end_callback(&self, f: ElectionEndCallback) {
+    pub fn on_election_ended(&self, f: ElectionEndCallback) {
         self.election_end.lock().unwrap().push(f);
     }
 
-    pub fn add_active_started_callback(&self, f: Box<dyn Fn(BlockHash) + Send + Sync>) {
+    pub fn on_active_started(&self, f: Box<dyn Fn(BlockHash) + Send + Sync>) {
         self.active_started_observer.lock().unwrap().push(f);
     }
 
-    pub fn add_active_stopped_callback(&self, f: Box<dyn Fn(BlockHash) + Send + Sync>) {
+    pub fn on_active_stopped(&self, f: Box<dyn Fn(BlockHash) + Send + Sync>) {
         self.active_stopped_observer.lock().unwrap().push(f);
     }
 
@@ -1105,7 +1105,7 @@ pub trait ActiveElectionsExt {
     fn block_cemented_callback(
         &self,
         tx: &LmdbReadTransaction,
-        block: &Block,
+        block: &SavedBlock,
         confirmation_root: &BlockHash,
     );
     fn publish_block(&self, block: &Block) -> bool;
@@ -1121,7 +1121,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
     fn initialize(&self) {
         let self_w = Arc::downgrade(self);
         self.confirming_set
-            .add_batch_cemented_observer(Box::new(move |notification| {
+            .on_batch_cemented(Box::new(move |notification| {
                 if let Some(active) = self_w.upgrade() {
                     {
                         let mut tx = active.ledger.read_txn();
@@ -1197,7 +1197,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
     fn block_cemented_callback(
         &self,
         tx: &LmdbReadTransaction,
-        block: &Block,
+        block: &SavedBlock,
         confirmation_root: &BlockHash,
     ) {
         if let Some(election) = self.election(&block.qualified_root()) {
@@ -1213,7 +1213,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
             votes = self.votes_with_weight(election);
         } else {
             status = ElectionStatus {
-                winner: Some(block.clone()),
+                winner: Some(block.clone().into()),
                 ..Default::default()
             };
             votes = Vec::new();

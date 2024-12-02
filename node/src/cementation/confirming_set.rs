@@ -57,7 +57,7 @@ impl ConfirmingSet {
         }
     }
 
-    pub(crate) fn add_batch_cemented_observer(&self, callback: BatchCementedCallback) {
+    pub(crate) fn on_batch_cemented(&self, callback: BatchCementedCallback) {
         self.thread
             .observers
             .lock()

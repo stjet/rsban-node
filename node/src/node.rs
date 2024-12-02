@@ -958,7 +958,7 @@ impl Node {
             )
             .parse()
             .unwrap();
-            active_elections.add_election_end_callback(Box::new(
+            active_elections.on_election_ended(Box::new(
                 move |status, _weights, account, amount, is_state_send, is_state_epoch| {
                     let block = status.winner.as_ref().unwrap().clone();
                     if status.election_status_type == ElectionStatusType::ActiveConfirmedQuorum

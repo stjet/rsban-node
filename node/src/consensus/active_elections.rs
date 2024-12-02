@@ -19,8 +19,8 @@ use crate::{
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
     utils::{ContainerInfo, MemoryStream},
-    Account, Amount, Block, BlockHash, BlockType, QualifiedRoot, SavedBlock, Vote,
-    VoteWithWeightInfo,
+    Account, Amount, Block, BlockHash, BlockType, QualifiedRoot, SavedBlock, SavedOrUnsavedBlock,
+    Vote, VoteWithWeightInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
@@ -524,9 +524,11 @@ impl ActiveElections {
                 result = true;
                 election_guard
                     .last_blocks
-                    .insert(block.hash(), block.clone());
+                    .insert(block.hash(), SavedOrUnsavedBlock::Unsaved(block.clone()));
                 if election_guard.status.winner.as_ref().unwrap().hash() == block.hash() {
                     election_guard.status.winner = Some(block.clone());
+                    election_guard.status.winner2 =
+                        Some(SavedOrUnsavedBlock::Unsaved(block.clone()));
                     let message = Message::Publish(Publish::new_forward(block.clone()));
                     let mut publisher = self.message_publisher.lock().unwrap();
                     publisher.flood(&message, DropPolicy::ShouldNotDrop, 1.0);
@@ -534,7 +536,7 @@ impl ActiveElections {
             } else {
                 election_guard
                     .last_blocks
-                    .insert(block.hash(), block.clone());
+                    .insert(block.hash(), SavedOrUnsavedBlock::Unsaved(block.clone()));
             }
         }
         /*
@@ -1214,6 +1216,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         } else {
             status = ElectionStatus {
                 winner: Some(block.clone().into()),
+                winner2: Some(SavedOrUnsavedBlock::Saved(block.clone())),
                 ..Default::default()
             };
             votes = Vec::new();

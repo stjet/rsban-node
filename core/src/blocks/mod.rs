@@ -683,6 +683,32 @@ impl Deserialize for SavedBlock {
     }
 }
 
+#[derive(Clone)]
+pub enum SavedOrUnsavedBlock {
+    Saved(SavedBlock),
+    Unsaved(Block),
+}
+
+impl From<SavedOrUnsavedBlock> for Block {
+    fn from(value: SavedOrUnsavedBlock) -> Self {
+        match value {
+            SavedOrUnsavedBlock::Saved(b) => b.into(),
+            SavedOrUnsavedBlock::Unsaved(b) => b,
+        }
+    }
+}
+
+impl Deref for SavedOrUnsavedBlock {
+    type Target = Block;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            SavedOrUnsavedBlock::Saved(b) => b,
+            SavedOrUnsavedBlock::Unsaved(b) => b,
+        }
+    }
+}
+
 static DEV_PRIVATE_KEY_DATA: &str =
     "34F0A37AAD20F4A260F0A5B3CB3D7FB50673212263E58A380BC10474BB039CE4";
 pub static DEV_PUBLIC_KEY_DATA: &str =

@@ -117,7 +117,7 @@ impl VoteApplier {
         let mut result = BTreeMap::new();
         for (hash, weight) in &block_weights {
             if let Some(block) = guard.last_blocks.get(hash) {
-                result.insert(TallyKey(*weight), block.clone());
+                result.insert(TallyKey(*weight), Block::from(block.clone()));
             }
         }
         // Calculate final votes sum for winner

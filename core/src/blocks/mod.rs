@@ -249,14 +249,6 @@ impl Block {
         !matches!(self, Block::State(_))
     }
 
-    pub fn is_send(&self) -> bool {
-        match self {
-            Block::LegacySend(_) => true,
-            Block::State(_) => self.sideband().unwrap().details.is_send,
-            _ => false,
-        }
-    }
-
     pub fn is_change(&self) -> bool {
         match self {
             Block::LegacyChange(_) => true,

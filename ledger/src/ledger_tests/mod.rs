@@ -204,25 +204,25 @@ fn block_destination_source() {
     let dest_account = Account::from(1000);
 
     let mut send_to_dest = genesis.legacy_send(&txn).destination(dest_account).build();
-    ctx.ledger.process(&mut txn, &mut send_to_dest).unwrap();
+    let send_to_dest = ctx.ledger.process(&mut txn, &mut send_to_dest).unwrap();
 
     let mut send_to_self = genesis
         .legacy_send(&txn)
         .destination(genesis.account())
         .build();
-    ctx.ledger.process(&mut txn, &mut send_to_self).unwrap();
+    let send_to_self = ctx.ledger.process(&mut txn, &mut send_to_self).unwrap();
 
     let mut receive = genesis.legacy_receive(&txn, send_to_self.hash()).build();
-    ctx.ledger.process(&mut txn, &mut receive).unwrap();
+    let receive = ctx.ledger.process(&mut txn, &mut receive).unwrap();
 
     let mut send_to_dest_2 = genesis.send(&txn).link(dest_account).build();
-    ctx.ledger.process(&mut txn, &mut send_to_dest_2).unwrap();
+    let send_to_dest_2 = ctx.ledger.process(&mut txn, &mut send_to_dest_2).unwrap();
 
     let mut send_to_self_2 = genesis.send(&txn).link(genesis.account()).build();
-    ctx.ledger.process(&mut txn, &mut send_to_self_2).unwrap();
+    let send_to_self_2 = ctx.ledger.process(&mut txn, &mut send_to_self_2).unwrap();
 
     let mut receive2 = genesis.receive(&txn, send_to_self_2.hash()).build();
-    ctx.ledger.process(&mut txn, &mut receive2).unwrap();
+    let receive2 = ctx.ledger.process(&mut txn, &mut receive2).unwrap();
 
     let block1 = send_to_dest;
     let block2 = send_to_self;

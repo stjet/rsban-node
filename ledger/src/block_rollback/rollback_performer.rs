@@ -62,12 +62,12 @@ impl<'a> BlockRollbackPerformer<'a> {
         self.ledger.any().block_exists(self.txn, block_hash)
     }
 
-    fn load_account_head(&self, block: &Block) -> anyhow::Result<SavedBlock> {
+    fn load_account_head(&self, block: &SavedBlock) -> anyhow::Result<SavedBlock> {
         let account_info = self.get_account_info(block);
         self.load_block(&account_info.head)
     }
 
-    fn get_account_info(&self, block: &Block) -> AccountInfo {
+    fn get_account_info(&self, block: &SavedBlock) -> AccountInfo {
         self.ledger
             .account_info(self.txn, &block.account())
             .unwrap()

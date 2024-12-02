@@ -231,13 +231,15 @@ impl ActiveElections {
     }
 
     pub fn insert_recently_cemented(&self, status: ElectionStatus) {
+        let SavedOrUnsavedBlock::Saved(block) = status.winner.as_ref().unwrap() else {
+            return;
+        };
         self.recently_cemented
             .lock()
             .unwrap()
             .push_back(status.clone());
 
         // Trigger callback for confirmed block
-        let block = status.winner.as_ref().unwrap();
         let account = block.account();
         let amount = self
             .ledger
@@ -247,10 +249,8 @@ impl ActiveElections {
         let mut is_state_epoch = false;
         if amount.is_some() {
             if block.block_type() == BlockType::State {
-                if let SavedOrUnsavedBlock::Saved(block) = block {
-                    is_state_send = block.is_send();
-                    is_state_epoch = block.is_epoch();
-                }
+                is_state_send = block.is_send();
+                is_state_epoch = block.is_epoch();
             }
         }
 

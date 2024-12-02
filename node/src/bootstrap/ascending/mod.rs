@@ -805,7 +805,7 @@ impl BootstrapAscendingLogic {
         match status {
             BlockStatus::Progress => {
                 let saved_block = saved_block.unwrap();
-                let account = block.account();
+                let account = saved_block.account();
                 // If we've inserted any block in to an account, unmark it as blocked
                 if self.accounts.unblock(account, None) {
                     stats.inc(StatType::BootstrapAscendingAccounts, DetailType::Unblock);

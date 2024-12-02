@@ -238,7 +238,7 @@ fn epoch_open_pending() {
     // Waits for the block to get saved in the database
     assert_timely_eq(Duration::from_secs(10), || node1.unchecked.len(), 1);
     // Open block should be inserted into unchecked
-    let blocks = node1.unchecked.get(&epoch_open.account().into());
+    let blocks = node1.unchecked.get(&key1.account().into());
     assert_eq!(blocks.len(), 1);
     assert_eq!(blocks[0].block.full_hash(), epoch_open.full_hash());
     // New block to process epoch open

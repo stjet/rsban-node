@@ -257,35 +257,6 @@ impl Block {
         }
     }
 
-    pub fn source(&self) -> Option<BlockHash> {
-        match self {
-            Block::LegacyOpen(i) => Some(i.source()),
-            Block::LegacyReceive(i) => Some(i.source()),
-            Block::State(i) => {
-                if i.sideband().unwrap().details.is_receive {
-                    Some(i.link().into())
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
-
-    pub fn destination(&self) -> Option<Account> {
-        match self {
-            Block::LegacySend(i) => Some(*i.destination()),
-            Block::State(i) => {
-                if i.sideband().unwrap().details.is_send {
-                    Some(i.link().into())
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
-
     pub fn source_or_link(&self) -> BlockHash {
         self.source_field()
             .unwrap_or_else(|| self.link_field().unwrap_or_default().into())
@@ -488,6 +459,13 @@ impl SavedBlock {
         self.sideband = sideband;
     }
 
+    pub fn account(&self) -> Account {
+        match self.account_field() {
+            Some(account) => account,
+            None => self.sideband.account,
+        }
+    }
+
     pub fn height(&self) -> u64 {
         self.sideband.height
     }
@@ -528,8 +506,37 @@ impl SavedBlock {
         }
     }
 
+    pub fn source(&self) -> Option<BlockHash> {
+        match &self.block {
+            Block::LegacyOpen(i) => Some(i.source()),
+            Block::LegacyReceive(i) => Some(i.source()),
+            Block::State(i) => {
+                if self.sideband.details.is_receive {
+                    Some(i.link().into())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     pub fn source_epoch(&self) -> Epoch {
         self.sideband.source_epoch
+    }
+
+    pub fn destination(&self) -> Option<Account> {
+        match &self.block {
+            Block::LegacySend(i) => Some(*i.destination()),
+            Block::State(i) => {
+                if self.sideband.details.is_send {
+                    Some(i.link().into())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
     }
 
     pub fn serialize_with_sideband(&self) -> Vec<u8> {

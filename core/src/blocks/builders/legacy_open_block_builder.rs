@@ -71,7 +71,7 @@ impl LegacyOpenBlockBuilder {
         };
 
         let sideband = BlockSideband::new(
-            block.account(),
+            block.account_field().unwrap(),
             BlockHash::zero(),
             Amount::raw(5),
             1,

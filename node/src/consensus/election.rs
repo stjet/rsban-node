@@ -37,7 +37,7 @@ pub struct Election {
 impl Election {
     pub const PASSIVE_DURATION_FACTOR: u32 = 5;
 
-    pub fn new2(
+    pub fn new(
         id: usize,
         block: SavedBlock,
         behavior: ElectionBehavior,
@@ -46,7 +46,7 @@ impl Election {
     ) -> Self {
         let root = block.root();
         let qualified_root = block.qualified_root();
-        let height = block.sideband().map(|s| s.height).unwrap_or_default();
+        let height = block.height();
 
         let data = ElectionData {
             status: ElectionStatus {

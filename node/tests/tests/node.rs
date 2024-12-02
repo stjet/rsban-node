@@ -343,7 +343,7 @@ fn deferred_dependent_elections() {
     });
     assert!(!node1
         .ledger
-        .dependents_confirmed(&node1.store.tx_begin_read(), &receive));
+        .dependents_confirmed_for_unsaved_block(&node1.store.tx_begin_read(), &receive));
 
     assert_never(std::time::Duration::from_millis(500), || {
         node1.active.election(&receive.qualified_root()).is_some()

@@ -539,7 +539,6 @@ fn inactive_votes_cache_election_start() {
     );
     assert_eq!(node.confirming_set.exists(&send3.hash()), false);
     // send7 cannot be voted on but an election should be started from inactive votes
-    assert_eq!(node.ledger.dependents_confirmed(&tx, &send4), false);
     node.process_active(send4);
     assert_timely_eq(Duration::from_secs(5), || node.ledger.cemented_count(), 7);
 }

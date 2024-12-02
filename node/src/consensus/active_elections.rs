@@ -1309,7 +1309,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
                 });
 
                 let id = NEXT_ELECTION_ID.fetch_add(1, Ordering::Relaxed);
-                let election = Arc::new(Election::new2(
+                let election = Arc::new(Election::new(
                     id,
                     block,
                     election_behavior,

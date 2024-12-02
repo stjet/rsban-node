@@ -1,5 +1,5 @@
 use crate::ledger::Ledger;
-use rsnano_core::{Block, BlockBase, BlockHash, DependentBlocks, StateBlock};
+use rsnano_core::{Block, BlockBase, BlockHash, DependentBlocks, SavedBlock, StateBlock};
 use rsnano_store_lmdb::Transaction;
 
 /// Finds all dependent blocks for a given block.
@@ -14,23 +14,28 @@ impl<'a> DependentBlocksFinder<'a> {
         Self { ledger, txn }
     }
 
-    pub fn find_dependent_blocks(&self, block: &Block) -> DependentBlocks {
-        if block.sideband().is_none() {
-            // a ledger lookup is needed if there is no sideband and it is a state block!
-            if let Block::State(state) = block {
-                let linked_block = if self.link_refers_to_block(state) {
-                    state.link().into()
-                } else {
-                    BlockHash::zero()
-                };
-                return DependentBlocks::new(block.previous(), linked_block);
-            }
-        }
-
+    pub fn find_dependent_blocks(&self, block: &SavedBlock) -> DependentBlocks {
         block.dependent_blocks(
             &self.ledger.constants.epochs,
             &self.ledger.constants.genesis_account,
         )
+    }
+
+    pub fn find_dependent_blocks_for_unsaved_block(&self, block: &Block) -> DependentBlocks {
+        // a ledger lookup is needed if it is a state block!
+        if let Block::State(state) = block {
+            let linked_block = if self.link_refers_to_block(state) {
+                state.link().into()
+            } else {
+                BlockHash::zero()
+            };
+            DependentBlocks::new(block.previous(), linked_block)
+        } else {
+            block.dependent_blocks(
+                &self.ledger.constants.epochs,
+                &self.ledger.constants.genesis_account,
+            )
+        }
     }
 
     fn link_refers_to_block(&self, state: &StateBlock) -> bool {

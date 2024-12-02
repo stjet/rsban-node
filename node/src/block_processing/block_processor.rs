@@ -601,15 +601,18 @@ impl BlockProcessorLoop {
     ) -> BlockStatus {
         let mut block = context.block.lock().unwrap().clone();
         let hash = block.hash();
+        let mut saved_block = None;
 
         let result = match self.ledger.process(txn, &mut block) {
             Ok(saved) => {
+                saved_block = Some(saved.clone());
                 *context.saved_block.lock().unwrap() = Some(saved);
                 BlockStatus::Progress
             }
             Err(r) => r,
         };
 
+        // reassign to copy sideband
         *context.block.lock().unwrap() = block.clone();
 
         self.stats
@@ -624,10 +627,11 @@ impl BlockProcessorLoop {
                 /* For send blocks check epoch open unchecked (gap pending).
                 For state blocks check only send subtype and only if block epoch is not last epoch.
                 If epoch is last, then pending entry shouldn't trigger same epoch open block for destination account. */
+                let block = saved_block.unwrap();
                 if block.block_type() == BlockType::LegacySend
                     || block.block_type() == BlockType::State
                         && block.is_send()
-                        && block.sideband().unwrap().details.epoch < Epoch::MAX
+                        && block.epoch() < Epoch::MAX
                 {
                     /* block->destination () for legacy send blocks
                     block->link () for state blocks (send subtype) */

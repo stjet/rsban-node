@@ -318,7 +318,7 @@ fn election_winner_details_clearing_node_process_confirmed() {
     // Add to election_winner_details. Use an unrealistic iteration so that it should fall into the else case and do a cleanup
     node.active.vote_applier.add_election_winner_details(
         send.hash(),
-        Arc::new(Election::new2(
+        Arc::new(Election::new(
             1,
             send.clone(),
             ElectionBehavior::Manual,

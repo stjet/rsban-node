@@ -932,7 +932,7 @@ impl Node {
 
         let workers_w = Arc::downgrade(&wallet_workers);
         let wallets_w = Arc::downgrade(&wallets);
-        confirming_set.add_cemented_observer(Box::new(move |block| {
+        confirming_set.on_cemented(Box::new(move |block| {
             let Some(workers) = workers_w.upgrade() else {
                 return;
             };

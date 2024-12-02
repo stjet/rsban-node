@@ -66,7 +66,7 @@ impl ConfirmingSet {
             .push(callback);
     }
 
-    pub fn add_cemented_observer(&self, callback: BlockCallback) {
+    pub fn on_cemented(&self, callback: BlockCallback) {
         self.thread
             .observers
             .lock()
@@ -352,7 +352,7 @@ impl Observers {
     fn notify_batch(&mut self, notification: CementedNotification) {
         for (block, _) in &notification.cemented {
             for observer in &mut self.cemented {
-                observer(&Arc::new(block.clone().into()));
+                observer(block);
             }
         }
 
@@ -401,7 +401,7 @@ mod tests {
         let condition = Arc::new(Condvar::new());
         let count_clone = Arc::clone(&count);
         let condition_clone = Arc::clone(&condition);
-        confirming_set.add_cemented_observer(Box::new(move |_block| {
+        confirming_set.on_cemented(Box::new(move |_block| {
             {
                 *count_clone.lock().unwrap() += 1;
             }

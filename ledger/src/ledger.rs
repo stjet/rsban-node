@@ -21,7 +21,7 @@ use rsnano_store_lmdb::{
     LmdbRepWeightStore, LmdbStore, LmdbVersionStore, LmdbWriteTransaction, Transaction,
 };
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::HashMap,
     net::SocketAddrV6,
     sync::{
         atomic::{AtomicBool, Ordering},

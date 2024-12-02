@@ -19,7 +19,8 @@ use crate::{
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
     utils::{ContainerInfo, MemoryStream},
-    Account, Amount, Block, BlockHash, BlockType, QualifiedRoot, Vote, VoteWithWeightInfo,
+    Account, Amount, Block, BlockHash, BlockType, QualifiedRoot, SavedBlock, Vote,
+    VoteWithWeightInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
@@ -1110,7 +1111,7 @@ pub trait ActiveElectionsExt {
     fn publish_block(&self, block: &Block) -> bool;
     fn insert(
         &self,
-        block: Block,
+        block: SavedBlock,
         election_behavior: ElectionBehavior,
         erased_callback: Option<ErasedCallback>,
     ) -> (bool, Option<Arc<Election>>);
@@ -1278,7 +1279,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
 
     fn insert(
         &self,
-        block: Block,
+        block: SavedBlock,
         election_behavior: ElectionBehavior,
         erased_callback: Option<ErasedCallback>,
     ) -> (bool, Option<Arc<Election>>) {
@@ -1308,7 +1309,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
                 });
 
                 let id = NEXT_ELECTION_ID.fetch_add(1, Ordering::Relaxed);
-                let election = Arc::new(Election::new(
+                let election = Arc::new(Election::new2(
                     id,
                     block,
                     election_behavior,

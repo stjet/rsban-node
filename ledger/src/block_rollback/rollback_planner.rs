@@ -1,6 +1,6 @@
 use rsnano_core::{
-    Account, AccountInfo, Amount, Block, BlockHash, BlockSubType, ConfirmationHeightInfo, Epoch,
-    Epochs, PendingInfo, PendingKey, PublicKey, SavedBlock,
+    Account, AccountInfo, Amount, BlockHash, BlockSubType, ConfirmationHeightInfo, Epoch, Epochs,
+    PendingInfo, PendingKey, PublicKey, SavedBlock,
 };
 
 pub(crate) enum RollbackStep {

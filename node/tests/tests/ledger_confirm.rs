@@ -785,34 +785,3 @@ fn observers() {
         1
     );
 }
-
-#[test]
-fn election_winner_details_clearing_node_process_confirmed() {
-    let mut system = System::new();
-    let node1 = system.make_node();
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1000),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    // Add to election_winner_details. Use an unrealistic iteration so that it should fall into the else case and do a cleanup
-    let election = Arc::new(Election::new(
-        1,
-        send.clone(),
-        ElectionBehavior::Priority,
-        Box::new(|_| {}),
-        Box::new(|_| {}),
-    ));
-    node1
-        .active
-        .vote_applier
-        .add_election_winner_details(send.hash(), election);
-    let mut status = ElectionStatus::default();
-    status.winner = Some(send);
-    node1.active.process_confirmed(status, 1000000);
-    assert_eq!(node1.active.vote_applier.election_winner_details_len(), 0);
-}

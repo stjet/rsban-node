@@ -44,10 +44,11 @@ fn batches() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
+    let send = node2.process(send).unwrap();
 
     {
         for i in 0..ConfirmReq::HASHES_MAX {
-            let election = Election::new(
+            let election = Election::new2(
                 i,
                 send.clone(),
                 ElectionBehavior::Priority,
@@ -59,7 +60,7 @@ fn batches() {
             assert_eq!(solicitor.add(&election, &data), false);
         }
         // Reached the maximum amount of requests for the channel
-        let election = Election::new(
+        let election = Election::new2(
             1000,
             send.clone(),
             ElectionBehavior::Priority,
@@ -125,8 +126,9 @@ fn different_hashes() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
+    let send = node2.process(send).unwrap();
 
-    let election = Election::new(
+    let election = Election::new2(
         100,
         send.clone(),
         ElectionBehavior::Priority,
@@ -195,8 +197,9 @@ fn bypass_max_requests_cap() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
+    let send = node2.process(send).unwrap();
 
-    let election = Election::new(
+    let election = Election::new2(
         100,
         send.clone(),
         ElectionBehavior::Priority,

@@ -47,7 +47,7 @@ impl ManualScheduler {
         let mut guard = self.mutex.lock().unwrap();
         guard
             .queue
-            .push_back((block.into(), previous_balance, ElectionBehavior::Manual));
+            .push_back((block, previous_balance, ElectionBehavior::Manual));
         self.notify();
     }
 
@@ -123,7 +123,7 @@ impl ManualSchedulerExt for Arc<ManualScheduler> {
 }
 
 struct ManualSchedulerImpl {
-    queue: VecDeque<(Block, Option<Amount>, ElectionBehavior)>,
+    queue: VecDeque<(SavedBlock, Option<Amount>, ElectionBehavior)>,
     stopped: bool,
 }
 

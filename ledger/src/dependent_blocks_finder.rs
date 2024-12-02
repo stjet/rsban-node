@@ -22,19 +22,20 @@ impl<'a> DependentBlocksFinder<'a> {
     }
 
     pub fn find_dependent_blocks_for_unsaved_block(&self, block: &Block) -> DependentBlocks {
-        // a ledger lookup is needed if it is a state block!
-        if let Block::State(state) = block {
-            let linked_block = if self.is_receive_or_change(state) {
-                state.link().into()
-            } else {
-                BlockHash::zero()
-            };
-            DependentBlocks::new(block.previous(), linked_block)
-        } else {
-            block.dependent_blocks(
-                &self.ledger.constants.epochs,
-                &self.ledger.constants.genesis_account,
-            )
+        match block {
+            Block::LegacySend(b) => b.dependent_blocks(),
+            Block::LegacyChange(b) => b.dependent_blocks(),
+            Block::LegacyReceive(b) => b.dependent_blocks(),
+            Block::LegacyOpen(b) => b.dependent_blocks(&self.ledger.constants.genesis_account),
+            // a ledger lookup is needed if it is a state block!
+            Block::State(state) => {
+                let linked_block = if self.is_receive_or_change(state) {
+                    state.link().into()
+                } else {
+                    BlockHash::zero()
+                };
+                DependentBlocks::new(block.previous(), linked_block)
+            }
         }
     }
 

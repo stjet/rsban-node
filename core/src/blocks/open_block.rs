@@ -2,8 +2,8 @@ use super::{BlockBase, BlockSideband, BlockType};
 use crate::{
     to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, LazyBlockHash, Link, PrivateKey,
-    PublicKey, Root, Signature, WorkNonce,
+    Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, LazyBlockHash, Link,
+    PrivateKey, PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 
@@ -125,6 +125,14 @@ impl OpenBlock {
             hash: LazyBlockHash::new(),
             sideband: None,
         })
+    }
+
+    pub fn dependent_blocks(&self, genesis_account: &Account) -> DependentBlocks {
+        if self.account() == *genesis_account {
+            DependentBlocks::none()
+        } else {
+            DependentBlocks::new(self.source(), BlockHash::zero())
+        }
     }
 }
 

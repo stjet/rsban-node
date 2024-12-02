@@ -16,7 +16,7 @@ pub(crate) fn upgrade_genesis_to_epoch_v1(
 
 pub(crate) struct LegacySendBlockResult<'a> {
     pub destination: AccountBlockFactory<'a>,
-    pub send_block: Block,
+    pub send_block: SavedBlock,
     pub amount_sent: Amount,
 }
 pub(crate) fn setup_legacy_send_block<'a>(
@@ -32,7 +32,7 @@ pub(crate) fn setup_legacy_send_block<'a>(
         .destination(destination.account())
         .amount(amount_sent)
         .build();
-    ctx.ledger.process(txn, &mut send_block).unwrap();
+    let send_block = ctx.ledger.process(txn, &mut send_block).unwrap();
     LegacySendBlockResult {
         destination,
         send_block,
@@ -42,7 +42,7 @@ pub(crate) fn setup_legacy_send_block<'a>(
 
 pub(crate) struct LegacyOpenBlockResult<'a> {
     pub destination: AccountBlockFactory<'a>,
-    pub send_block: Block,
+    pub send_block: SavedBlock,
     pub open_block: SavedBlock,
     pub expected_balance: Amount,
 }
@@ -103,7 +103,7 @@ pub(crate) fn setup_legacy_receive_block<'a>(
 
 pub(crate) struct SendBlockResult<'a> {
     pub destination: AccountBlockFactory<'a>,
-    pub send_block: Block,
+    pub send_block: SavedBlock,
 }
 pub(crate) fn setup_send_block<'a>(
     ctx: &'a LedgerContext,
@@ -118,7 +118,7 @@ pub(crate) fn setup_send_block<'a>(
         .link(destination.account())
         .amount_sent(amount_sent)
         .build();
-    ctx.ledger.process(txn, &mut send_block).unwrap();
+    let send_block = ctx.ledger.process(txn, &mut send_block).unwrap();
 
     SendBlockResult {
         destination,
@@ -127,8 +127,8 @@ pub(crate) fn setup_send_block<'a>(
 }
 
 pub(crate) struct OpenBlockResult {
-    pub send_block: Block,
-    pub open_block: Block,
+    pub send_block: SavedBlock,
+    pub open_block: SavedBlock,
 }
 pub(crate) fn setup_open_block(
     ctx: &LedgerContext,
@@ -137,7 +137,7 @@ pub(crate) fn setup_open_block(
     let send = setup_send_block(ctx, txn);
 
     let mut open_block = send.destination.open(txn, send.send_block.hash()).build();
-    ctx.ledger.process(txn, &mut open_block).unwrap();
+    let open_block = ctx.ledger.process(txn, &mut open_block).unwrap();
 
     OpenBlockResult {
         send_block: send.send_block,

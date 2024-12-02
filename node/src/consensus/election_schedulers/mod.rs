@@ -77,7 +77,7 @@ impl ElectionSchedulers {
         }
     }
 
-    pub fn activate_successors(&self, tx: &LmdbReadTransaction, block: &Block) {
+    pub fn activate_successors(&self, tx: &LmdbReadTransaction, block: &SavedBlock) {
         self.priority.activate_successors(tx, block);
     }
 

@@ -2,8 +2,8 @@ use super::{BlockBase, BlockSideband, BlockType};
 use crate::{
     to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, LazyBlockHash, Link, PendingKey,
-    PrivateKey, PublicKey, Root, Signature, WorkNonce,
+    Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, LazyBlockHash, Link,
+    PendingKey, PrivateKey, PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 use serde::de::{Unexpected, Visitor};
@@ -178,6 +178,10 @@ impl SendBlock {
 
     pub fn destination(&self) -> &Account {
         &self.hashables.destination
+    }
+
+    pub fn dependent_blocks(&self) -> DependentBlocks {
+        DependentBlocks::new(self.previous(), BlockHash::zero())
     }
 }
 

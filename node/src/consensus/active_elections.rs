@@ -332,8 +332,10 @@ impl ActiveElections {
         }
 
         (self.account_balance_changed)(&account, false);
-        if block.is_send() {
-            (self.account_balance_changed)(&block.destination().unwrap(), true);
+        if let SavedOrUnsavedBlock::Saved(block) = block {
+            if block.is_send() {
+                (self.account_balance_changed)(&block.destination().unwrap(), true);
+            }
         }
     }
 

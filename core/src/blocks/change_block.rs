@@ -2,8 +2,8 @@ use super::BlockBase;
 use crate::{
     to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, JsonBlock,
-    LazyBlockHash, Link, PrivateKey, PublicKey, Root, Signature, WorkNonce,
+    Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, DependentBlocks,
+    JsonBlock, LazyBlockHash, Link, PrivateKey, PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 
@@ -110,6 +110,10 @@ impl ChangeBlock {
             hash: LazyBlockHash::new(),
             sideband: None,
         })
+    }
+
+    pub fn dependent_blocks(&self) -> DependentBlocks {
+        DependentBlocks::new(self.previous(), BlockHash::zero())
     }
 }
 

@@ -337,34 +337,6 @@ impl Block {
             BlockType::from_u8(stream.read_u8()?).ok_or_else(|| anyhow!("invalid block type"))?;
         Self::deserialize_block_type(block_type, stream)
     }
-
-    /// There can be at most two dependencies per block, namely "previous" and "link/source".
-    pub fn dependent_blocks(&self, epochs: &Epochs, genensis_account: &Account) -> DependentBlocks {
-        match self {
-            Block::LegacySend(_) | Block::LegacyChange(_) => {
-                DependentBlocks::new(self.previous(), BlockHash::zero())
-            }
-            Block::LegacyReceive(receive) => {
-                DependentBlocks::new(receive.previous(), receive.source())
-            }
-            Block::LegacyOpen(open) => {
-                if &open.account() == genensis_account {
-                    DependentBlocks::none()
-                } else {
-                    DependentBlocks::new(open.source(), BlockHash::zero())
-                }
-            }
-            Block::State(state) => {
-                let link_refers_to_block = !self.is_send() && !epochs.is_epoch_link(&state.link());
-                let linked_block = if link_refers_to_block {
-                    state.link().into()
-                } else {
-                    BlockHash::zero()
-                };
-                DependentBlocks::new(self.previous(), linked_block)
-            }
-        }
-    }
 }
 
 impl FullHash for Block {
@@ -556,6 +528,14 @@ impl SavedBlock {
         self.sideband.details.is_receive
     }
 
+    pub fn is_send(&self) -> bool {
+        match &self.block {
+            Block::LegacySend(_) => true,
+            Block::State(_) => self.sideband.details.is_send,
+            _ => false,
+        }
+    }
+
     pub fn source_epoch(&self) -> Epoch {
         self.sideband.source_epoch
     }
@@ -582,6 +562,25 @@ impl SavedBlock {
 
     pub fn sideband(&self) -> &BlockSideband {
         &self.sideband
+    }
+
+    /// There can be at most two dependencies per block, namely "previous" and "link/source".
+    pub fn dependent_blocks(&self, epochs: &Epochs, genesis_account: &Account) -> DependentBlocks {
+        match &self.block {
+            Block::LegacySend(b) => b.dependent_blocks(),
+            Block::LegacyChange(b) => b.dependent_blocks(),
+            Block::LegacyReceive(b) => b.dependent_blocks(),
+            Block::LegacyOpen(b) => b.dependent_blocks(genesis_account),
+            Block::State(state) => {
+                let link_refers_to_block = !self.is_send() && !epochs.is_epoch_link(&state.link());
+                let linked_block = if link_refers_to_block {
+                    state.link().into()
+                } else {
+                    BlockHash::zero()
+                };
+                DependentBlocks::new(self.previous(), linked_block)
+            }
+        }
     }
 }
 

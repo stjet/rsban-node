@@ -44,8 +44,7 @@ impl From<ElectionStatusType> for DetailType {
 /// Information on the status of an election
 #[derive(Clone)]
 pub struct ElectionStatus {
-    pub winner: Option<Block>,
-    pub winner2: Option<SavedOrUnsavedBlock>,
+    pub winner: Option<SavedOrUnsavedBlock>,
     pub tally: Amount,
     pub final_tally: Amount,
     pub confirmation_request_count: u32,
@@ -60,7 +59,6 @@ impl Default for ElectionStatus {
     fn default() -> Self {
         Self {
             winner: None,
-            winner2: None,
             tally: Amount::zero(),
             final_tally: Amount::zero(),
             block_count: 0,

@@ -328,7 +328,7 @@ fn election_winner_details_clearing_node_process_confirmed() {
     );
 
     let mut election = ElectionStatus::default();
-    election.winner = Some(send.into());
+    election.winner = Some(rsnano_core::SavedOrUnsavedBlock::Saved(send));
 
     node.active.process_confirmed(election, 1000000);
 

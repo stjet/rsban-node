@@ -19,7 +19,7 @@ impl RpcCommandHandler {
         } else {
             // Add record in confirmation history for confirmed block
             let mut status = ElectionStatus::default();
-            status.winner = Some(block.clone().into());
+            status.winner = Some(rsnano_core::SavedOrUnsavedBlock::Saved(block));
             status.election_end = std::time::SystemTime::now();
             status.block_count = 1;
             status.election_status_type = ElectionStatusType::ActiveConfirmationHeight;

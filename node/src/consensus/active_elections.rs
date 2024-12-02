@@ -526,8 +526,7 @@ impl ActiveElections {
                     .last_blocks
                     .insert(block.hash(), SavedOrUnsavedBlock::Unsaved(block.clone()));
                 if election_guard.status.winner.as_ref().unwrap().hash() == block.hash() {
-                    election_guard.status.winner = Some(block.clone());
-                    election_guard.status.winner2 =
+                    election_guard.status.winner =
                         Some(SavedOrUnsavedBlock::Unsaved(block.clone()));
                     let message = Message::Publish(Publish::new_forward(block.clone()));
                     let mut publisher = self.message_publisher.lock().unwrap();
@@ -1215,8 +1214,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
             votes = self.votes_with_weight(election);
         } else {
             status = ElectionStatus {
-                winner: Some(block.clone().into()),
-                winner2: Some(SavedOrUnsavedBlock::Saved(block.clone())),
+                winner: Some(SavedOrUnsavedBlock::Saved(block.clone())),
                 ..Default::default()
             };
             votes = Vec::new();

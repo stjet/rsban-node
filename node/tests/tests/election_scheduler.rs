@@ -124,7 +124,9 @@ mod bucket {
 }
 
 mod election_scheduler {
-    use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, DEV_GENESIS_KEY};
+    use rsnano_core::{
+        Amount, Block, BlockHash, PrivateKey, SavedOrUnsavedBlock, StateBlock, DEV_GENESIS_KEY,
+    };
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use rsnano_node::{config::NodeConfig, consensus::ActiveElectionsExt};
     use std::time::Duration;
@@ -231,10 +233,10 @@ mod election_scheduler {
             &DEV_GENESIS_KEY,
             node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
-        node.process(send.clone()).unwrap();
+        let send = node.process(send.clone()).unwrap();
         node.active.process_confirmed(
             rsnano_node::consensus::ElectionStatus {
-                winner: Some(send.clone()),
+                winner: Some(SavedOrUnsavedBlock::Saved(send.clone())),
                 ..Default::default()
             },
             0,
@@ -249,10 +251,10 @@ mod election_scheduler {
             &key,
             node.work_generate_dev(&key),
         ));
-        node.process(receive.clone()).unwrap();
+        let receive = node.process(receive.clone()).unwrap();
         node.active.process_confirmed(
             rsnano_node::consensus::ElectionStatus {
-                winner: Some(receive.clone()),
+                winner: Some(SavedOrUnsavedBlock::Saved(receive.clone())),
                 ..Default::default()
             },
             0,

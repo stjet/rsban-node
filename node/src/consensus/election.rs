@@ -52,8 +52,7 @@ impl Election {
 
         let data = ElectionData {
             status: ElectionStatus {
-                winner: Some(block.clone().into()),
-                winner2: Some(rsnano_core::SavedOrUnsavedBlock::Saved(block.clone())),
+                winner: Some(rsnano_core::SavedOrUnsavedBlock::Saved(block.clone())),
                 election_end: SystemTime::now(),
                 block_count: 1,
                 election_status_type: super::ElectionStatusType::Ongoing,

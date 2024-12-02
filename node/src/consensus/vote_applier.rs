@@ -295,8 +295,7 @@ impl VoteApplierExt for Arc<VoteApplier> {
         if sum >= self.online_reps.lock().unwrap().quorum_delta()
             && winner_hash != status_winner_hash
         {
-            election_lock.status.winner = Some(block.clone().into());
-            election_lock.status.winner2 = Some(block.clone());
+            election_lock.status.winner = Some(block.clone());
             self.remove_votes(election, &mut election_lock, &status_winner_hash);
             self.block_processor.force(block.clone().into());
         }
@@ -346,7 +345,7 @@ impl VoteApplierExt for Arc<VoteApplier> {
             self.workers.push_task(Box::new(move || {
                 let block = status.winner.as_ref().unwrap().clone();
                 self_l.process_confirmed(status, 0);
-                (election.confirmation_action)(block);
+                (election.confirmation_action)(block.into());
             }));
         }
     }

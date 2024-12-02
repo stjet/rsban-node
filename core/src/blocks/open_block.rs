@@ -1,4 +1,4 @@
-use super::{BlockBase, BlockSideband, BlockType};
+use super::{BlockBase, BlockType};
 use crate::{
     to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
@@ -37,7 +37,6 @@ pub struct OpenBlock {
     pub signature: Signature,
     pub hashables: OpenHashables,
     pub hash: LazyBlockHash,
-    pub sideband: Option<BlockSideband>,
 }
 
 impl OpenBlock {
@@ -62,7 +61,6 @@ impl OpenBlock {
             signature,
             hashables,
             hash,
-            sideband: None,
         }
     }
 
@@ -104,7 +102,6 @@ impl OpenBlock {
             signature,
             hashables,
             hash: LazyBlockHash::new(),
-            sideband: None,
         })
     }
 
@@ -123,7 +120,6 @@ impl OpenBlock {
                 account,
             },
             hash: LazyBlockHash::new(),
-            sideband: None,
         })
     }
 
@@ -147,10 +143,6 @@ impl PartialEq for OpenBlock {
 impl Eq for OpenBlock {}
 
 impl BlockBase for OpenBlock {
-    fn set_sideband(&mut self, sideband: BlockSideband) {
-        self.sideband = Some(sideband);
-    }
-
     fn block_type(&self) -> BlockType {
         BlockType::LegacyOpen
     }
@@ -269,7 +261,6 @@ impl From<JsonOpenBlock> for OpenBlock {
             signature: value.signature,
             hashables,
             hash: LazyBlockHash::new(),
-            sideband: None,
         }
     }
 }

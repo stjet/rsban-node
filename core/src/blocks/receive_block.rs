@@ -1,4 +1,4 @@
-use super::{BlockBase, BlockSideband, BlockType};
+use super::{BlockBase, BlockType};
 use crate::{
     to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
@@ -34,7 +34,6 @@ pub struct ReceiveBlock {
     pub signature: Signature,
     pub hashables: ReceiveHashables,
     pub hash: LazyBlockHash,
-    pub sideband: Option<BlockSideband>,
 }
 
 impl ReceiveBlock {
@@ -48,7 +47,6 @@ impl ReceiveBlock {
             signature,
             hashables,
             hash,
-            sideband: None,
         }
     }
 
@@ -78,7 +76,6 @@ impl ReceiveBlock {
             signature,
             hashables: ReceiveHashables { previous, source },
             hash: LazyBlockHash::new(),
-            sideband: None,
         })
     }
 
@@ -94,7 +91,6 @@ impl ReceiveBlock {
             signature,
             hashables: ReceiveHashables { previous, source },
             hash: LazyBlockHash::new(),
-            sideband: None,
         })
     }
 
@@ -124,10 +120,6 @@ impl PartialEq for ReceiveBlock {
 impl Eq for ReceiveBlock {}
 
 impl BlockBase for ReceiveBlock {
-    fn set_sideband(&mut self, sideband: BlockSideband) {
-        self.sideband = Some(sideband)
-    }
-
     fn block_type(&self) -> BlockType {
         BlockType::LegacyReceive
     }
@@ -235,7 +227,6 @@ impl From<JsonReceiveBlock> for ReceiveBlock {
             signature: value.signature,
             hashables,
             hash,
-            sideband: None,
         }
     }
 }

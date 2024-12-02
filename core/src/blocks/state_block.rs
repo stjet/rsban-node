@@ -1,4 +1,4 @@
-use super::{BlockBase, BlockSideband, BlockType};
+use super::{BlockBase, BlockType};
 use crate::{
     to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
@@ -50,7 +50,6 @@ pub struct StateBlock {
     pub signature: Signature,
     pub hashables: StateHashables,
     pub hash: LazyBlockHash,
-    pub sideband: Option<BlockSideband>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -93,7 +92,6 @@ impl StateBlock {
             signature,
             hashables,
             hash,
-            sideband: None,
         }
     }
 
@@ -134,7 +132,6 @@ impl StateBlock {
                 link,
             },
             hash: LazyBlockHash::new(),
-            sideband: None,
         }
     }
 
@@ -212,7 +209,6 @@ impl StateBlock {
                 link,
             },
             hash: LazyBlockHash::new(),
-            sideband: None,
         })
     }
 
@@ -239,7 +235,6 @@ impl StateBlock {
                 link,
             },
             hash: LazyBlockHash::new(),
-            sideband: None,
         })
     }
 }
@@ -255,10 +250,6 @@ impl PartialEq for StateBlock {
 impl Eq for StateBlock {}
 
 impl BlockBase for StateBlock {
-    fn set_sideband(&mut self, sideband: BlockSideband) {
-        self.sideband = Some(sideband);
-    }
-
     fn block_type(&self) -> BlockType {
         BlockType::State
     }
@@ -383,7 +374,6 @@ impl From<JsonStateBlock> for StateBlock {
             signature: value.signature,
             hashables,
             hash,
-            sideband: None,
         }
     }
 }

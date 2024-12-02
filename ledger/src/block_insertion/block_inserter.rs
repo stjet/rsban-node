@@ -20,7 +20,7 @@ pub(crate) struct BlockInsertInstructions {
 pub(crate) struct BlockInserter<'a> {
     ledger: &'a Ledger,
     txn: &'a mut LmdbWriteTransaction,
-    block: &'a mut Block,
+    block: &'a Block,
     instructions: &'a BlockInsertInstructions,
 }
 
@@ -28,7 +28,7 @@ impl<'a> BlockInserter<'a> {
     pub(crate) fn new(
         ledger: &'a Ledger,
         txn: &'a mut LmdbWriteTransaction,
-        block: &'a mut Block,
+        block: &'a Block,
         instructions: &'a BlockInsertInstructions,
     ) -> Self {
         Self {
@@ -41,7 +41,6 @@ impl<'a> BlockInserter<'a> {
 
     pub(crate) fn insert(&mut self) -> SavedBlock {
         let sideband = self.instructions.set_sideband.clone();
-        self.block.set_sideband(sideband.clone());
         let saved_block = SavedBlock::new(self.block.clone(), sideband);
         self.ledger.store.block.put(self.txn, &saved_block);
         self.update_account();

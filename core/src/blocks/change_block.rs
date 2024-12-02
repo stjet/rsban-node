@@ -2,8 +2,8 @@ use super::BlockBase;
 use crate::{
     to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, BlockSideband, BlockType, DependentBlocks,
-    JsonBlock, LazyBlockHash, Link, PrivateKey, PublicKey, Root, Signature, WorkNonce,
+    Account, Amount, BlockHash, BlockHashBuilder, BlockType, DependentBlocks, JsonBlock,
+    LazyBlockHash, Link, PrivateKey, PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 
@@ -34,7 +34,6 @@ pub struct ChangeBlock {
     pub signature: Signature,
     pub hashables: ChangeHashables,
     pub hash: LazyBlockHash,
-    pub sideband: Option<BlockSideband>,
 }
 
 impl ChangeBlock {
@@ -57,7 +56,6 @@ impl ChangeBlock {
             signature,
             hashables,
             hash,
-            sideband: None,
         }
     }
 
@@ -91,7 +89,6 @@ impl ChangeBlock {
             signature,
             hashables,
             hash: LazyBlockHash::new(),
-            sideband: None,
         })
     }
 
@@ -108,7 +105,6 @@ impl ChangeBlock {
                 representative,
             },
             hash: LazyBlockHash::new(),
-            sideband: None,
         })
     }
 
@@ -138,10 +134,6 @@ impl PartialEq for ChangeBlock {
 impl Eq for ChangeBlock {}
 
 impl BlockBase for ChangeBlock {
-    fn set_sideband(&mut self, sideband: BlockSideband) {
-        self.sideband = Some(sideband);
-    }
-
     fn block_type(&self) -> BlockType {
         BlockType::LegacyChange
     }
@@ -251,7 +243,6 @@ impl From<JsonChangeBlock> for ChangeBlock {
             signature: value.signature,
             hashables,
             hash: LazyBlockHash::new(),
-            sideband: None,
         }
     }
 }

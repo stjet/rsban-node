@@ -137,7 +137,6 @@ impl std::fmt::Debug for LazyBlockHash {
 pub trait BlockBase: FullHash {
     fn block_type(&self) -> BlockType;
     fn account_field(&self) -> Option<Account>;
-    fn set_sideband(&mut self, sideband: BlockSideband);
     fn hash(&self) -> BlockHash;
     fn link_field(&self) -> Option<Link>;
     fn block_signature(&self) -> &Signature;
@@ -396,13 +395,12 @@ pub struct SavedBlock {
 }
 
 impl SavedBlock {
-    pub fn new(mut block: Block, sideband: BlockSideband) -> Self {
-        block.set_sideband(sideband.clone());
+    pub fn new(block: Block, sideband: BlockSideband) -> Self {
         Self { block, sideband }
     }
 
     pub fn new_test_open_block() -> Self {
-        let mut block = Block::new_test_open();
+        let block = Block::new_test_open();
         let sideband = BlockSideband {
             height: 1,
             timestamp: 222222,
@@ -412,7 +410,6 @@ impl SavedBlock {
             details: BlockDetails::new(Epoch::Epoch2, false, true, false),
             source_epoch: Epoch::Epoch0,
         };
-        block.set_sideband(sideband.clone());
         Self::new(block, sideband)
     }
 
@@ -441,7 +438,6 @@ impl SavedBlock {
     }
 
     pub fn set_sideband(&mut self, sideband: BlockSideband) {
-        self.block.set_sideband(sideband.clone());
         self.sideband = sideband;
     }
 
@@ -616,7 +612,6 @@ impl Deserialize for SavedBlock {
                 sideband.balance = state.balance();
             }
         }
-        block.as_block_mut().set_sideband(sideband.clone());
         Ok(SavedBlock { block, sideband })
     }
 }

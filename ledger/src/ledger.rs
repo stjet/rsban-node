@@ -615,7 +615,7 @@ impl Ledger {
     pub fn process(
         &self,
         txn: &mut LmdbWriteTransaction,
-        block: &mut Block,
+        block: &Block,
     ) -> Result<SavedBlock, BlockStatus> {
         let validator = BlockValidatorFactory::new(self, txn, block).create_validator();
         let instructions = validator.validate()?;

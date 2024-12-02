@@ -1,4 +1,4 @@
-use super::{BlockBase, BlockSideband, BlockType};
+use super::{BlockBase, BlockType};
 use crate::{
     to_hex_string, u64_from_hex_str,
     utils::{BufferWriter, FixedSizeSerialize, PropertyTree, Serialize, Stream},
@@ -71,7 +71,6 @@ pub struct SendBlock {
     pub signature: Signature,
     pub work: u64,
     pub hash: LazyBlockHash,
-    pub sideband: Option<BlockSideband>,
 }
 
 impl SendBlock {
@@ -96,7 +95,6 @@ impl SendBlock {
             work,
             signature,
             hash,
-            sideband: None,
         }
     }
 
@@ -123,7 +121,6 @@ impl SendBlock {
             signature,
             work,
             hash: LazyBlockHash::new(),
-            sideband: None,
         })
     }
 
@@ -168,7 +165,6 @@ impl SendBlock {
             signature,
             work,
             hash: LazyBlockHash::new(),
-            sideband: None,
         })
     }
 
@@ -206,10 +202,6 @@ impl PartialEq for SendBlock {
 impl Eq for SendBlock {}
 
 impl BlockBase for SendBlock {
-    fn set_sideband(&mut self, sideband: BlockSideband) {
-        self.sideband = Some(sideband);
-    }
-
     fn block_type(&self) -> BlockType {
         BlockType::LegacySend
     }
@@ -312,7 +304,6 @@ impl From<JsonSendBlock> for SendBlock {
             work: value.work.into(),
             signature: value.signature,
             hash,
-            sideband: None,
         }
     }
 }

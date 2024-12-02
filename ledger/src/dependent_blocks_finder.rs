@@ -24,7 +24,7 @@ impl<'a> DependentBlocksFinder<'a> {
     pub fn find_dependent_blocks_for_unsaved_block(&self, block: &Block) -> DependentBlocks {
         // a ledger lookup is needed if it is a state block!
         if let Block::State(state) = block {
-            let linked_block = if self.link_refers_to_block(state) {
+            let linked_block = if self.is_receive_or_change(state) {
                 state.link().into()
             } else {
                 BlockHash::zero()
@@ -38,7 +38,7 @@ impl<'a> DependentBlocksFinder<'a> {
         }
     }
 
-    fn link_refers_to_block(&self, state: &StateBlock) -> bool {
+    fn is_receive_or_change(&self, state: &StateBlock) -> bool {
         !self.ledger.is_epoch_link(&state.link()) && !self.is_send(state)
     }
 
@@ -48,15 +48,13 @@ impl<'a> DependentBlocksFinder<'a> {
         if block.previous().is_zero() {
             return false;
         }
-        if let Some(sideband) = block.sideband() {
-            sideband.details.is_send
-        } else {
-            block.balance()
-                < self
-                    .ledger
-                    .any()
-                    .block_balance(self.txn, &block.previous())
-                    .unwrap_or_default()
-        }
+
+        let previous_balance = self
+            .ledger
+            .any()
+            .block_balance(self.txn, &block.previous())
+            .unwrap_or_default();
+
+        block.balance() < previous_balance
     }
 }

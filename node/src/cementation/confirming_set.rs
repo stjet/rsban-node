@@ -7,7 +7,7 @@ use rsnano_core::{utils::ContainerInfo, BlockHash, SavedBlock};
 use rsnano_ledger::{Ledger, WriteGuard, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
-    collections::VecDeque,
+    collections::{HashSet, VecDeque},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex,
@@ -49,6 +49,7 @@ impl ConfirmingSet {
             thread: Arc::new(ConfirmingSetThread {
                 mutex: Mutex::new(ConfirmingSetImpl {
                     set: OrderedEntries::default(),
+                    current: HashSet::new(),
                 }),
                 stopped: AtomicBool::new(false),
                 condition: Condvar::new(),
@@ -189,7 +190,8 @@ impl ConfirmingSetThread {
     }
 
     fn contains(&self, hash: &BlockHash) -> bool {
-        self.mutex.lock().unwrap().set.contains(hash)
+        let guard = self.mutex.lock().unwrap();
+        guard.set.contains(hash) || guard.current.contains(hash)
     }
 
     fn len(&self) -> usize {
@@ -201,7 +203,15 @@ impl ConfirmingSetThread {
         while !self.stopped.load(Ordering::SeqCst) {
             if !guard.set.is_empty() {
                 let batch = guard.next_batch(self.config.batch_size);
+
+                // Keep track of the blocks we're currently cementing, so that the .contains (...) check is accurate
+                debug_assert!(guard.current.is_empty());
+                for entry in &batch {
+                    guard.current.insert(entry.hash);
+                }
+
                 drop(guard);
+
                 self.run_batch(batch);
                 guard = self.mutex.lock().unwrap();
             } else {
@@ -335,17 +345,20 @@ impl ConfirmingSetThread {
         }
 
         self.notify(&mut cemented);
+
         {
             let mut guard = self.observers.lock().unwrap();
             for callback in &mut guard.already_cemented {
                 callback(&already_cemented)
             }
         }
+        self.mutex.lock().unwrap().current.clear();
     }
 }
 
 struct ConfirmingSetImpl {
     set: OrderedEntries,
+    current: HashSet<BlockHash>,
 }
 
 impl ConfirmingSetImpl {

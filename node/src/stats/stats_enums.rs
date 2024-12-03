@@ -497,6 +497,7 @@ pub enum DetailType {
     AlreadyCemented,
     Cementing,
     CementedHash,
+    CementingFailed,
 
     // election_state
     Passive,

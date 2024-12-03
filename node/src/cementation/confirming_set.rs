@@ -15,6 +15,7 @@ use std::{
     thread::JoinHandle,
     time::Duration,
 };
+use tracing::debug;
 
 use super::ordered_entries::{Entry, OrderedEntries};
 
@@ -287,6 +288,8 @@ impl ConfirmingSetThread {
             for entry in batch {
                 let hash = entry.hash;
                 let election = entry.election;
+                let mut cemented_count = 0;
+                let mut success = false;
                 loop {
                     (write_guard, tx) = self.ledger.refresh_if_needed(write_guard, tx);
 
@@ -319,6 +322,7 @@ impl ConfirmingSetThread {
                             DetailType::Cemented,
                             added_len as u64,
                         );
+                        cemented_count += added.len();
                         for block in added {
                             cemented.push_back(Context {
                                 block,
@@ -332,15 +336,24 @@ impl ConfirmingSetThread {
                         already_cemented.push_back(hash);
                     }
 
-                    if self.ledger.confirmed().block_exists(&tx, &hash)
-                        || self.stopped.load(Ordering::Relaxed)
-                    {
+                    let success = self.ledger.confirmed().block_exists(&tx, &hash);
+                    if success {
                         break;
                     }
                 }
 
-                self.stats
-                    .inc(StatType::ConfirmingSet, DetailType::CementedHash);
+                if success {
+                    self.stats
+                        .inc(StatType::ConfirmingSet, DetailType::CementedHash);
+                    debug!(
+                        "Cemented block: {} (total cemented: {})",
+                        hash, cemented_count
+                    );
+                } else {
+                    self.stats
+                        .inc(StatType::ConfirmingSet, DetailType::CementingFailed);
+                    debug!("Failed to cement block: {}", hash);
+                }
             }
         }
 

@@ -1,4 +1,3 @@
-use super::{BatchCementedCallback, BlockCallback};
 use crate::{
     stats::{DetailType, StatType, Stats},
     utils::{ThreadPool, ThreadPoolImpl},
@@ -75,6 +74,15 @@ impl ConfirmingSet {
             .push(callback);
     }
 
+    pub fn on_already_cemented(&self, callback: AlreadyCementedCallback) {
+        self.thread
+            .observers
+            .lock()
+            .unwrap()
+            .already_cemented
+            .push(callback);
+    }
+
     /// Adds a block to the set of blocks to be confirmed
     pub fn add(&self, hash: BlockHash) {
         self.thread.add(hash);
@@ -148,6 +156,8 @@ struct ConfirmingSetThread {
 }
 
 impl ConfirmingSetThread {
+    const BATCH_SIZE: usize = 256;
+
     fn stop(&self) {
         {
             let _guard = self.mutex.lock().unwrap();
@@ -183,7 +193,7 @@ impl ConfirmingSetThread {
         let mut guard = self.mutex.lock().unwrap();
         while !self.stopped.load(Ordering::SeqCst) {
             if !guard.set.is_empty() {
-                let batch = guard.next_batch(256);
+                let batch = guard.next_batch(Self::BATCH_SIZE);
                 drop(guard);
                 self.run_batch(batch);
                 guard = self.mutex.lock().unwrap();
@@ -198,21 +208,13 @@ impl ConfirmingSetThread {
         }
     }
 
-    fn notify(
-        &self,
-        cemented: &mut VecDeque<(SavedBlock, BlockHash)>,
-        already_cemented: &mut VecDeque<BlockHash>,
-    ) {
-        let mut notification = CementedNotification {
-            cemented: VecDeque::new(),
-            already_cemented: VecDeque::new(),
-        };
-
-        std::mem::swap(&mut notification.cemented, cemented);
-        std::mem::swap(&mut notification.already_cemented, already_cemented);
+    fn notify(&self, cemented: &mut VecDeque<(SavedBlock, BlockHash)>) {
+        let mut batch = VecDeque::new();
+        std::mem::swap(&mut batch, cemented);
 
         let mut guard = self.mutex.lock().unwrap();
 
+        // It's possible that ledger cementing happens faster than the notifications can be processed by other components, cooldown here
         while self.notification_workers.num_queued_tasks() >= self.config.max_queued_notifications {
             self.stats
                 .inc(StatType::ConfirmingSet, DetailType::Cooldown);
@@ -232,7 +234,7 @@ impl ConfirmingSetThread {
         let stats = self.stats.clone();
         self.notification_workers.push_task(Box::new(move || {
             stats.inc(StatType::ConfirmingSet, DetailType::Notify);
-            observers.lock().unwrap().notify_batch(notification);
+            observers.lock().unwrap().notify_batch(batch);
         }));
     }
 
@@ -242,7 +244,6 @@ impl ConfirmingSetThread {
         mut write_guard: WriteGuard,
         mut tx: LmdbWriteTransaction,
         cemented: &mut VecDeque<(SavedBlock, BlockHash)>,
-        already_cemented: &mut VecDeque<BlockHash>,
     ) -> (WriteGuard, LmdbWriteTransaction) {
         if cemented.len() >= self.config.max_blocks {
             self.stats
@@ -250,7 +251,7 @@ impl ConfirmingSetThread {
             drop(write_guard);
             tx.commit();
 
-            self.notify(cemented, already_cemented);
+            self.notify(cemented);
 
             write_guard = self.ledger.write_queue.wait(Writer::ConfirmationHeight);
             tx.renew();
@@ -276,8 +277,7 @@ impl ConfirmingSetThread {
                     }
 
                     // Issue notifications here, so that `cemented` set is not too large before we add more blocks
-                    (write_guard, tx) =
-                        self.notify_maybe(write_guard, tx, &mut cemented, &mut already_cemented);
+                    (write_guard, tx) = self.notify_maybe(write_guard, tx, &mut cemented);
 
                     self.stats
                         .inc(StatType::ConfirmingSet, DetailType::Cementing);
@@ -321,7 +321,13 @@ impl ConfirmingSetThread {
             }
         }
 
-        self.notify(&mut cemented, &mut already_cemented);
+        self.notify(&mut cemented);
+        {
+            let mut guard = self.observers.lock().unwrap();
+            for callback in &mut guard.already_cemented {
+                callback(&already_cemented)
+            }
+        }
     }
 }
 
@@ -344,27 +350,29 @@ impl ConfirmingSetImpl {
     }
 }
 
-pub(crate) struct CementedNotification {
-    pub cemented: VecDeque<(SavedBlock, BlockHash)>, // block + confirmation root
-    pub already_cemented: VecDeque<BlockHash>,
-}
+type BlockCallback = Box<dyn FnMut(&SavedBlock) + Send>;
+
+/// block + confirmation root
+type BatchCementedCallback = Box<dyn FnMut(&VecDeque<(SavedBlock, BlockHash)>) + Send>;
+type AlreadyCementedCallback = Box<dyn FnMut(&VecDeque<BlockHash>) + Send>;
 
 #[derive(Default)]
 struct Observers {
     cemented: Vec<BlockCallback>,
     batch_cemented: Vec<BatchCementedCallback>,
+    already_cemented: Vec<AlreadyCementedCallback>,
 }
 
 impl Observers {
-    fn notify_batch(&mut self, notification: CementedNotification) {
-        for (block, _) in &notification.cemented {
+    fn notify_batch(&mut self, batch: VecDeque<(SavedBlock, BlockHash)>) {
+        for (block, _confirmation_root) in &batch {
             for observer in &mut self.cemented {
                 observer(block);
             }
         }
 
         for observer in &mut self.batch_cemented {
-            observer(&notification);
+            observer(&batch);
         }
     }
 }

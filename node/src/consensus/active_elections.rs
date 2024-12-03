@@ -1121,16 +1121,23 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
     fn initialize(&self) {
         let self_w = Arc::downgrade(self);
         self.confirming_set
-            .on_batch_cemented(Box::new(move |notification| {
+            .on_batch_cemented(Box::new(move |cemented| {
                 if let Some(active) = self_w.upgrade() {
                     {
                         let mut tx = active.ledger.read_txn();
-                        for (block, confirmation_root) in &notification.cemented {
+                        for (block, confirmation_root) in cemented {
                             tx.refresh_if_needed();
                             active.block_cemented_callback(&tx, block, confirmation_root);
                         }
                     }
-                    for hash in &notification.already_cemented {
+                }
+            }));
+
+        let self_w = Arc::downgrade(self);
+        self.confirming_set
+            .on_already_cemented(Box::new(move |already_cemented| {
+                if let Some(active) = self_w.upgrade() {
+                    for hash in already_cemented {
                         active.block_already_cemented_callback(hash);
                     }
                 }

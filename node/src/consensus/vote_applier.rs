@@ -334,6 +334,7 @@ impl VoteApplierExt for Arc<VoteApplier> {
                 status.winner.as_ref().unwrap().hash(),
             );
 
+            self.stats.inc(StatType::Election, DetailType::ConfirmOnce);
             trace!(
                 qualified_root = ?election.qualified_root,
                 "election confirmed"
@@ -347,10 +348,15 @@ impl VoteApplierExt for Arc<VoteApplier> {
                 self_l.process_confirmed(status, 0);
                 (election.confirmation_action)(block.into());
             }));
+        } else {
+            self.stats
+                .inc(StatType::Election, DetailType::ConfirmOnceFailed);
         }
     }
 
     fn process_confirmed(&self, status: ElectionStatus, mut iteration: u64) {
+        self.stats
+            .inc(StatType::ProcessConfirmed, DetailType::Initiate);
         let hash = status.winner.as_ref().unwrap().hash();
         let num_iters = (self.node_config.block_processor_batch_max_time_ms
             / self.network_params.node.process_confirmed_interval_ms)

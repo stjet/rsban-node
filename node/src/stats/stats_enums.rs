@@ -85,6 +85,7 @@ pub enum StatType {
     MessageProcessor,
     MessageProcessorOverfill,
     MessageProcessorType,
+    ProcessConfirmed,
 }
 
 impl StatType {
@@ -244,6 +245,8 @@ pub enum DetailType {
     GenerateVoteFinal,
     BroadcastBlockInitial,
     BroadcastBlockRepeat,
+    ConfirmOnce,
+    ConfirmOnceFailed,
 
     // election types
     Manual,

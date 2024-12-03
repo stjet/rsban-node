@@ -282,6 +282,13 @@ impl ConfirmingSetThread {
                     self.stats
                         .inc(StatType::ConfirmingSet, DetailType::Cementing);
 
+                    // The block might be rolled back before it's fully cemented
+                    if !self.ledger.any().block_exists(&tx, &hash) {
+                        self.stats
+                            .inc(StatType::ConfirmingSet, DetailType::MissingBlock);
+                        break;
+                    }
+
                     let added = self
                         .ledger
                         .confirm_max(&mut tx, hash, self.config.max_blocks);

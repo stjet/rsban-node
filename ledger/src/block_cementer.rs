@@ -84,10 +84,9 @@ impl<'a> BlockCementer<'a> {
             // Ensure that the block wasn't rolled back during the refresh
             let refreshed = txn.refresh_if_needed();
             if refreshed {
-                assert!(
-                    self.any.block_exists(txn, &target_hash),
-                    "block was rolled back during cementing"
-                );
+                if !self.any.block_exists(txn, &target_hash) {
+                    break; // Block was rolled back during cementing
+                }
             }
 
             // Early return might leave parts of the dependency tree unconfirmed

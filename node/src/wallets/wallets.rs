@@ -1850,7 +1850,7 @@ impl WalletsExt for Arc<Wallets> {
                                 0,
                                 true,
                             );
-                        } else if !self.confirming_set.exists(&hash) {
+                        } else if !self.confirming_set.contains(&hash) {
                             let block = self.ledger.any().get_block(&block_tx, &hash);
                             if let Some(block) = block {
                                 // Request confirmation for block which is not being processed yet

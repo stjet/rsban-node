@@ -219,7 +219,7 @@ impl LocalBlockBroadcaster {
                     continue;
                 }
 
-                if self.confirming_set.exists(&entry.block.hash())
+                if self.confirming_set.contains(&entry.block.hash())
                     || self
                         .ledger
                         .confirmed()

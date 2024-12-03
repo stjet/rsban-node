@@ -256,7 +256,7 @@ fn dependent_election() {
     );
     // Once the item added to the confirming set no longer exists, callbacks have completed
     assert_timely(Duration::from_secs(5), || {
-        !node.confirming_set.exists(&send2.hash())
+        !node.confirming_set.contains(&send2.hash())
     });
 
     assert_timely_eq(

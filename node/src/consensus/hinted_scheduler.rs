@@ -143,7 +143,7 @@ impl HintedScheduler {
             // Check if block exists
             if let Some(block) = self.ledger.any().get_block(tx, &current_hash) {
                 // Ensure block is not already confirmed
-                if self.confirming_set.exists(&current_hash)
+                if self.confirming_set.contains(&current_hash)
                     || self
                         .ledger
                         .confirmed()

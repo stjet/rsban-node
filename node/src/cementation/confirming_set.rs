@@ -117,8 +117,8 @@ impl ConfirmingSet {
     }
 
     /// Added blocks will remain in this set until after ledger has them marked as confirmed.
-    pub fn exists(&self, hash: &BlockHash) -> bool {
-        self.thread.exists(hash)
+    pub fn contains(&self, hash: &BlockHash) -> bool {
+        self.thread.contains(hash)
     }
 
     pub fn len(&self) -> usize {
@@ -188,7 +188,7 @@ impl ConfirmingSetThread {
         }
     }
 
-    fn exists(&self, hash: &BlockHash) -> bool {
+    fn contains(&self, hash: &BlockHash) -> bool {
         self.mutex.lock().unwrap().set.contains(hash)
     }
 
@@ -408,7 +408,7 @@ mod tests {
             ConfirmingSet::new(Default::default(), ledger, Arc::new(Stats::default()));
         let hash = BlockHash::from(1);
         confirming_set.add(hash);
-        assert!(confirming_set.exists(&hash));
+        assert!(confirming_set.contains(&hash));
     }
 
     #[test]

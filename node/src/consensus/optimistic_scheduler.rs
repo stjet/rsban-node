@@ -192,7 +192,7 @@ impl OptimisticScheduler {
         };
         if let Some(block) = any.get_block(tx, &head) {
             // Ensure block is not already confirmed
-            if !self.confirming_set.exists(&block.hash())
+            if !self.confirming_set.contains(&block.hash())
                 || self
                     .ledger
                     .confirmed()

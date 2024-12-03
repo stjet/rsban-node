@@ -537,7 +537,7 @@ fn inactive_votes_cache_election_start() {
         node.ledger.confirmed().block_exists(&tx, &send3.hash()),
         false
     );
-    assert_eq!(node.confirming_set.exists(&send3.hash()), false);
+    assert_eq!(node.confirming_set.contains(&send3.hash()), false);
     // send7 cannot be voted on but an election should be started from inactive votes
     node.process_active(send4);
     assert_timely_eq(Duration::from_secs(5), || node.ledger.cemented_count(), 7);
@@ -1629,7 +1629,7 @@ fn active_inactive() {
     node.active.force_confirm(&election);
 
     assert_timely(Duration::from_secs(5), || {
-        !node.confirming_set.exists(&send2.hash())
+        !node.confirming_set.contains(&send2.hash())
     });
     assert_timely(Duration::from_secs(5), || {
         node.block_confirmed(&send2.hash())

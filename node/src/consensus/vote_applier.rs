@@ -367,9 +367,12 @@ impl VoteApplierExt for Arc<VoteApplier> {
             self.ledger.any().get_block(&tx, &hash)
         };
         if let Some(block) = block {
+            self.stats.inc(StatType::ProcessConfirmed, DetailType::Done);
             trace!(block = ?block,"process confirmed");
             self.confirming_set.add(block.hash());
         } else if iteration < num_iters {
+            self.stats
+                .inc(StatType::ProcessConfirmed, DetailType::Retry);
             iteration += 1;
             let self_w = Arc::downgrade(self);
             self.workers.add_delayed_task(
@@ -383,6 +386,8 @@ impl VoteApplierExt for Arc<VoteApplier> {
                 }),
             );
         } else {
+            self.stats
+                .inc(StatType::ProcessConfirmed, DetailType::Timeout);
             // Do some cleanup due to this block never being processed by confirmation height processor
             self.remove_election_winner_details(&hash);
         }

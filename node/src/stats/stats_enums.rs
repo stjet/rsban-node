@@ -130,6 +130,8 @@ pub enum DetailType {
     Cemented,
     Cooldown,
     Empty,
+    Done,
+    Retry,
 
     // processing queue
     Queue,

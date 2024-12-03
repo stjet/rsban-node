@@ -1125,9 +1125,13 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
                 if let Some(active) = self_w.upgrade() {
                     {
                         let mut tx = active.ledger.read_txn();
-                        for (block, confirmation_root) in cemented {
+                        for context in cemented {
                             tx.refresh_if_needed();
-                            active.block_cemented_callback(&tx, block, confirmation_root);
+                            active.block_cemented_callback(
+                                &tx,
+                                &context.block,
+                                &context.confirmation_root,
+                            );
                         }
                     }
                 }

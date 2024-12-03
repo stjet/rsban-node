@@ -1,4 +1,5 @@
 use crate::{
+    consensus::Election,
     stats::{DetailType, StatType, Stats},
     utils::{ThreadPool, ThreadPoolImpl},
 };
@@ -6,7 +7,7 @@ use rsnano_core::{utils::ContainerInfo, BlockHash, SavedBlock};
 use rsnano_ledger::{Ledger, WriteGuard, Writer};
 use rsnano_store_lmdb::LmdbWriteTransaction;
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::VecDeque,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Condvar, Mutex,
@@ -14,6 +15,8 @@ use std::{
     thread::JoinHandle,
     time::Duration,
 };
+
+use super::ordered_entries::{Entry, OrderedEntries};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConfirmingSetConfig {
@@ -43,7 +46,7 @@ impl ConfirmingSet {
             join_handle: Mutex::new(None),
             thread: Arc::new(ConfirmingSetThread {
                 mutex: Mutex::new(ConfirmingSetImpl {
-                    set: HashSet::new(),
+                    set: OrderedEntries::default(),
                 }),
                 stopped: AtomicBool::new(false),
                 condition: Condvar::new(),
@@ -85,7 +88,11 @@ impl ConfirmingSet {
 
     /// Adds a block to the set of blocks to be confirmed
     pub fn add(&self, hash: BlockHash) {
-        self.thread.add(hash);
+        self.add_with_election(hash, None)
+    }
+
+    pub fn add_with_election(&self, hash: BlockHash, election: Option<Arc<Election>>) {
+        self.thread.add(hash, election);
     }
 
     pub fn start(&self) {
@@ -166,10 +173,10 @@ impl ConfirmingSetThread {
         self.condition.notify_all();
     }
 
-    fn add(&self, hash: BlockHash) {
+    fn add(&self, hash: BlockHash, election: Option<Arc<Election>>) {
         let added = {
             let mut guard = self.mutex.lock().unwrap();
-            guard.set.insert(hash)
+            guard.set.insert(Entry { hash, election })
         };
 
         if added {
@@ -208,7 +215,7 @@ impl ConfirmingSetThread {
         }
     }
 
-    fn notify(&self, cemented: &mut VecDeque<(SavedBlock, BlockHash)>) {
+    fn notify(&self, cemented: &mut VecDeque<Context>) {
         let mut batch = VecDeque::new();
         std::mem::swap(&mut batch, cemented);
 
@@ -243,7 +250,7 @@ impl ConfirmingSetThread {
         &self,
         mut write_guard: WriteGuard,
         mut tx: LmdbWriteTransaction,
-        cemented: &mut VecDeque<(SavedBlock, BlockHash)>,
+        cemented: &mut VecDeque<Context>,
     ) -> (WriteGuard, LmdbWriteTransaction) {
         if cemented.len() >= self.config.max_blocks {
             self.stats
@@ -259,7 +266,7 @@ impl ConfirmingSetThread {
         (write_guard, tx)
     }
 
-    fn run_batch(&self, batch: VecDeque<BlockHash>) {
+    fn run_batch(&self, batch: VecDeque<Entry>) {
         let mut cemented = VecDeque::new();
         let mut already_cemented = VecDeque::new();
 
@@ -267,7 +274,9 @@ impl ConfirmingSetThread {
             let mut write_guard = self.ledger.write_queue.wait(Writer::ConfirmationHeight);
             let mut tx = self.ledger.rw_txn();
 
-            for hash in batch {
+            for entry in batch {
+                let hash = entry.hash;
+                let election = entry.election;
                 loop {
                     (write_guard, tx) = self.ledger.refresh_if_needed(write_guard, tx);
 
@@ -301,7 +310,11 @@ impl ConfirmingSetThread {
                             added_len as u64,
                         );
                         for block in added {
-                            cemented.push_back((block, hash));
+                            cemented.push_back(Context {
+                                block,
+                                confirmation_root: hash,
+                                election: election.clone(),
+                            });
                         }
                     } else {
                         self.stats
@@ -332,19 +345,18 @@ impl ConfirmingSetThread {
 }
 
 struct ConfirmingSetImpl {
-    set: HashSet<BlockHash>,
+    set: OrderedEntries,
 }
 
 impl ConfirmingSetImpl {
-    fn next_batch(&mut self, max_count: usize) -> VecDeque<BlockHash> {
+    fn next_batch(&mut self, max_count: usize) -> VecDeque<Entry> {
         let mut results = VecDeque::new();
         // TODO: use extract_if once it is stablized
-        while let Some(&hash) = self.set.iter().next() {
+        while let Some(entry) = self.set.pop_front() {
             if results.len() >= max_count {
                 break;
             }
-            results.push_back(hash);
-            self.set.remove(&hash);
+            results.push_back(entry);
         }
         results
     }
@@ -353,7 +365,7 @@ impl ConfirmingSetImpl {
 type BlockCallback = Box<dyn FnMut(&SavedBlock) + Send>;
 
 /// block + confirmation root
-type BatchCementedCallback = Box<dyn FnMut(&VecDeque<(SavedBlock, BlockHash)>) + Send>;
+type BatchCementedCallback = Box<dyn FnMut(&VecDeque<Context>) + Send>;
 type AlreadyCementedCallback = Box<dyn FnMut(&VecDeque<BlockHash>) + Send>;
 
 #[derive(Default)]
@@ -364,17 +376,23 @@ struct Observers {
 }
 
 impl Observers {
-    fn notify_batch(&mut self, batch: VecDeque<(SavedBlock, BlockHash)>) {
-        for (block, _confirmation_root) in &batch {
+    fn notify_batch(&mut self, cemented: VecDeque<Context>) {
+        for context in &cemented {
             for observer in &mut self.cemented {
-                observer(block);
+                observer(&context.block);
             }
         }
 
         for observer in &mut self.batch_cemented {
-            observer(&batch);
+            observer(&cemented);
         }
     }
+}
+
+pub(crate) struct Context {
+    pub block: SavedBlock,
+    pub confirmation_root: BlockHash,
+    pub election: Option<Arc<Election>>,
 }
 
 #[cfg(test)]

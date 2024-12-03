@@ -155,15 +155,23 @@ fn pruning_automatic() {
 
     assert_timely(Duration::from_secs(5), || node1.block_exists(&send2.hash()));
 
-    node1.confirm(send1.hash().clone());
+    // Force-confirm both blocks
+
+    node1
+        .active
+        .process_confirmed(send1.hash().clone(), None, 0);
     assert_timely(Duration::from_secs(5), || {
         node1.block_confirmed(&send1.hash())
     });
 
-    node1.confirm(send2.hash().clone());
+    node1
+        .active
+        .process_confirmed(send2.hash().clone(), None, 0);
     assert_timely(Duration::from_secs(5), || {
         node1.block_confirmed(&send2.hash())
     });
+
+    // Check pruning result
 
     assert_eq!(node1.ledger.block_count(), 3);
 

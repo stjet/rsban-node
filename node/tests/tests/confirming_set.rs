@@ -137,8 +137,11 @@ fn confirmed_history() {
         !node.ledger.write_queue.contains(Writer::ConfirmationHeight)
     });
 
-    let tx = node.ledger.read_txn();
-    assert!(node.ledger.confirmed().block_exists(&tx, &send.hash()));
+    assert_timely(Duration::from_secs(5), || {
+        node.ledger
+            .confirmed()
+            .block_exists(&node.ledger.read_txn(), &send.hash())
+    });
 
     assert_timely_eq(Duration::from_secs(10), || node.active.len(), 0);
     assert_timely_eq(

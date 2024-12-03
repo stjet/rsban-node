@@ -234,13 +234,7 @@ mod election_scheduler {
             node.work_generate_dev(*DEV_GENESIS_HASH),
         ));
         let send = node.process(send.clone()).unwrap();
-        node.active.process_confirmed(
-            rsnano_node::consensus::ElectionStatus {
-                winner: Some(SavedOrUnsavedBlock::Saved(send.clone())),
-                ..Default::default()
-            },
-            0,
-        );
+        node.active.process_confirmed(send.hash(), None, 0);
 
         let receive = Block::State(StateBlock::new(
             key.account(),
@@ -252,13 +246,7 @@ mod election_scheduler {
             node.work_generate_dev(&key),
         ));
         let receive = node.process(receive.clone()).unwrap();
-        node.active.process_confirmed(
-            rsnano_node::consensus::ElectionStatus {
-                winner: Some(SavedOrUnsavedBlock::Saved(receive.clone())),
-                ..Default::default()
-            },
-            0,
-        );
+        node.active.process_confirmed(receive.hash(), None, 0);
 
         assert_timely(Duration::from_secs(5), || {
             node.block_confirmed(&send.hash()) && node.block_confirmed(&receive.hash())

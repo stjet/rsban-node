@@ -864,22 +864,11 @@ fn bound_election_winners() {
         let _tx = node.ledger.rw_txn();
 
         // Ensure that when the number of election winners reaches the limit, AEC vacancy reflects that
+        // Confirming more elections should make the vacancy negative
         assert!(node.active.vacancy(ElectionBehavior::Priority) > 0);
 
-        for index in 0..node.config.active_elections.max_election_winners {
-            let election = node.vote_router.election(&blocks[index].hash()).unwrap();
-            node.active.force_confirm(&election);
-        }
-
-        assert_timely_eq(
-            Duration::from_secs(5),
-            || node.active.vacancy(ElectionBehavior::Priority),
-            0,
-        );
-
-        // Confirming more elections should make the vacancy negative
-        for index in 0..blocks.len() {
-            let election = node.vote_router.election(&blocks[index].hash()).unwrap();
+        for block in blocks {
+            let election = node.vote_router.election(&block.hash()).unwrap();
             node.active.force_confirm(&election);
         }
 

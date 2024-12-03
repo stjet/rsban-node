@@ -20,6 +20,7 @@ use super::ordered_entries::{Entry, OrderedEntries};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConfirmingSetConfig {
+    pub batch_size: usize,
     /// Maximum number of dependent blocks to be stored in memory during processing
     pub max_blocks: usize,
     pub max_queued_notifications: usize,
@@ -28,6 +29,7 @@ pub struct ConfirmingSetConfig {
 impl Default for ConfirmingSetConfig {
     fn default() -> Self {
         Self {
+            batch_size: 256,
             max_blocks: 128 * 128,
             max_queued_notifications: 8,
         }
@@ -163,8 +165,6 @@ struct ConfirmingSetThread {
 }
 
 impl ConfirmingSetThread {
-    const BATCH_SIZE: usize = 256;
-
     fn stop(&self) {
         {
             let _guard = self.mutex.lock().unwrap();
@@ -200,7 +200,7 @@ impl ConfirmingSetThread {
         let mut guard = self.mutex.lock().unwrap();
         while !self.stopped.load(Ordering::SeqCst) {
             if !guard.set.is_empty() {
-                let batch = guard.next_batch(Self::BATCH_SIZE);
+                let batch = guard.next_batch(self.config.batch_size);
                 drop(guard);
                 self.run_batch(batch);
                 guard = self.mutex.lock().unwrap();

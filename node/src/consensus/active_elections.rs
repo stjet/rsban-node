@@ -1133,7 +1133,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         // Notify elections about alternative (forked) blocks
         self.block_processor
             .on_block_processed(Box::new(move |status, context| {
-                if matches!(status, BlockStatus::Fork) {
+                if status == BlockStatus::Fork {
                     if let Some(active) = self_w.upgrade() {
                         let block = context.block.lock().unwrap().clone();
                         active.publish_block(&block);

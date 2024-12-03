@@ -402,8 +402,7 @@ impl ActiveElections {
     }
 
     fn election_winners_vacancy(&self) -> i64 {
-        self.config.max_election_winners as i64
-            - self.vote_applier.election_winner_details_len() as i64
+        self.config.max_election_winners as i64 - self.confirming_set.len() as i64
     }
 
     pub fn clear(&self) {
@@ -937,14 +936,6 @@ impl ActiveElections {
         self.vote_applier.process_confirmed(status, iteration)
     }
 
-    fn block_already_cemented_callback(&self, hash: &BlockHash) {
-        // Depending on timing there is a situation where the election_winner_details is not reset.
-        // This can happen when a block wins an election, and the block is confirmed + observer
-        // called before the block hash gets added to election_winner_details. If the block is confirmed
-        // callbacks have already been done, so we can safely just remove it.
-        self.vote_applier.remove_election_winner_details(hash);
-    }
-
     pub fn container_info(&self) -> ContainerInfo {
         let guard = self.mutex.lock().unwrap();
 
@@ -972,7 +963,6 @@ impl ActiveElections {
                 guard.count_by_behavior(ElectionBehavior::Optimistic),
                 0,
             )
-            .node("vote_applier", self.vote_applier.container_info())
             .node(
                 "recently_confirmed",
                 self.recently_confirmed.container_info(),
@@ -1102,11 +1092,12 @@ pub trait ActiveElectionsExt {
     fn force_confirm(&self, election: &Arc<Election>);
     fn try_confirm(&self, election: &Arc<Election>, hash: &BlockHash);
     /// Distinguishes replay votes, cannot be determined if the block is not in any election
-    fn block_cemented_callback(
+    fn block_cemented(
         &self,
         tx: &LmdbReadTransaction,
         block: &SavedBlock,
         confirmation_root: &BlockHash,
+        source_election: &Option<Arc<Election>>,
     );
     fn publish_block(&self, block: &Block) -> bool;
     fn insert(
@@ -1127,22 +1118,13 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
                         let mut tx = active.ledger.read_txn();
                         for context in cemented {
                             tx.refresh_if_needed();
-                            active.block_cemented_callback(
+                            active.block_cemented(
                                 &tx,
                                 &context.block,
                                 &context.confirmation_root,
+                                &context.election,
                             );
                         }
-                    }
-                }
-            }));
-
-        let self_w = Arc::downgrade(self);
-        self.confirming_set
-            .on_already_cemented(Box::new(move |already_cemented| {
-                if let Some(active) = self_w.upgrade() {
-                    for hash in already_cemented {
-                        active.block_already_cemented_callback(hash);
                     }
                 }
             }));
@@ -1205,33 +1187,39 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
         }
     }
 
-    fn block_cemented_callback(
+    fn block_cemented(
         &self,
         tx: &LmdbReadTransaction,
         block: &SavedBlock,
         confirmation_root: &BlockHash,
+        source_election: &Option<Arc<Election>>,
     ) {
-        if let Some(election) = self.election(&block.qualified_root()) {
-            self.try_confirm(&election, &block.hash());
+        let dependent_election = self.election(&block.qualified_root());
+        if let Some(dependent_election) = &dependent_election {
+            self.stats
+                .inc(StatType::ActiveElections, DetailType::ConfirmDependent);
+            self.try_confirm(&dependent_election, &block.hash());
         }
-        let votes: Vec<VoteWithWeightInfo>;
-        let mut status: ElectionStatus;
-        let election = self
-            .vote_applier
-            .remove_election_winner_details(&block.hash());
-        if let Some(election) = &election {
-            status = election.mutex.lock().unwrap().status.clone();
-            votes = self.votes_with_weight(election);
-        } else {
-            status = ElectionStatus {
-                winner: Some(SavedOrUnsavedBlock::Saved(block.clone())),
-                ..Default::default()
-            };
-            votes = Vec::new();
+
+        let mut status = ElectionStatus::default();
+        let mut votes = Vec::new();
+        status.winner = Some(SavedOrUnsavedBlock::Saved(block.clone()));
+
+        // Check if the currently cemented block was part of an election that triggered the confirmation
+        let mut handled = false;
+        if let Some(source_election) = source_election {
+            if source_election.qualified_root == block.qualified_root() {
+                status = source_election.mutex.lock().unwrap().status.clone();
+                debug_assert_eq!(status.winner.as_ref().unwrap().hash(), block.hash());
+                votes = self.votes_with_weight(source_election);
+                status.election_status_type = ElectionStatusType::ActiveConfirmedQuorum;
+                handled = true;
+            }
         }
-        if block.hash() == *confirmation_root {
-            status.election_status_type = ElectionStatusType::ActiveConfirmedQuorum;
-        } else if election.is_some() {
+
+        if handled {
+            // already handled
+        } else if dependent_election.is_some() {
             status.election_status_type = ElectionStatusType::ActiveConfirmationHeight;
         } else {
             status.election_status_type = ElectionStatusType::InactiveConfirmationHeight;
@@ -1248,6 +1236,8 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
             StatType::ActiveElectionsCemented,
             status.election_status_type.into(),
         );
+
+        trace!(?block, %confirmation_root, "active cemented");
 
         self.notify_observers(tx, &status, &votes);
 

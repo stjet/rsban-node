@@ -39,7 +39,6 @@ pub struct VoteApplier {
     recently_confirmed: Arc<RecentlyConfirmedCache>,
     confirming_set: Arc<ConfirmingSet>,
     workers: Arc<dyn ThreadPool>,
-    election_winner_details: Mutex<HashMap<BlockHash, Arc<Election>>>,
     election_schedulers: RwLock<Option<Weak<ElectionSchedulers>>>,
 }
 
@@ -71,7 +70,6 @@ impl VoteApplier {
             recently_confirmed,
             confirming_set,
             workers,
-            election_winner_details: Mutex::new(HashMap::new()),
             election_schedulers: RwLock::new(None),
         }
     }
@@ -158,28 +156,6 @@ impl VoteApplier {
         first - second >= delta
     }
 
-    pub fn add_election_winner_details(&self, hash: BlockHash, election: Arc<Election>) {
-        self.election_winner_details
-            .lock()
-            .unwrap()
-            .insert(hash, election);
-    }
-
-    pub fn election_winner_details_len(&self) -> usize {
-        self.election_winner_details.lock().unwrap().len()
-    }
-
-    pub fn remove_election_winner_details(&self, hash: &BlockHash) -> Option<Arc<Election>> {
-        let election = {
-            let mut guard = self.election_winner_details.lock().unwrap();
-            guard.remove(hash)
-        };
-
-        self.vacancy_changed();
-
-        election
-    }
-
     fn vacancy_changed(&self) {
         let schedulers = self.election_schedulers.read().unwrap();
         if let Some(schedulers) = &*schedulers {
@@ -187,15 +163,6 @@ impl VoteApplier {
                 schedulers.notify();
             }
         }
-    }
-
-    pub fn container_info(&self) -> ContainerInfo {
-        [(
-            "election_winner_details",
-            self.election_winner_details.lock().unwrap().len(),
-            size_of::<BlockHash>() + size_of::<Arc<Election>>(),
-        )]
-        .into()
     }
 }
 
@@ -316,18 +283,12 @@ impl VoteApplierExt for Arc<VoteApplier> {
     }
 
     fn confirm_once(&self, mut election_lock: MutexGuard<ElectionData>, election: &Arc<Election>) {
-        // This must be kept above the setting of election state, as dependent confirmed elections require up to date changes to election_winner_details
-        let mut winners_guard = self.election_winner_details.lock().unwrap();
-        let mut status = election_lock.status.clone();
-        let old_state = election_lock.state;
-        let just_confirmed = old_state != ElectionState::Confirmed;
+        let just_confirmed = election_lock.state != ElectionState::Confirmed;
         election_lock.state = ElectionState::Confirmed;
-        if just_confirmed && !winners_guard.contains_key(&status.winner.as_ref().unwrap().hash()) {
-            winners_guard.insert(status.winner.as_ref().unwrap().hash(), Arc::clone(election));
-            drop(winners_guard);
 
+        if just_confirmed {
             election_lock.update_status_to_confirmed(election);
-            status = election_lock.status.clone();
+            let status = election_lock.status.clone();
 
             self.recently_confirmed.put(
                 election.qualified_root.clone(),
@@ -339,13 +300,17 @@ impl VoteApplierExt for Arc<VoteApplier> {
                 qualified_root = ?election.qualified_root,
                 "election confirmed"
             );
+
+            self.confirming_set.add_with_election(
+                status.winner.as_ref().unwrap().hash(),
+                Some(election.clone()),
+            );
+
             drop(election_lock);
 
-            let self_l = Arc::clone(&self);
             let election = Arc::clone(election);
             self.workers.push_task(Box::new(move || {
                 let block = status.winner.as_ref().unwrap().clone();
-                self_l.process_confirmed(status, 0);
                 (election.confirmation_action)(block.into());
             }));
         } else {
@@ -389,7 +354,6 @@ impl VoteApplierExt for Arc<VoteApplier> {
             self.stats
                 .inc(StatType::ProcessConfirmed, DetailType::Timeout);
             // Do some cleanup due to this block never being processed by confirmation height processor
-            self.remove_election_winner_details(&hash);
         }
     }
 }

@@ -401,6 +401,7 @@ pub enum DetailType {
     // active_elections
     Started,
     Stopped,
+    ConfirmDependent,
 
     // unchecked
     Put,

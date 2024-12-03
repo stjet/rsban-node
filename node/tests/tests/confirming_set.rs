@@ -60,7 +60,6 @@ fn observer_callbacks() {
         2
     );
     assert_eq!(node.ledger.cemented_count(), 3);
-    assert_eq!(node.active.vote_applier.election_winner_details_len(), 0);
 }
 
 // The callback and confirmation history should only be updated after confirmation height is set (and not just after voting)
@@ -193,7 +192,6 @@ fn confirmed_history() {
         2,
     );
     assert_eq!(node.ledger.cemented_count(), 3);
-    assert_eq!(node.active.vote_applier.election_winner_details_len(), 0);
 }
 
 #[test]
@@ -293,44 +291,4 @@ fn dependent_election() {
         1,
     );
     assert_eq!(node.ledger.cemented_count(), 4);
-    assert_eq!(node.active.vote_applier.election_winner_details_len(), 0);
-}
-
-#[test]
-fn election_winner_details_clearing_node_process_confirmed() {
-    // Make sure election_winner_details is also cleared if the block never enters the confirmation height processor from node::process_confirmed
-    let mut system = System::new();
-    let node = system.make_node();
-
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    let send = node.process(send).unwrap();
-    node.ledger
-        .rollback(&mut node.ledger.rw_txn(), &send.hash())
-        .unwrap();
-    // Add to election_winner_details. Use an unrealistic iteration so that it should fall into the else case and do a cleanup
-    node.active.vote_applier.add_election_winner_details(
-        send.hash(),
-        Arc::new(Election::new(
-            1,
-            send.clone(),
-            ElectionBehavior::Manual,
-            Box::new(|_| {}),
-            Box::new(|_| {}),
-        )),
-    );
-
-    let mut election = ElectionStatus::default();
-    election.winner = Some(rsnano_core::SavedOrUnsavedBlock::Saved(send));
-
-    node.active.process_confirmed(election, 1000000);
-
-    assert_eq!(node.active.vote_applier.election_winner_details_len(), 0);
 }

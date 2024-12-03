@@ -1,16 +1,17 @@
-use super::{WebsocketConfig, WebsocketListener};
-use crate::{
+use super::WebsocketListener;
+use rsnano_core::{
+    Account, Amount, BlockHash, BlockType, SavedBlock, Vote, VoteCode, VoteWithWeightInfo,
+};
+use rsnano_messages::TelemetryData;
+use rsnano_node::{
     bootstrap::{BootstrapCallbackData, BootstrapInitiator, BootstrapStarted, BootstrapStopped},
+    config::WebsocketConfig,
     consensus::{
         ActiveElections, ElectionStatus, ElectionStatusType, ProcessLiveDispatcher, VoteProcessor,
     },
     wallets::Wallets,
     Telemetry,
 };
-use rsnano_core::{
-    Account, Amount, BlockHash, BlockType, SavedBlock, Vote, VoteCode, VoteWithWeightInfo,
-};
-use rsnano_messages::TelemetryData;
 use rsnano_websocket_messages::{new_block_arrived_message, OutgoingMessageEnvelope, Topic};
 use serde::{Deserialize, Serialize};
 use std::{

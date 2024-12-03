@@ -1,7 +1,7 @@
 use super::{ConfirmationJsonOptions, ConfirmationOptions, Options, VoteJsonOptions, VoteOptions};
-use crate::wallets::Wallets;
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::utils::SerdePropertyTree;
+use rsnano_node::wallets::Wallets;
 use rsnano_websocket_messages::{to_topic, IncomingMessage, OutgoingMessageEnvelope, Topic};
 use std::{
     collections::HashMap,

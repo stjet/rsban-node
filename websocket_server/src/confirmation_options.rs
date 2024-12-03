@@ -1,5 +1,5 @@
-use crate::wallets::Wallets;
 use rsnano_core::{utils::PropertyTree, Account};
+use rsnano_node::wallets::Wallets;
 use serde::Deserialize;
 use serde_json::Value;
 use std::{collections::HashSet, sync::Arc};

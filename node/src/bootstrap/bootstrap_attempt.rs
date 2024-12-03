@@ -291,8 +291,8 @@ impl BootstrapCallbacks {
 }
 
 pub struct BootstrapCallbackData {
-    pub(crate) id: String,
-    pub(crate) mode: BootstrapMode,
-    pub(crate) total_blocks: u64,
-    pub(crate) duration: Duration,
+    pub id: String,
+    pub mode: BootstrapMode,
+    pub total_blocks: u64,
+    pub duration: Duration,
 }

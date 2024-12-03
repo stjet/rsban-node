@@ -1,9 +1,11 @@
+use crate::WebsocketSession;
+
 use super::{ConfirmationJsonOptions, ConfirmationOptions, Options, WebsocketSessionEntry};
-use crate::{consensus::ElectionStatus, wallets::Wallets, websocket::WebsocketSession};
 use rsnano_core::{
     utils::{PropertyTree, SerdePropertyTree},
     Account, Amount, BlockSideband, SavedOrUnsavedBlock, VoteWithWeightInfo,
 };
+use rsnano_node::{consensus::ElectionStatus, wallets::Wallets};
 use rsnano_websocket_messages::{OutgoingMessageEnvelope, Topic};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

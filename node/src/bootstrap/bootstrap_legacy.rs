@@ -10,7 +10,7 @@ use crate::{
     utils::ThreadPool,
 };
 use rand::{thread_rng, Rng};
-use rsnano_core::{utils::PropertyTree, Account, Block, BlockHash};
+use rsnano_core::{Account, Block, BlockHash};
 use rsnano_ledger::Ledger;
 use std::{
     collections::VecDeque,
@@ -367,21 +367,6 @@ impl BootstrapAttemptTrait for Arc<BootstrapAttemptLegacy> {
 
     fn notify(&self) {
         self.attempt.condition.notify_all();
-    }
-
-    fn get_information(&self, tree: &mut dyn PropertyTree) -> anyhow::Result<()> {
-        let guard = self.mutex.lock().unwrap();
-        tree.put_string("frontier_pulls", &guard.frontier_pulls.len().to_string())?;
-        tree.put_string(
-            "frontiers_received",
-            if self.attempt.frontiers_received.load(Ordering::SeqCst) {
-                "true"
-            } else {
-                "false"
-            },
-        )?;
-        tree.put_string("frontiers_age", &guard.frontiers_age.to_string())?;
-        tree.put_string("last_account", &guard.start_account.encode_account())
     }
 
     fn run(&self) {

@@ -1,7 +1,6 @@
-use anyhow::Result;
 use rsnano_core::{
-    deserialize_block_json, epoch_v1_link, epoch_v2_link,
-    utils::{get_env_or_default_string, seconds_since_epoch, SerdePropertyTree},
+    epoch_v1_link, epoch_v2_link,
+    utils::{get_env_or_default_string, seconds_since_epoch},
     work::{WorkThresholds, WORK_THRESHOLDS_STUB},
     Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, Epochs, Networks,
     PublicKey, SavedBlock, DEV_GENESIS_KEY,
@@ -72,9 +71,9 @@ pub static DEV_GENESIS_PUB_KEY: LazyLock<PublicKey> =
     LazyLock::new(|| DEV_GENESIS_BLOCK.account_field().unwrap().into());
 pub static DEV_GENESIS_HASH: LazyLock<BlockHash> = LazyLock::new(|| DEV_GENESIS_BLOCK.hash());
 
-fn parse_block_from_genesis_data(genesis_data: &str) -> Result<Block> {
-    let ptree = SerdePropertyTree::parse(genesis_data)?;
-    deserialize_block_json(&ptree)
+fn parse_block_from_genesis_data(genesis_data: &str) -> anyhow::Result<Block> {
+    let block = serde_json::from_str(genesis_data)?;
+    Ok(block)
 }
 
 #[cfg(test)]

@@ -4,7 +4,7 @@ use super::{
     BulkPullAccountClientExt,
 };
 use crate::{block_processing::BlockProcessor, stats::Stats, utils::ThreadPool};
-use rsnano_core::{utils::PropertyTree, Account, Amount, Block};
+use rsnano_core::{Account, Amount, Block};
 use rsnano_ledger::Ledger;
 use std::{
     collections::VecDeque,
@@ -206,10 +206,6 @@ impl BootstrapAttemptTrait for Arc<BootstrapAttemptWallet> {
 
     fn notify(&self) {
         self.attempt.condition.notify_all();
-    }
-
-    fn get_information(&self, tree: &mut dyn PropertyTree) -> anyhow::Result<()> {
-        tree.put_u64("wallet_accounts", self.wallet_size() as u64)
     }
 
     fn run(&self) {

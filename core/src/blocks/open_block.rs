@@ -1,7 +1,6 @@
 use super::{BlockBase, BlockType};
 use crate::{
-    to_hex_string, u64_from_hex_str,
-    utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, LazyBlockHash, Link,
     PrivateKey, PublicKey, Root, Signature, WorkNonce,
 };
@@ -105,24 +104,6 @@ impl OpenBlock {
         })
     }
 
-    pub fn deserialize_json(reader: &impl PropertyTree) -> Result<Self> {
-        let source = BlockHash::decode_hex(reader.get_string("source")?)?;
-        let representative = Account::decode_account(reader.get_string("representative")?)?.into();
-        let account = Account::decode_account(reader.get_string("account")?)?;
-        let work = u64_from_hex_str(reader.get_string("work")?)?;
-        let signature = Signature::decode_hex(reader.get_string("signature")?)?;
-        Ok(OpenBlock {
-            work,
-            signature,
-            hashables: OpenHashables {
-                source,
-                representative,
-                account,
-            },
-            hash: LazyBlockHash::new(),
-        })
-    }
-
     pub fn dependent_blocks(&self, genesis_account: &Account) -> DependentBlocks {
         if self.account() == *genesis_account {
             DependentBlocks::none()
@@ -185,19 +166,6 @@ impl BlockBase for OpenBlock {
         self.hashables.account.serialize(writer);
         self.signature.serialize(writer);
         writer.write_bytes_safe(&self.work.to_le_bytes());
-    }
-
-    fn serialize_json(&self, writer: &mut dyn PropertyTree) -> Result<()> {
-        writer.put_string("type", "open")?;
-        writer.put_string("source", &self.hashables.source.encode_hex())?;
-        writer.put_string(
-            "representative",
-            &Account::from(self.hashables.representative).encode_account(),
-        )?;
-        writer.put_string("account", &self.hashables.account.encode_account())?;
-        writer.put_string("work", &to_hex_string(self.work))?;
-        writer.put_string("signature", &self.signature.encode_hex())?;
-        Ok(())
     }
 
     fn root(&self) -> Root {
@@ -268,10 +236,7 @@ impl From<JsonOpenBlock> for OpenBlock {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        utils::{MemoryStream, TestPropertyTree},
-        Block, PrivateKey,
-    };
+    use crate::{utils::MemoryStream, Block, PrivateKey};
 
     #[test]
     fn create_block() {
@@ -283,24 +248,6 @@ mod tests {
 
         assert_eq!(block.account_field(), Some(account));
         assert_eq!(block.root(), account.into());
-    }
-
-    // original test: block.open_serialize_json
-    #[test]
-    fn serialize_json() {
-        let key1 = PrivateKey::new();
-        let block1 = OpenBlock::new(
-            BlockHash::from(0),
-            PublicKey::from(1),
-            Account::from(0),
-            &key1,
-            0,
-        );
-        let mut ptree = TestPropertyTree::new();
-        block1.serialize_json(&mut ptree).unwrap();
-
-        let block2 = OpenBlock::deserialize_json(&ptree).unwrap();
-        assert_eq!(block1, block2);
     }
 
     // original test: open_block.deserialize

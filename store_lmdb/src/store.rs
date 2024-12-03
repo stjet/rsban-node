@@ -7,7 +7,7 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
-use rsnano_core::utils::{seconds_since_epoch, PropertyTree};
+use rsnano_core::utils::seconds_since_epoch;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::CString,
@@ -16,7 +16,6 @@ use std::{
         atomic::{AtomicU64, Ordering},
         Arc,
     },
-    time::Duration,
 };
 use tracing::{debug, error, info, warn};
 
@@ -181,30 +180,9 @@ impl LmdbStore {
         })
     }
 
-    pub fn serialize_memory_stats(&self, json: &mut dyn PropertyTree) -> anyhow::Result<()> {
-        let stats = self.env.environment.stat()?;
-        json.put_u64("branch_pages", stats.branch_pages() as u64)?;
-        json.put_u64("depth", stats.depth() as u64)?;
-        json.put_u64("entries", stats.entries() as u64)?;
-        json.put_u64("leaf_pages", stats.leaf_pages() as u64)?;
-        json.put_u64("overflow_pages", stats.overflow_pages() as u64)?;
-        json.put_u64("page_size", stats.page_size() as u64)?;
-        Ok(())
-    }
-
     pub fn vendor(&self) -> String {
         // fake version! TODO: read version
         format!("lmdb-rkv {}.{}.{}", 0, 14, 0)
-    }
-
-    pub fn serialize_mdb_tracker(
-        &self,
-        json: &mut dyn PropertyTree,
-        min_read_time: Duration,
-        min_write_time: Duration,
-    ) -> anyhow::Result<()> {
-        self.env
-            .serialize_txn_tracker(json, min_read_time, min_write_time)
     }
 
     pub fn tx_begin_read(&self) -> LmdbReadTransaction {

@@ -1,6 +1,5 @@
 use super::{ConfirmationJsonOptions, ConfirmationOptions, Options, VoteJsonOptions, VoteOptions};
 use futures_util::{SinkExt, StreamExt};
-use rsnano_core::utils::SerdePropertyTree;
 use rsnano_node::wallets::Wallets;
 use rsnano_websocket_messages::{to_topic, IncomingMessage, OutgoingMessageEnvelope, Topic};
 use std::{
@@ -202,7 +201,7 @@ impl WebsocketSession {
             let mut subs = self.entry.subscriptions.lock().unwrap();
             if let Some(option) = subs.get_mut(&topic) {
                 if let Some(options_value) = message.options {
-                    option.update(&SerdePropertyTree::from_value(options_value));
+                    option.update(&options_value);
                     action_succeeded = true;
                 }
             }

@@ -5,7 +5,7 @@ use crate::{
 use anyhow::bail;
 use lmdb::EnvironmentFlags;
 use lmdb_sys::MDB_SUCCESS;
-use rsnano_core::utils::{memory_intensive_instrumentation, PropertyTree};
+use rsnano_core::utils::memory_intensive_instrumentation;
 use rsnano_nullable_lmdb::{
     ConfiguredDatabase, ConfiguredDatabaseBuilder, EnvironmentOptions, EnvironmentStubBuilder,
     LmdbDatabase, LmdbEnvironment,
@@ -20,7 +20,6 @@ use std::{
         atomic::{AtomicU64, AtomicUsize, Ordering},
         Arc,
     },
-    time::Duration,
 };
 use tracing::debug;
 
@@ -198,16 +197,6 @@ impl LmdbEnv {
 
     fn create_txn_callbacks(&self) -> Arc<dyn TransactionTracker> {
         Arc::clone(&self.txn_tracker)
-    }
-
-    pub fn serialize_txn_tracker(
-        &self,
-        json: &mut dyn PropertyTree,
-        min_read_time: Duration,
-        min_write_time: Duration,
-    ) -> anyhow::Result<()> {
-        self.txn_tracker
-            .serialize_json(json, min_read_time, min_write_time)
     }
 }
 

@@ -1,7 +1,6 @@
 use super::{BlockBase, BlockType};
 use crate::{
-    to_hex_string, u64_from_hex_str,
-    utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, LazyBlockHash, Link, PrivateKey,
     PublicKey, Root, Signature, WorkNonce,
 };
@@ -211,32 +210,6 @@ impl StateBlock {
             hash: LazyBlockHash::new(),
         })
     }
-
-    pub fn deserialize_json(reader: &impl PropertyTree) -> Result<Self> {
-        let block_type = reader.get_string("type")?;
-        if block_type != "state" {
-            bail!("invalid block type");
-        }
-        let account = Account::decode_account(reader.get_string("account")?)?;
-        let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
-        let representative = Account::decode_account(reader.get_string("representative")?)?.into();
-        let balance = Amount::decode_dec(reader.get_string("balance")?)?;
-        let link = Link::decode_hex(reader.get_string("link")?)?;
-        let work = u64_from_hex_str(reader.get_string("work")?)?;
-        let signature = Signature::decode_hex(reader.get_string("signature")?)?;
-        Ok(StateBlock {
-            work,
-            signature,
-            hashables: StateHashables {
-                account,
-                previous,
-                representative,
-                balance,
-                link,
-            },
-            hash: LazyBlockHash::new(),
-        })
-    }
 }
 
 impl PartialEq for StateBlock {
@@ -294,25 +267,6 @@ impl BlockBase for StateBlock {
         self.hashables.link.serialize(writer);
         self.signature.serialize(writer);
         writer.write_bytes_safe(&self.work.to_be_bytes());
-    }
-
-    fn serialize_json(&self, writer: &mut dyn PropertyTree) -> Result<()> {
-        writer.put_string("type", "state")?;
-        writer.put_string("account", &self.hashables.account.encode_account())?;
-        writer.put_string("previous", &self.hashables.previous.encode_hex())?;
-        writer.put_string(
-            "representative",
-            &Account::from(self.hashables.representative).encode_account(),
-        )?;
-        writer.put_string("balance", &self.hashables.balance.to_string_dec())?;
-        writer.put_string("link", &self.hashables.link.encode_hex())?;
-        writer.put_string(
-            "link_as_account",
-            &Account::from(&self.hashables.link).encode_account(),
-        )?;
-        writer.put_string("signature", &self.signature.encode_hex())?;
-        writer.put_string("work", &to_hex_string(self.work))?;
-        Ok(())
     }
 
     fn root(&self) -> Root {
@@ -392,12 +346,8 @@ pub struct JsonStateBlock {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        utils::{MemoryStream, TestPropertyTree},
-        Block, BlockBuilder, StateBlockBuilder,
-    };
-
     use super::*;
+    use crate::{utils::MemoryStream, Block, BlockBuilder, StateBlockBuilder};
 
     // original test: state_block.serialization
     #[test]
@@ -409,18 +359,6 @@ mod tests {
         assert_eq!(stream.byte_at(215), 0x5); // Ensure work is serialized big-endian
 
         let block2 = StateBlock::deserialize(&mut stream).unwrap();
-        assert_eq!(block1, Block::State(block2));
-    }
-
-    // original test: state_block.serialization
-    #[test]
-    fn json_serialization() {
-        let block1 = BlockBuilder::state().build();
-
-        let mut ptree = TestPropertyTree::new();
-        block1.serialize_json(&mut ptree).unwrap();
-
-        let block2 = StateBlock::deserialize_json(&ptree).unwrap();
         assert_eq!(block1, Block::State(block2));
     }
 

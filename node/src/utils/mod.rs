@@ -1,7 +1,6 @@
 mod async_runtime;
 mod blake2b;
 mod hardened_constants;
-mod json;
 mod long_running_transaction_logger;
 mod processing_queue;
 mod thread_pool;
@@ -16,7 +15,6 @@ use blake2::{
 };
 pub use blake2b::*;
 pub use hardened_constants::HardenedConstants;
-pub use json::*;
 pub use long_running_transaction_logger::{LongRunningTransactionLogger, TxnTrackingConfig};
 pub use processing_queue::*;
 use std::net::Ipv6Addr;

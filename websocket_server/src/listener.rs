@@ -1,10 +1,6 @@
-use crate::WebsocketSession;
-
 use super::{ConfirmationJsonOptions, ConfirmationOptions, Options, WebsocketSessionEntry};
-use rsnano_core::{
-    utils::{PropertyTree, SerdePropertyTree},
-    Account, Amount, BlockSideband, SavedOrUnsavedBlock, VoteWithWeightInfo,
-};
+use crate::WebsocketSession;
+use rsnano_core::{Account, Amount, BlockSideband, SavedOrUnsavedBlock, VoteWithWeightInfo};
 use rsnano_node::{consensus::ElectionStatus, wallets::Wallets};
 use rsnano_websocket_messages::{OutgoingMessageEnvelope, Topic};
 use serde::{Deserialize, Serialize};
@@ -295,12 +291,14 @@ fn block_confirmed_message(
     };
 
     let block_json = if include_block {
-        let mut block_node_l = SerdePropertyTree::new();
-        block.serialize_json(&mut block_node_l).unwrap();
+        let mut block_node_l: serde_json::Value = (**block).clone().into();
         if !subtype.is_empty() {
-            block_node_l.add("subtype", &subtype).unwrap();
+            if let serde_json::Value::Object(o) = &mut block_node_l {
+                o.insert("subtype".to_string(), Value::String(subtype))
+                    .unwrap();
+            }
         }
-        Some(block_node_l.value)
+        Some(block_node_l)
     } else {
         None
     };

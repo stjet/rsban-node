@@ -1,7 +1,6 @@
 use super::BlockBase;
 use crate::{
-    to_hex_string, u64_from_hex_str,
-    utils::{BufferWriter, Deserialize, FixedSizeSerialize, PropertyTree, Serialize, Stream},
+    utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, BlockType, DependentBlocks, JsonBlock,
     LazyBlockHash, Link, PrivateKey, PublicKey, Root, Signature, WorkNonce,
 };
@@ -92,22 +91,6 @@ impl ChangeBlock {
         })
     }
 
-    pub fn deserialize_json(reader: &impl PropertyTree) -> Result<Self> {
-        let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
-        let representative = Account::decode_account(reader.get_string("representative")?)?.into();
-        let work = u64_from_hex_str(reader.get_string("work")?)?;
-        let signature = Signature::decode_hex(reader.get_string("signature")?)?;
-        Ok(Self {
-            work,
-            signature,
-            hashables: ChangeHashables {
-                previous,
-                representative,
-            },
-            hash: LazyBlockHash::new(),
-        })
-    }
-
     pub fn dependent_blocks(&self) -> DependentBlocks {
         DependentBlocks::new(self.previous(), BlockHash::zero())
     }
@@ -177,18 +160,6 @@ impl BlockBase for ChangeBlock {
         writer.write_bytes_safe(&self.work.to_le_bytes());
     }
 
-    fn serialize_json(&self, writer: &mut dyn PropertyTree) -> Result<()> {
-        writer.put_string("type", "change")?;
-        writer.put_string("previous", &self.hashables.previous.encode_hex())?;
-        writer.put_string(
-            "representative",
-            &Account::from(self.hashables.representative).encode_account(),
-        )?;
-        writer.put_string("work", &to_hex_string(self.work))?;
-        writer.put_string("signature", &self.signature.encode_hex())?;
-        Ok(())
-    }
-
     fn root(&self) -> Root {
         self.previous().into()
     }
@@ -250,10 +221,7 @@ impl From<JsonChangeBlock> for ChangeBlock {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        utils::{MemoryStream, TestPropertyTree},
-        Block, PrivateKey,
-    };
+    use crate::{utils::MemoryStream, Block, PrivateKey};
 
     #[test]
     fn create_block() {
@@ -274,17 +242,6 @@ mod tests {
         assert_eq!(ChangeBlock::serialized_size(), stream.bytes_written());
 
         let block2 = ChangeBlock::deserialize(&mut stream).unwrap();
-        assert_eq!(block1, block2);
-    }
-
-    // original test: block.change_serialize_json
-    #[test]
-    fn serialize_json() {
-        let block1 = ChangeBlock::new_test_instance();
-        let mut ptree = TestPropertyTree::new();
-        block1.serialize_json(&mut ptree).unwrap();
-
-        let block2 = ChangeBlock::deserialize_json(&ptree).unwrap();
         assert_eq!(block1, block2);
     }
 

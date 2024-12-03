@@ -1,7 +1,6 @@
 use super::{BlockBase, BlockType};
 use crate::{
-    to_hex_string, u64_from_hex_str,
-    utils::{BufferWriter, FixedSizeSerialize, PropertyTree, Serialize, Stream},
+    utils::{BufferWriter, FixedSizeSerialize, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, LazyBlockHash, Link,
     PendingKey, PrivateKey, PublicKey, Root, Signature, WorkNonce,
 };
@@ -150,24 +149,6 @@ impl SendBlock {
         self.hashables.balance = balance;
     }
 
-    pub fn deserialize_json(reader: &impl PropertyTree) -> Result<Self> {
-        let previous = BlockHash::decode_hex(reader.get_string("previous")?)?;
-        let destination = Account::decode_account(reader.get_string("destination")?)?;
-        let balance = Amount::decode_hex(reader.get_string("balance")?)?;
-        let signature = Signature::decode_hex(reader.get_string("signature")?)?;
-        let work = u64_from_hex_str(reader.get_string("work")?)?;
-        Ok(SendBlock {
-            hashables: SendHashables {
-                previous,
-                destination,
-                balance,
-            },
-            signature,
-            work,
-            hash: LazyBlockHash::new(),
-        })
-    }
-
     pub fn pending_key(&self) -> PendingKey {
         PendingKey::new(self.hashables.destination, self.hash())
     }
@@ -242,16 +223,6 @@ impl BlockBase for SendBlock {
         self.hashables.serialize(writer);
         self.signature.serialize(writer);
         writer.write_bytes_safe(&self.work.to_le_bytes());
-    }
-
-    fn serialize_json(&self, writer: &mut dyn PropertyTree) -> Result<()> {
-        writer.put_string("type", "send")?;
-        writer.put_string("previous", &self.hashables.previous.encode_hex())?;
-        writer.put_string("destination", &self.hashables.destination.encode_account())?;
-        writer.put_string("balance", &self.hashables.balance.encode_hex())?;
-        writer.put_string("work", &to_hex_string(self.work))?;
-        writer.put_string("signature", &self.signature.encode_hex())?;
-        Ok(())
     }
 
     fn root(&self) -> Root {
@@ -385,10 +356,7 @@ impl<'de> Visitor<'de> for AmountHexVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        utils::{MemoryStream, TestPropertyTree},
-        Block, PrivateKey,
-    };
+    use crate::{utils::MemoryStream, Block, PrivateKey};
 
     #[test]
     fn create_send_block() {
@@ -432,18 +400,6 @@ mod tests {
         assert_eq!(SendBlock::serialized_size(), stream.bytes_written());
 
         let block2 = SendBlock::deserialize(&mut stream).unwrap();
-        assert_eq!(block1, block2);
-    }
-
-    // originial test: block.send_serialize_json
-    #[test]
-    fn serialize_json() {
-        let block1 = SendBlock::new_test_instance();
-
-        let mut ptree = TestPropertyTree::new();
-        block1.serialize_json(&mut ptree).unwrap();
-
-        let block2 = SendBlock::deserialize_json(&ptree).unwrap();
         assert_eq!(block1, block2);
     }
 

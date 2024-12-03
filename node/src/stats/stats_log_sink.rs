@@ -1,7 +1,5 @@
-use crate::utils::create_property_tree;
 use anyhow::Result;
 use chrono::{DateTime, Local};
-use rsnano_core::utils::PropertyTree;
 use std::{any::Any, fs::File, io::Write, path::PathBuf, time::SystemTime};
 
 pub trait StatsLogSink {
@@ -133,113 +131,6 @@ impl StatsLogSink for StatFileWriter {
 
     fn to_object(&self) -> Option<&dyn Any> {
         None
-    }
-}
-
-/// JSON sink. The resulting JSON object is provided as both a property_tree::ptree (to_object) and a string (to_string)
-pub struct StatsJsonWriter {
-    tree: Box<dyn PropertyTree>,
-    entries_tree: Box<dyn PropertyTree>,
-    log_entries: usize,
-}
-
-impl StatsJsonWriter {
-    pub fn new() -> Self {
-        Self {
-            tree: create_property_tree(),
-            entries_tree: create_property_tree(),
-            log_entries: 0,
-        }
-    }
-}
-
-impl Default for StatsJsonWriter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl StatsLogSink for StatsJsonWriter {
-    fn begin(&mut self) -> Result<()> {
-        self.tree.clear()
-    }
-
-    fn finalize(&mut self) {
-        self.tree.add_child("entries", self.entries_tree.as_ref());
-    }
-
-    fn write_header(&mut self, header: &str, walltime: SystemTime) -> Result<()> {
-        let now = DateTime::<Local>::from(walltime);
-        self.tree.put_string("type", header)?;
-        self.tree
-            .put_string("created", &now.format("%Y.%m.%d %H:%M:%S").to_string())?;
-        Ok(())
-    }
-
-    fn write_counter_entry(
-        &mut self,
-        time: SystemTime,
-        entry_type: &str,
-        detail: &str,
-        dir: &str,
-        value: u64,
-    ) -> Result<()> {
-        let mut entry = create_property_tree();
-        entry.put_string(
-            "time",
-            &DateTime::<Local>::from(time).format("%H:%M:%S").to_string(),
-        )?;
-        entry.put_string("type", entry_type)?;
-        entry.put_string("detail", detail)?;
-        entry.put_string("dir", dir)?;
-        entry.put_u64("value", value)?;
-        self.entries_tree.push_back("", entry.as_ref());
-        Ok(())
-    }
-
-    fn rotate(&mut self) -> Result<()> {
-        Ok(())
-    }
-
-    fn entries(&self) -> usize {
-        self.log_entries
-    }
-
-    fn inc_entries(&mut self) {
-        self.log_entries += 1;
-    }
-
-    fn to_string(&self) -> String {
-        self.tree.to_json()
-    }
-
-    fn to_object(&self) -> Option<&dyn Any> {
-        Some(self.tree.as_ref().as_any())
-    }
-
-    fn write_sampler_entry(
-        &mut self,
-        time: SystemTime,
-        sample: &str,
-        values: Vec<i64>,
-        expected_min_max: (i64, i64),
-    ) -> Result<()> {
-        let time: chrono::DateTime<Local> = time.into();
-        let mut entry = create_property_tree();
-        entry.put_string("time", &time.format("%H:%M:%S").to_string())?;
-        entry.put_string("sample", sample)?;
-        entry.put_string("min", &expected_min_max.0.to_string())?;
-        entry.put_string("max", &expected_min_max.1.to_string())?;
-
-        let mut values_tree = create_property_tree();
-        for value in values {
-            let mut value_tree = create_property_tree();
-            value_tree.put_string("", &value.to_string())?;
-            values_tree.push_back("", value_tree.as_ref());
-        }
-        entry.add_child("values", values_tree.as_ref());
-        self.entries_tree.push_back("", entry.as_ref());
-        Ok(())
     }
 }
 

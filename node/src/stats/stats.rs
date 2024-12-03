@@ -1,4 +1,4 @@
-use super::{DetailType, Direction, Sample, StatType, StatsJsonWriter};
+use super::{DetailType, Direction, Sample, StatType};
 use super::{StatFileWriter, StatsConfig, StatsLogSink};
 use anyhow::Result;
 use bounded_vec_deque::BoundedVecDeque;
@@ -271,15 +271,6 @@ impl Stats {
             .get(&key)
             .map(|i| i.into())
             .unwrap_or_default()
-    }
-
-    pub fn dump(&self, category: StatCategory) -> String {
-        let mut sink = StatsJsonWriter::new();
-        match category {
-            StatCategory::Counters => self.log_counters(&mut sink).unwrap(),
-            StatCategory::Samples => self.log_samples(&mut sink).unwrap(),
-        }
-        sink.to_string()
     }
 }
 

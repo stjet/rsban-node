@@ -9,9 +9,7 @@ use crate::{
     NetworkParams,
 };
 use anyhow::Result;
-use rsnano_core::{
-    utils::PropertyTree, Account, Amount, Block, BlockHash, BlockType, HashOrAccount,
-};
+use rsnano_core::{Account, Amount, Block, BlockHash, BlockType, HashOrAccount};
 use rsnano_ledger::Ledger;
 use rsnano_network::ChannelId;
 use rsnano_store_lmdb::Transaction;
@@ -601,26 +599,6 @@ impl BootstrapAttemptTrait for BootstrapAttemptLazy {
 
     fn notify(&self) {
         self.attempt.condition.notify_all();
-    }
-
-    fn get_information(&self, ptree: &mut dyn PropertyTree) -> anyhow::Result<()> {
-        let data = self.data.lock().unwrap();
-        ptree.put_u64("lazy_blocks", data.lazy_blocks.len() as u64)?;
-        ptree.put_u64("lazy_state_backlog", data.lazy_state_backlog.len() as u64)?;
-        ptree.put_u64("lazy_balances", data.lazy_balances.len() as u64)?;
-        ptree.put_u64(
-            "lazy_undefined_links",
-            data.lazy_undefined_links.len() as u64,
-        )?;
-        ptree.put_u64("lazy_pulls", data.lazy_pulls.len() as u64)?;
-        ptree.put_u64("lazy_keys", data.lazy_keys.len() as u64)?;
-        if !data.lazy_keys.is_empty() {
-            ptree.put_string(
-                "lazy_key_1",
-                &data.lazy_keys.iter().next().unwrap().to_string(),
-            )?;
-        }
-        Ok(())
     }
 
     fn run(&self) {

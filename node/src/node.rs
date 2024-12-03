@@ -40,7 +40,7 @@ use crate::{
     BUILD_INFO, VERSION_STRING,
 };
 use rsnano_core::{
-    utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo, SerdePropertyTree},
+    utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo},
     work::{WorkPool, WorkPoolImpl},
     Account, Amount, Block, BlockHash, BlockType, Networks, NodeId, PrivateKey, Root, SavedBlock,
     VoteCode, VoteSource,
@@ -949,13 +949,10 @@ impl Node {
                         let url = url.clone();
                         let stats = stats.clone();
                         tokio.spawn(async move {
-                            let mut block_json = SerdePropertyTree::new();
-                            block.serialize_json(&mut block_json).unwrap();
-
                             let message = RpcCallbackMessage {
                                 account: account.encode_account(),
                                 hash: block.hash().encode_hex(),
-                                block: block_json.value,
+                                block: (*block).clone().into(),
                                 amount: amount.to_string_dec(),
                                 sub_type: if is_state_send {
                                     Some("send")

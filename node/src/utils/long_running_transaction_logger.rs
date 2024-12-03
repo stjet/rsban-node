@@ -1,5 +1,4 @@
 use backtrace::Backtrace;
-use rsnano_core::utils::PropertyTree;
 use rsnano_store_lmdb::TransactionTracker;
 use std::{
     collections::HashMap,
@@ -121,78 +120,5 @@ impl TransactionTracker for LongRunningTransactionLogger {
 
     fn txn_end(&self, txn_id: u64, is_write: bool) {
         self.erase(txn_id, is_write);
-    }
-
-    fn serialize_json(
-        &self,
-        json: &mut dyn PropertyTree,
-        min_read_time: Duration,
-        min_write_time: Duration,
-    ) -> anyhow::Result<()> {
-        // Copying is cheap compared to generating the stack trace strings, so reduce time holding the mutex
-        let mut copy_stats: Vec<TxnStats> = Vec::new();
-        let mut are_writes: Vec<bool> = Vec::new();
-        {
-            let guard = self.stats.lock().unwrap();
-            copy_stats.reserve(guard.len());
-            are_writes.reserve(guard.len());
-
-            for i in guard.values() {
-                copy_stats.push(i.clone());
-                are_writes.push(i.is_write);
-            }
-        }
-
-        // Get the time difference now as creating stacktraces (Debug/Windows for instance) can take a while so results won't be as accurate
-        let times_since_start: Vec<_> = copy_stats.iter().map(|i| i.start.elapsed()).collect();
-
-        for i in 0..times_since_start.len() {
-            let stat = &mut copy_stats[i];
-            let time_held_open = times_since_start[i];
-
-            if (are_writes[i] && time_held_open >= min_write_time)
-                || (!are_writes[i] && time_held_open >= min_read_time)
-            {
-                stat.stacktrace.resolve();
-                let mut mdb_lock_config = json.new_writer();
-
-                mdb_lock_config
-                    .put_string("thread", stat.thread_name.as_deref().unwrap_or("unnamed"))?;
-                mdb_lock_config.put_u64("time_held_open", time_held_open.as_millis() as u64)?;
-                mdb_lock_config.put_string("write", &are_writes[i].to_string())?;
-
-                let mut stacktrace_config = json.new_writer();
-
-                for frame in stat.stacktrace.frames() {
-                    let mut frame_json = json.new_writer();
-                    for symbol in frame.symbols() {
-                        frame_json.put_string(
-                            "name",
-                            symbol
-                                .name()
-                                .map(|n| n.as_str().unwrap_or("unknown"))
-                                .unwrap_or("unknown"),
-                        )?;
-                        frame_json.put_string(
-                            "address",
-                            &format!("{:016x}", symbol.addr().map(|a| a as usize).unwrap_or(0)),
-                        )?;
-                        frame_json.put_string(
-                            "source_file",
-                            symbol
-                                .filename()
-                                .map(|f| f.to_str().unwrap_or("invalid"))
-                                .unwrap_or("unknown"),
-                        )?;
-                        frame_json.put_u64("source_line", symbol.lineno().unwrap_or(0) as u64)?;
-                        stacktrace_config.push_back("", frame_json.as_ref());
-                    }
-                }
-
-                mdb_lock_config.put_child("stacktrace", stacktrace_config.as_ref());
-                json.push_back("", mdb_lock_config.as_ref());
-            }
-        }
-        Ok(())
     }
 }

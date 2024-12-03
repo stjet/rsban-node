@@ -1,5 +1,4 @@
 use super::{ConfirmationOptions, VoteOptions};
-use rsnano_core::utils::PropertyTree;
 use serde_json::Value;
 
 #[derive(Clone)]
@@ -27,7 +26,7 @@ impl Options {
      * Update options, if available for a given topic
      * @return false on success
      */
-    pub fn update(&mut self, options: &dyn PropertyTree) {
+    pub fn update(&mut self, options: &serde_json::Value) {
         if let Options::Confirmation(i) = self {
             i.update(options);
         }

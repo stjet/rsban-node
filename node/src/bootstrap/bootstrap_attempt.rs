@@ -4,7 +4,7 @@ use crate::{
     utils::HardenedConstants,
 };
 use anyhow::Result;
-use rsnano_core::{encode_hex, utils::PropertyTree, Account, Block};
+use rsnano_core::{encode_hex, Account, Block};
 use rsnano_ledger::Ledger;
 use rsnano_network::ChannelId;
 use serde::{Deserialize, Serialize};
@@ -34,7 +34,6 @@ pub trait BootstrapAttemptTrait {
     fn set_started(&self) -> bool;
     fn should_log(&self) -> bool;
     fn notify(&self);
-    fn get_information(&self, tree: &mut dyn PropertyTree) -> anyhow::Result<()>;
     fn run(&self);
     fn process_block(
         &self,

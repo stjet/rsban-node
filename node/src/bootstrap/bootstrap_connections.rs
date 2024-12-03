@@ -11,7 +11,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use ordered_float::OrderedFloat;
-use rsnano_core::{utils::PropertyTree, Account, BlockHash, Networks};
+use rsnano_core::{Account, BlockHash, Networks};
 use rsnano_network::{
     ChannelDirection, ChannelMode, Network, NetworkInfo, NetworkObserver, NullNetworkObserver,
 };
@@ -177,23 +177,6 @@ impl BootstrapConnections {
 
     pub fn bootstrap_client_closed(&self) {
         self.connections_count.fetch_sub(1, Ordering::SeqCst);
-    }
-
-    pub fn bootstrap_status(&self, tree: &mut dyn PropertyTree, attempts_count: usize) {
-        let guard = self.mutex.lock().unwrap();
-        tree.put_u64("clients", guard.clients.len() as u64).unwrap();
-        tree.put_u64(
-            "connections",
-            self.connections_count.load(Ordering::SeqCst) as u64,
-        )
-        .unwrap();
-        tree.put_u64("idle", guard.idle.len() as u64).unwrap();
-        tree.put_u64(
-            "target_connections",
-            self.target_connections(guard.pulls.len(), attempts_count) as u64,
-        )
-        .unwrap();
-        tree.put_u64("pulls", guard.pulls.len() as u64).unwrap();
     }
 
     pub fn clear_pulls(&self, bootstrap_id_a: u64) {

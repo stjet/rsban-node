@@ -1,4 +1,4 @@
-use rsnano_core::{utils::PropertyTree, Account};
+use rsnano_core::Account;
 use rsnano_node::wallets::Wallets;
 use serde::Deserialize;
 use serde_json::Value;
@@ -161,38 +161,41 @@ impl ConfirmationOptions {
      * - "accounts_add" (array of std::strings) - additional accounts for which blocks should not be filtered
      * - "accounts_del" (array of std::strings) - accounts for which blocks should be filtered
      */
-    pub fn update(&mut self, options: &dyn PropertyTree) {
-        let mut update_accounts = |accounts_text: &dyn PropertyTree, insert: bool| {
+    pub fn update(&mut self, options: &serde_json::Value) {
+        let mut update_accounts = |accounts_text: &serde_json::Value, insert: bool| {
             self.has_account_filtering_options = true;
-            for account in accounts_text.get_children() {
-                match Account::decode_account(account.1.data()) {
-                    Ok(result) => {
-                        // Re-encode to keep old prefix support
-                        let encoded = result.encode_account();
-                        if insert {
-                            self.accounts.insert(encoded);
-                        } else {
-                            self.accounts.remove(&encoded);
+            if let serde_json::Value::Array(accounts) = accounts_text {
+                for account in accounts {
+                    if let serde_json::Value::String(acc_str) = account {
+                        match Account::decode_account(acc_str) {
+                            Ok(result) => {
+                                // Re-encode to keep old prefix support
+                                let encoded = result.encode_account();
+                                if insert {
+                                    self.accounts.insert(encoded);
+                                } else {
+                                    self.accounts.remove(&encoded);
+                                }
+                            }
+                            Err(_) => {
+                                warn!("Invalid account provided for filtering blocks: {}", acc_str);
+                            }
                         }
-                    }
-                    Err(_) => {
-                        warn!(
-                            "Invalid account provided for filtering blocks: {}",
-                            account.1.data()
-                        );
                     }
                 }
             }
         };
 
         // Adding accounts as filter exceptions
-        if let Some(accounts_add) = options.get_child("accounts_add") {
-            update_accounts(&*accounts_add, true);
-        }
+        if let serde_json::Value::Object(obj) = options {
+            if let Some(accounts_add) = obj.get("accounts_add") {
+                update_accounts(accounts_add, true);
+            }
 
-        // Removing accounts as filter exceptions
-        if let Some(accounts_del) = options.get_child("accounts_del") {
-            update_accounts(&*accounts_del, false);
+            // Removing accounts as filter exceptions
+            if let Some(accounts_del) = obj.get("accounts_del") {
+                update_accounts(accounts_del, false);
+            }
         }
 
         self.check_filter_empty();

@@ -17,3 +17,4 @@ num-derive = "0"
 rand = {version="0" }
 rsnano_store_lmdb = { path = "../store_lmdb" }
 lmdb-rkv = "0.14"
+serde_json = "1"

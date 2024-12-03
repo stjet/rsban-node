@@ -28,7 +28,7 @@ mod builders;
 pub use builders::*;
 
 use crate::{
-    utils::{BufferWriter, Deserialize, MemoryStream, PropertyTree, Stream},
+    utils::{BufferWriter, Deserialize, MemoryStream, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, Epoch, Epochs, FullHash, Link, PrivateKey,
     PublicKey, QualifiedRoot, Root, Signature,
 };
@@ -145,7 +145,6 @@ pub trait BlockBase: FullHash {
     fn set_work(&mut self, work: u64);
     fn previous(&self) -> BlockHash;
     fn serialize_without_block_type(&self, writer: &mut dyn BufferWriter);
-    fn serialize_json(&self, writer: &mut dyn PropertyTree) -> anyhow::Result<()>;
     fn to_json(&self) -> anyhow::Result<String> {
         Ok(serde_json::to_string(&self.json_representation())?)
     }
@@ -287,6 +286,25 @@ impl Block {
     }
 }
 
+impl From<Block> for serde_json::Value {
+    fn from(value: Block) -> Self {
+        serde_json::to_value(value.json_representation()).unwrap()
+    }
+}
+
+impl From<SavedBlock> for serde_json::Value {
+    fn from(value: SavedBlock) -> Self {
+        let mut result = serde_json::to_value(value.block.json_representation()).unwrap();
+        if let serde_json::Value::Object(obj) = &mut result {
+            obj.insert(
+                "subtype".to_string(),
+                serde_json::Value::String(value.subtype().as_str().to_owned()),
+            );
+        }
+        result
+    }
+}
+
 impl FullHash for Block {
     fn full_hash(&self) -> BlockHash {
         self.as_block().full_hash()
@@ -370,18 +388,6 @@ impl From<Block> for JsonBlock {
 impl From<&Block> for JsonBlock {
     fn from(value: &Block) -> Self {
         value.as_block().json_representation()
-    }
-}
-
-pub fn deserialize_block_json(ptree: &impl PropertyTree) -> anyhow::Result<Block> {
-    let block_type = ptree.get_string("type")?;
-    match block_type.as_str() {
-        "receive" => ReceiveBlock::deserialize_json(ptree).map(Block::LegacyReceive),
-        "send" => SendBlock::deserialize_json(ptree).map(Block::LegacySend),
-        "open" => OpenBlock::deserialize_json(ptree).map(Block::LegacyOpen),
-        "change" => ChangeBlock::deserialize_json(ptree).map(Block::LegacyChange),
-        "state" => StateBlock::deserialize_json(ptree).map(Block::State),
-        _ => Err(anyhow!("unsupported block type")),
     }
 }
 

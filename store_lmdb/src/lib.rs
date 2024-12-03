@@ -42,7 +42,7 @@ pub use version_store::LmdbVersionStore;
 pub use wallet_store::{Fans, KeyType, LmdbWalletStore, WalletValue};
 
 use primitive_types::U256;
-use rsnano_core::utils::{get_cpu_count, PropertyTree};
+use rsnano_core::utils::get_cpu_count;
 use std::{
     any::Any,
     cmp::{max, min},
@@ -77,12 +77,6 @@ pub trait Transaction {
 pub trait TransactionTracker: Send + Sync {
     fn txn_start(&self, txn_id: u64, is_write: bool);
     fn txn_end(&self, txn_id: u64, is_write: bool);
-    fn serialize_json(
-        &self,
-        json: &mut dyn PropertyTree,
-        min_read_time: Duration,
-        min_write_time: Duration,
-    ) -> anyhow::Result<()>;
 }
 
 pub struct NullTransactionTracker {}
@@ -95,17 +89,7 @@ impl NullTransactionTracker {
 
 impl TransactionTracker for NullTransactionTracker {
     fn txn_start(&self, _txn_id: u64, _is_write: bool) {}
-
     fn txn_end(&self, _txn_id: u64, _is_write: bool) {}
-
-    fn serialize_json(
-        &self,
-        _json: &mut dyn PropertyTree,
-        _min_read_time: Duration,
-        _min_write_time: Duration,
-    ) -> anyhow::Result<()> {
-        Ok(())
-    }
 }
 
 enum RoTxnState {

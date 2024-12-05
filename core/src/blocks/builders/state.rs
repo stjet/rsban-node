@@ -234,7 +234,6 @@ mod tests {
         assert_eq!(block1.link(), Link::from(4));
     }
 
-    // original test: block_builder.from
     #[test]
     fn copy_state_block() -> anyhow::Result<()> {
         let block = TestBlockBuilder::state()
@@ -322,7 +321,6 @@ mod tests {
         Ok(())
     }
 
-    // original test: block_builder.state_equality
     #[test]
     fn state_equality() {
         let key1 = PrivateKey::new();

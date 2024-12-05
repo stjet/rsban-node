@@ -100,7 +100,7 @@ pub struct LedgerConstants {
     pub epochs: Epochs,
 }
 
-fn genesis_sideband(genesis_account: Account) -> BlockSideband {
+pub fn genesis_sideband(genesis_account: Account) -> BlockSideband {
     BlockSideband::new(
         genesis_account,
         BlockHash::from(0),

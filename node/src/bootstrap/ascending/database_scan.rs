@@ -189,7 +189,7 @@ mod tests {
     use super::*;
     use rsnano_core::{
         work::{WorkPool, STUB_WORK_POOL},
-        Amount, Block, PrivateKey, StateBlock, DEV_GENESIS_KEY,
+        Amount, Block, PrivateKey, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
     };
     use rsnano_ledger::{LedgerContext, DEV_GENESIS_HASH};
 
@@ -199,75 +199,25 @@ mod tests {
         // 1 account with 1 pending
         // 1 account with 21 pendings
         // 2 accounts with 1 pending each
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let mut blocks = Vec::new();
-        let key1 = PrivateKey::new();
-        let key2 = PrivateKey::new();
-        let key3 = PrivateKey::new();
-        let key4 = PrivateKey::new();
+        let key1 = PrivateKey::from(1);
+        let key2 = PrivateKey::from(2);
+        let key3 = PrivateKey::from(3);
+        let key4 = PrivateKey::from(4);
         {
-            let source = &DEV_GENESIS_KEY;
-            let mut latest = *DEV_GENESIS_HASH;
-            let mut balance = Amount::MAX;
-
             // 1 account with 1 pending
-            {
-                let send = Block::State(StateBlock::new(
-                    source.account(),
-                    latest,
-                    source.public_key(),
-                    balance - Amount::raw(1),
-                    key1.account().into(),
-                    source,
-                    STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
-                ));
-                latest = send.hash();
-                balance = send.balance_field().unwrap();
-                blocks.push(send);
-            }
+            blocks.push(lattice.genesis().send(&key1, 1));
+
             // 1 account with 21 pendings
             for _ in 0..21 {
-                let send = Block::State(StateBlock::new(
-                    source.account(),
-                    latest,
-                    source.public_key(),
-                    balance - Amount::raw(1),
-                    key2.account().into(),
-                    source,
-                    STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
-                ));
-                latest = send.hash();
-                balance = send.balance_field().unwrap();
-                blocks.push(send);
+                blocks.push(lattice.genesis().send(&key2, 1));
             }
             // 2 accounts with 1 pending each
-            {
-                let send = Block::State(StateBlock::new(
-                    source.account(),
-                    latest,
-                    source.public_key(),
-                    balance - Amount::raw(1),
-                    key3.account().into(),
-                    source,
-                    STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
-                ));
-                latest = send.hash();
-                balance = send.balance_field().unwrap();
-                blocks.push(send);
-            }
-            {
-                let send = Block::State(StateBlock::new(
-                    source.account(),
-                    latest,
-                    source.public_key(),
-                    balance - Amount::raw(1),
-                    key4.account().into(),
-                    source,
-                    STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
-                ));
-                blocks.push(send);
-            }
+            blocks.push(lattice.genesis().send(&key3, 1));
+            blocks.push(lattice.genesis().send(&key4, 1));
 
-            let ledger_ctx = LedgerContext::empty();
+            let ledger_ctx = LedgerContext::empty_dev();
             for mut block in blocks {
                 let mut txn = ledger_ctx.ledger.rw_txn();
                 ledger_ctx.ledger.process(&mut txn, &mut block).unwrap();

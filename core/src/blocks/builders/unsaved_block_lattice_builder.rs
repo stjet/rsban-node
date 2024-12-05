@@ -1,0 +1,237 @@
+use crate::{
+    work::{WorkPool, WorkPoolImpl},
+    Account, Amount, Block, BlockHash, PrivateKey, PublicKey, Root, StateBlockArgs,
+    DEV_GENESIS_BLOCK, DEV_GENESIS_KEY,
+};
+use std::collections::HashMap;
+
+pub struct UnsavedBlockLatticeBuilder {
+    accounts: HashMap<Account, Frontier>,
+    work_pool: WorkPoolImpl,
+    pending_receives: HashMap<BlockHash, Amount>,
+}
+
+#[derive(Clone)]
+struct Frontier {
+    hash: BlockHash,
+    representative: PublicKey,
+    balance: Amount,
+}
+
+impl UnsavedBlockLatticeBuilder {
+    pub fn new() -> Self {
+        let mut accounts = HashMap::new();
+        accounts.insert(
+            DEV_GENESIS_KEY.account(),
+            Frontier {
+                hash: DEV_GENESIS_BLOCK.hash(),
+                representative: DEV_GENESIS_KEY.public_key(),
+                balance: Amount::MAX,
+            },
+        );
+        let work_pool = WorkPoolImpl::new_dev();
+        Self {
+            accounts,
+            work_pool,
+            pending_receives: Default::default(),
+        }
+    }
+
+    pub fn genesis(&mut self) -> UnsavedAccountChainBuilder {
+        self.account(&DEV_GENESIS_KEY)
+    }
+
+    pub fn account<'a>(&'a mut self, key: &'a PrivateKey) -> UnsavedAccountChainBuilder<'a> {
+        UnsavedAccountChainBuilder { lattice: self, key }
+    }
+}
+
+pub struct UnsavedAccountChainBuilder<'a> {
+    lattice: &'a mut UnsavedBlockLatticeBuilder,
+    key: &'a PrivateKey,
+}
+
+impl<'a> UnsavedAccountChainBuilder<'a> {
+    pub fn send(&mut self, destination: impl Into<Account>, amount: impl Into<Amount>) -> Block {
+        let destination = destination.into();
+
+        let frontier = self
+            .lattice
+            .accounts
+            .get(&self.key.account())
+            .expect("Cannot send from unopenend account!");
+
+        let amount = amount.into();
+        let new_balance = frontier.balance - amount;
+        let send: Block = StateBlockArgs {
+            key: self.key,
+            previous: frontier.hash,
+            representative: frontier.representative,
+            balance: new_balance,
+            link: destination.into(),
+            work: self
+                .lattice
+                .work_pool
+                .generate_dev2(frontier.hash.into())
+                .unwrap(),
+        }
+        .into();
+
+        self.lattice.accounts.insert(
+            self.key.account(),
+            Frontier {
+                hash: send.hash(),
+                representative: frontier.representative,
+                balance: new_balance,
+            },
+        );
+
+        self.lattice.pending_receives.insert(send.hash(), amount);
+
+        send
+    }
+
+    pub fn receive(&mut self, corresponding_send: &Block) -> Block {
+        assert_eq!(corresponding_send.destination_or_link(), self.key.account());
+        let amount = self
+            .lattice
+            .pending_receives
+            .remove(&corresponding_send.hash())
+            .expect("no pending receive found");
+
+        let frontier = self
+            .lattice
+            .accounts
+            .get(&self.key.account())
+            .cloned()
+            .unwrap_or_else(|| Frontier {
+                hash: BlockHash::zero(),
+                representative: self.key.public_key(),
+                balance: Amount::zero(),
+            });
+
+        let root: Root = if frontier.hash.is_zero() {
+            self.key.account().into()
+        } else {
+            frontier.hash.into()
+        };
+
+        let new_balance = frontier.balance + amount;
+
+        let receive: Block = StateBlockArgs {
+            key: self.key,
+            previous: frontier.hash,
+            representative: frontier.representative,
+            balance: new_balance,
+            link: corresponding_send.hash().into(),
+            work: self.lattice.work_pool.generate_dev2(root).unwrap(),
+        }
+        .into();
+
+        self.lattice.accounts.insert(
+            self.key.account(),
+            Frontier {
+                hash: receive.hash(),
+                representative: frontier.representative,
+                balance: new_balance,
+            },
+        );
+
+        receive
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{work::WorkThresholds, BlockDetails};
+
+    #[test]
+    fn state_send() {
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let key1 = PrivateKey::from(42);
+
+        let send = lattice.genesis().send(&key1, 1);
+
+        let expected: Block = StateBlockArgs {
+            key: &DEV_GENESIS_KEY,
+            previous: DEV_GENESIS_BLOCK.hash(),
+            representative: DEV_GENESIS_KEY.public_key(),
+            balance: Amount::MAX - Amount::raw(1),
+            link: key1.account().into(),
+            work: send.work(),
+        }
+        .into();
+        assert_eq!(send, expected);
+        assert!(WorkThresholds::publish_dev().is_valid_pow(
+            &send,
+            &BlockDetails::new(crate::Epoch::Epoch2, true, false, false)
+        ))
+    }
+
+    #[test]
+    fn send_twice() {
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let key1 = PrivateKey::from(42);
+
+        let send1 = lattice.genesis().send(&key1, 1);
+        let send2 = lattice.genesis().send(&key1, 2);
+
+        let expected: Block = StateBlockArgs {
+            key: &DEV_GENESIS_KEY,
+            previous: send1.hash(),
+            representative: DEV_GENESIS_KEY.public_key(),
+            balance: Amount::MAX - Amount::raw(3),
+            link: key1.account().into(),
+            work: send2.work(),
+        }
+        .into();
+        assert_eq!(send2, expected);
+    }
+
+    #[test]
+    fn state_open() {
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let key1 = PrivateKey::from(42);
+        let send = lattice.genesis().send(&key1, 1);
+
+        let open = lattice.account(&key1).receive(&send);
+
+        let expected: Block = StateBlockArgs {
+            key: &key1,
+            previous: BlockHash::zero(),
+            representative: key1.public_key(),
+            balance: Amount::raw(1),
+            link: send.hash().into(),
+            work: open.work(),
+        }
+        .into();
+        assert_eq!(open, expected);
+        assert!(WorkThresholds::publish_dev().is_valid_pow(
+            &send,
+            &BlockDetails::new(crate::Epoch::Epoch2, false, true, false)
+        ))
+    }
+
+    #[test]
+    fn state_receive() {
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let key1 = PrivateKey::from(42);
+        let send1 = lattice.genesis().send(&key1, 1);
+        let send2 = lattice.genesis().send(&key1, 2);
+        let open = lattice.account(&key1).receive(&send1);
+
+        let receive = lattice.account(&key1).receive(&send2);
+
+        let expected: Block = StateBlockArgs {
+            key: &key1,
+            previous: open.hash(),
+            representative: key1.public_key(),
+            balance: Amount::raw(3),
+            link: send2.hash().into(),
+            work: receive.work(),
+        }
+        .into();
+        assert_eq!(receive, expected);
+    }
+}

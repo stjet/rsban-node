@@ -77,11 +77,11 @@ impl<'a> BlockValidatorFactory<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{AccountInfo, BlockBuilder, BlockHash, Link, PendingInfo};
+    use rsnano_core::{AccountInfo, BlockHash, Link, PendingInfo, TestBlockBuilder};
 
     #[test]
     fn block_for_unknown_account() {
-        let block = BlockBuilder::state().build();
+        let block = TestBlockBuilder::state().build();
         let ledger = Ledger::new_null_builder().finish();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
@@ -100,8 +100,8 @@ mod tests {
 
     #[test]
     fn get_account_from_previous_block() {
-        let previous = BlockBuilder::legacy_send().build_saved();
-        let block = BlockBuilder::legacy_send()
+        let previous = TestBlockBuilder::legacy_send().build_saved();
+        let block = TestBlockBuilder::legacy_send()
             .previous(previous.hash())
             .build();
         let ledger = Ledger::new_null_builder().block(&previous).finish();
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn block_exists() {
-        let block = BlockBuilder::state().build_saved();
+        let block = TestBlockBuilder::state().build_saved();
         let ledger = Ledger::new_null_builder().block(&block).finish();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn pruned_block_exists() {
-        let block = BlockBuilder::state().build();
+        let block = TestBlockBuilder::state().build();
         let ledger = Ledger::new_null_builder().pruned(&block.hash()).finish();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn account_info() {
-        let block = BlockBuilder::state().build();
+        let block = TestBlockBuilder::state().build();
         let account_info = AccountInfo::new_test_instance();
         let ledger = Ledger::new_null_builder()
             .account_info(&block.account_field().unwrap(), &account_info)
@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn pending_receive_info_for_state_block() {
-        let block = BlockBuilder::state().link(Link::from(42)).build();
+        let block = TestBlockBuilder::state().link(Link::from(42)).build();
         let pending_info = PendingInfo::new_test_instance();
         let ledger = Ledger::new_null_builder()
             .pending(
@@ -159,8 +159,10 @@ mod tests {
     #[test]
     fn pending_receive_info_for_legacy_receive() {
         let account = Account::from(1111);
-        let previous = BlockBuilder::legacy_open().account(account).build_saved();
-        let block = BlockBuilder::legacy_receive()
+        let previous = TestBlockBuilder::legacy_open()
+            .account(account)
+            .build_saved();
+        let block = TestBlockBuilder::legacy_receive()
             .previous(previous.hash())
             .source(BlockHash::from(42))
             .build();
@@ -179,7 +181,7 @@ mod tests {
 
     #[test]
     fn any_pending_exists() {
-        let block = BlockBuilder::state().build();
+        let block = TestBlockBuilder::state().build();
         let pending_info = PendingInfo::new_test_instance();
         let ledger = Ledger::new_null_builder()
             .pending(
@@ -194,8 +196,8 @@ mod tests {
 
     #[test]
     fn source_block_exists() {
-        let source = BlockBuilder::state().build_saved();
-        let block = BlockBuilder::state().link(source.hash()).build();
+        let source = TestBlockBuilder::state().build_saved();
+        let block = TestBlockBuilder::state().link(source.hash()).build();
         let ledger = Ledger::new_null_builder().block(&source).finish();
         let txn = ledger.read_txn();
         let validator = BlockValidatorFactory::new(&ledger, &txn, &block).create_validator();
@@ -204,7 +206,7 @@ mod tests {
 
     #[test]
     fn pruned_source_block_exists() {
-        let block = BlockBuilder::state().link(BlockHash::from(42)).build();
+        let block = TestBlockBuilder::state().link(BlockHash::from(42)).build();
         let ledger = Ledger::new_null_builder()
             .pruned(&BlockHash::from(42))
             .finish();
@@ -216,7 +218,7 @@ mod tests {
     #[test]
     fn previous_block() {
         let previous = SavedBlock::new_test_instance();
-        let block = BlockBuilder::state()
+        let block = TestBlockBuilder::state()
             .previous(previous.hash())
             .build_saved();
         let ledger = Ledger::new_null_builder().block(&previous).finish();

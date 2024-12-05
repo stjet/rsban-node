@@ -16,7 +16,7 @@ impl<'a> BlockValidator<'a> {
             self.epochs.validate_epoch_signature(self.block)
         } else {
             let pub_key: PublicKey = self.account.into();
-            pub_key.verify(self.block.hash().as_bytes(), self.block.block_signature())
+            pub_key.verify(self.block.hash().as_bytes(), self.block.signature())
         };
         result.map_err(|_| BlockStatus::BadSignature)
     }

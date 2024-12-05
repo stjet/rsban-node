@@ -93,11 +93,11 @@ impl Default for TestLegacyOpenBlockBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{work::WORK_THRESHOLDS_STUB, BlockBase, BlockBuilder, Signature};
+    use crate::{work::WORK_THRESHOLDS_STUB, BlockBase, Signature, TestBlockBuilder};
 
     #[test]
     fn create_open_block() {
-        let block = BlockBuilder::legacy_open().build_saved();
+        let block = TestBlockBuilder::legacy_open().build_saved();
         let Block::LegacyOpen(open) = &*block else {
             panic!("not an open block")
         };
@@ -105,7 +105,7 @@ mod tests {
         assert_eq!(open.hashables.representative, PublicKey::from(2));
         assert_ne!(open.account(), Account::zero());
         assert_eq!(WORK_THRESHOLDS_STUB.validate_entry_block(&block), true);
-        assert_ne!(*open.block_signature(), Signature::new());
+        assert_ne!(*open.signature(), Signature::new());
 
         assert!(block.successor().is_none());
         assert_eq!(block.balance(), Amount::raw(5));

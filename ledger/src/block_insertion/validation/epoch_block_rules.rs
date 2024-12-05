@@ -16,7 +16,7 @@ impl<'a> BlockValidator<'a> {
         if let Block::State(state) = self.block {
             if self.is_epoch_block() {
                 if let Some(info) = &self.old_account_info {
-                    if state.mandatory_representative() != info.representative {
+                    if state.representative() != info.representative {
                         return Err(BlockStatus::RepresentativeMismatch);
                     };
                 }
@@ -27,10 +27,7 @@ impl<'a> BlockValidator<'a> {
 
     fn ensure_epoch_open_has_burn_account_as_rep(&self) -> Result<(), BlockStatus> {
         if let Block::State(state) = self.block {
-            if self.is_epoch_block()
-                && self.block.is_open()
-                && !state.mandatory_representative().is_zero()
-            {
+            if self.is_epoch_block() && self.block.is_open() && !state.representative().is_zero() {
                 return Err(BlockStatus::RepresentativeMismatch);
             }
         }

@@ -1,8 +1,8 @@
 use crate::work::WorkPool;
 use crate::{work::STUB_WORK_POOL, StateBlock};
 use crate::{
-    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, Link, PrivateKey,
-    PublicKey, SavedBlock, Signature,
+    Account, Amount, Block, BlockBase, BlockDetails, BlockHash, BlockSideband, Epoch, Link,
+    PrivateKey, PublicKey, SavedBlock, Signature, StateBlockArgs,
 };
 use anyhow::Result;
 
@@ -35,13 +35,13 @@ impl TestStateBlockBuilder {
     }
 
     pub fn from(mut self, other: &StateBlock) -> Self {
-        self.account = other.hashables.account;
-        self.previous = other.hashables.previous;
-        self.representative = other.hashables.representative;
-        self.balance = other.hashables.balance;
-        self.link = other.hashables.link;
-        self.signature = Some(other.signature.clone());
-        self.work = Some(other.work);
+        self.account = other.account();
+        self.previous = other.previous();
+        self.representative = other.representative();
+        self.balance = other.balance();
+        self.link = other.link();
+        self.signature = Some(other.signature().clone());
+        self.work = Some(other.work());
         self
     }
 
@@ -150,8 +150,8 @@ impl TestStateBlockBuilder {
             STUB_WORK_POOL.generate_dev2(root).unwrap()
         });
 
-        let state = match self.signature {
-            Some(signature) => StateBlock::with_signature(
+        match self.signature {
+            Some(signature) => Block::State(StateBlock::with_signature(
                 self.account,
                 self.previous,
                 self.representative,
@@ -159,19 +159,17 @@ impl TestStateBlockBuilder {
                 self.link,
                 signature,
                 work,
-            ),
-            None => StateBlock::new(
-                self.account,
-                self.previous,
-                self.representative,
-                self.balance,
-                self.link,
-                &self.priv_key,
+            )),
+            None => StateBlockArgs {
+                key: &self.priv_key,
+                previous: self.previous,
+                representative: self.representative,
+                balance: self.balance,
+                link: self.link,
                 work,
-            ),
-        };
-
-        Block::State(state)
+            }
+            .into(),
+        }
     }
 
     pub fn build_saved(self) -> SavedBlock {
@@ -200,11 +198,11 @@ impl Default for TestStateBlockBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BlockBase, BlockBuilder, StateBlock};
+    use crate::{BlockBase, StateBlock, TestBlockBuilder};
 
     #[test]
     fn state_block() {
-        let Block::State(block1) = BlockBuilder::state()
+        let Block::State(block1) = TestBlockBuilder::state()
             .account(3)
             .previous(1)
             .representative(6)
@@ -216,17 +214,17 @@ mod tests {
             panic!("not a state block")
         };
 
-        assert_eq!(block1.hashables.account, Account::from(3));
-        assert_eq!(block1.hashables.previous, BlockHash::from(1));
-        assert_eq!(block1.hashables.representative, Account::from(6).into());
-        assert_eq!(block1.hashables.balance, Amount::raw(2));
-        assert_eq!(block1.hashables.link, Link::from(4));
+        assert_eq!(block1.account(), Account::from(3));
+        assert_eq!(block1.previous(), BlockHash::from(1));
+        assert_eq!(block1.representative(), Account::from(6).into());
+        assert_eq!(block1.balance(), Amount::raw(2));
+        assert_eq!(block1.link(), Link::from(4));
     }
 
     // original test: block_builder.from
     #[test]
     fn copy_state_block() -> anyhow::Result<()> {
-        let block = BlockBuilder::state()
+        let block = TestBlockBuilder::state()
             .account_address("xrb_15nhh1kzw3x8ohez6s75wy3jr6dqgq65oaede1fzk5hqxk4j8ehz7iqtb3to")?
             .previous_hex("FEFBCE274E75148AB31FF63EFB3082EF1126BF72BF3FA9C76A97FD5A9F0EBEC5")?
             .balance_dec("2251569974100400000000000000000000")?
@@ -244,13 +242,17 @@ mod tests {
         let Block::State(b) = &block else {
             panic!("not a state block")
         };
-        let block2 = BlockBuilder::state().from(&b).build();
+        let block2 = TestBlockBuilder::state().from(&b).build();
         assert_eq!(
             block2.hash().to_string(),
             "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F"
         );
 
-        let block3 = BlockBuilder::state().from(&b).sign_zero().work(0).build();
+        let block3 = TestBlockBuilder::state()
+            .from(&b)
+            .sign_zero()
+            .work(0)
+            .build();
         assert_eq!(
             block3.hash().to_string(),
             "2D243F8F92CDD0AD94A1D456A6B15F3BE7A6FCBD98D4C5831D06D15C818CD81F"
@@ -263,7 +265,7 @@ mod tests {
     fn zeroed_state_block() {
         let key = PrivateKey::new();
         // Make sure manually- and builder constructed all-zero blocks have equal hashes, and check signature.
-        let zero_block_manual = BlockBuilder::state()
+        let zero_block_manual = TestBlockBuilder::state()
             .account(0)
             .previous(0)
             .representative(0)
@@ -273,12 +275,12 @@ mod tests {
             .work(0)
             .build();
 
-        let zero_block_build = BlockBuilder::state().zero().sign(&key).build();
+        let zero_block_build = TestBlockBuilder::state().zero().sign(&key).build();
         assert_eq!(zero_block_manual.hash(), zero_block_build.hash());
         key.public_key()
             .verify(
                 zero_block_build.hash().as_bytes(),
-                zero_block_build.block_signature(),
+                zero_block_build.signature(),
             )
             .unwrap();
     }
@@ -287,7 +289,7 @@ mod tests {
     #[test]
     fn state_block_from_live_network() -> Result<()> {
         // Test against a random hash from the live network
-        let block = BlockBuilder::state()
+        let block = TestBlockBuilder::state()
             .account_address("xrb_15nhh1kzw3x8ohez6s75wy3jr6dqgq65oaede1fzk5hqxk4j8ehz7iqtb3to")?
             .previous_hex("FEFBCE274E75148AB31FF63EFB3082EF1126BF72BF3FA9C76A97FD5A9F0EBEC5")?
             .balance_dec("2251569974100400000000000000000000")?
@@ -324,7 +326,7 @@ mod tests {
             5,
         );
 
-        let block2 = BlockBuilder::state()
+        let block2 = TestBlockBuilder::state()
             .account(key1.public_key())
             .previous(1)
             .representative(key2.public_key())
@@ -335,6 +337,6 @@ mod tests {
             .build();
 
         assert_eq!(block1.hash(), block2.hash());
-        assert_eq!(block1.work, block2.work());
+        assert_eq!(block1.work(), block2.work());
     }
 }

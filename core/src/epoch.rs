@@ -95,7 +95,7 @@ impl Epochs {
             .ok_or_else(|| anyhow!("not an epoch link!"))?
             .into();
 
-        epoch_signer.verify(block.hash().as_bytes(), block.block_signature())
+        epoch_signer.verify(block.hash().as_bytes(), block.signature())
     }
 
     pub fn epoch_signer(&self, link: &Link) -> Option<Account> {

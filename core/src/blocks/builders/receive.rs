@@ -61,11 +61,11 @@ impl Default for TestLegacyReceiveBlockBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::{work::WORK_THRESHOLDS_STUB, Block, BlockBuilder, BlockHash};
+    use crate::{work::WORK_THRESHOLDS_STUB, Block, BlockHash, TestBlockBuilder};
 
     #[test]
     fn receive_block() {
-        let block = BlockBuilder::legacy_receive().build();
+        let block = TestBlockBuilder::legacy_receive().build();
         let Block::LegacyReceive(receive) = &block else {
             panic!("not a receive block!")
         };

@@ -24,7 +24,7 @@ use test_helpers::{
 
 mod bootstrap_processor {
     use super::*;
-    use rsnano_core::{BlockBuilder, PublicKey};
+    use rsnano_core::{PublicKey, TestBlockBuilder};
     use rsnano_ledger::{BlockStatus, DEV_GENESIS_PUB_KEY};
     use rsnano_network::ChannelMode;
     use test_helpers::establish_tcp;
@@ -47,7 +47,7 @@ mod bootstrap_processor {
         let key2 = PrivateKey::new();
         // Generating test chain
 
-        let send1 = BlockBuilder::state()
+        let send1 = TestBlockBuilder::state()
             .account(*DEV_GENESIS_ACCOUNT)
             .previous(*DEV_GENESIS_HASH)
             .representative(*DEV_GENESIS_PUB_KEY)
@@ -57,7 +57,7 @@ mod bootstrap_processor {
             .work(node0.work_generate_dev(*DEV_GENESIS_HASH))
             .build();
 
-        let receive1 = BlockBuilder::state()
+        let receive1 = TestBlockBuilder::state()
             .account(key1.public_key())
             .previous(BlockHash::zero())
             .representative(key1.public_key())
@@ -67,7 +67,7 @@ mod bootstrap_processor {
             .work(node0.work_generate_dev(&key1))
             .build();
 
-        let send2 = BlockBuilder::state()
+        let send2 = TestBlockBuilder::state()
             .account(key1.public_key())
             .previous(receive1.hash())
             .representative(key1.public_key())
@@ -120,7 +120,7 @@ mod bootstrap_processor {
         let key2 = PrivateKey::new();
 
         // send 1000 nano from genesis to key1
-        let send1 = BlockBuilder::state()
+        let send1 = TestBlockBuilder::state()
             .account(*DEV_GENESIS_ACCOUNT)
             .previous(*DEV_GENESIS_HASH)
             .representative(*DEV_GENESIS_PUB_KEY)
@@ -136,7 +136,7 @@ mod bootstrap_processor {
         );
 
         // send 1000 nano from genesis to key2
-        let send2 = BlockBuilder::state()
+        let send2 = TestBlockBuilder::state()
             .account(*DEV_GENESIS_ACCOUNT)
             .previous(send1.hash())
             .representative(*DEV_GENESIS_PUB_KEY)
@@ -152,7 +152,7 @@ mod bootstrap_processor {
         );
 
         // receive send1 on key1
-        let open = BlockBuilder::legacy_open()
+        let open = TestBlockBuilder::legacy_open()
             .source(send1.hash())
             .representative(key1.public_key())
             .account(key1.account())
@@ -166,7 +166,7 @@ mod bootstrap_processor {
         );
 
         // receive send2 on key2
-        let state_open = BlockBuilder::state()
+        let state_open = TestBlockBuilder::state()
             .account(key2.public_key())
             .previous(BlockHash::zero())
             .representative(key2.public_key())
@@ -218,7 +218,7 @@ mod bootstrap_processor {
         let key2 = PrivateKey::new();
         // Generating test chain
 
-        let send1 = BlockBuilder::state()
+        let send1 = TestBlockBuilder::state()
             .account(*DEV_GENESIS_ACCOUNT)
             .previous(*DEV_GENESIS_HASH)
             .representative(*DEV_GENESIS_PUB_KEY)
@@ -233,7 +233,7 @@ mod bootstrap_processor {
             BlockStatus::Progress
         );
 
-        let open = BlockBuilder::legacy_open()
+        let open = TestBlockBuilder::legacy_open()
             .source(send1.hash())
             .representative(key.public_key())
             .account(key.account())
@@ -246,7 +246,7 @@ mod bootstrap_processor {
             BlockStatus::Progress
         );
 
-        let send2 = BlockBuilder::state()
+        let send2 = TestBlockBuilder::state()
             .account(key.public_key())
             .previous(open.hash())
             .representative(key.public_key())
@@ -307,7 +307,7 @@ mod bootstrap_processor {
             .finish();
         let key = PrivateKey::new();
 
-        let send1 = BlockBuilder::state()
+        let send1 = TestBlockBuilder::state()
             .account(*DEV_GENESIS_ACCOUNT)
             .previous(*DEV_GENESIS_HASH)
             .representative(*DEV_GENESIS_PUB_KEY)
@@ -322,7 +322,7 @@ mod bootstrap_processor {
             BlockStatus::Progress
         );
 
-        let send2 = BlockBuilder::state()
+        let send2 = TestBlockBuilder::state()
             .account(*DEV_GENESIS_ACCOUNT)
             .previous(send1.hash())
             .representative(*DEV_GENESIS_PUB_KEY)
@@ -336,7 +336,7 @@ mod bootstrap_processor {
             BlockStatus::Progress
         );
 
-        let open = BlockBuilder::legacy_open()
+        let open = TestBlockBuilder::legacy_open()
             .source(send1.hash())
             .representative(key.public_key())
             .account(key.account())
@@ -349,7 +349,7 @@ mod bootstrap_processor {
             BlockStatus::Progress
         );
 
-        let receive = BlockBuilder::state()
+        let receive = TestBlockBuilder::state()
             .account(key.public_key())
             .previous(open.hash())
             .representative(key.public_key())
@@ -577,7 +577,7 @@ mod bootstrap_processor {
 
         let key = PrivateKey::new();
 
-        let send1 = BlockBuilder::legacy_send()
+        let send1 = TestBlockBuilder::legacy_send()
             .previous(node0.latest(&DEV_GENESIS_ACCOUNT))
             .destination(key.account())
             .balance(Amount::zero())
@@ -590,7 +590,7 @@ mod bootstrap_processor {
             BlockStatus::Progress
         );
 
-        let open = BlockBuilder::legacy_open()
+        let open = TestBlockBuilder::legacy_open()
             .source(send1.hash())
             .representative(PublicKey::zero())
             .account(key.account())
@@ -603,7 +603,7 @@ mod bootstrap_processor {
             BlockStatus::Progress
         );
 
-        let send2 = BlockBuilder::legacy_send()
+        let send2 = TestBlockBuilder::legacy_send()
             .previous(open.hash())
             .destination(*DEV_GENESIS_ACCOUNT)
             .balance(Amount::MAX - Amount::raw(100))
@@ -616,7 +616,7 @@ mod bootstrap_processor {
             BlockStatus::Progress
         );
 
-        let receive = BlockBuilder::legacy_receive()
+        let receive = TestBlockBuilder::legacy_receive()
             .previous(send1.hash())
             .source(send2.hash())
             .sign(&DEV_GENESIS_KEY)

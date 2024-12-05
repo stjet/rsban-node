@@ -78,7 +78,7 @@ fn check_ledger_file(ledger_file: impl AsRef<Path>) {
 
 fn is_problematic(block: &SavedBlock, epochs: &Epochs) -> bool {
     let signer = get_signer(block, epochs);
-    validate_message(&signer, block.hash().as_bytes(), block.block_signature()).is_err()
+    validate_message(&signer, block.hash().as_bytes(), block.signature()).is_err()
 }
 
 fn get_signer(block: &SavedBlock, epochs: &Epochs) -> PublicKey {

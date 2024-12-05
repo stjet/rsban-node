@@ -1,6 +1,6 @@
 use crate::{
-    epoch_v1_link, epoch_v2_link, Account, AccountInfo, Amount, Block, BlockBuilder, BlockDetails,
-    BlockHash, BlockSideband, Epoch, PrivateKey, PublicKey, SavedBlock,
+    epoch_v1_link, epoch_v2_link, Account, AccountInfo, Amount, Block, BlockDetails, BlockHash,
+    BlockSideband, Epoch, PrivateKey, PublicKey, SavedBlock, TestBlockBuilder,
     TestLegacyChangeBlockBuilder, TestLegacyOpenBlockBuilder, TestLegacyReceiveBlockBuilder,
     TestLegacySendBlockBuilder, TestStateBlockBuilder, DEV_GENESIS_KEY,
 };
@@ -24,7 +24,7 @@ impl SavedAccountChain {
         let mut result = Self::with_priv_key(DEV_GENESIS_KEY.clone());
         result.balance = Amount::MAX;
         result.add_block(
-            BlockBuilder::legacy_open()
+            TestBlockBuilder::legacy_open()
                 .account(result.account)
                 .source(BlockHash::zero())
                 .sign(&result.keypair)
@@ -44,7 +44,7 @@ impl SavedAccountChain {
         assert_eq!(self.height(), 0);
         self.balance = Amount::nano(1);
         self.add_block(
-            BlockBuilder::legacy_open()
+            TestBlockBuilder::legacy_open()
                 .account(self.account)
                 .source(BlockHash::from(123))
                 .sign(&self.keypair)
@@ -125,7 +125,7 @@ impl SavedAccountChain {
         assert!(amount > Amount::zero());
         assert_eq!(send_block.destination_or_link(), self.account);
         self.balance = amount;
-        let open_block = BlockBuilder::legacy_open()
+        let open_block = TestBlockBuilder::legacy_open()
             .account(self.account)
             .source(send_block.hash())
             .sign(&self.keypair)
@@ -165,7 +165,7 @@ impl SavedAccountChain {
         source_epoch: Epoch,
     ) -> &SavedBlock {
         assert!(amount > Amount::zero());
-        let block_builder = BlockBuilder::legacy_receive()
+        let block_builder = TestBlockBuilder::legacy_receive()
             .previous(self.frontier())
             .source(source)
             .sign(&self.keypair);
@@ -214,7 +214,7 @@ impl SavedAccountChain {
     }
 
     pub fn new_legacy_open_block(&self) -> TestLegacyOpenBlockBuilder {
-        BlockBuilder::legacy_open()
+        TestBlockBuilder::legacy_open()
             .account(self.account)
             .source(BlockHash::from(123))
             .representative(PublicKey::from(456))
@@ -222,7 +222,7 @@ impl SavedAccountChain {
     }
 
     pub fn new_state_block(&self) -> TestStateBlockBuilder {
-        BlockBuilder::state()
+        TestBlockBuilder::state()
             .account(self.account)
             .balance(self.balance)
             .representative(self.representative)
@@ -232,7 +232,7 @@ impl SavedAccountChain {
     }
 
     pub fn new_open_block(&self) -> TestStateBlockBuilder {
-        BlockBuilder::state()
+        TestBlockBuilder::state()
             .account(self.account)
             .balance(42)
             .representative(1234)
@@ -242,7 +242,7 @@ impl SavedAccountChain {
     }
 
     pub fn new_legacy_send_block(&self) -> TestLegacySendBlockBuilder {
-        BlockBuilder::legacy_send()
+        TestBlockBuilder::legacy_send()
             .previous(self.frontier())
             .destination(Account::from(42))
             .previous_balance(self.balance)
@@ -265,7 +265,7 @@ impl SavedAccountChain {
     }
 
     pub fn new_epoch1_open_block(&self) -> TestStateBlockBuilder {
-        BlockBuilder::state()
+        TestBlockBuilder::state()
             .account(self.account)
             .balance(0)
             .representative(0)
@@ -275,14 +275,14 @@ impl SavedAccountChain {
     }
 
     pub fn new_legacy_receive_block(&self) -> TestLegacyReceiveBlockBuilder {
-        BlockBuilder::legacy_receive()
+        TestBlockBuilder::legacy_receive()
             .previous(self.frontier())
             .source(BlockHash::from(123))
             .sign(&self.keypair)
     }
 
     pub fn new_legacy_change_block(&self) -> TestLegacyChangeBlockBuilder {
-        BlockBuilder::legacy_change()
+        TestBlockBuilder::legacy_change()
             .previous(self.frontier())
             .representative(PublicKey::from(42))
             .sign(&self.keypair)

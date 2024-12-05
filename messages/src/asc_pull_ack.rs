@@ -247,15 +247,15 @@ impl Serialize for AccountInfoAckPayload {
 mod tests {
     use super::*;
     use crate::{assert_deserializable, Message};
-    use rsnano_core::BlockBuilder;
+    use rsnano_core::TestBlockBuilder;
 
     #[test]
     fn serialize_blocks() {
         let original = Message::AscPullAck(AscPullAck {
             id: 7,
             pull_type: AscPullAckType::Blocks(BlocksAckPayload::new(VecDeque::from([
-                BlockBuilder::state().build(),
-                BlockBuilder::state().build(),
+                TestBlockBuilder::state().build(),
+                TestBlockBuilder::state().build(),
             ]))),
         });
 

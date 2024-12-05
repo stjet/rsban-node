@@ -109,7 +109,7 @@ impl Display for Publish {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{utils::MemoryStream, BlockBuilder};
+    use rsnano_core::{utils::MemoryStream, TestBlockBuilder};
 
     #[test]
     fn create_from_originator() {
@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn serialize() {
-        let block = BlockBuilder::state().build();
+        let block = TestBlockBuilder::state().build();
         let mut publish1 = Publish::new_from_originator(block);
         publish1.digest = 123;
 

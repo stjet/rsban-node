@@ -261,7 +261,7 @@ pub static STUB_WORK_POOL: LazyLock<StubWorkPool> =
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Block, BlockBuilder};
+    use crate::{Block, TestBlockBuilder};
     use std::sync::mpsc;
 
     pub static WORK_POOL: LazyLock<WorkPoolImpl> = LazyLock::new(|| {
@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn work_one() {
         let pool = &WORK_POOL;
-        let mut block = BlockBuilder::state().build();
+        let mut block = TestBlockBuilder::state().build();
         let root = block.root();
         block.set_work(pool.generate_dev2(root).unwrap());
         assert!(pool.threshold_base() < difficulty(&block));
@@ -291,7 +291,7 @@ mod tests {
     #[test]
     fn work_validate() {
         let pool = &WORK_POOL;
-        let mut block = BlockBuilder::legacy_send().work(6).build();
+        let mut block = TestBlockBuilder::legacy_send().work(6).build();
         assert!(difficulty(&block) < pool.threshold_base());
         let root = block.root();
         block

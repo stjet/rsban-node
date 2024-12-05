@@ -3,7 +3,7 @@ use crate::ledger_tests::LedgerContext;
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, DEV_GENESIS_HASH};
 use rsnano_core::{
     work::{WorkPool, STUB_WORK_POOL},
-    Amount, BlockBuilder, Epoch, PendingKey,
+    Amount, Epoch, PendingKey, TestBlockBuilder,
 };
 
 #[test]
@@ -48,7 +48,7 @@ fn pruning_action() {
     assert!(ctx.ledger.store.block.exists(&txn, &send2.hash()));
 
     // Receiving pruned block
-    let mut receive1 = BlockBuilder::state()
+    let mut receive1 = TestBlockBuilder::state()
         .account(genesis.account())
         .previous(send2.hash())
         .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(100))
@@ -162,7 +162,7 @@ fn pruning_source_rollback() {
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &send1.hash(), 1), 2);
 
     // Receiving pruned block
-    let mut receive1 = BlockBuilder::state()
+    let mut receive1 = TestBlockBuilder::state()
         .account(genesis.account())
         .previous(send2.hash())
         .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(100))
@@ -230,7 +230,7 @@ fn pruning_source_rollback_legacy() {
     assert_eq!(ctx.ledger.pruning_action(&mut txn, &send2.hash(), 1), 2);
 
     // Receiving pruned block
-    let mut receive1 = BlockBuilder::legacy_receive()
+    let mut receive1 = TestBlockBuilder::legacy_receive()
         .previous(send3.hash())
         .source(send1.hash())
         .sign(&genesis.key)
@@ -263,7 +263,7 @@ fn pruning_source_rollback_legacy() {
     assert_eq!(ctx.ledger.block_count(), 5);
 
     // Receiving pruned block (open)
-    let mut open1 = BlockBuilder::legacy_open()
+    let mut open1 = TestBlockBuilder::legacy_open()
         .source(send2.hash())
         .account(destination.account())
         .sign(&destination.key)

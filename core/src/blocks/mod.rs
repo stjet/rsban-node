@@ -21,8 +21,7 @@ use send_block::JsonSendBlock;
 pub use send_block::{valid_send_block_predecessor, SendBlock, SendHashables};
 
 mod state_block;
-use state_block::JsonStateBlock;
-pub use state_block::{StateBlock, StateHashables};
+pub use state_block::{JsonStateBlock, StateBlock, StateBlockArgs};
 
 mod builders;
 pub use builders::*;
@@ -101,7 +100,7 @@ pub trait BlockBase: FullHash {
     fn account_field(&self) -> Option<Account>;
     fn hash(&self) -> BlockHash;
     fn link_field(&self) -> Option<Link>;
-    fn block_signature(&self) -> &Signature;
+    fn signature(&self) -> &Signature;
     fn set_block_signature(&mut self, signature: &Signature);
     fn work(&self) -> u64;
     fn set_work(&mut self, work: u64);
@@ -127,7 +126,7 @@ impl<T: BlockBase> FullHash for T {
     fn full_hash(&self) -> BlockHash {
         BlockHashBuilder::new()
             .update(self.hash().as_bytes())
-            .update(self.block_signature().as_bytes())
+            .update(self.signature().as_bytes())
             .update(self.work().to_ne_bytes())
             .build()
     }
@@ -662,31 +661,31 @@ mod tests {
 
     #[test]
     fn serialize_legacy_open() {
-        let block = BlockBuilder::legacy_open().build_saved();
+        let block = TestBlockBuilder::legacy_open().build_saved();
         assert_serializable(block.into());
     }
 
     #[test]
     fn serialize_legacy_receive() {
-        let block = BlockBuilder::legacy_receive().build();
+        let block = TestBlockBuilder::legacy_receive().build();
         assert_serializable(block);
     }
 
     #[test]
     fn serialize_legacy_send() {
-        let block = BlockBuilder::legacy_send().build();
+        let block = TestBlockBuilder::legacy_send().build();
         assert_serializable(block);
     }
 
     #[test]
     fn serialize_legacy_change() {
-        let block = BlockBuilder::legacy_change().build();
+        let block = TestBlockBuilder::legacy_change().build();
         assert_serializable(block);
     }
 
     #[test]
     fn serialize_state() {
-        let block = BlockBuilder::state().build();
+        let block = TestBlockBuilder::state().build();
         assert_serializable(block);
     }
 

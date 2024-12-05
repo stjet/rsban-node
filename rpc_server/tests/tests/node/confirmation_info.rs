@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount, BlockBuilder, JsonBlock, DEV_GENESIS_KEY};
+use rsnano_core::{Account, Amount, JsonBlock, TestBlockBuilder, DEV_GENESIS_KEY};
 use rsnano_ledger::DEV_GENESIS_HASH;
 use rsnano_rpc_messages::ConfirmationInfoArgs;
 use std::time::Duration;
@@ -9,7 +9,7 @@ fn confirmation_info() {
     let mut system = System::new();
     let node = system.build_node().finish();
 
-    let send = BlockBuilder::legacy_send()
+    let send = TestBlockBuilder::legacy_send()
         .previous(*DEV_GENESIS_HASH)
         .destination(Account::zero())
         .balance(Amount::MAX - Amount::raw(100))

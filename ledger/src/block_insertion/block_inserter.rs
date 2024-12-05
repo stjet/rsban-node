@@ -104,7 +104,7 @@ impl<'a> BlockInserter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{BlockBuilder, BlockHash, PublicKey};
+    use rsnano_core::{BlockHash, PublicKey, TestBlockBuilder};
 
     #[test]
     fn insert_open_state_block() {
@@ -158,7 +158,7 @@ mod tests {
     fn update_representative() {
         let old_representative = PublicKey::from(1111);
         let new_representative = PublicKey::from(2222);
-        let open = BlockBuilder::legacy_open()
+        let open = TestBlockBuilder::legacy_open()
             .representative(old_representative)
             .build();
         let sideband = BlockSideband {
@@ -167,7 +167,7 @@ mod tests {
         };
         let open = SavedBlock::new(open, sideband.clone());
 
-        let state = BlockBuilder::state()
+        let state = TestBlockBuilder::state()
             .previous(open.hash())
             .representative(new_representative)
             .balance(sideband.balance)
@@ -212,7 +212,7 @@ mod tests {
     }
 
     fn legacy_open_block_instructions() -> (Block, BlockInsertInstructions) {
-        let block = BlockBuilder::legacy_open().build();
+        let block = TestBlockBuilder::legacy_open().build();
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
             ..BlockSideband::new_test_instance()
@@ -236,7 +236,9 @@ mod tests {
     }
 
     fn open_state_block_instructions() -> (Block, BlockInsertInstructions) {
-        let block = BlockBuilder::state().previous(BlockHash::zero()).build();
+        let block = TestBlockBuilder::state()
+            .previous(BlockHash::zero())
+            .build();
         let sideband = BlockSideband {
             successor: BlockHash::zero(),
             ..BlockSideband::new_test_instance()

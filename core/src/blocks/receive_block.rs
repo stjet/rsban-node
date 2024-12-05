@@ -122,7 +122,7 @@ impl BlockBase for ReceiveBlock {
         None
     }
 
-    fn block_signature(&self) -> &Signature {
+    fn signature(&self) -> &Signature {
         &self.signature
     }
 

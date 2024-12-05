@@ -198,7 +198,7 @@ impl<'a> AccountHistoryHelper<'a> {
                 let mut entry = empty_entry();
                 if self.output_raw {
                     entry.block_type = Some(BlockTypeDto::State);
-                    entry.representative = Some(b.mandatory_representative().into());
+                    entry.representative = Some(b.representative().into());
                     entry.link = Some(b.link());
                     entry.balance = Some(b.balance());
                     entry.previous = Some(b.previous());
@@ -292,7 +292,7 @@ impl<'a> AccountHistoryHelper<'a> {
             .into();
         if self.output_raw {
             entry.work = Some(block.work().into());
-            entry.signature = Some(block.block_signature().clone());
+            entry.signature = Some(block.signature().clone());
         }
     }
 

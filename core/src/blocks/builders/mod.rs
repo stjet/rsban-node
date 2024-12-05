@@ -12,9 +12,9 @@ pub use saved_account_chain::SavedAccountChain;
 pub use send::TestLegacySendBlockBuilder;
 pub use state::TestStateBlockBuilder;
 
-pub struct BlockBuilder {}
+pub struct TestBlockBuilder {}
 
-impl BlockBuilder {
+impl TestBlockBuilder {
     pub fn state() -> TestStateBlockBuilder {
         TestStateBlockBuilder::new()
     }

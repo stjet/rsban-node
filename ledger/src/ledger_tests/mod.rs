@@ -7,8 +7,8 @@ use crate::{
 };
 use rsnano_core::{
     utils::{new_test_timestamp, TEST_ENDPOINT_1},
-    Account, Amount, BlockBuilder, BlockHash, PublicKey, QualifiedRoot, Root, SavedAccountChain,
-    DEV_GENESIS_KEY,
+    Account, Amount, BlockHash, PublicKey, QualifiedRoot, Root, SavedAccountChain,
+    TestBlockBuilder, DEV_GENESIS_KEY,
 };
 
 mod empty_ledger;
@@ -258,7 +258,7 @@ fn block_destination_source() {
 fn state_account() {
     let ctx = LedgerContext::empty();
     let mut txn = ctx.ledger.rw_txn();
-    let mut send = BlockBuilder::state()
+    let mut send = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(*DEV_GENESIS_HASH)
         .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::nano(1000))
@@ -508,7 +508,7 @@ mod dependents_confirmed {
 
         assert_eq!(ctx.ledger.pruning_action(&mut txn, &send2.hash(), 1), 2);
 
-        let receive1 = BlockBuilder::state()
+        let receive1 = TestBlockBuilder::state()
             .account(destination.account())
             .previous(0)
             .balance(Amount::raw(1))

@@ -208,7 +208,7 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 #[cfg(test)]
 mod tests {
     use crate::PutEvent;
-    use rsnano_core::BlockBuilder;
+    use rsnano_core::TestBlockBuilder;
 
     use super::*;
 
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn clear_successor() {
-        let block = BlockBuilder::legacy_open().build();
+        let block = TestBlockBuilder::legacy_open().build();
         let sideband = BlockSideband {
             successor: BlockHash::from(123),
             ..BlockSideband::new_test_instance()

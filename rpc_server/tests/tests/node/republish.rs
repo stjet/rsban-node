@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, BlockBuilder, BlockHash, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, BlockHash, TestBlockBuilder, DEV_GENESIS_KEY};
 use rsnano_ledger::DEV_GENESIS_HASH;
 use rsnano_node::Node;
 use rsnano_rpc_messages::RepublishArgs;
@@ -10,7 +10,7 @@ fn setup_test_environment(node: Arc<Node>) -> BlockHash {
     let key = rsnano_core::PrivateKey::new();
 
     // Create and process send block
-    let send = BlockBuilder::legacy_send()
+    let send = TestBlockBuilder::legacy_send()
         .previous(genesis_hash)
         .destination(key.public_key().into())
         .balance(Amount::raw(100))
@@ -26,7 +26,7 @@ fn setup_test_environment(node: Arc<Node>) -> BlockHash {
     );
 
     // Create and process open block
-    let open = BlockBuilder::legacy_open()
+    let open = TestBlockBuilder::legacy_open()
         .source(send.hash())
         .representative(key.public_key().into())
         .account(key.public_key().into())

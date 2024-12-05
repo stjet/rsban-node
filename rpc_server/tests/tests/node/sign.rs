@@ -50,7 +50,7 @@ fn sign() {
         panic!("Expected a state block");
     }
 
-    assert_eq!(signed_block.block_signature(), send.block_signature());
+    assert_eq!(signed_block.signature(), send.signature());
     assert_eq!(signed_block.hash(), send.hash());
 }
 

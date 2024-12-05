@@ -177,7 +177,7 @@ pub fn validate_header(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{BlockBuilder, Vote};
+    use rsnano_core::{TestBlockBuilder, Vote};
 
     #[test]
     fn exact_confirm_ack() {
@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn exact_publish() {
-        let block = BlockBuilder::legacy_send().build();
+        let block = TestBlockBuilder::legacy_send().build();
         let message = Message::Publish(Publish::new_from_originator(block));
         assert_deserializable(&message);
     }

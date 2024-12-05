@@ -1,4 +1,4 @@
-use super::{BlockBase, BlockType};
+use super::{Block, BlockBase, BlockType};
 use crate::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, Link, PrivateKey, PublicKey, Root,
@@ -6,49 +6,12 @@ use crate::{
 };
 use anyhow::Result;
 
-#[derive(Clone, PartialEq, Eq, Default, Debug)]
-pub struct StateHashables {
-    // Account# / public key that operates this account
-    // Uses:
-    // Bulk signature validation in advance of further ledger processing
-    // Arranging uncomitted transactions by account
-    pub account: Account,
-
-    // Previous transaction in this chain
-    pub previous: BlockHash,
-
-    // Representative of this account
-    pub representative: PublicKey,
-
-    // Current balance of this account
-    // Allows lookup of account balance simply by looking at the head block
-    pub balance: Amount,
-
-    // Link field contains source block_hash if receiving, destination account if sending
-    pub link: Link,
-}
-
-impl StateHashables {
-    fn hash(&self) -> BlockHash {
-        let mut preamble = [0u8; 32];
-        preamble[31] = BlockType::State as u8;
-        BlockHashBuilder::new()
-            .update(preamble)
-            .update(self.account.as_bytes())
-            .update(self.previous.as_bytes())
-            .update(self.representative.as_bytes())
-            .update(self.balance.to_be_bytes())
-            .update(self.link.as_bytes())
-            .build()
-    }
-}
-
 #[derive(Clone, Default, Debug)]
 pub struct StateBlock {
-    pub work: u64,
-    pub signature: Signature,
-    pub hashables: StateHashables,
-    pub hash: BlockHash,
+    hashables: StateHashables,
+    signature: Signature,
+    hash: BlockHash,
+    work: u64,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -66,7 +29,7 @@ impl StateBlock {
     }
 
     // Don't use this anymore
-    pub fn new_obsolete(
+    fn new_obsolete(
         account: Account,
         previous: BlockHash,
         representative: PublicKey,
@@ -152,7 +115,7 @@ impl StateBlock {
     pub fn verify_signature(&self) -> anyhow::Result<()> {
         self.account()
             .as_key()
-            .verify(self.hash().as_bytes(), self.block_signature())
+            .verify(self.hash().as_bytes(), self.signature())
     }
 
     pub fn account(&self) -> Account {
@@ -171,7 +134,7 @@ impl StateBlock {
         BlockHash::zero()
     }
 
-    pub fn mandatory_representative(&self) -> PublicKey {
+    pub fn representative(&self) -> PublicKey {
         self.hashables.representative
     }
 
@@ -243,7 +206,7 @@ impl BlockBase for StateBlock {
         Some(self.hashables.link)
     }
 
-    fn block_signature(&self) -> &Signature {
+    fn signature(&self) -> &Signature {
         &self.signature
     }
 
@@ -315,6 +278,74 @@ impl BlockBase for StateBlock {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Default, Debug)]
+struct StateHashables {
+    // Account# / public key that operates this account
+    // Uses:
+    // Bulk signature validation in advance of further ledger processing
+    // Arranging uncomitted transactions by account
+    account: Account,
+
+    // Previous transaction in this chain
+    previous: BlockHash,
+
+    // Representative of this account
+    representative: PublicKey,
+
+    // Current balance of this account
+    // Allows lookup of account balance simply by looking at the head block
+    balance: Amount,
+
+    // Link field contains source block_hash if receiving, destination account if sending
+    link: Link,
+}
+
+impl StateHashables {
+    fn hash(&self) -> BlockHash {
+        let mut preamble = [0u8; 32];
+        preamble[31] = BlockType::State as u8;
+        BlockHashBuilder::new()
+            .update(preamble)
+            .update(self.account.as_bytes())
+            .update(self.previous.as_bytes())
+            .update(self.representative.as_bytes())
+            .update(self.balance.to_be_bytes())
+            .update(self.link.as_bytes())
+            .build()
+    }
+}
+
+pub struct StateBlockArgs<'a> {
+    pub key: &'a PrivateKey,
+    pub previous: BlockHash,
+    pub representative: PublicKey,
+    pub balance: Amount,
+    pub link: Link,
+    pub work: u64,
+}
+
+impl<'a> From<StateBlockArgs<'a>> for Block {
+    fn from(value: StateBlockArgs<'a>) -> Self {
+        let hashables = StateHashables {
+            account: value.key.account(),
+            previous: value.previous,
+            representative: value.representative,
+            balance: value.balance,
+            link: value.link,
+        };
+
+        let hash = hashables.hash();
+        let signature = value.key.sign(hash.as_bytes());
+
+        Block::State(StateBlock {
+            hashables,
+            signature,
+            hash,
+            work: value.work,
+        })
+    }
+}
+
 impl From<JsonStateBlock> for StateBlock {
     fn from(value: JsonStateBlock) -> Self {
         let hashables = StateHashables {
@@ -351,12 +382,12 @@ pub struct JsonStateBlock {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{utils::MemoryStream, Block, BlockBuilder, TestStateBlockBuilder};
+    use crate::{utils::MemoryStream, Block, TestBlockBuilder, TestStateBlockBuilder};
 
     // original test: state_block.serialization
     #[test]
     fn serialization() {
-        let block1 = BlockBuilder::state().work(5).build();
+        let block1 = TestBlockBuilder::state().work(5).build();
         let mut stream = MemoryStream::new();
         block1.serialize_without_block_type(&mut stream);
         assert_eq!(StateBlock::serialized_size(), stream.bytes_written());
@@ -369,20 +400,20 @@ mod tests {
     // original test: state_block.hashing
     #[test]
     fn hashing() {
-        let block = BlockBuilder::state().build();
+        let block = TestBlockBuilder::state().build();
         let hash = block.hash().clone();
         assert_eq!(hash, block.hash()); // check cache works
-        assert_eq!(hash, BlockBuilder::state().build().hash());
+        assert_eq!(hash, TestBlockBuilder::state().build().hash());
 
         let assert_different_hash = |b: TestStateBlockBuilder| {
             assert_ne!(hash, b.build().hash());
         };
 
-        assert_different_hash(BlockBuilder::state().account(Account::from(1000)));
-        assert_different_hash(BlockBuilder::state().previous(BlockHash::from(1000)));
-        assert_different_hash(BlockBuilder::state().representative(Account::from(1000)));
-        assert_different_hash(BlockBuilder::state().balance(Amount::from(1000)));
-        assert_different_hash(BlockBuilder::state().link(Link::from(1000)));
+        assert_different_hash(TestBlockBuilder::state().account(Account::from(1000)));
+        assert_different_hash(TestBlockBuilder::state().previous(BlockHash::from(1000)));
+        assert_different_hash(TestBlockBuilder::state().representative(Account::from(1000)));
+        assert_different_hash(TestBlockBuilder::state().balance(Amount::from(1000)));
+        assert_different_hash(TestBlockBuilder::state().link(Link::from(1000)));
     }
 
     #[test]

@@ -1,8 +1,8 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBase,
-    BlockBuilder, BlockHash, DifficultyV1, Epoch, Link, OpenBlock, PrivateKey, PublicKey,
-    QualifiedRoot, Root, SendBlock, Signature, StateBlock, TestLegacySendBlockBuilder,
-    UncheckedInfo, Vote, VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
+    utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBase, BlockHash,
+    DifficultyV1, Epoch, Link, OpenBlock, PrivateKey, PublicKey, QualifiedRoot, Root, SendBlock,
+    Signature, StateBlock, TestBlockBuilder, TestLegacySendBlockBuilder, UncheckedInfo, Vote,
+    VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -218,7 +218,7 @@ fn deferred_dependent_elections() {
 
     let key = PrivateKey::new();
 
-    let send1 = BlockBuilder::state()
+    let send1 = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(*DEV_GENESIS_HASH)
         .representative(*DEV_GENESIS_ACCOUNT)
@@ -228,7 +228,7 @@ fn deferred_dependent_elections() {
         .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 
-    let open = BlockBuilder::state()
+    let open = TestBlockBuilder::state()
         .account(key.public_key())
         .previous(BlockHash::zero())
         .representative(key.public_key())
@@ -243,7 +243,7 @@ fn deferred_dependent_elections() {
         _ => panic!("Expected a StateBlock"),
     };
 
-    let send2 = BlockBuilder::state()
+    let send2 = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .from(&send1_state_block)
         .previous(send1.hash())
@@ -258,7 +258,7 @@ fn deferred_dependent_elections() {
         _ => panic!("Expected a StateBlock"),
     };
 
-    let receive = BlockBuilder::state()
+    let receive = TestBlockBuilder::state()
         .account(key.account())
         .from(&open_state_block)
         .previous(open.hash())
@@ -273,7 +273,7 @@ fn deferred_dependent_elections() {
         _ => panic!("Expected a StateBlock"),
     };
 
-    let fork = BlockBuilder::state()
+    let fork = TestBlockBuilder::state()
         .account(key.account())
         .from(&receive_state_block)
         .representative(*DEV_GENESIS_ACCOUNT)
@@ -400,7 +400,7 @@ fn rollback_gap_source() {
 
     let key = PrivateKey::new();
 
-    let send1 = BlockBuilder::state()
+    let send1 = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(*DEV_GENESIS_HASH)
         .representative(*DEV_GENESIS_ACCOUNT)
@@ -410,7 +410,7 @@ fn rollback_gap_source() {
         .work(node.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 
-    let fork1a = BlockBuilder::state()
+    let fork1a = TestBlockBuilder::state()
         .account(key.public_key())
         .previous(BlockHash::zero())
         .representative(key.public_key())
@@ -425,7 +425,7 @@ fn rollback_gap_source() {
         _ => panic!("Expected a StateBlock"),
     };
 
-    let send2 = BlockBuilder::state()
+    let send2 = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .from(&send1_state_block)
         .previous(send1.hash())
@@ -440,7 +440,7 @@ fn rollback_gap_source() {
         _ => panic!("Expected a StateBlock"),
     };
 
-    let fork1b = BlockBuilder::state()
+    let fork1b = TestBlockBuilder::state()
         .account(key.account())
         .from(&fork1a_state_block)
         .link(send2.hash())
@@ -518,7 +518,7 @@ fn vote_by_hash_bundle() {
     let mut blocks = Vec::new();
 
     // Create the first block in the chain
-    let block = BlockBuilder::state()
+    let block = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(*DEV_GENESIS_HASH)
         .representative(*DEV_GENESIS_ACCOUNT)
@@ -538,7 +538,7 @@ fn vote_by_hash_bundle() {
             _ => panic!("Expected a StateBlock"),
         };
         let hash: BlockHash = prev_block.hash();
-        let block = BlockBuilder::state()
+        let block = TestBlockBuilder::state()
             .from(prev_block)
             .previous(hash)
             .balance(Amount::MAX - Amount::raw(i))
@@ -600,7 +600,7 @@ fn confirm_quorum() {
 
     // Put greater than node.delta() in pending so quorum can't be reached
     let new_balance = node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1);
-    let send1 = BlockBuilder::state()
+    let send1 = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(*DEV_GENESIS_HASH)
         .representative(*DEV_GENESIS_ACCOUNT)
@@ -2668,8 +2668,8 @@ fn fork_election_invalid_block_signature() {
             .last_blocks
             .get(&send2.hash())
             .unwrap()
-            .block_signature(),
-        send2.block_signature()
+            .signature(),
+        send2.signature()
     );
 }
 
@@ -3572,7 +3572,7 @@ fn block_processor_signatures() {
     let key3 = PrivateKey::new();
 
     // Create a valid send block
-    let send1 = BlockBuilder::state()
+    let send1 = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(latest)
         .representative(*DEV_GENESIS_PUB_KEY)
@@ -3583,7 +3583,7 @@ fn block_processor_signatures() {
         .build();
 
     // Create additional send blocks with proper signatures
-    let send2 = BlockBuilder::state()
+    let send2 = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(send1.hash())
         .representative(*DEV_GENESIS_PUB_KEY)
@@ -3593,7 +3593,7 @@ fn block_processor_signatures() {
         .work(node.work_generate_dev(send1.hash()))
         .build();
 
-    let send3 = BlockBuilder::state()
+    let send3 = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(send2.hash())
         .representative(*DEV_GENESIS_PUB_KEY)
@@ -3604,7 +3604,7 @@ fn block_processor_signatures() {
         .build();
 
     // Create a block with an invalid signature (tampered signature bits)
-    let mut send4 = BlockBuilder::state()
+    let mut send4 = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(send3.hash())
         .representative(*DEV_GENESIS_PUB_KEY)
@@ -3618,7 +3618,7 @@ fn block_processor_signatures() {
     send4.set_block_signature(&Signature::new());
 
     // Invalid signature bit (force)
-    let mut send5 = BlockBuilder::state()
+    let mut send5 = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(send3.hash())
         .representative(*DEV_GENESIS_PUB_KEY)
@@ -3634,7 +3634,7 @@ fn block_processor_signatures() {
         .put(send5.previous().into(), UncheckedInfo::new(send5.clone()));
 
     // Create a valid receive block
-    let receive1 = BlockBuilder::state()
+    let receive1 = TestBlockBuilder::state()
         .account(key1.account())
         .previous(BlockHash::zero())
         .representative(*DEV_GENESIS_PUB_KEY) // No previous block for the account (open block)
@@ -3644,7 +3644,7 @@ fn block_processor_signatures() {
         .work(node.work_generate_dev(key1.account()))
         .build();
 
-    let receive2 = BlockBuilder::state()
+    let receive2 = TestBlockBuilder::state()
         .account(key2.account())
         .previous(BlockHash::zero())
         .representative(*DEV_GENESIS_PUB_KEY) // No previous block for the account (open block)
@@ -3655,7 +3655,7 @@ fn block_processor_signatures() {
         .build();
 
     // Invalid private key
-    let receive3 = BlockBuilder::state()
+    let receive3 = TestBlockBuilder::state()
         .account(key3.account())
         .previous(BlockHash::zero())
         .representative(*DEV_GENESIS_PUB_KEY) // No previous block for the account (open block)
@@ -3692,7 +3692,7 @@ fn block_confirm() {
     let wallet_id2 = node2.wallets.wallet_ids()[0];
     let key = PrivateKey::new();
 
-    let send1 = BlockBuilder::state()
+    let send1 = TestBlockBuilder::state()
         .account(*DEV_GENESIS_ACCOUNT)
         .previous(*DEV_GENESIS_HASH)
         .representative(*DEV_GENESIS_ACCOUNT)

@@ -591,32 +591,15 @@ mod bootstrap_processor {
 
         node0.insert_into_wallet(&DEV_GENESIS_KEY);
 
-        let block1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::raw(100),
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &DEV_GENESIS_KEY,
-            node0.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
-
-        let block2 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            block1.hash(),
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX,
-            block1.hash().into(),
-            &DEV_GENESIS_KEY,
-            node0.work_generate_dev(block1.hash()),
-        ));
-
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let send = lattice.genesis().send(*DEV_GENESIS_ACCOUNT, 100);
+        let receive = lattice.genesis().receive(&send);
         assert_eq!(
-            node0.process_local(block1.clone()).unwrap(),
+            node0.process_local(send.clone()).unwrap(),
             BlockStatus::Progress
         );
         assert_eq!(
-            node0.process_local(block2.clone()).unwrap(),
+            node0.process_local(receive.clone()).unwrap(),
             BlockStatus::Progress
         );
 
@@ -633,8 +616,8 @@ mod bootstrap_processor {
         );
 
         let node1 = system.build_node().flags(flags).disconnected().finish();
-        assert_eq!(node0.latest(&DEV_GENESIS_ACCOUNT), block2.hash());
-        assert_ne!(node1.latest(&DEV_GENESIS_ACCOUNT), block2.hash());
+        assert_eq!(node0.latest(&DEV_GENESIS_ACCOUNT), receive.hash());
+        assert_ne!(node1.latest(&DEV_GENESIS_ACCOUNT), receive.hash());
 
         node1
             .peer_connector
@@ -646,7 +629,7 @@ mod bootstrap_processor {
         assert_timely_eq(
             Duration::from_secs(5),
             || node1.latest(&DEV_GENESIS_ACCOUNT),
-            block2.hash(),
+            receive.hash(),
         );
     }
 
@@ -866,48 +849,14 @@ mod bootstrap_processor {
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
 
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let key1 = PrivateKey::new();
         let key2 = PrivateKey::new();
 
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            key1.account().into(),
-            &DEV_GENESIS_KEY,
-            node0.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
-
-        let receive1 = Block::State(StateBlock::new(
-            key1.account(),
-            BlockHash::zero(),
-            key1.public_key(),
-            Amount::nano(1000),
-            send1.hash().into(),
-            &key1,
-            node0.work_generate_dev(&key1),
-        ));
-
-        let send2 = Block::State(StateBlock::new(
-            key1.account(),
-            receive1.hash(),
-            key1.public_key(),
-            Amount::zero(),
-            key2.account().into(),
-            &key1,
-            node0.work_generate_dev(receive1.hash()),
-        ));
-
-        let receive2 = Block::State(StateBlock::new(
-            key2.account(),
-            BlockHash::zero(),
-            key2.public_key(),
-            Amount::nano(1000),
-            send2.hash().into(),
-            &key2,
-            node0.work_generate_dev(&key2),
-        ));
+        let send1 = lattice.genesis().send(&key1, Amount::nano(1000));
+        let receive1 = lattice.account(&key1).receive(&send1);
+        let send2 = lattice.account(&key1).send(&key2, Amount::nano(1000));
+        let receive2 = lattice.account(&key2).receive(&send2);
 
         // Processing test chain
         let blocks = [send1, receive1, send2, receive2.clone()];
@@ -954,49 +903,15 @@ mod bootstrap_processor {
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
 
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let key1 = PrivateKey::new();
         let key2 = PrivateKey::new();
         // Generating test chain
 
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            key1.account().into(),
-            &DEV_GENESIS_KEY,
-            node0.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
-
-        let receive1 = Block::State(StateBlock::new(
-            key1.account(),
-            BlockHash::zero(),
-            key1.public_key(),
-            Amount::nano(1000),
-            send1.hash().into(),
-            &key1,
-            node0.work_generate_dev(&key1),
-        ));
-
-        let send2 = Block::State(StateBlock::new(
-            key1.account(),
-            receive1.hash(),
-            key1.public_key(),
-            Amount::zero(),
-            key2.account().into(),
-            &key1,
-            node0.work_generate_dev(receive1.hash()),
-        ));
-
-        let receive2 = Block::State(StateBlock::new(
-            key2.account(),
-            BlockHash::zero(),
-            key2.public_key(),
-            Amount::nano(1000),
-            send2.hash().into(),
-            &key2,
-            node0.work_generate_dev(&key2),
-        ));
+        let send1 = lattice.genesis().send(&key1, Amount::nano(1000));
+        let receive1 = lattice.account(&key1).receive(&send1);
+        let send2 = lattice.account(&key1).send(&key2, Amount::nano(1000));
+        let receive2 = lattice.account(&key2).receive(&send2);
 
         // Processing test chain
         let blocks = [send1, receive1, send2, receive2.clone()];
@@ -1057,52 +972,14 @@ mod bootstrap_processor {
             .flags(flags.clone())
             .finish();
 
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let key1 = PrivateKey::new();
         let key2 = PrivateKey::new();
 
-        // send from genesis to key1
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            key1.account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
-
-        // send from genesis to key2
-        let send2 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            send1.hash(),
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(2000),
-            key2.account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(send1.hash()),
-        ));
-
-        // open account key1
-        let receive1 = Block::State(StateBlock::new(
-            key1.account(),
-            BlockHash::zero(),
-            key1.public_key(),
-            Amount::nano(1000),
-            send1.hash().into(),
-            &key1,
-            node1.work_generate_dev(&key1),
-        ));
-
-        //  open account key2
-        let receive2 = Block::State(StateBlock::new(
-            key2.account(),
-            BlockHash::zero(),
-            key2.public_key(),
-            Amount::nano(1000),
-            send2.hash().into(),
-            &key2,
-            node1.work_generate_dev(&key2),
-        ));
+        let send1 = lattice.genesis().send(&key1, Amount::nano(1000));
+        let send2 = lattice.genesis().send(&key2, Amount::nano(1000));
+        let receive1 = lattice.account(&key1).receive(&send1);
+        let receive2 = lattice.account(&key2).receive(&send2);
 
         // add the blocks without starting elections because elections publish blocks
         // and the publishing would interefere with the testing
@@ -1187,18 +1064,10 @@ mod bootstrap_processor {
             .flags(flags.clone())
             .finish();
 
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let key1 = PrivateKey::new();
 
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            key1.account().into(),
-            &DEV_GENESIS_KEY,
-            node0.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
-
+        let send1 = lattice.genesis().send(&key1, Amount::nano(1000));
         // Start lazy bootstrap with last block in chain known
         let node1 = system.make_disconnected_node();
         establish_tcp(&node1, &node0);
@@ -1229,49 +1098,15 @@ mod bootstrap_processor {
         flags.disable_bootstrap_bulk_push_client = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
 
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let key1 = PrivateKey::new();
         let key2 = PrivateKey::new();
         // Generating test chain
 
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            key1.account().into(),
-            &DEV_GENESIS_KEY,
-            node0.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
-
-        let receive1 = Block::State(StateBlock::new(
-            key1.account(),
-            BlockHash::zero(),
-            key1.public_key(),
-            Amount::nano(1000),
-            send1.hash().into(),
-            &key1,
-            node0.work_generate_dev(&key1),
-        ));
-
-        let send2 = Block::State(StateBlock::new(
-            key1.account(),
-            receive1.hash(),
-            key1.public_key(),
-            Amount::zero(),
-            key2.account().into(),
-            &key1,
-            node0.work_generate_dev(receive1.hash()),
-        ));
-
-        let receive2 = Block::State(StateBlock::new(
-            key2.account(),
-            BlockHash::zero(),
-            key2.public_key(),
-            Amount::nano(1000),
-            send2.hash().into(),
-            &key2,
-            node0.work_generate_dev(&key2),
-        ));
+        let send1 = lattice.genesis().send(&key1, Amount::nano(1000));
+        let receive1 = lattice.account(&key1).receive(&send1);
+        let send2 = lattice.account(&key1).send(&key2, Amount::nano(1000));
+        let receive2 = lattice.account(&key2).receive(&send2);
 
         // Processing test chain
         let blocks = [send1, receive1, send2, receive2.clone()];
@@ -1332,49 +1167,15 @@ mod bootstrap_processor {
         flags.disable_ongoing_bootstrap = true;
         let node0 = system.build_node().config(config).flags(flags).finish();
 
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let key1 = PrivateKey::new();
         let key2 = PrivateKey::new();
+
         // Generating test chain
-
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            key1.account().into(),
-            &DEV_GENESIS_KEY,
-            node0.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
-
-        let receive1 = Block::State(StateBlock::new(
-            key1.account(),
-            BlockHash::zero(),
-            key1.public_key(),
-            Amount::nano(1000),
-            send1.hash().into(),
-            &key1,
-            node0.work_generate_dev(&key1),
-        ));
-
-        let send2 = Block::State(StateBlock::new(
-            key1.account(),
-            receive1.hash(),
-            key1.public_key(),
-            Amount::zero(),
-            key2.account().into(),
-            &key1,
-            node0.work_generate_dev(receive1.hash()),
-        ));
-
-        let receive2 = Block::State(StateBlock::new(
-            key2.account(),
-            BlockHash::zero(),
-            key2.public_key(),
-            Amount::nano(1000),
-            send2.hash().into(),
-            &key2,
-            node0.work_generate_dev(&key2),
-        ));
+        let send1 = lattice.genesis().send(&key1, Amount::nano(1000));
+        let receive1 = lattice.account(&key1).receive(&send1);
+        let send2 = lattice.account(&key1).send(&key2, Amount::nano(1000));
+        let receive2 = lattice.account(&key2).receive(&send2);
 
         // Processing test chain
         let blocks = [send1, receive1, send2, receive2.clone()];
@@ -1426,52 +1227,21 @@ mod bootstrap_processor {
             .insert_adhoc2(&wallet_id, &key.private_key(), true)
             .unwrap();
 
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         // send all balance from genesis to key
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::zero(),
-            key.account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let send1 = lattice.genesis().send(&key, Amount::MAX);
         node1.process(send1.clone()).unwrap();
 
         // open key account receiving all balance of genesis
-        let open = Block::State(StateBlock::new(
-            key.account(),
-            BlockHash::zero(),
-            key.public_key(),
-            Amount::MAX,
-            send1.hash().into(),
-            &key,
-            node1.work_generate_dev(&key),
-        ));
+        let open = lattice.account(&key).receive(&send1);
         node1.process(open.clone()).unwrap();
 
         // send from key to genesis 100 raw
-        let send2 = Block::State(StateBlock::new(
-            key.account(),
-            open.hash(),
-            key.public_key(),
-            Amount::MAX - Amount::raw(100),
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &key,
-            node1.work_generate_dev(open.hash()),
-        ));
+        let send2 = lattice.account(&key).send(*DEV_GENESIS_ACCOUNT, 100);
         node1.process(send2.clone()).unwrap();
 
         // receive the 100 raw on genesis
-        let receive = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            send1.hash(),
-            *DEV_GENESIS_PUB_KEY,
-            Amount::raw(100),
-            send2.hash().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(send1.hash()),
-        ));
+        let receive = lattice.genesis().receive(&send2);
         node1.process(receive.clone()).unwrap();
 
         let config = System::default_config_without_backlog_population();
@@ -1509,6 +1279,7 @@ mod bootstrap_processor {
 }
 
 mod bulk_pull {
+    use rsnano_core::{StateBlockArgs, UnsavedBlockLatticeBuilder};
     use rsnano_ledger::DEV_GENESIS_PUB_KEY;
 
     use super::*;
@@ -1584,15 +1355,17 @@ mod bulk_pull {
             )
             .unwrap();
         let latest = node.latest(&DEV_GENESIS_ACCOUNT);
-        let open = Block::State(StateBlock::new(
-            key2.account(),
-            BlockHash::zero(),
-            key2.public_key(),
-            Amount::raw(100),
-            latest.into(),
-            &key2,
-            node.work_generate_dev(&key2),
-        ));
+
+        let open: Block = StateBlockArgs {
+            key: &key2,
+            previous: BlockHash::zero(),
+            representative: key2.public_key(),
+            balance: Amount::raw(100),
+            link: latest.into(),
+            work: node.work_generate_dev(&key2),
+        }
+        .into();
+
         node.process(open).unwrap();
         let bulk_pull = BulkPull {
             start: key2.account().into(),
@@ -1640,15 +1413,8 @@ mod bulk_pull {
         let mut system = System::new();
         let node = system.make_node();
 
-        let block1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::raw(100),
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let block1 = lattice.genesis().send(*DEV_GENESIS_ACCOUNT, 100);
         node.process(block1.clone()).unwrap();
 
         let bulk_pull = BulkPull {
@@ -1669,15 +1435,8 @@ mod bulk_pull {
         let mut system = System::new();
         let node = system.make_node();
 
-        let block1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::raw(100),
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let block1 = lattice.genesis().send(*DEV_GENESIS_ACCOUNT, 100);
         node.process(block1.clone()).unwrap();
 
         let bulk_pull = BulkPull {
@@ -1700,15 +1459,8 @@ mod bulk_pull {
         let mut system = System::new();
         let node = system.make_node();
 
-        let block1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::raw(100),
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let block1 = lattice.genesis().send(*DEV_GENESIS_ACCOUNT, 100);
         node.process(block1.clone()).unwrap();
 
         let bulk_pull = BulkPull {
@@ -1762,26 +1514,13 @@ mod bulk_pull {
         let mut system = System::new();
         let node = system.make_node();
 
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::raw(1),
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let send1 = lattice
+            .genesis()
+            .send(*DEV_GENESIS_ACCOUNT, Amount::MAX - Amount::raw(1));
         node.process(send1.clone()).unwrap();
 
-        let receive1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            send1.hash(),
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX,
-            send1.hash().into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(send1.hash()),
-        ));
+        let receive1 = lattice.genesis().receive(&send1);
         node.process(receive1.clone()).unwrap();
 
         let bulk_pull = BulkPull {
@@ -1817,6 +1556,7 @@ mod bulk_pull {
 }
 
 mod frontier_req {
+    use rsnano_core::UnsavedBlockLatticeBuilder;
     use rsnano_ledger::DEV_GENESIS_PUB_KEY;
     use rsnano_messages::FrontierReq;
     use rsnano_node::bootstrap::FrontierReqServer;
@@ -1866,26 +1606,11 @@ mod frontier_req {
         )
         .unwrap();
 
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            key1.account().into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let send1 = lattice.genesis().send(&key1, Amount::nano(1000));
         node.process(send1.clone()).unwrap();
 
-        let receive1 = Block::State(StateBlock::new(
-            key1.account(),
-            BlockHash::zero(),
-            *DEV_GENESIS_PUB_KEY,
-            Amount::nano(1000),
-            send1.hash().into(),
-            &key1,
-            node.work_generate_dev(&key1),
-        ));
+        let receive1 = lattice.account(&key1).receive(&send1);
         node.process(receive1.clone()).unwrap();
 
         let request = FrontierReq {
@@ -1956,48 +1681,21 @@ mod frontier_req {
             key_after_genesis = PrivateKey::new();
         }
 
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            key_before_genesis.account().into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let send1 = lattice
+            .genesis()
+            .send(&key_before_genesis, Amount::nano(1000));
         node.process(send1.clone()).unwrap();
 
-        let send2 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            send1.hash(),
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(2000),
-            key_after_genesis.account().into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(send1.hash()),
-        ));
+        let send2 = lattice
+            .genesis()
+            .send(&key_after_genesis, Amount::nano(1000));
         node.process(send2.clone()).unwrap();
 
-        let receive1 = Block::State(StateBlock::new(
-            key_before_genesis.account(),
-            BlockHash::zero(),
-            *DEV_GENESIS_PUB_KEY,
-            Amount::nano(1000),
-            send1.hash().into(),
-            &key_before_genesis,
-            node.work_generate_dev(&key_before_genesis),
-        ));
+        let receive1 = lattice.account(&key_before_genesis).receive(&send1);
         node.process(receive1.clone()).unwrap();
 
-        let receive2 = Block::State(StateBlock::new(
-            key_after_genesis.account(),
-            BlockHash::zero(),
-            *DEV_GENESIS_PUB_KEY,
-            Amount::nano(1000),
-            send2.hash().into(),
-            &key_after_genesis,
-            node.work_generate_dev(&key_after_genesis),
-        ));
+        let receive2 = lattice.account(&key_after_genesis).receive(&send2);
         node.process(receive2.clone()).unwrap();
 
         // Request for all accounts (confirmed only)

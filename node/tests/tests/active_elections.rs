@@ -1,6 +1,6 @@
 use rsnano_core::{
     utils::MemoryStream, work::WorkPool, Account, Amount, Block, BlockHash, PrivateKey, StateBlock,
-    Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
+    UnsavedBlockLatticeBuilder, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -91,15 +91,8 @@ fn inactive_votes_cache_basic() {
     let mut system = System::new();
     let node = system.make_node();
     let key = PrivateKey::new();
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice.genesis().send(&key, Amount::raw(100));
     let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send.hash()]));
     node.vote_processor_queue
         .vote(vote, ChannelId::from(111), VoteSource::Live);
@@ -127,15 +120,8 @@ fn non_final() {
     let mut system = System::new();
     let node = system.make_node();
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        Account::from(42).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice.genesis().send(Account::from(42), 100);
 
     // Non-final vote
     let vote = Arc::new(Vote::new(&DEV_GENESIS_KEY, 0, 0, vec![send.hash()]));
@@ -185,27 +171,12 @@ fn non_final() {
 fn inactive_votes_cache_fork() {
     let mut system = System::new();
     let node = system.make_node();
+    let mut lattice1 = UnsavedBlockLatticeBuilder::new();
+    let mut lattice2 = UnsavedBlockLatticeBuilder::new();
     let key = PrivateKey::new();
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(200),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice1.genesis().send(&key, 100);
+    let send2 = lattice2.genesis().send(&key, 200);
 
     let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send1.hash()]));
     node.vote_processor_queue

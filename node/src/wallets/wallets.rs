@@ -15,7 +15,7 @@ use rsnano_core::{
     utils::{get_env_or_default_string, ContainerInfo},
     work::{WorkPoolImpl, WorkThresholds},
     Account, Amount, Block, BlockDetails, BlockHash, Epoch, KeyDerivationFunction, Link, NoValue,
-    PendingKey, PrivateKey, PublicKey, RawKey, Root, SavedBlock, StateBlock, WalletId,
+    PendingKey, PrivateKey, PublicKey, RawKey, Root, SavedBlock, StateBlockArgs, WalletId,
 };
 use rsnano_ledger::{Ledger, RepWeightCache};
 use rsnano_messages::{Message, Publish};
@@ -628,23 +628,23 @@ impl Wallets {
         }
 
         let info = self.ledger.account_info(&block_tx, &source).unwrap();
-        let prv_key = wallet.store.fetch(tx, &source.into()).unwrap();
+        let prv_key_raw = wallet.store.fetch(tx, &source.into()).unwrap();
         if work == 0 {
             work = wallet
                 .store
                 .work_get(tx, &source.into())
                 .unwrap_or_default();
         }
-        let keys = PrivateKey::from(prv_key);
-        let state_block = Block::State(StateBlock::new(
-            source,
-            info.head,
-            info.representative,
-            balance - amount,
-            account.into(),
-            &keys,
+        let priv_key = PrivateKey::from(prv_key_raw);
+        let state_block: Block = StateBlockArgs {
+            key: &priv_key,
+            previous: info.head,
+            representative: info.representative,
+            balance: balance - amount,
+            link: account.into(),
             work,
-        ));
+        }
+        .into();
         let details = BlockDetails::new(info.epoch, true, false, false);
         Ok(PreparedSend::New(state_block, details))
     }
@@ -689,23 +689,23 @@ impl Wallets {
             }
 
             let info = self.ledger.account_info(&block_tx, &source).unwrap();
-            let prv_key = wallet.store.fetch(tx, &source.into()).unwrap();
+            let prv_key_raw = wallet.store.fetch(tx, &source.into()).unwrap();
             if work == 0 {
                 work = wallet
                     .store
                     .work_get(tx, &source.into())
                     .unwrap_or_default();
             }
-            let keys = PrivateKey::from(prv_key);
-            let state_block = Block::State(StateBlock::new(
-                source,
-                info.head,
-                info.representative,
-                balance - amount,
-                account.into(),
-                &keys,
+            let priv_key = PrivateKey::from(prv_key_raw);
+            let state_block: Block = StateBlockArgs {
+                key: &priv_key,
+                previous: info.head,
+                representative: info.representative,
+                balance: balance - amount,
+                link: account.into(),
                 work,
-            ));
+            }
+            .into();
             let details = BlockDetails::new(info.epoch, true, false, false);
             self.set_block_hash(tx, id, &state_block.hash())?;
             Ok(PreparedSend::New(state_block, details))
@@ -1484,16 +1484,16 @@ impl WalletsExt for Arc<Wallets> {
                         .work_get(&wallet_tx, &source.into())
                         .unwrap_or_default();
                 }
-                let keys = PrivateKey::from(prv);
-                let state_block = Block::State(StateBlock::new(
-                    source,
-                    info.head,
+                let priv_key = PrivateKey::from(prv);
+                let state_block: Block = StateBlockArgs {
+                    key: &priv_key,
+                    previous: info.head,
                     representative,
-                    info.balance,
-                    Link::zero(),
-                    &keys,
+                    balance: info.balance,
+                    link: Link::zero(),
                     work,
-                ));
+                }
+                .into();
                 block = Some(state_block);
                 epoch = info.epoch;
             }
@@ -1559,28 +1559,32 @@ impl WalletsExt for Arc<Wallets> {
                             .work_get(&wallet_tx, &account.into())
                             .unwrap_or_default();
                     }
-                    let keys = PrivateKey::from(prv);
+                    let priv_key = PrivateKey::from(prv);
                     if let Some(info) = self.ledger.account_info(&block_tx, &account) {
-                        block = Some(Block::State(StateBlock::new(
-                            account,
-                            info.head,
-                            info.representative,
-                            info.balance + pending_info.amount,
-                            send_hash.into(),
-                            &keys,
-                            work,
-                        )));
+                        block = Some(
+                            StateBlockArgs {
+                                key: &priv_key,
+                                previous: info.head,
+                                representative: info.representative,
+                                balance: info.balance + pending_info.amount,
+                                link: send_hash.into(),
+                                work,
+                            }
+                            .into(),
+                        );
                         epoch = std::cmp::max(info.epoch, pending_info.epoch);
                     } else {
-                        block = Some(Block::State(StateBlock::new(
-                            account,
-                            BlockHash::zero(),
-                            representative,
-                            pending_info.amount,
-                            send_hash.into(),
-                            &keys,
-                            work,
-                        )));
+                        block = Some(
+                            StateBlockArgs {
+                                key: &priv_key,
+                                previous: BlockHash::zero(),
+                                representative,
+                                balance: pending_info.amount,
+                                link: send_hash.into(),
+                                work,
+                            }
+                            .into(),
+                        );
                         epoch = pending_info.epoch;
                     }
                 } else {

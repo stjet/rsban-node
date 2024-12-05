@@ -187,11 +187,8 @@ impl PendingDatabaseIterator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{
-        work::{WorkPool, STUB_WORK_POOL},
-        Amount, Block, PrivateKey, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
-    };
-    use rsnano_ledger::{LedgerContext, DEV_GENESIS_HASH};
+    use rsnano_core::{PrivateKey, UnsavedBlockLatticeBuilder};
+    use rsnano_ledger::LedgerContext;
 
     #[test]
     fn pending_database_scanner() {

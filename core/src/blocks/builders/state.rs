@@ -6,19 +6,19 @@ use crate::{
 };
 use anyhow::Result;
 
-pub struct StateBlockBuilder {
+pub struct TestStateBlockBuilder {
     account: Account,
     previous: BlockHash,
     representative: PublicKey,
     balance: Amount,
     link: Link,
-    key_pair: PrivateKey,
+    priv_key: PrivateKey,
     work: Option<u64>,
     signature: Option<Signature>,
     previous_balance: Option<Amount>,
 }
 
-impl StateBlockBuilder {
+impl TestStateBlockBuilder {
     pub fn new() -> Self {
         let key = PrivateKey::new();
         Self {
@@ -27,7 +27,7 @@ impl StateBlockBuilder {
             representative: PublicKey::from(3),
             balance: Amount::from(4),
             link: Link::from(5),
-            key_pair: key,
+            priv_key: key,
             previous_balance: None,
             work: None,
             signature: None,
@@ -111,7 +111,7 @@ impl StateBlockBuilder {
 
     pub fn sign(mut self, key: &PrivateKey) -> Self {
         self.signature = None;
-        self.key_pair = key.clone();
+        self.priv_key = key.clone();
         self
     }
 
@@ -166,7 +166,7 @@ impl StateBlockBuilder {
                 self.representative,
                 self.balance,
                 self.link,
-                &self.key_pair,
+                &self.priv_key,
                 work,
             ),
         };
@@ -191,7 +191,7 @@ impl StateBlockBuilder {
     }
 }
 
-impl Default for StateBlockBuilder {
+impl Default for TestStateBlockBuilder {
     fn default() -> Self {
         Self::new()
     }

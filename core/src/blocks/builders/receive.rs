@@ -3,14 +3,14 @@ use crate::{
     Block, BlockHash, PrivateKey, ReceiveBlock,
 };
 
-pub struct LegacyReceiveBlockBuilder {
+pub struct TestLegacyReceiveBlockBuilder {
     previous: Option<BlockHash>,
     source: Option<BlockHash>,
     key_pair: Option<PrivateKey>,
     work: Option<u64>,
 }
 
-impl LegacyReceiveBlockBuilder {
+impl TestLegacyReceiveBlockBuilder {
     pub fn new() -> Self {
         Self {
             previous: None,
@@ -53,7 +53,7 @@ impl LegacyReceiveBlockBuilder {
     }
 }
 
-impl Default for LegacyReceiveBlockBuilder {
+impl Default for TestLegacyReceiveBlockBuilder {
     fn default() -> Self {
         Self::new()
     }

@@ -4,8 +4,8 @@ use rsnano_core::{
 };
 
 use rsnano_core::{
-    BlockBuilder, LegacyChangeBlockBuilder, LegacyOpenBlockBuilder, LegacyReceiveBlockBuilder,
-    LegacySendBlockBuilder, StateBlockBuilder,
+    BlockBuilder, TestLegacyChangeBlockBuilder, TestLegacyOpenBlockBuilder,
+    TestLegacyReceiveBlockBuilder, TestLegacySendBlockBuilder, TestStateBlockBuilder,
 };
 use rsnano_store_lmdb::Transaction;
 
@@ -42,7 +42,7 @@ impl<'a> AccountBlockFactory<'a> {
         self.ledger.account_info(txn, &self.account())
     }
 
-    pub(crate) fn legacy_open(&self, source: BlockHash) -> LegacyOpenBlockBuilder {
+    pub(crate) fn legacy_open(&self, source: BlockHash) -> TestLegacyOpenBlockBuilder {
         BlockBuilder::legacy_open()
             .source(source)
             .representative(self.public_key())
@@ -50,7 +50,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn epoch_v1(&self, txn: &dyn Transaction) -> StateBlockBuilder {
+    pub(crate) fn epoch_v1(&self, txn: &dyn Transaction) -> TestStateBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::state()
             .account(self.account())
@@ -61,7 +61,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&DEV_GENESIS_KEY)
     }
 
-    pub(crate) fn epoch_v1_open(&self) -> StateBlockBuilder {
+    pub(crate) fn epoch_v1_open(&self) -> TestStateBlockBuilder {
         BlockBuilder::state()
             .account(self.account())
             .previous(0)
@@ -71,7 +71,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&DEV_GENESIS_KEY)
     }
 
-    pub(crate) fn legacy_change(&self, txn: &dyn Transaction) -> LegacyChangeBlockBuilder {
+    pub(crate) fn legacy_change(&self, txn: &dyn Transaction) -> TestLegacyChangeBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::legacy_change()
             .previous(info.head)
@@ -79,7 +79,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn legacy_send(&self, txn: &dyn Transaction) -> LegacySendBlockBuilder {
+    pub(crate) fn legacy_send(&self, txn: &dyn Transaction) -> TestLegacySendBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::legacy_send()
             .previous(info.head)
@@ -93,7 +93,7 @@ impl<'a> AccountBlockFactory<'a> {
         &self,
         txn: &dyn Transaction,
         send_hash: BlockHash,
-    ) -> LegacyReceiveBlockBuilder {
+    ) -> TestLegacyReceiveBlockBuilder {
         let receiver_info = self.info(txn).unwrap();
         BlockBuilder::legacy_receive()
             .previous(receiver_info.head)
@@ -101,7 +101,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub fn send(&self, txn: &dyn Transaction) -> StateBlockBuilder {
+    pub fn send(&self, txn: &dyn Transaction) -> TestStateBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::state()
             .account(self.account())
@@ -113,7 +113,11 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn receive(&self, txn: &dyn Transaction, send_hash: BlockHash) -> StateBlockBuilder {
+    pub(crate) fn receive(
+        &self,
+        txn: &dyn Transaction,
+        send_hash: BlockHash,
+    ) -> TestStateBlockBuilder {
         let receiver_info = self.info(txn).unwrap();
         let amount_sent = self.ledger.any().block_amount(txn, &send_hash).unwrap();
         BlockBuilder::state()
@@ -125,7 +129,7 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn change(&self, txn: &dyn Transaction) -> StateBlockBuilder {
+    pub(crate) fn change(&self, txn: &dyn Transaction) -> TestStateBlockBuilder {
         let info = self.info(txn).unwrap();
         BlockBuilder::state()
             .account(self.account())
@@ -136,7 +140,11 @@ impl<'a> AccountBlockFactory<'a> {
             .sign(&self.key)
     }
 
-    pub(crate) fn open(&self, txn: &dyn Transaction, send_hash: BlockHash) -> StateBlockBuilder {
+    pub(crate) fn open(
+        &self,
+        txn: &dyn Transaction,
+        send_hash: BlockHash,
+    ) -> TestStateBlockBuilder {
         let amount_sent = self.ledger.any().block_amount(txn, &send_hash).unwrap();
         BlockBuilder::state()
             .account(self.account())

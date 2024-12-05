@@ -11,16 +11,13 @@ use crate::{
 };
 
 use super::{
-    election_schedulers::ElectionSchedulers, Election, ElectionData, ElectionStatus,
-    LocalVoteHistory, RecentlyConfirmedCache, TallyKey, VoteGenerators,
+    election_schedulers::ElectionSchedulers, Election, ElectionData, LocalVoteHistory,
+    RecentlyConfirmedCache, TallyKey, VoteGenerators,
 };
-use rsnano_core::{
-    utils::ContainerInfo, Amount, BlockHash, MaybeSavedBlock, PublicKey, VoteCode, VoteSource,
-};
+use rsnano_core::{Amount, BlockHash, MaybeSavedBlock, PublicKey, VoteCode, VoteSource};
 use rsnano_ledger::Ledger;
 use std::{
     collections::{BTreeMap, HashMap},
-    mem::size_of,
     sync::{atomic::Ordering, Arc, Mutex, MutexGuard, RwLock, Weak},
     time::{Duration, SystemTime},
 };

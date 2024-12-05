@@ -351,7 +351,7 @@ pub struct JsonStateBlock {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{utils::MemoryStream, Block, BlockBuilder, StateBlockBuilder};
+    use crate::{utils::MemoryStream, Block, BlockBuilder, TestStateBlockBuilder};
 
     // original test: state_block.serialization
     #[test]
@@ -374,7 +374,7 @@ mod tests {
         assert_eq!(hash, block.hash()); // check cache works
         assert_eq!(hash, BlockBuilder::state().build().hash());
 
-        let assert_different_hash = |b: StateBlockBuilder| {
+        let assert_different_hash = |b: TestStateBlockBuilder| {
             assert_ne!(hash, b.build().hash());
         };
 

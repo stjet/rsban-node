@@ -2,7 +2,7 @@ use crate::work::WorkPool;
 use crate::{work::STUB_WORK_POOL, BlockHash, ChangeBlock};
 use crate::{Account, Block, PrivateKey, PublicKey};
 
-pub struct LegacyChangeBlockBuilder {
+pub struct TestLegacyChangeBlockBuilder {
     account: Option<Account>,
     representative: Option<PublicKey>,
     previous: Option<BlockHash>,
@@ -10,7 +10,7 @@ pub struct LegacyChangeBlockBuilder {
     work: Option<u64>,
 }
 
-impl LegacyChangeBlockBuilder {
+impl TestLegacyChangeBlockBuilder {
     pub fn new() -> Self {
         Self {
             account: None,
@@ -59,7 +59,7 @@ impl LegacyChangeBlockBuilder {
     }
 }
 
-impl Default for LegacyChangeBlockBuilder {
+impl Default for TestLegacyChangeBlockBuilder {
     fn default() -> Self {
         Self::new()
     }

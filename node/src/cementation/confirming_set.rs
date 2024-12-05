@@ -336,7 +336,7 @@ impl ConfirmingSetThread {
                         already_cemented.push_back(hash);
                     }
 
-                    let success = self.ledger.confirmed().block_exists(&tx, &hash);
+                    success = self.ledger.confirmed().block_exists(&tx, &hash);
                     if success {
                         break;
                     }

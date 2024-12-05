@@ -1,37 +1,37 @@
-mod legacy_change_block_builder;
-mod legacy_open_block_builder;
-mod legacy_receive_block_builder;
-mod legacy_send_block_builder;
+mod change;
+mod open;
+mod receive;
 mod saved_account_chain;
-mod state_block_builder;
+mod send;
+mod state;
 
-pub use legacy_change_block_builder::LegacyChangeBlockBuilder;
-pub use legacy_open_block_builder::LegacyOpenBlockBuilder;
-pub use legacy_receive_block_builder::LegacyReceiveBlockBuilder;
-pub use legacy_send_block_builder::LegacySendBlockBuilder;
+pub use change::TestLegacyChangeBlockBuilder;
+pub use open::TestLegacyOpenBlockBuilder;
+pub use receive::TestLegacyReceiveBlockBuilder;
 pub use saved_account_chain::SavedAccountChain;
-pub use state_block_builder::StateBlockBuilder;
+pub use send::TestLegacySendBlockBuilder;
+pub use state::TestStateBlockBuilder;
 
 pub struct BlockBuilder {}
 
 impl BlockBuilder {
-    pub fn state() -> StateBlockBuilder {
-        StateBlockBuilder::new()
+    pub fn state() -> TestStateBlockBuilder {
+        TestStateBlockBuilder::new()
     }
 
-    pub fn legacy_open() -> LegacyOpenBlockBuilder {
-        LegacyOpenBlockBuilder::new()
+    pub fn legacy_open() -> TestLegacyOpenBlockBuilder {
+        TestLegacyOpenBlockBuilder::new()
     }
 
-    pub fn legacy_receive() -> LegacyReceiveBlockBuilder {
-        LegacyReceiveBlockBuilder::new()
+    pub fn legacy_receive() -> TestLegacyReceiveBlockBuilder {
+        TestLegacyReceiveBlockBuilder::new()
     }
 
-    pub fn legacy_send() -> LegacySendBlockBuilder {
-        LegacySendBlockBuilder::new()
+    pub fn legacy_send() -> TestLegacySendBlockBuilder {
+        TestLegacySendBlockBuilder::new()
     }
 
-    pub fn legacy_change() -> LegacyChangeBlockBuilder {
-        LegacyChangeBlockBuilder::new()
+    pub fn legacy_change() -> TestLegacyChangeBlockBuilder {
+        TestLegacyChangeBlockBuilder::new()
     }
 }

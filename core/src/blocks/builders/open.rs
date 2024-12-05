@@ -4,7 +4,7 @@ use crate::{
     PublicKey, SavedBlock,
 };
 
-pub struct LegacyOpenBlockBuilder {
+pub struct TestLegacyOpenBlockBuilder {
     account: Option<Account>,
     representative: Option<PublicKey>,
     source: Option<BlockHash>,
@@ -12,7 +12,7 @@ pub struct LegacyOpenBlockBuilder {
     work: Option<u64>,
 }
 
-impl LegacyOpenBlockBuilder {
+impl TestLegacyOpenBlockBuilder {
     pub fn new() -> Self {
         Self {
             account: None,
@@ -84,7 +84,7 @@ impl LegacyOpenBlockBuilder {
     }
 }
 
-impl Default for LegacyOpenBlockBuilder {
+impl Default for TestLegacyOpenBlockBuilder {
     fn default() -> Self {
         Self::new()
     }

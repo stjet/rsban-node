@@ -1,6 +1,6 @@
 use rsnano_core::{
     work::WorkPoolImpl, Account, Amount, Block, BlockHash, Epoch, Networks, PrivateKey, PublicKey,
-    SavedBlock, StateBlock, StateBlockBuilder, WalletId, DEV_GENESIS_KEY,
+    SavedBlock, StateBlock, TestStateBlockBuilder, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
@@ -706,7 +706,7 @@ pub fn upgrade_epoch(
         .account_balance(&transaction, &account)
         .unwrap_or(Amount::zero());
 
-    let builder = StateBlockBuilder::new();
+    let builder = TestStateBlockBuilder::new();
     let epoch_block = builder
         .account(account)
         .previous(latest)

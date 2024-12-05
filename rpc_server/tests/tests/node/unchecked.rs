@@ -1,4 +1,4 @@
-use rsnano_core::{BlockHash, PrivateKey, StateBlockBuilder};
+use rsnano_core::{BlockHash, PrivateKey, TestStateBlockBuilder};
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 use tokio::time::Duration;
 
@@ -10,7 +10,7 @@ fn test_unchecked() {
 
     let key = PrivateKey::new();
 
-    let open = StateBlockBuilder::new()
+    let open = TestStateBlockBuilder::new()
         .account(key.account())
         .previous(BlockHash::zero())
         .representative(key.account())
@@ -20,7 +20,7 @@ fn test_unchecked() {
         .work(node.work_generate_dev(key.account()))
         .build();
 
-    let open2 = StateBlockBuilder::new()
+    let open2 = TestStateBlockBuilder::new()
         .account(key.account())
         .previous(BlockHash::zero())
         .representative(key.account())

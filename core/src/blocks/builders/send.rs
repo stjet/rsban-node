@@ -4,7 +4,7 @@ use crate::{
     SendBlock,
 };
 
-pub struct LegacySendBlockBuilder {
+pub struct TestLegacySendBlockBuilder {
     previous: Option<BlockHash>,
     destination: Option<Account>,
     balance: Option<Amount>,
@@ -13,7 +13,7 @@ pub struct LegacySendBlockBuilder {
     priv_key: Option<PrivateKey>,
 }
 
-impl LegacySendBlockBuilder {
+impl TestLegacySendBlockBuilder {
     pub fn new() -> Self {
         Self {
             previous: None,
@@ -92,7 +92,7 @@ impl LegacySendBlockBuilder {
     }
 }
 
-impl Default for LegacySendBlockBuilder {
+impl Default for TestLegacySendBlockBuilder {
     fn default() -> Self {
         Self::new()
     }

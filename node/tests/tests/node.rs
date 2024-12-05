@@ -1,8 +1,8 @@
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBase,
-    BlockBuilder, BlockHash, DifficultyV1, Epoch, LegacySendBlockBuilder, Link, OpenBlock,
-    PrivateKey, PublicKey, QualifiedRoot, Root, SendBlock, Signature, StateBlock, UncheckedInfo,
-    Vote, VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
+    BlockBuilder, BlockHash, DifficultyV1, Epoch, Link, OpenBlock, PrivateKey, PublicKey,
+    QualifiedRoot, Root, SendBlock, Signature, StateBlock, TestLegacySendBlockBuilder,
+    UncheckedInfo, Vote, VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -52,7 +52,7 @@ fn pruning_depth_max_depth() {
 
     // Create the first send block
     let latest_hash = *DEV_GENESIS_HASH;
-    let send1 = LegacySendBlockBuilder::new()
+    let send1 = TestLegacySendBlockBuilder::new()
         .previous(latest_hash)
         .destination(key1.account())
         .balance(Amount::MAX - Amount::nano(1000))
@@ -65,7 +65,7 @@ fn pruning_depth_max_depth() {
 
     // Create the second send block
     let latest_hash = send1.hash();
-    let send2 = LegacySendBlockBuilder::new()
+    let send2 = TestLegacySendBlockBuilder::new()
         .previous(latest_hash)
         .destination(key1.account())
         .balance(Amount::raw(0))
@@ -132,7 +132,7 @@ fn pruning_automatic() {
     let key1 = PrivateKey::new();
 
     let latest_hash = *DEV_GENESIS_HASH;
-    let send1 = LegacySendBlockBuilder::new()
+    let send1 = TestLegacySendBlockBuilder::new()
         .previous(latest_hash)
         .destination(key1.account())
         .balance(Amount::MAX - Amount::nano(1000))
@@ -143,7 +143,7 @@ fn pruning_automatic() {
     node1.process_active(send1.clone().into());
 
     let latest_hash = send1.hash();
-    let send2 = LegacySendBlockBuilder::new()
+    let send2 = TestLegacySendBlockBuilder::new()
         .previous(latest_hash)
         .destination(key1.account())
         .balance(Amount::raw(0))

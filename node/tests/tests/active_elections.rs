@@ -223,28 +223,12 @@ fn inactive_votes_cache_existing_vote() {
     let mut system = System::new();
     let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key = PrivateKey::new();
     let rep_weight = Amount::nano(100_000);
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - rep_weight,
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-
-    let open = Block::State(StateBlock::new(
-        key.account(),
-        BlockHash::zero(),
-        key.public_key(),
-        rep_weight,
-        send.hash().into(),
-        &key,
-        node.work_generate_dev(&key),
-    ));
+    let send = lattice.genesis().send(&key, rep_weight);
+    let open = lattice.account(&key).receive(&send);
 
     node.process(send.clone()).unwrap();
     node.process(open.clone()).unwrap();
@@ -312,37 +296,12 @@ fn inactive_votes_cache_multiple_votes() {
     let mut system = System::new();
     let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key = PrivateKey::new();
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(100_000),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::nano(100_000),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash()),
-    ));
-
-    let open = Block::State(StateBlock::new(
-        key.account(),
-        BlockHash::zero(),
-        key.public_key(),
-        Amount::nano(100_000),
-        send1.hash().into(),
-        &key,
-        node.work_generate_dev(&key),
-    ));
+    let send1 = lattice.genesis().send(&key, Amount::nano(100_000));
+    let send2 = lattice.genesis().send(&key, Amount::nano(100_000));
+    let open = lattice.account(&key).receive(&send1);
 
     // put the blocks in the ledger witout triggering an election
     node.process(send1.clone()).unwrap();

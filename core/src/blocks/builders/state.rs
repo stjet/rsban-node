@@ -324,21 +324,20 @@ mod tests {
     #[test]
     fn state_equality() {
         let key1 = PrivateKey::new();
-        let key2 = PrivateKey::new();
-        let block1 = StateBlock::new(
-            Account::from(key1.public_key()),
-            BlockHash::from(1),
-            key2.public_key(),
-            Amount::raw(2),
-            Link::from(4),
-            &key1,
-            5,
-        );
+        let block1: Block = StateBlockArgs {
+            key: &key1,
+            previous: 1.into(),
+            representative: 3.into(),
+            balance: 2.into(),
+            link: 4.into(),
+            work: 5,
+        }
+        .into();
 
         let block2 = TestBlockBuilder::state()
             .account(key1.public_key())
             .previous(1)
-            .representative(key2.public_key())
+            .representative(3)
             .balance(2)
             .link(4)
             .key(&key1)

@@ -162,7 +162,7 @@ impl Block {
     }
 
     pub fn new_test_instance_with_key(key: impl Into<PrivateKey>) -> Self {
-        Self::State(StateBlock::new_test_instance_with_key(key.into()))
+        Self::State(StateBlock::new_test_instance_with_key(&key.into()))
     }
 
     pub fn block_type(&self) -> BlockType {

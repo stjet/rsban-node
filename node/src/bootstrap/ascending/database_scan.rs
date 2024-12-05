@@ -271,42 +271,21 @@ mod tests {
         const COUNT: usize = 4;
 
         // Prepare some accounts
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let mut blocks = Vec::new();
         let mut keys = Vec::new();
         {
-            let source = &DEV_GENESIS_KEY;
-            let mut latest = *DEV_GENESIS_HASH;
-            let mut balance = Amount::MAX;
-
             for _ in 0..COUNT {
                 let key = PrivateKey::new();
-                let send = Block::State(StateBlock::new(
-                    source.account(),
-                    latest,
-                    source.public_key(),
-                    balance - Amount::raw(1),
-                    key.account().into(),
-                    source,
-                    STUB_WORK_POOL.generate_dev2(latest.into()).unwrap(),
-                ));
-                let open = Block::State(StateBlock::new(
-                    key.account(),
-                    BlockHash::zero(),
-                    key.public_key(),
-                    Amount::raw(1),
-                    send.hash().into(),
-                    &key,
-                    STUB_WORK_POOL.generate_dev2(key.account().into()).unwrap(),
-                ));
-                latest = send.hash();
-                balance = send.balance_field().unwrap();
+                let send = lattice.genesis().send(&key, 1);
+                let open = lattice.account(&key).receive(&send);
                 blocks.push(send);
                 blocks.push(open);
                 keys.push(key);
             }
         }
 
-        let ledger_ctx = LedgerContext::empty();
+        let ledger_ctx = LedgerContext::empty_dev();
         for mut block in blocks {
             let mut txn = ledger_ctx.ledger.rw_txn();
             ledger_ctx.ledger.process(&mut txn, &mut block).unwrap();

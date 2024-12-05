@@ -2,7 +2,7 @@ use rsnano_core::{
     Amount, Block, BlockSideband, PrivateKey, SavedBlock, StateBlock, UnsavedBlockLatticeBuilder,
     DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::DEV_GENESIS_PUB_KEY;
 use rsnano_network::ChannelId;
 use rsnano_node::block_processing::BlockSource;
 use std::time::Duration;
@@ -44,16 +44,9 @@ fn add_existing() {
     // wait for election to be started before processing send2
     assert_timely(Duration::from_secs(5), || node1.active.active(&send1));
 
+    let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
     let key2 = PrivateKey::new();
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::zero(),
-        key2.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send2 = fork_lattice.genesis().send(&key2, Amount::MAX);
     let send2 = SavedBlock::new(send2, BlockSideband::new_test_instance());
 
     // the block processor will notice that the block is a fork and it will try to publish it

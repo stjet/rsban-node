@@ -124,8 +124,8 @@ mod bucket {
 }
 
 mod election_scheduler {
-    use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, DEV_GENESIS_KEY};
-    use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+    use rsnano_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
+    use rsnano_ledger::DEV_GENESIS_ACCOUNT;
     use rsnano_node::{config::NodeConfig, consensus::ActiveElectionsExt};
     use std::time::Duration;
     use test_helpers::{assert_timely, assert_timely_eq, System};
@@ -135,15 +135,10 @@ mod election_scheduler {
         let mut system = System::new();
         let node = system.make_node();
 
-        let mut send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            node.balance(&*DEV_GENESIS_ACCOUNT) - Amount::nano(1000),
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let mut send1 = lattice
+            .genesis()
+            .send(&*DEV_GENESIS_KEY, Amount::nano(1000));
 
         node.ledger
             .process(&mut node.ledger.rw_txn(), &mut send1)
@@ -162,17 +157,12 @@ mod election_scheduler {
     fn activate_one_flush() {
         let mut system = System::new();
         let node = system.make_node();
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
 
         // Create a send block
-        let mut send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            node.balance(&*DEV_GENESIS_ACCOUNT) - Amount::nano(1000),
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let mut send1 = lattice
+            .genesis()
+            .send(&*DEV_GENESIS_KEY, Amount::nano(1000));
 
         // Process the block
         node.ledger
@@ -219,30 +209,15 @@ mod election_scheduler {
             })
             .finish();
 
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let key = PrivateKey::new();
 
         // Activating accounts depends on confirmed dependencies. First, prepare 2 accounts
-        let send = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            (&key).into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let send = lattice.genesis().send(&key, Amount::nano(1000));
         let send = node.process(send.clone()).unwrap();
         node.active.process_confirmed(send.hash(), None, 0);
 
-        let receive = Block::State(StateBlock::new(
-            key.account(),
-            BlockHash::zero(),
-            key.public_key(),
-            Amount::nano(1000),
-            send.hash().into(),
-            &key,
-            node.work_generate_dev(&key),
-        ));
+        let receive = lattice.account(&key).receive(&send);
         let receive = node.process(receive.clone()).unwrap();
         node.active.process_confirmed(receive.hash(), None, 0);
 
@@ -251,15 +226,9 @@ mod election_scheduler {
         });
 
         // Second, process two eligible transactions
-        let block1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            send.hash(),
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(2000),
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(send.hash()),
-        ));
+        let block1 = lattice
+            .genesis()
+            .send(&*DEV_GENESIS_KEY, Amount::nano(1000));
         node.process(block1.clone()).unwrap();
 
         // There is vacancy so it should be inserted
@@ -277,15 +246,7 @@ mod election_scheduler {
             }
         });
 
-        let block2 = Block::State(StateBlock::new(
-            key.account(),
-            receive.hash(),
-            key.public_key(),
-            Amount::zero(),
-            (&key).into(),
-            &key,
-            node.work_generate_dev(receive.hash()),
-        ));
+        let block2 = lattice.account(&key).send(&key, Amount::nano(1000));
         node.process(block2.clone()).unwrap();
 
         // There is no vacancy so it should stay queued

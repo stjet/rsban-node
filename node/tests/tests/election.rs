@@ -142,16 +142,12 @@ fn quorum_minimum_confirm_fail() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(
+        &key,
+        Amount::MAX - (node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1)),
+    );
 
     node1.process_active(send1.clone());
     assert_timely(Duration::from_secs(5), || {
@@ -186,16 +182,14 @@ fn quorum_minimum_confirm_success() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node1.online_reps.lock().unwrap().quorum_delta(), // Only minimum quorum remains
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+
+    // Only minimum quorum remains
+    let send1 = lattice.genesis().send(
+        &key1,
+        Amount::MAX - node1.online_reps.lock().unwrap().quorum_delta(),
+    );
 
     node1.process_active(send1.clone());
     assert_timely(Duration::from_secs(5), || {
@@ -220,27 +214,19 @@ fn quorum_minimum_flip_fail() {
     };
     let node1 = system.build_node().config(config).finish();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(
+        &key1,
+        Amount::MAX - (node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1)),
+    );
 
+    let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
     let key2 = PrivateKey::new();
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1),
-        key2.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send2 = fork_lattice.genesis().send(
+        &key2,
+        Amount::MAX - (node1.online_reps.lock().unwrap().quorum_delta() - Amount::raw(1)),
+    );
 
     // Process send1 and wait until its election appears
     node1.process_active(send1.clone());
@@ -278,27 +264,19 @@ fn quorum_minimum_flip_success() {
     };
     let node1 = system.build_node().config(config).finish();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node1.online_reps.lock().unwrap().quorum_delta(),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(
+        &key1,
+        Amount::MAX - node1.online_reps.lock().unwrap().quorum_delta(),
+    );
 
+    let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
     let key2 = PrivateKey::new();
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node1.online_reps.lock().unwrap().quorum_delta(),
-        key2.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send2 = fork_lattice.genesis().send(
+        &key2,
+        Amount::MAX - node1.online_reps.lock().unwrap().quorum_delta(),
+    );
 
     // Process send1 and wait until its election appears
     node1.process_active(send1.clone());

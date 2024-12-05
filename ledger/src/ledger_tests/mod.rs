@@ -263,7 +263,7 @@ fn state_account() {
         .previous(*DEV_GENESIS_HASH)
         .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::nano(1000))
         .link(*DEV_GENESIS_ACCOUNT)
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .build();
     ctx.ledger.process(&mut txn, &mut send).unwrap();
     assert_eq!(
@@ -513,7 +513,7 @@ mod dependents_confirmed {
             .previous(0)
             .balance(Amount::raw(1))
             .link(send1.hash())
-            .sign(&destination.key)
+            .key(&destination.key)
             .build();
         assert_eq!(
             ctx.ledger

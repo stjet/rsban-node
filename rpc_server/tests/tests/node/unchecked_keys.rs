@@ -16,7 +16,7 @@ fn test_unchecked_keys() {
         .representative(key.account())
         .balance(1)
         .link(key.account())
-        .sign(&key)
+        .key(&key)
         .work(node.work_generate_dev(key.account()))
         .build();
 
@@ -37,7 +37,7 @@ fn test_unchecked_keys() {
         .representative(key.account())
         .balance(2)
         .link(key.account())
-        .sign(&key)
+        .key(&key)
         .work(node.work_generate_dev(key.account()))
         .build();
 

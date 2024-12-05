@@ -58,7 +58,7 @@ impl<'a> AccountBlockFactory<'a> {
             .representative(info.representative)
             .balance(info.balance)
             .link(*LEDGER_CONSTANTS_STUB.epochs.link(Epoch::Epoch1).unwrap())
-            .sign(&DEV_GENESIS_KEY)
+            .key(&DEV_GENESIS_KEY)
     }
 
     pub(crate) fn epoch_v1_open(&self) -> TestStateBlockBuilder {
@@ -68,7 +68,7 @@ impl<'a> AccountBlockFactory<'a> {
             .representative(0)
             .balance(0)
             .link(self.ledger.epoch_link(Epoch::Epoch1).unwrap())
-            .sign(&DEV_GENESIS_KEY)
+            .key(&DEV_GENESIS_KEY)
     }
 
     pub(crate) fn legacy_change(&self, txn: &dyn Transaction) -> TestLegacyChangeBlockBuilder {
@@ -110,7 +110,7 @@ impl<'a> AccountBlockFactory<'a> {
             .representative(info.representative)
             .amount_sent(Amount::raw(50))
             .link(Account::from(1))
-            .sign(&self.key)
+            .key(&self.key)
     }
 
     pub(crate) fn receive(
@@ -126,7 +126,7 @@ impl<'a> AccountBlockFactory<'a> {
             .representative(receiver_info.representative)
             .balance(receiver_info.balance + amount_sent)
             .link(send_hash)
-            .sign(&self.key)
+            .key(&self.key)
     }
 
     pub(crate) fn change(&self, txn: &dyn Transaction) -> TestStateBlockBuilder {
@@ -137,7 +137,7 @@ impl<'a> AccountBlockFactory<'a> {
             .representative(Account::from(1))
             .balance(info.balance)
             .link(Link::zero())
-            .sign(&self.key)
+            .key(&self.key)
     }
 
     pub(crate) fn open(
@@ -152,6 +152,6 @@ impl<'a> AccountBlockFactory<'a> {
             .representative(self.account())
             .balance(amount_sent)
             .link(send_hash)
-            .sign(&self.key)
+            .key(&self.key)
     }
 }

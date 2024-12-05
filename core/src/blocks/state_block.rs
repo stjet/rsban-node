@@ -210,7 +210,7 @@ impl BlockBase for StateBlock {
         &self.signature
     }
 
-    fn set_block_signature(&mut self, signature: &Signature) {
+    fn set_signature(&mut self, signature: &Signature) {
         self.signature = signature.clone();
     }
 
@@ -346,6 +346,38 @@ impl<'a> From<StateBlockArgs<'a>> for Block {
     }
 }
 
+pub struct EpochBlockArgs<'a> {
+    pub epoch_signer: &'a PrivateKey,
+    pub account: Account,
+    pub previous: BlockHash,
+    pub representative: PublicKey,
+    pub balance: Amount,
+    pub link: Link,
+    pub work: u64,
+}
+
+impl<'a> From<EpochBlockArgs<'a>> for Block {
+    fn from(value: EpochBlockArgs<'a>) -> Self {
+        let hashables = StateHashables {
+            account: value.account,
+            previous: value.previous,
+            representative: value.representative,
+            balance: value.balance,
+            link: value.link,
+        };
+
+        let hash = hashables.hash();
+        let signature = value.epoch_signer.sign(hash.as_bytes());
+
+        Block::State(StateBlock {
+            hashables,
+            signature,
+            hash,
+            work: value.work,
+        })
+    }
+}
+
 impl From<JsonStateBlock> for StateBlock {
     fn from(value: JsonStateBlock) -> Self {
         let hashables = StateHashables {
@@ -384,7 +416,6 @@ mod tests {
     use super::*;
     use crate::{utils::MemoryStream, Block, TestBlockBuilder, TestStateBlockBuilder};
 
-    // original test: state_block.serialization
     #[test]
     fn serialization() {
         let block1 = TestBlockBuilder::state().work(5).build();
@@ -397,23 +428,38 @@ mod tests {
         assert_eq!(block1, Block::State(block2));
     }
 
-    // original test: state_block.hashing
     #[test]
     fn hashing() {
-        let block = TestBlockBuilder::state().build();
-        let hash = block.hash().clone();
-        assert_eq!(hash, block.hash()); // check cache works
-        assert_eq!(hash, TestBlockBuilder::state().build().hash());
+        let key = PrivateKey::from(42);
+        let block = TestBlockBuilder::state().key(&key).build();
+        let hash = block.hash();
+        assert_eq!(hash, TestBlockBuilder::state().key(&key).build().hash());
 
         let assert_different_hash = |b: TestStateBlockBuilder| {
             assert_ne!(hash, b.build().hash());
         };
 
-        assert_different_hash(TestBlockBuilder::state().account(Account::from(1000)));
-        assert_different_hash(TestBlockBuilder::state().previous(BlockHash::from(1000)));
-        assert_different_hash(TestBlockBuilder::state().representative(Account::from(1000)));
-        assert_different_hash(TestBlockBuilder::state().balance(Amount::from(1000)));
-        assert_different_hash(TestBlockBuilder::state().link(Link::from(1000)));
+        assert_different_hash(
+            TestBlockBuilder::state()
+                .key(&key)
+                .account(Account::from(1000)),
+        );
+        assert_different_hash(
+            TestBlockBuilder::state()
+                .key(&key)
+                .previous(BlockHash::from(1000)),
+        );
+        assert_different_hash(
+            TestBlockBuilder::state()
+                .key(&key)
+                .representative(Account::from(1000)),
+        );
+        assert_different_hash(
+            TestBlockBuilder::state()
+                .key(&key)
+                .balance(Amount::from(1000)),
+        );
+        assert_different_hash(TestBlockBuilder::state().key(&key).link(Link::from(1000)));
     }
 
     #[test]

@@ -713,7 +713,7 @@ pub fn upgrade_epoch(
         .balance(balance)
         .link(node.ledger.epoch_link(epoch).unwrap())
         .representative(*DEV_GENESIS_PUB_KEY)
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 

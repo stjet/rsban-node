@@ -53,7 +53,7 @@ mod bootstrap_processor {
             .representative(*DEV_GENESIS_PUB_KEY)
             .balance(Amount::MAX - Amount::nano(1000))
             .link(key1.account())
-            .sign(&DEV_GENESIS_KEY)
+            .key(&DEV_GENESIS_KEY)
             .work(node0.work_generate_dev(*DEV_GENESIS_HASH))
             .build();
 
@@ -63,7 +63,7 @@ mod bootstrap_processor {
             .representative(key1.public_key())
             .balance(Amount::nano(1000))
             .link(send1.hash())
-            .sign(&key1)
+            .key(&key1)
             .work(node0.work_generate_dev(&key1))
             .build();
 
@@ -73,7 +73,7 @@ mod bootstrap_processor {
             .representative(key1.public_key())
             .balance(Amount::zero())
             .link(key2.account())
-            .sign(&key1)
+            .key(&key1)
             .work(node0.work_generate_dev(receive1.hash()))
             .build();
 
@@ -126,7 +126,7 @@ mod bootstrap_processor {
             .representative(*DEV_GENESIS_PUB_KEY)
             .balance(Amount::MAX - Amount::nano(1000))
             .link(key1.account())
-            .sign(&DEV_GENESIS_KEY)
+            .key(&DEV_GENESIS_KEY)
             .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
             .build();
 
@@ -142,7 +142,7 @@ mod bootstrap_processor {
             .representative(*DEV_GENESIS_PUB_KEY)
             .balance(Amount::MAX - Amount::nano(2000))
             .link(key2.account())
-            .sign(&DEV_GENESIS_KEY)
+            .key(&DEV_GENESIS_KEY)
             .work(node1.work_generate_dev(send1.hash()))
             .build();
 
@@ -172,7 +172,7 @@ mod bootstrap_processor {
             .representative(key2.public_key())
             .balance(Amount::nano(1000))
             .link(send2.hash())
-            .sign(&key2)
+            .key(&key2)
             .work(node1.work_generate_dev(&key2))
             .build();
 
@@ -224,7 +224,7 @@ mod bootstrap_processor {
             .representative(*DEV_GENESIS_PUB_KEY)
             .balance(Amount::MAX - Amount::nano(1000))
             .link(key.account())
-            .sign(&DEV_GENESIS_KEY)
+            .key(&DEV_GENESIS_KEY)
             .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
             .build();
 
@@ -252,7 +252,7 @@ mod bootstrap_processor {
             .representative(key.public_key())
             .balance(Amount::zero())
             .link(key2.account())
-            .sign(&key)
+            .key(&key)
             .work(node1.work_generate_dev(open.hash()))
             .build();
 
@@ -313,7 +313,7 @@ mod bootstrap_processor {
             .representative(*DEV_GENESIS_PUB_KEY)
             .balance(Amount::MAX - Amount::nano(1000))
             .link(key.account())
-            .sign(&DEV_GENESIS_KEY)
+            .key(&DEV_GENESIS_KEY)
             .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
             .build();
 
@@ -328,7 +328,7 @@ mod bootstrap_processor {
             .representative(*DEV_GENESIS_PUB_KEY)
             .balance(Amount::MAX - Amount::nano(2000))
             .link(key.account())
-            .sign(&DEV_GENESIS_KEY)
+            .key(&DEV_GENESIS_KEY)
             .work(node1.work_generate_dev(send1.hash()))
             .build();
         assert_eq!(
@@ -355,7 +355,7 @@ mod bootstrap_processor {
             .representative(key.public_key())
             .balance(Amount::nano(2000))
             .link(send2.hash())
-            .sign(&key)
+            .key(&key)
             .work(node1.work_generate_dev(open.hash()))
             .build();
 

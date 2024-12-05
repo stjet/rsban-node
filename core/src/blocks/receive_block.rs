@@ -126,7 +126,7 @@ impl BlockBase for ReceiveBlock {
         &self.signature
     }
 
-    fn set_block_signature(&mut self, signature: &Signature) {
+    fn set_signature(&mut self, signature: &Signature) {
         self.signature = signature.clone();
     }
 

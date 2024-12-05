@@ -1,3 +1,4 @@
+use crate::blocks::state_block::EpochBlockArgs;
 use crate::work::WorkPool;
 use crate::{work::STUB_WORK_POOL, StateBlock};
 use crate::{
@@ -7,7 +8,7 @@ use crate::{
 use anyhow::Result;
 
 pub struct TestStateBlockBuilder {
-    account: Account,
+    account: Option<Account>,
     previous: BlockHash,
     representative: PublicKey,
     balance: Amount,
@@ -22,7 +23,7 @@ impl TestStateBlockBuilder {
     pub fn new() -> Self {
         let key = PrivateKey::new();
         Self {
-            account: Account::from(1),
+            account: None,
             previous: BlockHash::from(2),
             representative: PublicKey::from(3),
             balance: Amount::from(4),
@@ -35,7 +36,7 @@ impl TestStateBlockBuilder {
     }
 
     pub fn from(mut self, other: &StateBlock) -> Self {
-        self.account = other.account();
+        self.account = Some(other.account());
         self.previous = other.previous();
         self.representative = other.representative();
         self.balance = other.balance();
@@ -51,7 +52,7 @@ impl TestStateBlockBuilder {
     }
 
     pub fn account(mut self, account: impl Into<Account>) -> Self {
-        self.account = account.into();
+        self.account = Some(account.into());
         self
     }
 
@@ -109,7 +110,7 @@ impl TestStateBlockBuilder {
         Ok(self.link(Link::decode_hex(link)?))
     }
 
-    pub fn sign(mut self, key: &PrivateKey) -> Self {
+    pub fn key(mut self, key: &PrivateKey) -> Self {
         self.signature = None;
         self.priv_key = key.clone();
         self
@@ -130,7 +131,7 @@ impl TestStateBlockBuilder {
     }
 
     pub fn zero(mut self) -> Self {
-        self.account = Account::zero();
+        self.account = Some(Account::zero());
         self.previous = BlockHash::zero();
         self.representative = PublicKey::zero();
         self.balance = Amount::zero();
@@ -141,25 +142,31 @@ impl TestStateBlockBuilder {
     }
 
     pub fn build(self) -> Block {
+        let account = self.account.unwrap_or_else(|| self.priv_key.account());
         let work = self.work.unwrap_or_else(|| {
             let root = if self.previous.is_zero() {
-                self.account.into()
+                account.into()
             } else {
                 self.previous.into()
             };
             STUB_WORK_POOL.generate_dev2(root).unwrap()
         });
 
-        match self.signature {
-            Some(signature) => Block::State(StateBlock::with_signature(
-                self.account,
-                self.previous,
-                self.representative,
-                self.balance,
-                self.link,
-                signature,
-                work,
-            )),
+        let mut block: Block = match self.account {
+            Some(account) => {
+                // Misuse the epoch block constructor, so that we can create the block
+                // for the given account
+                EpochBlockArgs {
+                    account,
+                    previous: self.previous,
+                    representative: self.representative,
+                    balance: self.balance,
+                    link: self.link,
+                    epoch_signer: &self.priv_key,
+                    work,
+                }
+                .into()
+            }
             None => StateBlockArgs {
                 key: &self.priv_key,
                 previous: self.previous,
@@ -169,7 +176,13 @@ impl TestStateBlockBuilder {
                 work,
             }
             .into(),
+        };
+
+        if let Some(signature) = self.signature {
+            block.set_signature(&signature);
         }
+
+        block
     }
 
     pub fn build_saved(self) -> SavedBlock {
@@ -260,22 +273,21 @@ mod tests {
         Ok(())
     }
 
-    // original test: block_builder.zeroed_state_block
     #[test]
+    /// Make sure manually- and builder constructed all-zero blocks have equal hashes, and check signature.
     fn zeroed_state_block() {
-        let key = PrivateKey::new();
-        // Make sure manually- and builder constructed all-zero blocks have equal hashes, and check signature.
+        let key = PrivateKey::from(42);
         let zero_block_manual = TestBlockBuilder::state()
             .account(0)
             .previous(0)
             .representative(0)
             .balance(0)
             .link(0)
-            .sign(&key)
+            .key(&key)
             .work(0)
             .build();
 
-        let zero_block_build = TestBlockBuilder::state().zero().sign(&key).build();
+        let zero_block_build = TestBlockBuilder::state().zero().key(&key).build();
         assert_eq!(zero_block_manual.hash(), zero_block_build.hash());
         key.public_key()
             .verify(
@@ -285,7 +297,6 @@ mod tests {
             .unwrap();
     }
 
-    // original test: block_builder.state
     #[test]
     fn state_block_from_live_network() -> Result<()> {
         // Test against a random hash from the live network
@@ -332,7 +343,7 @@ mod tests {
             .representative(key2.public_key())
             .balance(2)
             .link(4)
-            .sign(&key1)
+            .key(&key1)
             .work(5)
             .build();
 

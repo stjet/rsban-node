@@ -53,7 +53,7 @@ fn pruning_action() {
         .previous(send2.hash())
         .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(100))
         .link(send1.hash())
-        .sign(&genesis.key)
+        .key(&genesis.key)
         .work(STUB_WORK_POOL.generate_dev2(send2.hash().into()).unwrap())
         .build();
     ctx.ledger.process(&mut txn, &mut receive1).unwrap();
@@ -167,7 +167,7 @@ fn pruning_source_rollback() {
         .previous(send2.hash())
         .balance(LEDGER_CONSTANTS_STUB.genesis_amount - Amount::raw(100))
         .link(send1.hash())
-        .sign(&genesis.key)
+        .key(&genesis.key)
         .work(STUB_WORK_POOL.generate_dev2(send2.hash().into()).unwrap())
         .build();
     ctx.ledger.process(&mut txn, &mut receive1).unwrap();

@@ -144,7 +144,7 @@ impl BlockBase for ChangeBlock {
         self.work
     }
 
-    fn set_block_signature(&mut self, signature: &Signature) {
+    fn set_signature(&mut self, signature: &Signature) {
         self.signature = signature.clone();
     }
 

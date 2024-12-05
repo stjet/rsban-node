@@ -204,13 +204,13 @@ impl SavedAccountChain {
     pub fn new_epoch1_block(&self) -> TestStateBlockBuilder {
         self.new_state_block()
             .link(epoch_v1_link())
-            .sign(&DEV_GENESIS_KEY)
+            .key(&DEV_GENESIS_KEY)
     }
 
     pub fn new_epoch2_block(&self) -> TestStateBlockBuilder {
         self.new_state_block()
             .link(epoch_v2_link())
-            .sign(&DEV_GENESIS_KEY)
+            .key(&DEV_GENESIS_KEY)
     }
 
     pub fn new_legacy_open_block(&self) -> TestLegacyOpenBlockBuilder {
@@ -228,7 +228,7 @@ impl SavedAccountChain {
             .representative(self.representative)
             .link(0)
             .previous(self.frontier())
-            .sign(&self.keypair)
+            .key(&self.keypair)
     }
 
     pub fn new_open_block(&self) -> TestStateBlockBuilder {
@@ -238,7 +238,7 @@ impl SavedAccountChain {
             .representative(1234)
             .link(555)
             .previous(0)
-            .sign(&self.keypair)
+            .key(&self.keypair)
     }
 
     pub fn new_legacy_send_block(&self) -> TestLegacySendBlockBuilder {
@@ -271,7 +271,7 @@ impl SavedAccountChain {
             .representative(0)
             .link(epoch_v1_link())
             .previous(0)
-            .sign(&DEV_GENESIS_KEY)
+            .key(&DEV_GENESIS_KEY)
     }
 
     pub fn new_legacy_receive_block(&self) -> TestLegacyReceiveBlockBuilder {

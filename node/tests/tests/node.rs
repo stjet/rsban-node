@@ -224,7 +224,7 @@ fn deferred_dependent_elections() {
         .representative(*DEV_GENESIS_ACCOUNT)
         .link(key.account())
         .balance(Amount::MAX - Amount::raw(1))
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 
@@ -234,7 +234,7 @@ fn deferred_dependent_elections() {
         .representative(key.public_key())
         .link(send1.hash())
         .balance(Amount::raw(1))
-        .sign(&key)
+        .key(&key)
         .work(node1.work_generate_dev(&key))
         .build();
 
@@ -249,7 +249,7 @@ fn deferred_dependent_elections() {
         .previous(send1.hash())
         .balance(send1.balance_field().unwrap() - Amount::raw(1))
         .link(key.account())
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .work(node1.work_generate_dev(send1.hash()))
         .build();
 
@@ -264,7 +264,7 @@ fn deferred_dependent_elections() {
         .previous(open.hash())
         .link(send2.hash())
         .balance(Amount::raw(2))
-        .sign(&key)
+        .key(&key)
         .work(node1.work_generate_dev(open.hash()))
         .build();
 
@@ -277,7 +277,7 @@ fn deferred_dependent_elections() {
         .account(key.account())
         .from(&receive_state_block)
         .representative(*DEV_GENESIS_ACCOUNT)
-        .sign(&key)
+        .key(&key)
         .build();
 
     node1.process_local(send1.clone().into()).unwrap();
@@ -406,7 +406,7 @@ fn rollback_gap_source() {
         .representative(*DEV_GENESIS_ACCOUNT)
         .link(key.account())
         .balance(Amount::MAX - Amount::raw(1))
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 
@@ -416,7 +416,7 @@ fn rollback_gap_source() {
         .representative(key.public_key())
         .link(send1.hash())
         .balance(Amount::raw(1))
-        .sign(&key)
+        .key(&key)
         .work(node.work_generate_dev(&key))
         .build();
 
@@ -431,7 +431,7 @@ fn rollback_gap_source() {
         .previous(send1.hash())
         .balance(send1.balance_field().unwrap() - Amount::raw(1))
         .link(key.account())
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(send1.hash()))
         .build();
 
@@ -444,7 +444,7 @@ fn rollback_gap_source() {
         .account(key.account())
         .from(&fork1a_state_block)
         .link(send2.hash())
-        .sign(&key)
+        .key(&key)
         .build();
 
     assert_eq!(
@@ -524,7 +524,7 @@ fn vote_by_hash_bundle() {
         .representative(*DEV_GENESIS_ACCOUNT)
         .balance(Amount::MAX - Amount::raw(1))
         .link(*DEV_GENESIS_ACCOUNT)
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 
@@ -542,7 +542,7 @@ fn vote_by_hash_bundle() {
             .from(prev_block)
             .previous(hash)
             .balance(Amount::MAX - Amount::raw(i))
-            .sign(&DEV_GENESIS_KEY)
+            .key(&DEV_GENESIS_KEY)
             .work(node.work_generate_dev(hash))
             .build();
         blocks.push(block.clone());
@@ -606,7 +606,7 @@ fn confirm_quorum() {
         .representative(*DEV_GENESIS_ACCOUNT)
         .balance(new_balance)
         .link(*DEV_GENESIS_ACCOUNT)
-        .sign(&*DEV_GENESIS_KEY)
+        .key(&*DEV_GENESIS_KEY)
         .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 
@@ -2632,7 +2632,7 @@ fn fork_election_invalid_block_signature() {
         &DEV_GENESIS_KEY,
         node1.work_generate_dev(*DEV_GENESIS_HASH),
     ));
-    send3.set_block_signature(&Signature::new()); // Invalid signature
+    send3.set_signature(&Signature::new()); // Invalid signature
 
     let channel = make_fake_channel(&node1);
     node1.inbound_message_queue.put(
@@ -3578,7 +3578,7 @@ fn block_processor_signatures() {
         .representative(*DEV_GENESIS_PUB_KEY)
         .balance(node.ledger.constants.genesis_amount - Amount::nano(1000))
         .link(key1.account())
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(latest))
         .build();
 
@@ -3589,7 +3589,7 @@ fn block_processor_signatures() {
         .representative(*DEV_GENESIS_PUB_KEY)
         .balance(node.ledger.constants.genesis_amount - Amount::nano(2000))
         .link(key2.account())
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(send1.hash()))
         .build();
 
@@ -3599,7 +3599,7 @@ fn block_processor_signatures() {
         .representative(*DEV_GENESIS_PUB_KEY)
         .balance(node.ledger.constants.genesis_amount - Amount::nano(3000))
         .link(key3.account())
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(send2.hash()))
         .build();
 
@@ -3610,12 +3610,12 @@ fn block_processor_signatures() {
         .representative(*DEV_GENESIS_PUB_KEY)
         .balance(node.ledger.constants.genesis_amount - Amount::nano(4000))
         .link(key3.account())
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(send3.hash()))
         .build();
 
     // Tamper with the signature
-    send4.set_block_signature(&Signature::new());
+    send4.set_signature(&Signature::new());
 
     // Invalid signature bit (force)
     let mut send5 = TestBlockBuilder::state()
@@ -3624,11 +3624,11 @@ fn block_processor_signatures() {
         .representative(*DEV_GENESIS_PUB_KEY)
         .balance(node.ledger.constants.genesis_amount - Amount::nano(5000))
         .link(key3.account())
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .work(node.work_generate_dev(send3.hash()))
         .build();
 
-    send5.set_block_signature(&Signature::new());
+    send5.set_signature(&Signature::new());
     // Invalid signature to unchecked
     node.unchecked
         .put(send5.previous().into(), UncheckedInfo::new(send5.clone()));
@@ -3640,7 +3640,7 @@ fn block_processor_signatures() {
         .representative(*DEV_GENESIS_PUB_KEY) // No previous block for the account (open block)
         .balance(Amount::nano(1000))
         .link(send1.hash())
-        .sign(&key1)
+        .key(&key1)
         .work(node.work_generate_dev(key1.account()))
         .build();
 
@@ -3650,7 +3650,7 @@ fn block_processor_signatures() {
         .representative(*DEV_GENESIS_PUB_KEY) // No previous block for the account (open block)
         .balance(Amount::nano(1000))
         .link(send2.hash())
-        .sign(&key2)
+        .key(&key2)
         .work(node.work_generate_dev(key2.account()))
         .build();
 
@@ -3661,7 +3661,7 @@ fn block_processor_signatures() {
         .representative(*DEV_GENESIS_PUB_KEY) // No previous block for the account (open block)
         .balance(Amount::nano(1000))
         .link(send3.hash())
-        .sign(&key2)
+        .key(&key2)
         .work(node.work_generate_dev(key3.account()))
         .build();
 
@@ -3698,7 +3698,7 @@ fn block_confirm() {
         .representative(*DEV_GENESIS_ACCOUNT)
         .balance(node1.ledger.constants.genesis_amount - Amount::nano(1000))
         .link(key.account())
-        .sign(&DEV_GENESIS_KEY)
+        .key(&DEV_GENESIS_KEY)
         .work(node1.work_generate_dev(*DEV_GENESIS_HASH))
         .build();
 

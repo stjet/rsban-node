@@ -78,7 +78,7 @@ fn fails_with_bad_signature_if_signature_is_invalid() {
             chain
                 .new_epoch1_block()
                 .link(epoch_v2_link())
-                .sign(&PrivateKey::new())
+                .key(&PrivateKey::new())
                 .build()
         })
         .assert_validation_fails_with(BlockStatus::BadSignature);

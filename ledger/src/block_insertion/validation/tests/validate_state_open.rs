@@ -75,7 +75,7 @@ fn fails_with_bad_signature_if_signature_is_invalid() {
                 .new_open_block()
                 .balance(10)
                 .link(0)
-                .sign(&PrivateKey::new())
+                .key(&PrivateKey::new())
                 .build()
         })
         .assert_validation_fails_with(BlockStatus::BadSignature);

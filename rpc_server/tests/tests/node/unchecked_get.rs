@@ -16,7 +16,7 @@ fn unchecked_get() {
         .representative(key.account())
         .balance(1)
         .link(key.account())
-        .sign(&key)
+        .key(&key)
         .work(node.work_generate_dev(key.account()))
         .build();
 

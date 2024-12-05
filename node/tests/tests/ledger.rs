@@ -541,7 +541,7 @@ fn unchecked_open() {
         &destination,
         node1.work_generate_dev(&destination),
     ));
-    open2.set_block_signature(&Signature::from_bytes([1; 64]));
+    open2.set_signature(&Signature::from_bytes([1; 64]));
 
     // Insert open2 in to the queue before open1
     node1

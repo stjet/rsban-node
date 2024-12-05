@@ -1,6 +1,6 @@
 use super::{ConfirmationJsonOptions, ConfirmationOptions, Options, WebsocketSessionEntry};
 use crate::WebsocketSession;
-use rsnano_core::{Account, Amount, BlockSideband, SavedOrUnsavedBlock, VoteWithWeightInfo};
+use rsnano_core::{Account, Amount, BlockSideband, MaybeSavedBlock, VoteWithWeightInfo};
 use rsnano_node::{consensus::ElectionStatus, wallets::Wallets};
 use rsnano_websocket_messages::{OutgoingMessageEnvelope, Topic};
 use serde::{Deserialize, Serialize};
@@ -115,7 +115,7 @@ impl WebsocketListener {
     /// Broadcast block confirmation. The content of the message depends on subscription options (such as "include_block")
     pub fn broadcast_confirmation(
         &self,
-        block_a: &SavedOrUnsavedBlock,
+        block_a: &MaybeSavedBlock,
         account_a: &Account,
         amount_a: &Amount,
         subtype: &str,
@@ -270,7 +270,7 @@ async fn accept_connection(
 }
 
 fn block_confirmed_message(
-    block: &SavedOrUnsavedBlock,
+    block: &MaybeSavedBlock,
     account: &Account,
     amount: &Amount,
     subtype: String,
@@ -304,7 +304,7 @@ fn block_confirmed_message(
     };
 
     let sideband = if options.include_sideband_info {
-        if let SavedOrUnsavedBlock::Saved(block) = block {
+        if let MaybeSavedBlock::Saved(block) = block {
             Some(block.sideband().into())
         } else {
             None

@@ -623,27 +623,27 @@ impl Deserialize for SavedBlock {
 }
 
 #[derive(Clone)]
-pub enum SavedOrUnsavedBlock {
+pub enum MaybeSavedBlock {
     Saved(SavedBlock),
     Unsaved(Block),
 }
 
-impl From<SavedOrUnsavedBlock> for Block {
-    fn from(value: SavedOrUnsavedBlock) -> Self {
+impl From<MaybeSavedBlock> for Block {
+    fn from(value: MaybeSavedBlock) -> Self {
         match value {
-            SavedOrUnsavedBlock::Saved(b) => b.into(),
-            SavedOrUnsavedBlock::Unsaved(b) => b,
+            MaybeSavedBlock::Saved(b) => b.into(),
+            MaybeSavedBlock::Unsaved(b) => b,
         }
     }
 }
 
-impl Deref for SavedOrUnsavedBlock {
+impl Deref for MaybeSavedBlock {
     type Target = Block;
 
     fn deref(&self) -> &Self::Target {
         match self {
-            SavedOrUnsavedBlock::Saved(b) => b,
-            SavedOrUnsavedBlock::Unsaved(b) => b,
+            MaybeSavedBlock::Saved(b) => b,
+            MaybeSavedBlock::Unsaved(b) => b,
         }
     }
 }

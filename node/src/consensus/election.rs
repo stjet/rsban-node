@@ -4,7 +4,7 @@ use crate::{
     utils::HardenedConstants,
 };
 use rsnano_core::{
-    Amount, Block, BlockHash, PublicKey, QualifiedRoot, Root, SavedBlock, SavedOrUnsavedBlock,
+    Amount, Block, BlockHash, MaybeSavedBlock, PublicKey, QualifiedRoot, Root, SavedBlock,
 };
 use std::{
     collections::HashMap,
@@ -52,7 +52,7 @@ impl Election {
 
         let data = ElectionData {
             status: ElectionStatus {
-                winner: Some(rsnano_core::SavedOrUnsavedBlock::Saved(block.clone())),
+                winner: Some(rsnano_core::MaybeSavedBlock::Saved(block.clone())),
                 election_end: SystemTime::now(),
                 block_count: 1,
                 election_status_type: super::ElectionStatusType::Ongoing,
@@ -62,7 +62,7 @@ impl Election {
                 HardenedConstants::get().not_an_account_key,
                 VoteInfo::new(0, block.hash()),
             )]),
-            last_blocks: HashMap::from([(block.hash(), SavedOrUnsavedBlock::Saved(block))]),
+            last_blocks: HashMap::from([(block.hash(), MaybeSavedBlock::Saved(block))]),
             state: ElectionState::Passive,
             state_start: Instant::now(),
             last_tally: HashMap::new(),
@@ -178,7 +178,7 @@ pub struct ElectionData {
     pub status: ElectionStatus,
     pub state: ElectionState,
     pub state_start: Instant,
-    pub last_blocks: HashMap<BlockHash, SavedOrUnsavedBlock>,
+    pub last_blocks: HashMap<BlockHash, MaybeSavedBlock>,
     pub last_votes: HashMap<PublicKey, VoteInfo>,
     pub final_weight: Amount,
     pub last_tally: HashMap<BlockHash, Amount>,

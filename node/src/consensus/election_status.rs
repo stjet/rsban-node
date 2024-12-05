@@ -1,5 +1,5 @@
 use crate::stats::DetailType;
-use rsnano_core::{Amount, SavedOrUnsavedBlock};
+use rsnano_core::{Amount, MaybeSavedBlock};
 use std::time::{Duration, SystemTime};
 
 /**
@@ -44,7 +44,7 @@ impl From<ElectionStatusType> for DetailType {
 /// Information on the status of an election
 #[derive(Clone)]
 pub struct ElectionStatus {
-    pub winner: Option<SavedOrUnsavedBlock>,
+    pub winner: Option<MaybeSavedBlock>,
     pub tally: Amount,
     pub final_tally: Amount,
     pub confirmation_request_count: u32,

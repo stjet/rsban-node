@@ -19,8 +19,8 @@ use crate::{
 use bounded_vec_deque::BoundedVecDeque;
 use rsnano_core::{
     utils::{ContainerInfo, MemoryStream},
-    Account, Amount, Block, BlockHash, BlockType, QualifiedRoot, SavedBlock, SavedOrUnsavedBlock,
-    Vote, VoteWithWeightInfo,
+    Account, Amount, Block, BlockHash, BlockType, MaybeSavedBlock, QualifiedRoot, SavedBlock, Vote,
+    VoteWithWeightInfo,
 };
 use rsnano_ledger::{BlockStatus, Ledger};
 use rsnano_messages::{Message, Publish};
@@ -226,7 +226,7 @@ impl ActiveElections {
     }
 
     pub fn insert_recently_cemented(&self, status: ElectionStatus) {
-        let SavedOrUnsavedBlock::Saved(block) = status.winner.as_ref().unwrap() else {
+        let MaybeSavedBlock::Saved(block) = status.winner.as_ref().unwrap() else {
             return;
         };
         self.recently_cemented
@@ -275,7 +275,7 @@ impl ActiveElections {
         votes: &Vec<VoteWithWeightInfo>,
     ) {
         let block = status.winner.as_ref().unwrap();
-        let SavedOrUnsavedBlock::Saved(block) = block else {
+        let MaybeSavedBlock::Saved(block) = block else {
             return;
         };
         let account = block.account();
@@ -522,10 +522,9 @@ impl ActiveElections {
                 result = true;
                 election_guard
                     .last_blocks
-                    .insert(block.hash(), SavedOrUnsavedBlock::Unsaved(block.clone()));
+                    .insert(block.hash(), MaybeSavedBlock::Unsaved(block.clone()));
                 if election_guard.status.winner.as_ref().unwrap().hash() == block.hash() {
-                    election_guard.status.winner =
-                        Some(SavedOrUnsavedBlock::Unsaved(block.clone()));
+                    election_guard.status.winner = Some(MaybeSavedBlock::Unsaved(block.clone()));
                     let message = Message::Publish(Publish::new_forward(block.clone()));
                     let mut publisher = self.message_publisher.lock().unwrap();
                     publisher.flood(&message, DropPolicy::ShouldNotDrop, 1.0);
@@ -533,7 +532,7 @@ impl ActiveElections {
             } else {
                 election_guard
                     .last_blocks
-                    .insert(block.hash(), SavedOrUnsavedBlock::Unsaved(block.clone()));
+                    .insert(block.hash(), MaybeSavedBlock::Unsaved(block.clone()));
             }
         }
         /*
@@ -1209,7 +1208,7 @@ impl ActiveElectionsExt for Arc<ActiveElections> {
 
         let mut status = ElectionStatus::default();
         let mut votes = Vec::new();
-        status.winner = Some(SavedOrUnsavedBlock::Saved(block.clone()));
+        status.winner = Some(MaybeSavedBlock::Saved(block.clone()));
 
         // Check if the currently cemented block was part of an election that triggered the confirmation
         let mut handled = false;

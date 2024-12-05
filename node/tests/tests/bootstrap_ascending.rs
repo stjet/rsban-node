@@ -1,4 +1,7 @@
-use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{
+    Account, Amount, Block, BlockHash, PrivateKey, StateBlock, UnsavedBlockLatticeBuilder,
+    DEV_GENESIS_KEY,
+};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use std::time::Duration;
 use test_helpers::{assert_timely, System};
@@ -10,15 +13,8 @@ use test_helpers::{assert_timely, System};
 fn account_base() {
     let mut system = System::new();
     let node0 = system.make_node();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        0.into(),
-        &DEV_GENESIS_KEY,
-        node0.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(Account::zero(), 1);
     node0.process(send1.clone()).unwrap();
     let node1 = system.make_node();
     assert_timely(Duration::from_secs(5), || node1.block_exists(&send1.hash()));

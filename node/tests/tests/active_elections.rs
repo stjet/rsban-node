@@ -1,10 +1,8 @@
 use rsnano_core::{
-    utils::MemoryStream, work::WorkPool, Account, Amount, Block, BlockHash, PrivateKey, StateBlock,
-    UnsavedBlockLatticeBuilder, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
+    utils::MemoryStream, Account, Amount, PrivateKey, UnsavedBlockLatticeBuilder, Vote, VoteCode,
+    VoteSource, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{
-    BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
-};
+use rsnano_ledger::{BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},

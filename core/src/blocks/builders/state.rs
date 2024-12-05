@@ -211,7 +211,7 @@ impl Default for TestStateBlockBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BlockBase, StateBlock, TestBlockBuilder};
+    use crate::{BlockBase, TestBlockBuilder};
 
     #[test]
     fn state_block() {

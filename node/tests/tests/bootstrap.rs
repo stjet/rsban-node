@@ -1,6 +1,6 @@
 use rsnano_core::{
-    Account, Amount, Block, BlockHash, Link, PrivateKey, StateBlock, UncheckedKey, WalletId,
-    DEV_GENESIS_KEY,
+    Account, Amount, Block, BlockHash, Link, PrivateKey, StateBlock, UncheckedKey,
+    UnsavedBlockLatticeBuilder, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::BulkPull;
@@ -2150,30 +2150,15 @@ fn push_diamond_pruning() {
         })
         .finish();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key = PrivateKey::new();
 
     // send all balance from genesis to key
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::zero(),
-        (&key).into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(&key, Amount::MAX);
     node1.process(send1.clone()).unwrap();
 
     // receive all balance on key
-    let open = Block::State(StateBlock::new(
-        key.public_key().as_account(),
-        BlockHash::zero(),
-        1.into(),
-        Amount::MAX,
-        send1.hash().into(),
-        &key,
-        node1.work_generate_dev(&key),
-    ));
+    let open = lattice.account(&key).receive(&send1);
     node1.process(open.clone()).unwrap();
 
     // 1st bootstrap
@@ -2194,27 +2179,11 @@ fn push_diamond_pruning() {
     // Process more blocks & prune old
 
     // send 100 raw from key to genesis
-    let send2 = Block::State(StateBlock::new(
-        key.public_key().as_account(),
-        open.hash(),
-        1.into(),
-        Amount::MAX - Amount::raw(100),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key,
-        node1.work_generate_dev(open.hash()),
-    ));
+    let send2 = lattice.account(&key).send(*DEV_GENESIS_ACCOUNT, 100);
     node1.process(send2.clone()).unwrap();
 
     // receive the 100 raw from key on genesis
-    let receive = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        1.into(),
-        Amount::raw(100),
-        send2.hash().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(send1.hash()),
-    ));
+    let receive = lattice.genesis().receive(&send2);
     node1.process(receive.clone()).unwrap();
 
     {
@@ -2298,73 +2267,19 @@ fn lazy_max_pull_count() {
             ..Default::default()
         })
         .finish();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
     let key2 = PrivateKey::new();
 
     // Generating test chain
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1000),
-        (&key1).into(),
-        &DEV_GENESIS_KEY,
-        node0.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    let receive1 = Block::State(StateBlock::new(
-        key1.public_key().as_account(),
-        BlockHash::zero(),
-        key1.public_key(),
-        Amount::raw(1000),
-        send1.hash().into(),
-        &key1,
-        node0.work_generate_dev(&key1),
-    ));
-    let send2 = Block::State(StateBlock::new(
-        key1.public_key().as_account(),
-        receive1.hash(),
-        key1.public_key(),
-        Amount::zero(),
-        (&key2).into(),
-        &key1,
-        node0.work_generate_dev(receive1.hash()),
-    ));
-    let receive2 = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        BlockHash::zero(),
-        key2.public_key(),
-        Amount::raw(1000),
-        send2.hash().into(),
-        &key2,
-        node0.work_generate_dev(&key2),
-    ));
-    let change1 = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        receive2.hash(),
-        key1.public_key(),
-        Amount::raw(1000),
-        Link::zero(),
-        &key2,
-        node0.work_generate_dev(receive2.hash()),
-    ));
-    let change2 = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        change1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(1000),
-        Link::zero(),
-        &key2,
-        node0.work_generate_dev(change1.hash()),
-    ));
-    let change3 = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        change2.hash(),
-        key2.public_key(),
-        Amount::raw(1000),
-        Link::zero(),
-        &key2,
-        node0.work_generate_dev(change2.hash()),
-    ));
+    let send1 = lattice.genesis().send(&key1, 1000);
+    let receive1 = lattice.account(&key1).receive(&send1);
+    let send2 = lattice.account(&key1).send(&key2, 1000);
+    let receive2 = lattice.account(&key2).receive(&send2);
+    let change1 = lattice.account(&key2).change(&key1);
+    let change2 = lattice.account(&key2).change(&*DEV_GENESIS_KEY);
+    let change3 = lattice.account(&key2).change(&key2);
 
     // Processing test chain
     node0.process_multi(&[

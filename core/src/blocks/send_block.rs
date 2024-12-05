@@ -1,8 +1,8 @@
 use super::{BlockBase, BlockType};
 use crate::{
     utils::{BufferWriter, FixedSizeSerialize, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, LazyBlockHash, Link,
-    PendingKey, PrivateKey, PublicKey, Root, Signature, WorkNonce,
+    Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, Link, PendingKey,
+    PrivateKey, PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 use serde::de::{Unexpected, Visitor};
@@ -44,6 +44,14 @@ impl SendHashables {
         self.destination = Account::zero();
         self.balance = Amount::raw(0);
     }
+
+    fn hash(&self) -> BlockHash {
+        BlockHashBuilder::new()
+            .update(self.previous.as_bytes())
+            .update(self.destination.as_bytes())
+            .update(self.balance.to_be_bytes())
+            .build()
+    }
 }
 
 impl crate::utils::Serialize for SendHashables {
@@ -54,22 +62,12 @@ impl crate::utils::Serialize for SendHashables {
     }
 }
 
-impl From<&SendHashables> for BlockHash {
-    fn from(hashables: &SendHashables) -> Self {
-        BlockHashBuilder::new()
-            .update(hashables.previous.as_bytes())
-            .update(hashables.destination.as_bytes())
-            .update(hashables.balance.to_be_bytes())
-            .build()
-    }
-}
-
 #[derive(Clone, Default, Debug)]
 pub struct SendBlock {
     pub hashables: SendHashables,
     pub signature: Signature,
     pub work: u64,
-    pub hash: LazyBlockHash,
+    pub hash: BlockHash,
 }
 
 impl SendBlock {
@@ -86,8 +84,8 @@ impl SendBlock {
             balance: *balance,
         };
 
-        let hash = LazyBlockHash::new();
-        let signature = private_key.sign(hash.hash(&hashables).as_bytes());
+        let hash = hashables.hash();
+        let signature = private_key.sign(hash.as_bytes());
 
         Self {
             hashables,
@@ -115,11 +113,12 @@ impl SendBlock {
         let mut buffer = [0u8; 8];
         stream.read_bytes(&mut buffer, 8)?;
         let work = u64::from_le_bytes(buffer);
+        let hash = hashables.hash();
         Ok(SendBlock {
             hashables,
             signature,
             work,
-            hash: LazyBlockHash::new(),
+            hash,
         })
     }
 
@@ -192,7 +191,7 @@ impl BlockBase for SendBlock {
     }
 
     fn hash(&self) -> BlockHash {
-        self.hash.hash(&self.hashables)
+        self.hash
     }
 
     fn link_field(&self) -> Option<Link> {
@@ -268,7 +267,7 @@ impl From<JsonSendBlock> for SendBlock {
             balance: value.balance.into(),
         };
 
-        let hash = LazyBlockHash::new();
+        let hash = hashables.hash();
 
         Self {
             hashables,

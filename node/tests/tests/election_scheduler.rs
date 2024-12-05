@@ -124,9 +124,7 @@ mod bucket {
 }
 
 mod election_scheduler {
-    use rsnano_core::{
-        Amount, Block, BlockHash, MaybeSavedBlock, PrivateKey, StateBlock, DEV_GENESIS_KEY,
-    };
+    use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, DEV_GENESIS_KEY};
     use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
     use rsnano_node::{config::NodeConfig, consensus::ActiveElectionsExt};
     use std::time::Duration;

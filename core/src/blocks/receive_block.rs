@@ -1,8 +1,8 @@
 use super::{BlockBase, BlockType};
 use crate::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, LazyBlockHash, Link,
-    PrivateKey, PublicKey, Root, Signature, WorkNonce,
+    Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, Link, PrivateKey,
+    PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 
@@ -16,13 +16,11 @@ impl ReceiveHashables {
     fn serialized_size() -> usize {
         BlockHash::serialized_size() + BlockHash::serialized_size()
     }
-}
 
-impl From<&ReceiveHashables> for BlockHash {
-    fn from(hashables: &ReceiveHashables) -> Self {
+    fn hash(&self) -> BlockHash {
         BlockHashBuilder::new()
-            .update(hashables.previous.as_bytes())
-            .update(hashables.source.as_bytes())
+            .update(self.previous.as_bytes())
+            .update(self.source.as_bytes())
             .build()
     }
 }
@@ -32,14 +30,14 @@ pub struct ReceiveBlock {
     pub work: u64,
     pub signature: Signature,
     pub hashables: ReceiveHashables,
-    pub hash: LazyBlockHash,
+    pub hash: BlockHash,
 }
 
 impl ReceiveBlock {
     pub fn new(previous: BlockHash, source: BlockHash, priv_key: &PrivateKey, work: u64) -> Self {
         let hashables = ReceiveHashables { previous, source };
-        let hash = LazyBlockHash::new();
-        let signature = priv_key.sign(hash.hash(&hashables).as_bytes());
+        let hash = hashables.hash();
+        let signature = priv_key.sign(hash.as_bytes());
 
         Self {
             work,
@@ -72,11 +70,13 @@ impl ReceiveBlock {
         let mut work_bytes = [0u8; 8];
         stream.read_bytes(&mut work_bytes, 8)?;
         let work = u64::from_le_bytes(work_bytes);
+        let hashables = ReceiveHashables { previous, source };
+        let hash = hashables.hash();
         Ok(Self {
             work,
             signature,
-            hashables: ReceiveHashables { previous, source },
-            hash: LazyBlockHash::new(),
+            hashables,
+            hash,
         })
     }
 
@@ -115,7 +115,7 @@ impl BlockBase for ReceiveBlock {
     }
 
     fn hash(&self) -> BlockHash {
-        self.hash.hash(&self.hashables)
+        self.hash
     }
 
     fn link_field(&self) -> Option<Link> {
@@ -197,7 +197,7 @@ impl From<JsonReceiveBlock> for ReceiveBlock {
             previous: value.previous,
             source: value.source,
         };
-        let hash = LazyBlockHash::new();
+        let hash = hashables.hash();
 
         Self {
             work: value.work.into(),

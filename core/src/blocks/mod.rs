@@ -35,7 +35,7 @@ use crate::{
 use num::FromPrimitive;
 use std::{
     ops::{Deref, DerefMut},
-    sync::{Arc, LazyLock, RwLock},
+    sync::LazyLock,
 };
 
 #[repr(u8)]
@@ -93,44 +93,6 @@ impl BlockSubType {
             BlockSubType::Change => "change",
             BlockSubType::Epoch => "epoch",
         }
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct LazyBlockHash {
-    // todo: Remove Arc<RwLock>? Maybe remove lazy hash calculation?
-    hash: Arc<RwLock<BlockHash>>,
-}
-
-impl LazyBlockHash {
-    pub fn new() -> Self {
-        Self {
-            hash: Arc::new(RwLock::new(BlockHash::zero())),
-        }
-    }
-    pub fn hash(&'_ self, factory: impl Into<BlockHash>) -> BlockHash {
-        let mut value = self.hash.read().unwrap();
-        if value.is_zero() {
-            drop(value);
-            let mut x = self.hash.write().unwrap();
-            let block_hash: BlockHash = factory.into();
-            *x = block_hash;
-            drop(x);
-            value = self.hash.read().unwrap();
-        }
-
-        *value
-    }
-
-    pub fn clear(&self) {
-        let mut x = self.hash.write().unwrap();
-        *x = BlockHash::zero();
-    }
-}
-
-impl std::fmt::Debug for LazyBlockHash {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(self.hash.read().unwrap().deref(), f)
     }
 }
 
@@ -594,7 +556,7 @@ impl From<SavedBlock> for Block {
 impl Deserialize for SavedBlock {
     type Target = Self;
     fn deserialize(stream: &mut dyn Stream) -> anyhow::Result<Self> {
-        let mut block = Block::deserialize(stream)?;
+        let block = Block::deserialize(stream)?;
         let mut sideband = BlockSideband::from_stream(stream, block.block_type())?;
         // BlockSideband does not serialize all data depending on the block type.
         // That's why we fill in the missing data here:

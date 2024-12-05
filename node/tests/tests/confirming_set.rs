@@ -1,11 +1,11 @@
 use rsnano_core::{Amount, Block, PrivateKey, StateBlock, DEV_GENESIS_KEY};
-use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     config::NodeFlags,
-    consensus::{ActiveElectionsExt, Election, ElectionBehavior, ElectionStatus},
+    consensus::ActiveElectionsExt,
     stats::{DetailType, Direction, StatType},
 };
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 use test_helpers::{assert_always_eq, assert_timely, assert_timely_eq, start_election, System};
 
 #[test]

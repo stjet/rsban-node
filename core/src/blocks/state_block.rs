@@ -1,8 +1,8 @@
 use super::{BlockBase, BlockType};
 use crate::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, LazyBlockHash, Link, PrivateKey,
-    PublicKey, Root, Signature, WorkNonce,
+    Account, Amount, BlockHash, BlockHashBuilder, JsonBlock, Link, PrivateKey, PublicKey, Root,
+    Signature, WorkNonce,
 };
 use anyhow::Result;
 
@@ -28,17 +28,17 @@ pub struct StateHashables {
     pub link: Link,
 }
 
-impl From<&StateHashables> for BlockHash {
-    fn from(hashables: &StateHashables) -> Self {
+impl StateHashables {
+    fn hash(&self) -> BlockHash {
         let mut preamble = [0u8; 32];
         preamble[31] = BlockType::State as u8;
         BlockHashBuilder::new()
             .update(preamble)
-            .update(hashables.account.as_bytes())
-            .update(hashables.previous.as_bytes())
-            .update(hashables.representative.as_bytes())
-            .update(hashables.balance.to_be_bytes())
-            .update(hashables.link.as_bytes())
+            .update(self.account.as_bytes())
+            .update(self.previous.as_bytes())
+            .update(self.representative.as_bytes())
+            .update(self.balance.to_be_bytes())
+            .update(self.link.as_bytes())
             .build()
     }
 }
@@ -48,7 +48,7 @@ pub struct StateBlock {
     pub work: u64,
     pub signature: Signature,
     pub hashables: StateHashables,
-    pub hash: LazyBlockHash,
+    pub hash: BlockHash,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -83,8 +83,8 @@ impl StateBlock {
             link,
         };
 
-        let hash = LazyBlockHash::new();
-        let signature = prv_key.sign(hash.hash(&hashables).as_bytes());
+        let hash = hashables.hash();
+        let signature = prv_key.sign(hash.as_bytes());
 
         Self {
             work,
@@ -120,17 +120,19 @@ impl StateBlock {
         signature: Signature,
         work: u64,
     ) -> Self {
+        let hashables = StateHashables {
+            account,
+            previous,
+            representative,
+            balance,
+            link,
+        };
+        let hash = hashables.hash();
         Self {
             work,
             signature,
-            hashables: StateHashables {
-                account,
-                previous,
-                representative,
-                balance,
-                link,
-            },
-            hash: LazyBlockHash::new(),
+            hashables,
+            hash,
         }
     }
 
@@ -197,17 +199,19 @@ impl StateBlock {
         let mut work_bytes = [0u8; 8];
         stream.read_bytes(&mut work_bytes, 8)?;
         let work = u64::from_be_bytes(work_bytes);
+        let hashables = StateHashables {
+            account,
+            previous,
+            representative,
+            balance,
+            link,
+        };
+        let hash = hashables.hash();
         Ok(Self {
             work,
             signature,
-            hashables: StateHashables {
-                account,
-                previous,
-                representative,
-                balance,
-                link,
-            },
-            hash: LazyBlockHash::new(),
+            hashables,
+            hash,
         })
     }
 }
@@ -232,7 +236,7 @@ impl BlockBase for StateBlock {
     }
 
     fn hash(&self) -> BlockHash {
-        self.hash.hash(&self.hashables)
+        self.hash
     }
 
     fn link_field(&self) -> Option<Link> {
@@ -321,7 +325,7 @@ impl From<JsonStateBlock> for StateBlock {
             link: value.link,
         };
 
-        let hash = LazyBlockHash::new();
+        let hash = hashables.hash();
 
         Self {
             work: value.work.into(),

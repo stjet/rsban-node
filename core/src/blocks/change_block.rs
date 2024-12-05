@@ -1,8 +1,8 @@
 use super::BlockBase;
 use crate::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, BlockType, DependentBlocks, JsonBlock,
-    LazyBlockHash, Link, PrivateKey, PublicKey, Root, Signature, WorkNonce,
+    Account, Amount, BlockHash, BlockHashBuilder, BlockType, DependentBlocks, JsonBlock, Link,
+    PrivateKey, PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 
@@ -16,13 +16,11 @@ impl ChangeHashables {
     fn serialized_size() -> usize {
         BlockHash::serialized_size() + Account::serialized_size()
     }
-}
 
-impl From<&ChangeHashables> for BlockHash {
-    fn from(hashables: &ChangeHashables) -> Self {
+    fn hash(&self) -> BlockHash {
         BlockHashBuilder::new()
-            .update(hashables.previous.as_bytes())
-            .update(hashables.representative.as_bytes())
+            .update(self.previous.as_bytes())
+            .update(self.representative.as_bytes())
             .build()
     }
 }
@@ -32,7 +30,7 @@ pub struct ChangeBlock {
     pub work: u64,
     pub signature: Signature,
     pub hashables: ChangeHashables,
-    pub hash: LazyBlockHash,
+    pub hash: BlockHash,
 }
 
 impl ChangeBlock {
@@ -47,8 +45,8 @@ impl ChangeBlock {
             representative,
         };
 
-        let hash = LazyBlockHash::new();
-        let signature = prv_key.sign(hash.hash(&hashables).as_bytes());
+        let hash = hashables.hash();
+        let signature = prv_key.sign(hash.as_bytes());
 
         Self {
             work,
@@ -83,11 +81,12 @@ impl ChangeBlock {
         let mut work_bytes = [0u8; 8];
         stream.read_bytes(&mut work_bytes, 8)?;
         let work = u64::from_le_bytes(work_bytes);
+        let hash = hashables.hash();
         Ok(Self {
             work,
             signature,
             hashables,
-            hash: LazyBlockHash::new(),
+            hash,
         })
     }
 
@@ -126,7 +125,7 @@ impl BlockBase for ChangeBlock {
     }
 
     fn hash(&self) -> BlockHash {
-        self.hash.hash(&self.hashables)
+        self.hash
     }
 
     fn link_field(&self) -> Option<Link> {
@@ -209,11 +208,13 @@ impl From<JsonChangeBlock> for ChangeBlock {
             representative: value.representative.into(),
         };
 
+        let hash = hashables.hash();
+
         Self {
             work: value.work.into(),
             signature: value.signature,
             hashables,
-            hash: LazyBlockHash::new(),
+            hash,
         }
     }
 }

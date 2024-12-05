@@ -1,8 +1,8 @@
 use super::{BlockBase, BlockType};
 use crate::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
-    Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, LazyBlockHash, Link,
-    PrivateKey, PublicKey, Root, Signature, WorkNonce,
+    Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, Link, PrivateKey,
+    PublicKey, Root, Signature, WorkNonce,
 };
 use anyhow::Result;
 
@@ -18,14 +18,12 @@ impl OpenHashables {
     fn serialized_size() -> usize {
         BlockHash::serialized_size() + Account::serialized_size() + Account::serialized_size()
     }
-}
 
-impl From<&OpenHashables> for BlockHash {
-    fn from(hashables: &OpenHashables) -> Self {
+    fn hash(&self) -> BlockHash {
         BlockHashBuilder::new()
-            .update(hashables.source.as_bytes())
-            .update(hashables.representative.as_bytes())
-            .update(hashables.account.as_bytes())
+            .update(self.source.as_bytes())
+            .update(self.representative.as_bytes())
+            .update(self.account.as_bytes())
             .build()
     }
 }
@@ -35,7 +33,7 @@ pub struct OpenBlock {
     pub work: u64,
     pub signature: Signature,
     pub hashables: OpenHashables,
-    pub hash: LazyBlockHash,
+    pub hash: BlockHash,
 }
 
 impl OpenBlock {
@@ -52,8 +50,8 @@ impl OpenBlock {
             account,
         };
 
-        let hash = LazyBlockHash::new();
-        let signature = prv_key.sign(hash.hash(&hashables).as_bytes());
+        let hash = hashables.hash();
+        let signature = prv_key.sign(hash.as_bytes());
 
         Self {
             work,
@@ -96,11 +94,12 @@ impl OpenBlock {
         let mut work_bytes = [0u8; 8];
         stream.read_bytes(&mut work_bytes, 8)?;
         let work = u64::from_le_bytes(work_bytes);
+        let hash = hashables.hash();
         Ok(OpenBlock {
             work,
             signature,
             hashables,
-            hash: LazyBlockHash::new(),
+            hash,
         })
     }
 
@@ -133,7 +132,7 @@ impl BlockBase for OpenBlock {
     }
 
     fn hash(&self) -> BlockHash {
-        self.hash.hash(&self.hashables)
+        self.hash
     }
 
     fn link_field(&self) -> Option<Link> {
@@ -224,11 +223,13 @@ impl From<JsonOpenBlock> for OpenBlock {
             account: value.account,
         };
 
+        let hash = hashables.hash();
+
         Self {
             work: value.work.into(),
             signature: value.signature,
             hashables,
-            hash: LazyBlockHash::new(),
+            hash,
         }
     }
 }

@@ -1,4 +1,6 @@
-use rsnano_core::{Amount, Block, PrivateKey, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{
+    Amount, Block, PrivateKey, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
+};
 use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     config::NodeFlags,
@@ -14,29 +16,11 @@ fn observer_callbacks() {
     let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
     node.insert_into_wallet(&DEV_GENESIS_KEY);
-    let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        latest,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(latest),
-    ));
-
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(2000),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send.hash()),
-    ));
-
+    let send = lattice.genesis().send(&key1, Amount::nano(1000));
+    let send1 = lattice.genesis().send(&key1, Amount::nano(1000));
     node.process_multi(&[send.clone(), send1.clone()]);
 
     node.confirming_set.add(send1.hash());
@@ -72,28 +56,11 @@ fn confirmed_history() {
     };
     let config = System::default_config_without_backlog_population();
     let node = system.build_node().flags(flags).config(config).finish();
-    let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        latest,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(latest),
-    ));
-
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(2000),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send.hash()),
-    ));
+    let send = lattice.genesis().send(&key1, Amount::nano(1000));
+    let send1 = lattice.genesis().send(&key1, Amount::nano(1000));
 
     node.process_multi(&[send.clone(), send1.clone()]);
 
@@ -202,39 +169,12 @@ fn dependent_election() {
     let mut system = System::new();
     let config = System::default_config_without_backlog_population();
     let node = system.build_node().config(config).finish();
-    let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        latest,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(latest),
-    ));
-
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(2000),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send.hash()),
-    ));
-
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(3000),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash()),
-    ));
-
+    let send = lattice.genesis().send(&key1, Amount::nano(1000));
+    let send1 = lattice.genesis().send(&key1, Amount::nano(1000));
+    let send2 = lattice.genesis().send(&key1, Amount::nano(1000));
     node.process_multi(&[send.clone(), send1.clone(), send2.clone()]);
 
     // This election should be confirmed as active_conf_height

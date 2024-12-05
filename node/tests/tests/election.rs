@@ -1,5 +1,6 @@
 use rsnano_core::{
-    Amount, Block, BlockHash, PrivateKey, StateBlock, Vote, VoteSource, DEV_GENESIS_KEY,
+    Amount, Block, BlockHash, PrivateKey, StateBlock, UnsavedBlockLatticeBuilder, Vote, VoteSource,
+    DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
@@ -25,46 +26,25 @@ fn quorum_minimum_update_weight_before_quorum_checks() {
         .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
     let amount = (config.online_weight_minimum / 100
         * node1.online_reps.lock().unwrap().quorum_percent() as u128)
         - Amount::raw(1);
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        amount,
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(&key1, Amount::MAX - amount);
     node1.process_active(send1.clone());
     assert_timely(Duration::from_secs(5), || {
         node1.block(&send1.hash()).is_some()
     });
 
-    let open1 = Block::State(StateBlock::new(
-        key1.account(),
-        BlockHash::zero(),
-        key1.public_key(),
-        Amount::MAX - amount,
-        send1.hash().into(),
-        &key1,
-        node1.work_generate_dev(&key1),
-    ));
+    let open1 = lattice.account(&key1).receive(&send1);
     node1.process(open1.clone()).unwrap();
 
     let key2 = PrivateKey::new();
-    let send2 = Block::State(StateBlock::new(
-        key1.account(),
-        open1.hash(),
-        key1.public_key(),
-        Amount::raw(3),
-        key2.account().into(),
-        &key1,
-        node1.work_generate_dev(open1.hash()),
-    ));
+    let send2 = lattice
+        .account(&key1)
+        .send(&key2, Amount::MAX - amount - Amount::raw(3));
     node1.process(send2.clone()).unwrap();
     assert_timely_eq(Duration::from_secs(5), || node1.ledger.block_count(), 4);
 
@@ -124,33 +104,17 @@ fn continuous_voting() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     // We want genesis to have just enough voting weight to be a principal rep, but not enough to confirm blocks on their own
     let key1 = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node1.balance(&*DEV_GENESIS_ACCOUNT) / 10 * 1,
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(&key1, (Amount::MAX / 10) * 9);
 
     node1.process(send1.clone()).unwrap();
     node1.confirm(send1.hash());
     node1.stats.clear();
 
     // Create a block that should be staying in AEC but not get confirmed
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        node1.balance(&*DEV_GENESIS_ACCOUNT) - Amount::raw(1),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(send1.hash()),
-    ));
-
+    let send2 = lattice.genesis().send(&key1, 1);
     node1.process(send2.clone()).unwrap();
     assert_timely(Duration::from_secs(5), || node1.active.active(&send2));
 

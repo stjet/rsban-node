@@ -1,5 +1,6 @@
 use rsnano_core::{
-    Amount, Block, BlockSideband, PrivateKey, SavedBlock, StateBlock, DEV_GENESIS_KEY,
+    Amount, Block, BlockSideband, PrivateKey, SavedBlock, StateBlock, UnsavedBlockLatticeBuilder,
+    DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
@@ -13,16 +14,9 @@ use test_helpers::{
 fn start_stop() {
     let mut system = System::new();
     let node1 = system.make_node();
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::zero(),
-        key1.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(&key1, Amount::MAX);
     node1.process(send1.clone()).unwrap();
     assert_eq!(node1.active.len(), 0);
     let election1 = start_election(&node1, &send1.hash());
@@ -34,18 +28,12 @@ fn start_stop() {
 fn add_existing() {
     let mut system = System::new();
     let node1 = system.make_node();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
 
     // create a send block to send all of the nano supply to key1
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::zero(),
-        key1.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(&key1, Amount::MAX);
 
     // add the block to ledger as an unconfirmed block
     node1.process(send1.clone()).unwrap();

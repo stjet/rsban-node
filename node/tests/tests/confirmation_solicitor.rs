@@ -1,4 +1,6 @@
-use rsnano_core::{Account, Amount, Block, PublicKey, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{
+    Account, Amount, Block, PublicKey, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
+};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::ConfirmReq;
 use rsnano_network::ChannelId;
@@ -35,15 +37,8 @@ fn batches() {
     );
     solicitor.prepare(&representatives);
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        Account::from(123).into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice.genesis().send(Account::from(123), 100);
     let send = node2.process(send).unwrap();
 
     {
@@ -117,15 +112,8 @@ fn different_hashes() {
     );
     solicitor.prepare(&representatives);
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        Account::from(123).into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice.genesis().send(Account::from(123), 100);
     let send = node2.process(send).unwrap();
 
     let election = Election::new(
@@ -188,15 +176,8 @@ fn bypass_max_requests_cap() {
     assert_eq!(representatives.len(), MAX_REPRESENTATIVES + 1);
     solicitor.prepare(&representatives);
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        Account::from(123).into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice.genesis().send(Account::from(123), 100);
     let send = node2.process(send).unwrap();
 
     let election = Election::new(

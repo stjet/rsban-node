@@ -4,8 +4,7 @@ use std::{
     time::Duration,
 };
 
-use rsnano_core::{Amount, Block, PrivateKey, StateBlock, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
 use test_helpers::{assert_timely, assert_timely_eq, setup_independent_blocks, System};
 
 /*
@@ -45,15 +44,8 @@ fn election_activation() {
     let key = PrivateKey::new();
     let mut system = System::new();
     let node = system.build_node().finish();
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        key.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice.genesis().send(&key, Amount::nano(1000));
     node.process(send).unwrap();
     assert_timely_eq(Duration::from_secs(5), || node.active.len(), 1);
 }

@@ -1,6 +1,6 @@
 use crate::{
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, Block, BlockHash, PrivateKey, PublicKey, Root, StateBlockArgs,
+    Account, Amount, Block, BlockHash, Link, PrivateKey, PublicKey, Root, StateBlockArgs,
     DEV_GENESIS_BLOCK, DEV_GENESIS_KEY,
 };
 use std::collections::HashMap;
@@ -54,15 +54,10 @@ pub struct UnsavedAccountChainBuilder<'a> {
 impl<'a> UnsavedAccountChainBuilder<'a> {
     pub fn send(&mut self, destination: impl Into<Account>, amount: impl Into<Amount>) -> Block {
         let destination = destination.into();
-
-        let frontier = self
-            .lattice
-            .accounts
-            .get(&self.key.account())
-            .expect("Cannot send from unopenend account!");
-
+        let frontier = self.get_frontier();
         let amount = amount.into();
         let new_balance = frontier.balance - amount;
+
         let send: Block = StateBlockArgs {
             key: self.key,
             previous: frontier.hash,
@@ -77,14 +72,11 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
         }
         .into();
 
-        self.lattice.accounts.insert(
-            self.key.account(),
-            Frontier {
-                hash: send.hash(),
-                representative: frontier.representative,
-                balance: new_balance,
-            },
-        );
+        self.set_new_frontier(Frontier {
+            hash: send.hash(),
+            representative: frontier.representative,
+            balance: new_balance,
+        });
 
         self.lattice.pending_receives.insert(send.hash(), amount);
 
@@ -99,16 +91,7 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
             .remove(&corresponding_send.hash())
             .expect("no pending receive found");
 
-        let frontier = self
-            .lattice
-            .accounts
-            .get(&self.key.account())
-            .cloned()
-            .unwrap_or_else(|| Frontier {
-                hash: BlockHash::zero(),
-                representative: self.key.public_key(),
-                balance: Amount::zero(),
-            });
+        let frontier = self.get_frontier_or_empty();
 
         let root: Root = if frontier.hash.is_zero() {
             self.key.account().into()
@@ -128,16 +111,65 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
         }
         .into();
 
-        self.lattice.accounts.insert(
-            self.key.account(),
-            Frontier {
-                hash: receive.hash(),
-                representative: frontier.representative,
-                balance: new_balance,
-            },
-        );
+        self.set_new_frontier(Frontier {
+            hash: receive.hash(),
+            representative: frontier.representative,
+            balance: new_balance,
+        });
 
         receive
+    }
+
+    pub fn change(&mut self, new_representative: impl Into<PublicKey>) -> Block {
+        let frontier = self.get_frontier();
+        let new_representative = new_representative.into();
+        let change: Block = StateBlockArgs {
+            key: self.key,
+            previous: frontier.hash,
+            representative: new_representative,
+            balance: frontier.balance,
+            link: Link::zero(),
+            work: self
+                .lattice
+                .work_pool
+                .generate_dev2(frontier.hash.into())
+                .unwrap(),
+        }
+        .into();
+
+        self.set_new_frontier(Frontier {
+            hash: change.hash(),
+            representative: new_representative,
+            balance: frontier.balance,
+        });
+
+        change
+    }
+
+    fn set_new_frontier(&mut self, new_frontier: Frontier) {
+        self.lattice
+            .accounts
+            .insert(self.key.account(), new_frontier);
+    }
+
+    fn get_frontier(&self) -> Frontier {
+        self.lattice
+            .accounts
+            .get(&self.key.account())
+            .expect("Cannot send/change from unopenend account!")
+            .clone()
+    }
+
+    fn get_frontier_or_empty(&self) -> Frontier {
+        self.lattice
+            .accounts
+            .get(&self.key.account())
+            .cloned()
+            .unwrap_or_else(|| Frontier {
+                hash: BlockHash::zero(),
+                representative: self.key.public_key(),
+                balance: Amount::zero(),
+            })
     }
 }
 

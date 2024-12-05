@@ -24,7 +24,7 @@ use test_helpers::{
 
 mod bootstrap_processor {
     use super::*;
-    use rsnano_core::{PublicKey, TestBlockBuilder};
+    use rsnano_core::{PublicKey, TestBlockBuilder, UnsavedBlockLatticeBuilder};
     use rsnano_ledger::{BlockStatus, DEV_GENESIS_PUB_KEY};
     use rsnano_network::ChannelMode;
     use test_helpers::establish_tcp;
@@ -409,96 +409,30 @@ mod bootstrap_processor {
             .flags(flags.clone())
             .finish();
 
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let key1 = PrivateKey::new();
         let key2 = PrivateKey::new();
 
         // send 1000 nano from genesis to genesis
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &DEV_GENESIS_KEY,
-            node0.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let send1 = lattice
+            .genesis()
+            .send(*DEV_GENESIS_ACCOUNT, Amount::nano(1000));
 
-        // receive send1
-        let receive1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            send1.hash(),
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX,
-            send1.hash().into(),
-            &DEV_GENESIS_KEY,
-            node0.work_generate_dev(send1.hash()),
-        ));
-
-        // change rep of genesis account to be key1
-        let change1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            receive1.hash(),
-            key1.public_key(),
-            Amount::MAX,
-            BlockHash::zero().into(),
-            &DEV_GENESIS_KEY,
-            node0.work_generate_dev(receive1.hash()),
-        ));
-
-        // change rep of genesis account to be key2
-        let change2 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            change1.hash(),
-            key2.public_key(),
-            Amount::MAX,
-            BlockHash::zero().into(),
-            &DEV_GENESIS_KEY,
-            node0.work_generate_dev(change1.hash()),
-        ));
+        let receive1 = lattice.genesis().receive(&send1);
+        let change1 = lattice.genesis().change(&key1);
+        let change2 = lattice.genesis().change(&key2);
 
         // send 1000 nano from genesis to key1 and genesis rep back to genesis account
-        let send2 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            change2.hash(),
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            key1.account().into(),
-            &DEV_GENESIS_KEY,
-            node0.work_generate_dev(change2.hash()),
-        ));
+        let send2 = lattice.genesis().send(&key1, Amount::nano(1000));
 
         // receive send2 and rep of key1 to be itself
-        let receive2 = Block::State(StateBlock::new(
-            key1.account(),
-            BlockHash::zero(),
-            key1.public_key(),
-            Amount::nano(1000),
-            send2.hash().into(),
-            &key1,
-            node0.work_generate_dev(key1.public_key()),
-        ));
+        let receive2 = lattice.account(&key1).receive(&send2);
 
         // send 1000 nano, all available balance, from key1 to key2
-        let send3 = Block::State(StateBlock::new(
-            key1.account(),
-            receive2.hash(),
-            key1.public_key(),
-            Amount::zero(),
-            key2.account().into(),
-            &key1,
-            node0.work_generate_dev(receive2.hash()),
-        ));
+        let send3 = lattice.account(&key1).send(&key2, Amount::nano(1000));
 
         // receive send3 on key2, set rep of key2 to be itself
-        let receive3 = Block::State(StateBlock::new(
-            key2.account(),
-            BlockHash::zero(),
-            key2.public_key(),
-            Amount::nano(1000),
-            send3.hash().into(),
-            &key2,
-            node0.work_generate_dev(&key2),
-        ));
+        let receive3 = lattice.account(&key2).receive(&send3);
 
         let blocks = vec![
             send1.clone(),

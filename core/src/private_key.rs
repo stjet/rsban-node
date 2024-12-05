@@ -133,6 +133,12 @@ impl From<&PrivateKey> for Account {
     }
 }
 
+impl From<&PrivateKey> for PublicKey {
+    fn from(value: &PrivateKey) -> Self {
+        value.public_key()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

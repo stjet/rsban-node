@@ -1186,16 +1186,8 @@ fn vote_replays() {
     );
     assert_eq!(node.ledger.weight(&key.public_key()), Amount::nano(1000));
 
-    // send 1 raw to key to key
-    let send2 = Block::State(StateBlock::new(
-        key.public_key().as_account(),
-        open1.hash(),
-        key.public_key(),
-        Amount::nano(999),
-        (&key).into(),
-        &key,
-        node.work_generate_dev(open1.hash()),
-    ));
+    // send 1 raw from key to key
+    let send2 = lattice.account(&key).send(&key, 1);
     node.process_active(send2.clone());
     start_elections(&node, &[send2.hash()], false);
     assert_eq!(node.active.len(), 1);
@@ -1283,15 +1275,8 @@ fn vote_replays() {
 fn confirm_new() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        1.into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice.genesis().send(Account::from(1), 100);
     node1.process_active(send.clone());
     assert_timely_eq(Duration::from_secs(5), || node1.active.len(), 1);
     let node2 = system.make_node();
@@ -1322,38 +1307,12 @@ fn active_inactive() {
         .config(System::default_config_without_backlog_population())
         .finish();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key = PrivateKey::new();
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        (&key).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(2),
-        1.into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send.hash()),
-    ));
-
-    let open = Block::State(StateBlock::new(
-        (&key).into(),
-        BlockHash::zero(),
-        key.public_key(),
-        Amount::raw(1),
-        send.hash().into(),
-        &key,
-        node.work_generate_dev(&key),
-    ));
-
+    let send = lattice.genesis().send(&key, 1);
+    let send2 = lattice.genesis().send(Account::from(1), 1);
+    let open = lattice.account(&key).receive(&send);
     node.process_multi(&[send.clone(), send2.clone(), open]);
 
     let election = start_election(&node, &send2.hash());

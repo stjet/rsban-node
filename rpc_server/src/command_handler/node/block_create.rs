@@ -102,8 +102,8 @@ impl RpcCommandHandler {
         }
 
         // Check for incorrect account key
-        if args.account.is_some() {
-            if account != account {
+        if let Some(acc) = args.account {
+            if acc != account {
                 bail!("Incorrect key for given account");
             }
         }

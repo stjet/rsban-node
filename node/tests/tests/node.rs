@@ -1,8 +1,8 @@
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBase, BlockHash,
-    DifficultyV1, OpenBlock, PrivateKey, PublicKey, QualifiedRoot, Root, SendBlock, Signature,
-    StateBlockArgs, TestBlockBuilder, TestLegacySendBlockBuilder, UncheckedInfo,
-    UnsavedBlockLatticeBuilder, Vote, VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
+    DifficultyV1, PrivateKey, PublicKey, QualifiedRoot, Root, SendBlock, Signature, StateBlockArgs,
+    TestBlockBuilder, TestLegacySendBlockBuilder, UncheckedInfo, UnsavedBlockLatticeBuilder, Vote,
+    VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -3071,40 +3071,23 @@ fn fork_open_flip() {
     let node1 = system.make_node();
     let wallet_id = node1.wallets.wallet_ids()[0];
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
     let rep1 = PrivateKey::new();
     let rep2 = PrivateKey::new();
 
     // send 1 raw from genesis to key1 on both node1 and node2
-    let send1 = Block::LegacySend(SendBlock::new(
-        &DEV_GENESIS_HASH,
-        &key1.account(),
-        &(Amount::MAX - Amount::raw(1)),
-        &DEV_GENESIS_KEY,
-        system
-            .work
-            .generate_dev2((*DEV_GENESIS_HASH).into())
-            .unwrap(),
-    ));
+    let send1 = lattice.genesis().legacy_send(&key1, 1);
     node1.process_active(send1.clone());
 
+    let mut fork_lattice = lattice.clone();
     // We should be keeping this block
-    let open1 = Block::LegacyOpen(OpenBlock::new(
-        send1.hash(),
-        rep1.public_key(),
-        key1.account(),
-        &key1,
-        system.work.generate_dev2(key1.public_key().into()).unwrap(),
-    ));
+    let open1 = lattice.account(&key1).legacy_open_with_rep(&send1, &rep1);
 
     // create a fork of block open1, this block will lose the election
-    let open2 = Block::LegacyOpen(OpenBlock::new(
-        send1.hash(),
-        rep2.public_key(),
-        key1.account(),
-        &key1,
-        system.work.generate_dev2(key1.public_key().into()).unwrap(),
-    ));
+    let open2 = fork_lattice
+        .account(&key1)
+        .legacy_open_with_rep(&send1, &rep2);
     assert_ne!(open1.hash(), open2.hash());
 
     // give block open1 to node1, manually trigger an election for open1 and ensure it is in the ledger

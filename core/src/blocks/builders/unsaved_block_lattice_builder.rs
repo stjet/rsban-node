@@ -200,6 +200,14 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
     }
 
     pub fn legacy_open(&mut self, corresponding_send: &Block) -> Block {
+        self.legacy_open_with_rep(corresponding_send, self.key.public_key())
+    }
+
+    pub fn legacy_open_with_rep(
+        &mut self,
+        corresponding_send: &Block,
+        new_representative: impl Into<PublicKey>,
+    ) -> Block {
         assert!(!self.lattice.accounts.contains_key(&self.key.account()));
         assert_eq!(corresponding_send.destination_or_link(), self.key.account());
 
@@ -214,7 +222,7 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
         let receive: Block = OpenBlockArgs {
             key: &self.key,
             source: corresponding_send.hash(),
-            representative: self.key.public_key(),
+            representative: new_representative.into(),
             work,
         }
         .into();
@@ -229,6 +237,15 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
     }
 
     pub fn legacy_receive(&mut self, corresponding_send: &Block) -> Block {
+        let frontier = self.get_frontier();
+        self.legacy_receive_with_rep(corresponding_send, frontier.representative)
+    }
+
+    pub fn legacy_receive_with_rep(
+        &mut self,
+        corresponding_send: &Block,
+        new_representative: impl Into<PublicKey>,
+    ) -> Block {
         assert_eq!(corresponding_send.destination_or_link(), self.key.account());
         let amount = self
             .lattice
@@ -249,7 +266,7 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
 
         self.set_new_frontier(Frontier {
             hash: receive.hash(),
-            representative: frontier.representative,
+            representative: new_representative.into(),
             balance: new_balance,
         });
 

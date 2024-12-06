@@ -106,6 +106,10 @@ pub struct UnsavedAccountChainBuilder<'a> {
 }
 
 impl<'a> UnsavedAccountChainBuilder<'a> {
+    pub fn send_max(&mut self, destination: impl Into<Account>) -> Block {
+        self.send_all_except(destination, 0)
+    }
+
     pub fn send_all_except(
         &mut self,
         destination: impl Into<Account>,
@@ -113,6 +117,44 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
     ) -> Block {
         let frontier = self.get_frontier();
         self.send(destination, frontier.balance - keep.into())
+    }
+
+    pub fn send(&mut self, destination: impl Into<Account>, amount: impl Into<Amount>) -> Block {
+        let destination = destination.into();
+        let frontier = self.get_frontier();
+        let amount = amount.into();
+        let new_balance = frontier.balance - amount;
+
+        let send: Block = StateBlockArgs {
+            key: self.key,
+            previous: frontier.hash,
+            representative: frontier.representative,
+            balance: new_balance,
+            link: destination.into(),
+            work: self
+                .lattice
+                .work_pool
+                .generate_dev2(frontier.hash.into())
+                .unwrap(),
+        }
+        .into();
+
+        self.set_new_frontier(Frontier {
+            hash: send.hash(),
+            representative: frontier.representative,
+            balance: new_balance,
+        });
+
+        self.lattice.pending_receives.insert(
+            PendingKey::new(destination, send.hash()),
+            PendingInfo {
+                source: self.key.account(),
+                amount,
+                epoch: Epoch::Epoch0,
+            },
+        );
+
+        send
     }
 
     pub fn legacy_send(
@@ -143,44 +185,6 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
             hash: send.hash(),
             balance: new_balance,
             ..frontier
-        });
-
-        self.lattice.pending_receives.insert(
-            PendingKey::new(destination, send.hash()),
-            PendingInfo {
-                source: self.key.account(),
-                amount,
-                epoch: Epoch::Epoch0,
-            },
-        );
-
-        send
-    }
-
-    pub fn send(&mut self, destination: impl Into<Account>, amount: impl Into<Amount>) -> Block {
-        let destination = destination.into();
-        let frontier = self.get_frontier();
-        let amount = amount.into();
-        let new_balance = frontier.balance - amount;
-
-        let send: Block = StateBlockArgs {
-            key: self.key,
-            previous: frontier.hash,
-            representative: frontier.representative,
-            balance: new_balance,
-            link: destination.into(),
-            work: self
-                .lattice
-                .work_pool
-                .generate_dev2(frontier.hash.into())
-                .unwrap(),
-        }
-        .into();
-
-        self.set_new_frontier(Frontier {
-            hash: send.hash(),
-            representative: frontier.representative,
-            balance: new_balance,
         });
 
         self.lattice.pending_receives.insert(

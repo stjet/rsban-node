@@ -2904,40 +2904,14 @@ fn epoch_conflict_confirm() {
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key = PrivateKey::new();
-    let epoch_signer = DEV_GENESIS_KEY.clone();
 
     let send = lattice.genesis().send(&key, 1);
     let open = lattice.account(&key).receive(&send);
 
-    let change = Block::State(StateBlock::new(
-        key.account(),
-        open.hash(),
-        key.public_key(),
-        Amount::raw(1),
-        Link::zero(),
-        &key,
-        system.work.generate_dev2(open.hash().into()).unwrap(),
-    ));
-
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(2),
-        open.hash().into(),
-        &DEV_GENESIS_KEY,
-        system.work.generate_dev2(send.hash().into()).unwrap(),
-    ));
-
-    let epoch_open = Block::State(StateBlock::new(
-        change.root().into(),
-        BlockHash::zero(),
-        PublicKey::zero(),
-        Amount::zero(),
-        node0.ledger.epoch_link(Epoch::Epoch1).unwrap(),
-        &epoch_signer,
-        system.work.generate_dev2(open.hash().into()).unwrap(),
-    ));
+    let change = lattice.account(&key).change(&key);
+    let conflict_account = Account::from_bytes(*open.hash().as_bytes());
+    let send2 = lattice.genesis().send(conflict_account, 1);
+    let epoch_open = lattice.epoch_open(conflict_account);
 
     // Process initial blocks on node1
     node1.process(send.clone()).unwrap();
@@ -3313,15 +3287,16 @@ fn unconfirmed_send() {
     };
 
     // create send2 to send from node2 to node1 and save it to node2's ledger without triggering an election (node1 does not hear about it)
-    let send2 = Block::State(StateBlock::new(
-        key2.account(),
-        recv1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::nano(1),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key2,
-        system.work.generate_dev2(recv1.hash().into()).unwrap(),
-    ));
+    let send2: Block = StateBlockArgs {
+        key: &key2,
+        previous: recv1.hash(),
+        representative: *DEV_GENESIS_PUB_KEY,
+        balance: Amount::nano(1),
+        link: (*DEV_GENESIS_ACCOUNT).into(),
+        work: system.work.generate_dev2(recv1.hash().into()).unwrap(),
+    }
+    .into();
+
     assert_eq!(
         BlockStatus::Progress,
         node2.process_local(send2.clone()).unwrap()
@@ -3581,141 +3556,39 @@ fn dependency_graph_frontier() {
         .config(System::default_config_without_backlog_population())
         .finish();
     let node2 = system.make_node();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
     let key2 = PrivateKey::new();
     let key3 = PrivateKey::new();
 
     // Send to key1
-    let gen_send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let gen_send1 = lattice.genesis().send(&key1, 1);
 
     // Receive from genesis
-    let key1_open = Block::State(StateBlock::new(
-        key1.account(),
-        BlockHash::zero(),
-        key1.public_key(),
-        Amount::raw(1),
-        gen_send1.hash().into(),
-        &key1,
-        node1.work_generate_dev(&key1),
-    ));
+    let key1_open = lattice.account(&key1).receive(&gen_send1);
     // Send to genesis
-    let key1_send1 = Block::State(StateBlock::new(
-        key1.account(),
-        key1_open.hash(),
-        key1.public_key(),
-        Amount::zero(),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key1,
-        node1.work_generate_dev(key1_open.hash()),
-    ));
+    let key1_send1 = lattice.account(&key1).send(&*DEV_GENESIS_KEY, 1);
     // Receive from key1
-    let gen_receive = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        gen_send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX,
-        key1_send1.hash().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(gen_send1.hash()),
-    ));
+    let gen_receive = lattice.genesis().receive(&key1_send1);
     // Send to key2
-    let gen_send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        gen_receive.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(2),
-        key2.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(gen_receive.hash()),
-    ));
+    let gen_send2 = lattice.genesis().send(&key2, 2);
     // Receive from genesis
-    let key2_open = Block::State(StateBlock::new(
-        key2.account(),
-        BlockHash::zero(),
-        key2.public_key(),
-        Amount::raw(2),
-        gen_send2.hash().into(),
-        &key2,
-        node1.work_generate_dev(&key2),
-    ));
+    let key2_open = lattice.account(&key2).receive(&gen_send2);
     // Send to key3
-    let key2_send1 = Block::State(StateBlock::new(
-        key2.account(),
-        key2_open.hash(),
-        key2.public_key(),
-        Amount::raw(1),
-        key3.account().into(),
-        &key2,
-        node1.work_generate_dev(key2_open.hash()),
-    ));
+    let key2_send1 = lattice.account(&key2).send(&key3, 1);
     // Receive from key2
-    let key3_open = Block::State(StateBlock::new(
-        key3.account(),
-        BlockHash::zero(),
-        key3.public_key(),
-        Amount::raw(1),
-        key2_send1.hash().into(),
-        &key3,
-        node1.work_generate_dev(&key3),
-    ));
+    let key3_open = lattice.account(&key3).receive(&key2_send1);
     // Send to key1
-    let key2_send2 = Block::State(StateBlock::new(
-        key2.account(),
-        key2_send1.hash(),
-        key2.public_key(),
-        Amount::zero(),
-        key1.account().into(),
-        &key2,
-        node1.work_generate_dev(key2_send1.hash()),
-    ));
+    let key2_send2 = lattice.account(&key2).send(&key1, 1);
     // Receive from key2
-    let key1_receive = Block::State(StateBlock::new(
-        key1.account(),
-        key1_send1.hash(),
-        key1.public_key(),
-        Amount::raw(1),
-        key2_send2.hash().into(),
-        &key1,
-        node1.work_generate_dev(key1_send1.hash()),
-    ));
+    let key1_receive = lattice.account(&key1).receive(&key2_send2);
     // Send to key3
-    let key1_send2 = Block::State(StateBlock::new(
-        key1.account(),
-        key1_receive.hash(),
-        key1.public_key(),
-        Amount::zero(),
-        key3.account().into(),
-        &key1,
-        node1.work_generate_dev(key1_receive.hash()),
-    ));
+    let key1_send2 = lattice.account(&key1).send_max(&key3);
     // Receive from key1
-    let key3_receive = Block::State(StateBlock::new(
-        key3.account(),
-        key3_open.hash(),
-        key3.public_key(),
-        Amount::raw(2),
-        key1_send2.hash().into(),
-        &key3,
-        node1.work_generate_dev(key3_open.hash()),
-    ));
+    let key3_receive = lattice.account(&key3).receive(&key1_send2);
     // Upgrade key3
-    let key3_epoch = Block::State(StateBlock::new(
-        key3.account(),
-        key3_receive.hash(),
-        key3.public_key(),
-        Amount::raw(2),
-        node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(key3_receive.hash()),
-    ));
+    let key3_epoch = lattice.account(&key3).epoch1();
 
     for node in &system.nodes {
         node.process_multi(&[

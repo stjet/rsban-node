@@ -2,7 +2,7 @@ use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_core::{
     Account, Amount, Block, BlockDetails, BlockHash, ChangeBlock, Epoch, OpenBlock, PendingKey,
-    PrivateKey, PublicKey, ReceiveBlock, Root, SavedBlock, SendBlock, StateBlock,
+    PrivateKey, PublicKey, ReceiveBlock, Root, SavedBlock, SendBlock, StateBlockArgs,
 };
 use rsnano_node::Node;
 use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateResponse, BlockTypeDto};
@@ -115,15 +115,15 @@ impl RpcCommandHandler {
                     && !representative.is_zero()
                     && (!link.is_zero() || args.link.is_some())
                 {
-                    let block = Block::State(StateBlock::new(
-                        account,
+                    let block: Block = StateBlockArgs {
+                        key: &prv_key,
                         previous,
                         representative,
                         balance,
                         link,
-                        &prv_key,
                         work,
-                    ));
+                    }
+                    .into();
                     if previous.is_zero() {
                         root = account.into();
                     } else {

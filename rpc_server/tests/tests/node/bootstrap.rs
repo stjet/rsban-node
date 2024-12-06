@@ -1,5 +1,4 @@
-use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, WalletId, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_core::{PrivateKey, UnsavedBlockLatticeBuilder, WalletId, DEV_GENESIS_KEY};
 use rsnano_network::ChannelMode;
 use rsnano_node::{config::NodeFlags, wallets::WalletsExt};
 use rsnano_rpc_messages::BootstrapArgs;
@@ -24,52 +23,21 @@ fn bootstrap_id_none() {
         .insert_adhoc2(&wallet_id, &key.private_key(), true)
         .unwrap();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     // send all balance from genesis to key
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::zero(),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send_max(&key);
     node1.process(send1.clone()).unwrap();
 
     // open key account receiving all balance of genesis
-    let open = Block::State(StateBlock::new(
-        key.account(),
-        BlockHash::zero(),
-        key.public_key(),
-        Amount::MAX,
-        send1.hash().into(),
-        &key,
-        node1.work_generate_dev(key.public_key()),
-    ));
+    let open = lattice.account(&key).receive(&send1);
     node1.process(open.clone()).unwrap();
 
     // send from key to genesis 100 raw
-    let send2 = Block::State(StateBlock::new(
-        key.account(),
-        open.hash(),
-        key.public_key(),
-        Amount::MAX - Amount::raw(100),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key,
-        node1.work_generate_dev(open.hash()),
-    ));
+    let send2 = lattice.account(&key).send(&*DEV_GENESIS_KEY, 100);
     node1.process(send2.clone()).unwrap();
 
     // receive the 100 raw on genesis
-    let receive = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(100),
-        send2.hash().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(send1.hash()),
-    ));
+    let receive = lattice.genesis().receive(&send2);
     node1.process(receive.clone()).unwrap();
 
     let config = System::default_config_without_backlog_population();

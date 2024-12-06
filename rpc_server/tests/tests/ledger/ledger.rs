@@ -1,5 +1,7 @@
-use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, DEV_GENESIS_KEY};
-use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_core::{
+    Amount, Block, PrivateKey, StateBlockArgs, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
+};
+use rsnano_ledger::BlockStatus;
 use rsnano_node::Node;
 use rsnano_rpc_messages::LedgerArgs;
 use std::sync::Arc;
@@ -9,29 +11,12 @@ fn setup_test_environment(node: Arc<Node>) -> (PrivateKey, Block, Block) {
     let keys = PrivateKey::new();
     let rep_weight = Amount::MAX - Amount::raw(100);
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - rep_weight,
-        keys.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice.genesis().send(&keys, rep_weight);
     let status = node.process_local(send.clone()).unwrap();
     assert_eq!(status, BlockStatus::Progress);
 
-    let open = Block::State(StateBlock::new(
-        keys.account(),
-        BlockHash::zero(),
-        *DEV_GENESIS_PUB_KEY,
-        rep_weight,
-        send.hash().into(),
-        &keys,
-        node.work_generate_dev(keys.public_key()),
-    ));
-
+    let open = lattice.account(&keys).receive(&send);
     let status = node.process_local(open.clone()).unwrap();
     assert_eq!(status, BlockStatus::Progress);
 
@@ -109,19 +94,17 @@ fn test_ledger_pending() {
     let send2_amount = Amount::raw(50);
     let new_remaining_balance = Amount::MAX - send_amount - send2_amount;
 
-    let send2_block = StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send_block.hash(),
-        keys.account().into(),
-        new_remaining_balance,
-        keys.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send_block.hash()),
-    );
+    let send2_block: Block = StateBlockArgs {
+        key: &DEV_GENESIS_KEY,
+        previous: send_block.hash(),
+        representative: keys.public_key(),
+        balance: new_remaining_balance,
+        link: keys.account().into(),
+        work: node.work_generate_dev(send_block.hash()),
+    }
+    .into();
 
-    let status = node
-        .process_local(Block::State(send2_block.clone()))
-        .unwrap();
+    let status = node.process_local(send2_block).unwrap();
     assert_eq!(status, BlockStatus::Progress);
 
     let args = LedgerArgs::builder()

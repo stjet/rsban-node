@@ -14,7 +14,7 @@ fn block_create_state() {
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), false)
         .unwrap();
     let key1 = PrivateKey::new();
 
@@ -26,7 +26,7 @@ fn block_create_state() {
             .block_create(BlockCreateArgs::new(
                 BlockTypeDto::State,
                 Some(Amount::MAX - Amount::raw(100)),
-                Some(DEV_GENESIS_KEY.private_key()),
+                Some(DEV_GENESIS_KEY.raw_key()),
                 None,
                 Some(*DEV_GENESIS_ACCOUNT),
                 None,

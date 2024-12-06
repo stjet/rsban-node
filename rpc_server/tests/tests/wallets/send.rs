@@ -13,7 +13,7 @@ fn send() {
     let wallet = WalletId::zero();
     node.wallets.create(wallet);
     node.wallets
-        .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false)
+        .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.raw_key(), false)
         .unwrap();
 
     let server = setup_rpc_client_and_server(node.clone(), true);
@@ -63,7 +63,7 @@ fn send_fails_without_enable_control() {
     let wallet = WalletId::zero();
     node.wallets.create(wallet);
     node.wallets
-        .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false)
+        .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.raw_key(), false)
         .unwrap();
 
     let server = setup_rpc_client_and_server(node.clone(), false);

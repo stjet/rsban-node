@@ -57,13 +57,13 @@ fn vote_minimum() {
     );
 
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), false)
         .unwrap();
     node.wallets
-        .insert_adhoc2(&wallet_id, &key1.private_key(), false)
+        .insert_adhoc2(&wallet_id, &key1.raw_key(), false)
         .unwrap();
     node.wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), false)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), false)
         .unwrap();
     node.wallets.compute_reps();
     assert_eq!(
@@ -93,13 +93,13 @@ fn exists() {
     assert_eq!(node.wallets.exists(&key2.public_key()), false);
 
     node.wallets
-        .insert_adhoc2(&wallet_id, &key1.private_key(), false)
+        .insert_adhoc2(&wallet_id, &key1.raw_key(), false)
         .unwrap();
     assert_eq!(node.wallets.exists(&key1.public_key()), true);
     assert_eq!(node.wallets.exists(&key2.public_key()), false);
 
     node.wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), false)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), false)
         .unwrap();
     assert_eq!(node.wallets.exists(&key1.public_key()), true);
     assert_eq!(node.wallets.exists(&key2.public_key()), true);
@@ -123,7 +123,7 @@ fn search_receivable() {
         let wallet_id = node.wallets.wallet_ids()[0];
 
         node.wallets
-            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), false)
             .unwrap();
 
         let mut lattice = UnsavedBlockLatticeBuilder::new();
@@ -164,7 +164,7 @@ fn search_receivable() {
 
         // Re-insert the key
         node.wallets
-            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), false)
             .unwrap();
 
         // Pending search should create the receive block

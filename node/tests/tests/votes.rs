@@ -163,7 +163,7 @@ fn vote_generator_cache() {
 
     node.wallets.create(wallet_id);
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     node.vote_generators
@@ -196,16 +196,16 @@ fn vote_generator_multiple_representatives() {
 
     // Insert keys into the wallet
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     node.wallets
-        .insert_adhoc2(&wallet_id, &key1.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key1.raw_key(), true)
         .unwrap();
     node.wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
         .unwrap();
     node.wallets
-        .insert_adhoc2(&wallet_id, &key3.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key3.raw_key(), true)
         .unwrap();
 
     let amount = Amount::nano(100_000);
@@ -332,7 +332,7 @@ fn vote_spacing_vote_generator() {
     let wallet_id = WalletId::random();
     node.wallets.create(wallet_id);
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();
@@ -416,7 +416,7 @@ fn vote_spacing_rapid() {
     let wallet_id = WalletId::random();
     node.wallets.create(wallet_id);
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();

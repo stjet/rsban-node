@@ -92,7 +92,7 @@ mod bootstrap_processor {
         node1.wallets.create(wallet_id);
         node1
             .wallets
-            .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+            .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
             .unwrap();
         node1.bootstrap_wallet();
 
@@ -1190,7 +1190,7 @@ mod bootstrap_processor {
         node1.wallets.create(wallet_id);
         node1
             .wallets
-            .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+            .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
             .unwrap();
         node1.bootstrap_wallet();
         {
@@ -1216,11 +1216,11 @@ mod bootstrap_processor {
         node1.wallets.create(wallet_id);
         node1
             .wallets
-            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
             .unwrap();
         node1
             .wallets
-            .insert_adhoc2(&wallet_id, &key.private_key(), true)
+            .insert_adhoc2(&wallet_id, &key.raw_key(), true)
             .unwrap();
 
         let mut lattice = UnsavedBlockLatticeBuilder::new();
@@ -1335,7 +1335,7 @@ mod bulk_pull {
         let key2 = PrivateKey::new();
         let wallet_id = node.wallets.wallet_ids()[0];
         node.wallets
-            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
             .unwrap();
         node.wallets
             .send_action2(
@@ -1593,7 +1593,7 @@ mod frontier_req {
         let node = system.make_node();
 
         // Public key FB93... after genesis in accounts table
-        let key1 = PrivateKey::from_priv_key_hex(
+        let key1 = PrivateKey::from_hex_str(
             "ED5AE0A6505B14B67435C29FD9FEEBC26F597D147BC92F6D795FFAD7AFD3D967",
         )
         .unwrap();
@@ -1796,10 +1796,10 @@ mod bulk_pull_account {
         let key1 = PrivateKey::new();
         let wallet_id = node.wallets.wallet_ids()[0];
         node.wallets
-            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
             .unwrap();
         node.wallets
-            .insert_adhoc2(&wallet_id, &key1.private_key(), true)
+            .insert_adhoc2(&wallet_id, &key1.raw_key(), true)
             .unwrap();
         let _send1 = node
             .wallets
@@ -1960,7 +1960,7 @@ fn bulk_offline_send() {
     node2.wallets.create(wallet_id2);
     node2
         .wallets
-        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id2, &key2.raw_key(), true)
         .unwrap();
 
     // send amount from genesis to key2, it will be autoreceived

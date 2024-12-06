@@ -25,7 +25,6 @@ use blake2::{
 pub use block_hash::{BlockHash, BlockHashBuilder};
 pub use node_id::NodeId;
 pub use public_key::PublicKey;
-use rand::{thread_rng, Rng};
 use serde::de::{Unexpected, Visitor};
 pub use vote::*;
 
@@ -116,9 +115,8 @@ serialize_32_byte_string!(WalletId);
 
 impl WalletId {
     pub fn random() -> Self {
-        let secret: [u8; 32] = thread_rng().gen();
-        let keys = PrivateKey::from_priv_key_bytes(&secret).unwrap();
-        Self::from_bytes(*keys.public_key().as_bytes())
+        let key = PrivateKey::new();
+        Self::from_bytes(*key.public_key().as_bytes())
     }
 }
 

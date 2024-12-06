@@ -21,7 +21,7 @@ fn quorum_minimum_update_weight_before_quorum_checks() {
     let wallet_id1 = node1.wallets.wallet_ids()[0];
     node1
         .wallets
-        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();
@@ -54,7 +54,7 @@ fn quorum_minimum_update_weight_before_quorum_checks() {
     let wallet_id2 = node2.wallets.wallet_ids()[0];
     node2
         .wallets
-        .insert_adhoc2(&wallet_id2, &key1.private_key(), true)
+        .insert_adhoc2(&wallet_id2, &key1.raw_key(), true)
         .unwrap();
     assert_timely_eq(Duration::from_secs(15), || node2.ledger.block_count(), 4);
 
@@ -99,7 +99,7 @@ fn continuous_voting() {
     let wallet_id = node1.wallets.wallet_ids()[0];
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();
@@ -137,7 +137,7 @@ fn quorum_minimum_confirm_fail() {
     let wallet_id = node1.wallets.wallet_ids()[0];
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();
@@ -177,7 +177,7 @@ fn quorum_minimum_confirm_success() {
     let wallet_id = node1.wallets.wallet_ids()[0];
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();

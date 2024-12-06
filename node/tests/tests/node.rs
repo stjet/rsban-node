@@ -555,11 +555,11 @@ fn vote_by_hash_bundle() {
 
     // Insert the genesis key and a new key into the wallet
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     let key1 = PrivateKey::new();
     node.wallets
-        .insert_adhoc2(&wallet_id, &key1.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key1.raw_key(), true)
         .unwrap();
 
     // Set up an observer to track the maximum number of hashes in a vote
@@ -595,7 +595,7 @@ fn confirm_quorum() {
     let wallet_id = node1.wallets.wallet_ids()[0];
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     // Put greater than node.delta() in pending so quorum can't be reached
@@ -727,10 +727,10 @@ fn send_callback() {
     let key2 = PrivateKey::new();
 
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     node.wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
         .unwrap();
 
     let send_result = node.wallets.send_action2(
@@ -771,12 +771,12 @@ fn no_voting() {
     // Node1 has a rep
     node1
         .wallets
-        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     let key1 = PrivateKey::new();
     node1
         .wallets
-        .insert_adhoc2(&wallet_id1, &key1.private_key(), true)
+        .insert_adhoc2(&wallet_id1, &key1.raw_key(), true)
         .unwrap();
     // Broadcast a confirm so others should know this is a rep node
     node1
@@ -812,7 +812,7 @@ fn bootstrap_confirm_frontiers() {
 
     node0
         .wallets
-        .insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();
@@ -924,7 +924,7 @@ fn bootstrap_fork_open() {
 
     node0
         .wallets
-        .insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     assert!(!node1
         .ledger
@@ -987,11 +987,11 @@ fn rep_self_vote() {
 
     node0
         .wallets
-        .insert_adhoc2(&wallet_id, &rep_big.private_key(), true)
+        .insert_adhoc2(&wallet_id, &rep_big.raw_key(), true)
         .unwrap();
     node0
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     assert_eq!(node0.wallets.voting_reps_count(), 2);
 
@@ -1031,7 +1031,7 @@ fn fork_bootstrap_flip() {
     let wallet_id1 = node1.wallets.wallet_ids()[0];
     node1
         .wallets
-        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let mut config1 = System::default_config();
@@ -1040,7 +1040,7 @@ fn fork_bootstrap_flip() {
     //let node2 = system.build_disconnected_node(config1, node_flags);
     node1
         .wallets
-        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();
@@ -1125,7 +1125,7 @@ fn fork_multi_flip() {
 
     node1
         .wallets
-        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap(); // Insert voting key into node1
 
     let election = start_election(&node2, &send2.hash());
@@ -1250,7 +1250,7 @@ fn unlock_search() {
 
     node.wallets.rekey(&wallet_id, "").unwrap();
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     node.wallets
@@ -1274,7 +1274,7 @@ fn unlock_search() {
     assert_timely_eq(Duration::from_secs(10), || node.active.len(), 0);
 
     node.wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
         .unwrap();
     //node.wallets
     //    .set_password(&wallet_id, &KeyPair::new().private_key())
@@ -1296,7 +1296,7 @@ fn search_receivable_confirmed() {
     let wallet_id = node.wallets.wallet_ids()[0];
     let key2 = PrivateKey::new();
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let send1 = node
@@ -1336,7 +1336,7 @@ fn search_receivable_confirmed() {
         .unwrap();
 
     node.wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
         .unwrap();
 
     node.wallets.search_receivable_wallet(wallet_id).unwrap();
@@ -1373,7 +1373,7 @@ fn search_receivable_pruned() {
     let key2 = PrivateKey::new();
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let send1 = node1
@@ -1438,7 +1438,7 @@ fn search_receivable_pruned() {
     // Receive pruned block
     node2
         .wallets
-        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id2, &key2.raw_key(), true)
         .unwrap();
 
     node2.wallets.search_receivable_wallet(wallet_id2).unwrap();
@@ -1456,7 +1456,7 @@ fn search_receivable() {
     let wallet_id = node.wallets.wallet_ids()[0];
     let key2 = PrivateKey::new();
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     node.wallets
         .send_action2(
@@ -1471,7 +1471,7 @@ fn search_receivable() {
         .unwrap();
 
     node.wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
         .unwrap();
 
     node.wallets.search_receivable_wallet(wallet_id).unwrap();
@@ -1490,7 +1490,7 @@ fn search_receivable_same() {
     let wallet_id = node.wallets.wallet_ids()[0];
     let key2 = PrivateKey::new();
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     let send_result1 = node.wallets.send_action2(
         &wallet_id,
@@ -1513,7 +1513,7 @@ fn search_receivable_same() {
     );
     assert!(send_result2.is_ok());
     node.wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
         .unwrap();
     node.wallets.search_receivable_wallet(wallet_id).unwrap();
 
@@ -1532,10 +1532,10 @@ fn search_receivable_multiple() {
     let key2 = PrivateKey::new();
     let key3 = PrivateKey::new();
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     node.wallets
-        .insert_adhoc2(&wallet_id, &key3.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key3.raw_key(), true)
         .unwrap();
     node.wallets
         .send_action2(
@@ -1576,7 +1576,7 @@ fn search_receivable_multiple() {
         )
         .unwrap();
     node.wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
         .unwrap();
     node.wallets.search_receivable_wallet(wallet_id).unwrap();
 
@@ -1647,11 +1647,11 @@ fn auto_bootstrap_reverse() {
 
     node0
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     node0
         .wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
         .unwrap();
 
     let node1 = system.make_node();
@@ -1685,11 +1685,11 @@ fn quick_confirm() {
 
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &key.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key.raw_key(), true)
         .unwrap();
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();
@@ -1754,11 +1754,11 @@ fn send_single_observing_peer() {
 
     node1
         .wallets
-        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     node2
         .wallets
-        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id2, &key2.raw_key(), true)
         .unwrap();
 
     node1
@@ -1804,11 +1804,11 @@ fn send_single() {
 
     node1
         .wallets
-        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     node2
         .wallets
-        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id2, &key2.raw_key(), true)
         .unwrap();
 
     node1
@@ -1845,10 +1845,10 @@ fn send_self() {
     let node = system.make_node();
     let wallet_id = node.wallets.wallet_ids()[0];
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     node.wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
         .unwrap();
 
     node.wallets
@@ -1882,7 +1882,7 @@ fn balance() {
 
     let wallet_id = node.wallets.wallet_ids()[0];
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let balance = node.balance(&DEV_GENESIS_KEY.account());
@@ -2012,7 +2012,7 @@ fn fork_no_vote_quorum() {
     let wallet_id3 = node3.wallets.wallet_ids()[0];
     node1
         .wallets
-        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     let key4 = node1
         .wallets
@@ -2155,7 +2155,7 @@ fn fork_open() {
     // register key for genesis account, not sure why we do this, it seems needless,
     // since the genesis account at this stage has zero voting weight
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     // create the 1st open block to receive send1, which should be regarded as the winner just because it is first
@@ -2285,7 +2285,7 @@ fn vote_republish() {
     let wallet_id = node2.wallets.wallet_ids()[0];
     node2
         .wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
         .unwrap();
 
     // send1 and send2 are forks of each other
@@ -2375,7 +2375,7 @@ fn vote_by_hash_republish() {
     let wallet_id = node2.wallets.wallet_ids()[0];
     node2
         .wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
         .unwrap();
 
     // send1 and send2 are forks of each other
@@ -2582,7 +2582,7 @@ fn rollback_vote_self() {
 
         // Insert genesis key in the wallet
         node.wallets
-            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+            .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
             .unwrap();
 
         // Without the rollback being finished, the aggregator should not reply with any vote
@@ -2702,7 +2702,7 @@ fn rep_crawler_rep_remove() {
     let wallet_id = node_genesis_rep.wallets.wallet_ids()[0];
     node_genesis_rep
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     let channel_genesis_rep = searching_node
         .network_info
@@ -2840,7 +2840,7 @@ fn epoch_conflict_confirm() {
     let wallet_id = node1.wallets.wallet_ids()[0];
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     // Ensure both conflicting blocks were successfully processed and confirmed
@@ -2859,7 +2859,7 @@ fn node_receive_quorum() {
 
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &key.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key.raw_key(), true)
         .unwrap();
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();
@@ -2887,7 +2887,7 @@ fn node_receive_quorum() {
 
     node2
         .wallets
-        .insert_adhoc2(&wallet_id2, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id2, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     assert!(node1.balance(&key.account()).is_zero());
 
@@ -2920,11 +2920,11 @@ fn auto_bootstrap() {
 
     node0
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     node0
         .wallets
-        .insert_adhoc2(&wallet_id, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key2.raw_key(), true)
         .unwrap();
 
     let send1 = node0
@@ -3038,7 +3038,7 @@ fn fork_open_flip() {
     // allow node1 to vote and wait for open1 to be confirmed on node1
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     assert_timely_msg(
         Duration::from_secs(5),
@@ -3081,7 +3081,7 @@ fn unconfirmed_send() {
     let wallet_id1 = node1.wallets.wallet_ids()[0];
     node1
         .wallets
-        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let key2 = PrivateKey::new();
@@ -3089,7 +3089,7 @@ fn unconfirmed_send() {
     let wallet_id2 = node2.wallets.wallet_ids()[0];
     node2
         .wallets
-        .insert_adhoc2(&wallet_id2, &key2.private_key(), true)
+        .insert_adhoc2(&wallet_id2, &key2.raw_key(), true)
         .unwrap();
 
     // firstly, send two units from node1 to node2 and expect that both nodes see the block as confirmed
@@ -3208,7 +3208,7 @@ fn block_processor_signatures() {
     // Insert the genesis key into the wallet for signing operations
     let wallet_id = node.wallets.wallet_ids()[0];
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let latest = node.latest(&*DEV_GENESIS_ACCOUNT);
@@ -3394,7 +3394,7 @@ fn block_confirm() {
     // Make node2 genesis representative so it can vote
     node2
         .wallets
-        .insert_adhoc2(&wallet_id2, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id2, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     assert_timely_eq(

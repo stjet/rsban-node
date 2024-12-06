@@ -26,7 +26,7 @@ fn wallet_ledger() {
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
     node.wallets
-        .insert_adhoc2(&wallet_id, &keys.private_key(), true)
+        .insert_adhoc2(&wallet_id, &keys.raw_key(), true)
         .unwrap();
 
     let server = setup_rpc_client_and_server(node.clone(), true);

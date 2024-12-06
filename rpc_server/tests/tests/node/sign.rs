@@ -16,7 +16,7 @@ fn sign() {
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
     node.wallets
-        .insert_adhoc2(&wallet_id, &key.private_key(), false)
+        .insert_adhoc2(&wallet_id, &key.raw_key(), false)
         .unwrap();
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();
@@ -27,7 +27,7 @@ fn sign() {
         wallet: None,
         account: None,
         hash: None,
-        key: Some(DEV_GENESIS_KEY.private_key()),
+        key: Some(DEV_GENESIS_KEY.raw_key()),
     };
 
     let result = node

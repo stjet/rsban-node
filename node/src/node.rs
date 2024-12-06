@@ -40,7 +40,7 @@ use crate::{
     BUILD_INFO, VERSION_STRING,
 };
 use rsnano_core::{
-    utils::{as_nano_json, system_time_as_nanoseconds, ContainerInfo},
+    utils::{system_time_as_nanoseconds, ContainerInfo},
     work::{WorkPool, WorkPoolImpl},
     Account, Amount, Block, BlockHash, BlockType, Networks, NodeId, PrivateKey, Root, SavedBlock,
     VoteCode, VoteSource,
@@ -967,11 +967,7 @@ impl Node {
                                 } else {
                                     None
                                 },
-                                is_send: if is_state_send {
-                                    Some(as_nano_json(true))
-                                } else {
-                                    None
-                                },
+                                is_send: if is_state_send { Some("true") } else { None },
                             };
 
                             let http_client = HttpClient::new();
@@ -1235,7 +1231,7 @@ impl Node {
     pub fn insert_into_wallet(&self, keys: &PrivateKey) {
         let wallet_id = self.wallets.wallet_ids()[0];
         self.wallets
-            .insert_adhoc2(&wallet_id, &keys.private_key(), true)
+            .insert_adhoc2(&wallet_id, &keys.raw_key(), true)
             .unwrap();
     }
 

@@ -633,7 +633,7 @@ static DEV_PRIVATE_KEY_DATA: &str =
 pub static DEV_PUBLIC_KEY_DATA: &str =
     "B0311EA55708D6A53C75CDBF88300259C6D018522FE3D4D0A242E431F9E8B6D0"; // xrb_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo
 pub static DEV_GENESIS_KEY: LazyLock<PrivateKey> =
-    LazyLock::new(|| PrivateKey::from_priv_key_hex(DEV_PRIVATE_KEY_DATA).unwrap());
+    LazyLock::new(|| PrivateKey::from_hex_str(DEV_PRIVATE_KEY_DATA).unwrap());
 
 static DEV_GENESIS_DATA: &str = r###"{
 	"type": "open",

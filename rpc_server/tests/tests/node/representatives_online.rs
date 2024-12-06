@@ -15,7 +15,7 @@ fn representatives_online() {
     let wallet = WalletId::zero();
     node.wallets.create(wallet);
     node.wallets
-        .insert_adhoc2(&wallet, &(*DEV_GENESIS_KEY).private_key(), true)
+        .insert_adhoc2(&wallet, &(*DEV_GENESIS_KEY).raw_key(), true)
         .unwrap();
 
     // Set up wallet for node2

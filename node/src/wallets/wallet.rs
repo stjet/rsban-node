@@ -82,7 +82,7 @@ impl Wallet {
         let mut n = index + 64;
         while i < n {
             let prv = self.store.deterministic_key(txn, i);
-            let pair = PrivateKey::from_priv_key_bytes(prv.as_bytes()).unwrap();
+            let pair = PrivateKey::from_bytes(prv.as_bytes());
             // Check if account received at least 1 block
             let latest = self.ledger.any().account_head(&block_txn, &pair.account());
             match latest {

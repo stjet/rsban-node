@@ -1,15 +1,13 @@
 use crate::cli::CliInfrastructure;
-use rsnano_core::Account;
 
 pub(crate) fn create_key_pair(infra: &mut CliInfrastructure) {
-    let keypair = infra.key_factory.create_key_pair();
-    let private_key = keypair.private_key();
-    let public_key = keypair.public_key();
-    let account = Account::from(public_key).encode_account();
+    let key = infra.key_factory.create_key();
 
-    infra.console.println(format!("Private: {}", private_key));
-    infra.console.println(format!("Public: {}", public_key));
-    infra.console.println(format!("Account: {}", account));
+    infra.console.println(format!("Private: {}", key.raw_key()));
+    infra
+        .console
+        .println(format!("Public: {}", key.public_key()));
+    infra.console.println(format!("Account: {}", key.account()));
 }
 
 #[cfg(test)]

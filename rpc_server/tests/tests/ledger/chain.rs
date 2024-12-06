@@ -15,7 +15,7 @@ fn chain() {
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let genesis = node.latest(&*DEV_GENESIS_ACCOUNT);
@@ -66,7 +66,7 @@ fn chain_limit() {
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let genesis = node.latest(&*DEV_GENESIS_ACCOUNT);
@@ -116,7 +116,7 @@ fn chain_offset() {
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     let genesis = node.latest(&*DEV_GENESIS_ACCOUNT);

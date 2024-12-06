@@ -26,7 +26,7 @@ impl PrivateKeyFactory {
         }
     }
 
-    pub fn create_key_pair(&mut self) -> PrivateKey {
+    pub fn create_key(&mut self) -> PrivateKey {
         let private_key = ed25519_dalek::SigningKey::generate(&mut self.rng);
         PrivateKey { private_key }
     }
@@ -47,7 +47,7 @@ pub struct PrivateKey {
 
 impl Default for PrivateKey {
     fn default() -> Self {
-        PrivateKeyFactory::default().create_key_pair()
+        PrivateKeyFactory::default().create_key()
     }
 }
 
@@ -57,29 +57,26 @@ impl PrivateKey {
     }
 
     pub fn zero() -> Self {
-        Self::from_priv_key_bytes(&[0u8; 32]).unwrap()
+        Self::from_bytes(&[0u8; 32])
     }
 
     pub fn is_zero(&self) -> bool {
         self.private_key.to_bytes() == [0; 32]
     }
 
-    pub fn from_priv_key_bytes(bytes: &[u8]) -> anyhow::Result<Self> {
-        let secret_bytes: [u8; 32] = bytes
-            .try_into()
-            .map_err(|_| anyhow::anyhow!("Invalid secret key length"))?;
-        let signing_key = ed25519_dalek::SigningKey::from_bytes(&secret_bytes);
-        Ok(Self {
+    pub fn from_bytes(bytes: &[u8; 32]) -> Self {
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(bytes);
+        Self {
             private_key: signing_key,
-        })
+        }
     }
 
-    pub fn from_priv_key_hex(s: impl AsRef<str>) -> anyhow::Result<Self> {
+    pub fn from_hex_str(s: impl AsRef<str>) -> anyhow::Result<Self> {
         let input = s.as_ref();
         let mut bytes = [0u8; 32];
         hex::decode_to_slice(input, &mut bytes)
             .with_context(|| format!("input string: '{}'", input))?;
-        Self::from_priv_key_bytes(&bytes)
+        Ok(Self::from_bytes(&bytes))
     }
 
     pub fn sign(&self, data: &[u8]) -> Signature {
@@ -96,7 +93,7 @@ impl PrivateKey {
         PublicKey::from_bytes(self.private_key.verifying_key().to_bytes())
     }
 
-    pub fn private_key(&self) -> RawKey {
+    pub fn raw_key(&self) -> RawKey {
         RawKey::from_bytes(self.private_key.to_bytes())
     }
 }
@@ -105,13 +102,13 @@ impl From<u64> for PrivateKey {
     fn from(value: u64) -> Self {
         let mut bytes = [0; 32];
         bytes[..8].copy_from_slice(&value.to_be_bytes());
-        Self::from_priv_key_bytes(&bytes).unwrap()
+        Self::from_bytes(&bytes)
     }
 }
 
 impl From<RawKey> for PrivateKey {
     fn from(value: RawKey) -> Self {
-        Self::from_priv_key_bytes(value.as_bytes()).unwrap()
+        Self::from_bytes(value.as_bytes())
     }
 }
 
@@ -235,23 +232,23 @@ mod tests {
             let rng = NullableRng::new_null_bytes(&random_data);
             let mut key_pair_factory = PrivateKeyFactory::new(rng);
 
-            let key_pair = key_pair_factory.create_key_pair();
+            let key_pair = key_pair_factory.create_key();
 
-            assert_eq!(key_pair.private_key().as_bytes(), &random_data);
+            assert_eq!(key_pair.raw_key().as_bytes(), &random_data);
         }
 
         #[test]
         fn nullable() {
             let mut key_pair_factory = PrivateKeyFactory::new_null();
-            let key_pair = key_pair_factory.create_key_pair();
-            assert_ne!(key_pair.private_key(), RawKey::zero());
+            let key_pair = key_pair_factory.create_key();
+            assert_ne!(key_pair.raw_key(), RawKey::zero());
         }
 
         #[test]
         fn configured_response() {
             let expected = RawKey::from_bytes([3; 32]);
             let mut key_pair_factory = PrivateKeyFactory::new_null_with(expected);
-            assert_eq!(key_pair_factory.create_key_pair().private_key(), expected);
+            assert_eq!(key_pair_factory.create_key().raw_key(), expected);
         }
     }
 }

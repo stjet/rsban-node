@@ -14,7 +14,7 @@ fn search_receivable() {
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     // Get the latest block hash for the genesis account

@@ -16,11 +16,11 @@ fn bootstrap_id_none() {
     node1.wallets.create(wallet_id);
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &key.private_key(), true)
+        .insert_adhoc2(&wallet_id, &key.raw_key(), true)
         .unwrap();
 
     let mut lattice = UnsavedBlockLatticeBuilder::new();

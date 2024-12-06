@@ -13,12 +13,12 @@ fn receive() {
     let wallet = WalletId::zero();
     node.wallets.create(wallet);
     node.wallets
-        .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false)
+        .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.raw_key(), false)
         .unwrap();
 
     let key1 = rsnano_core::PrivateKey::new();
     node.wallets
-        .insert_adhoc2(&wallet, &key1.private_key(), false)
+        .insert_adhoc2(&wallet, &key1.raw_key(), false)
         .unwrap();
 
     let server = setup_rpc_client_and_server(node.clone(), true);

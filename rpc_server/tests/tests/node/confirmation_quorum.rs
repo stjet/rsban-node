@@ -50,7 +50,7 @@ fn confirmation_quorum_peer_details() {
     node1.wallets.create(wallet_id);
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), false)
         .unwrap();
 
     let hash = send_block(node0.clone());

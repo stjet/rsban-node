@@ -30,7 +30,7 @@ fn wallet_republish() {
     node.wallets.create(wallet);
 
     node.wallets
-        .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.private_key(), false)
+        .insert_adhoc2(&wallet, &DEV_GENESIS_KEY.raw_key(), false)
         .unwrap();
 
     let result = node

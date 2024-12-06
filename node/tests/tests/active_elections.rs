@@ -512,7 +512,7 @@ fn confirm_election_by_request() {
     let wallet_id = node1.wallets.wallet_ids()[0];
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     // Ensure election on node1 is already confirmed before connecting with node2
@@ -606,7 +606,7 @@ fn confirm_frontier() {
     let wallet_id = node1.wallets.wallet_ids()[0];
     node1
         .wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     node1.process(send.clone()).unwrap();
@@ -842,7 +842,7 @@ fn confirmation_consistency() {
     let node = system.build_node().config(config).finish();
     let wallet_id = node.wallets.wallet_ids()[0];
     node.wallets
-        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
+        .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.raw_key(), true)
         .unwrap();
 
     for i in 0..10 {

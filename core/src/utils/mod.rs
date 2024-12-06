@@ -1,10 +1,8 @@
 mod container_info;
-mod json;
 mod peer;
 mod stream;
 
 pub use container_info::*;
-pub use json::*;
 pub use peer::*;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},

@@ -50,7 +50,7 @@ impl NodeIdKeyFile {
             .context(format!("Could not read node id file {:?}", file_path))?;
 
         let first_line = content.lines().next().unwrap_or("");
-        PrivateKey::from_priv_key_hex(first_line).context(format!(
+        PrivateKey::from_hex_str(first_line).context(format!(
             "Could not decode node id key from file {:?}",
             file_path
         ))
@@ -63,12 +63,12 @@ impl NodeIdKeyFile {
             .create_dir_all(app_path)
             .context(format!("Could not create app dir: {:?}", app_path))?;
 
-        let keypair = self.key_factory.create_key_pair();
+        let keypair = self.key_factory.create_key();
 
         self.fs
             .write(
                 file_path,
-                format!("{}\n", keypair.private_key().encode_hex()).as_bytes(),
+                format!("{}\n", keypair.raw_key().encode_hex()).as_bytes(),
             )
             .context(format!("Could not write node id key file: {:?}", file_path))?;
 
@@ -100,7 +100,7 @@ mod tests {
         #[test]
         fn load_key_from_file() {
             let (key_pair, _) = initialize_node_id_with_valid_existing_file();
-            assert_eq!(key_pair.unwrap().private_key(), EXPECTED_KEY);
+            assert_eq!(key_pair.unwrap().raw_key(), EXPECTED_KEY);
         }
 
         #[test]
@@ -149,7 +149,7 @@ mod tests {
         #[test]
         fn create_new_node_id() {
             let (key_pair, _) = initialize_node_id_without_existing_file();
-            assert_eq!(key_pair.unwrap().private_key(), EXPECTED_KEY);
+            assert_eq!(key_pair.unwrap().raw_key(), EXPECTED_KEY);
         }
 
         #[test]

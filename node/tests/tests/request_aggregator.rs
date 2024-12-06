@@ -16,7 +16,7 @@ fn one() {
     node.wallets
         .insert_adhoc2(
             &node.wallets.wallet_ids()[0],
-            &DEV_GENESIS_KEY.private_key(),
+            &DEV_GENESIS_KEY.raw_key(),
             true,
         )
         .unwrap();
@@ -151,7 +151,7 @@ fn one_update() {
     node.wallets
         .insert_adhoc2(
             &node.wallets.wallet_ids()[0],
-            &DEV_GENESIS_KEY.private_key(),
+            &DEV_GENESIS_KEY.raw_key(),
             true,
         )
         .unwrap();
@@ -273,7 +273,7 @@ fn two() {
     node.wallets
         .insert_adhoc2(
             &node.wallets.wallet_ids()[0],
-            &DEV_GENESIS_KEY.private_key(),
+            &DEV_GENESIS_KEY.raw_key(),
             true,
         )
         .unwrap();
@@ -399,7 +399,7 @@ fn split() {
     node.wallets
         .insert_adhoc2(
             &node.wallets.wallet_ids()[0],
-            &DEV_GENESIS_KEY.private_key(),
+            &DEV_GENESIS_KEY.raw_key(),
             true,
         )
         .unwrap();
@@ -484,7 +484,7 @@ fn channel_max_queue() {
     node.wallets
         .insert_adhoc2(
             &node.wallets.wallet_ids()[0],
-            &DEV_GENESIS_KEY.private_key(),
+            &DEV_GENESIS_KEY.raw_key(),
             true,
         )
         .unwrap();
@@ -527,7 +527,7 @@ fn cannot_vote() {
     node.wallets
         .insert_adhoc2(
             &node.wallets.wallet_ids()[0],
-            &DEV_GENESIS_KEY.private_key(),
+            &DEV_GENESIS_KEY.raw_key(),
             true,
         )
         .unwrap();

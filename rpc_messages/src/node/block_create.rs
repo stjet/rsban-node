@@ -108,7 +108,7 @@ mod tests {
         let work = 4;
         let previous = BlockHash::from(3);
         let key_pair = PrivateKey::new();
-        let raw_key = RawKey::from(key_pair.private_key());
+        let raw_key = RawKey::from(key_pair.raw_key());
 
         // Create BlockCreateArgs using the test StateBlock data
         let block_create_args = BlockCreateArgs {

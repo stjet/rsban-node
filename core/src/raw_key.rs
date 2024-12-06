@@ -76,9 +76,9 @@ mod tests {
         let keypair = PrivateKey::new();
         let secret_key = RawKey::zero();
         let iv = keypair.public_key().initialization_vector();
-        let encrypted = keypair.private_key().encrypt(&secret_key, &iv);
+        let encrypted = keypair.raw_key().encrypt(&secret_key, &iv);
         let decrypted = encrypted.decrypt(&secret_key, &iv);
-        assert_eq!(keypair.private_key(), decrypted);
+        assert_eq!(keypair.raw_key(), decrypted);
         let decrypted_pub = PublicKey::try_from(&decrypted).unwrap();
         assert_eq!(keypair.public_key(), decrypted_pub);
     }

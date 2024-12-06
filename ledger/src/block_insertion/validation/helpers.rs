@@ -198,7 +198,7 @@ impl<'a> BlockValidator<'a> {
             Block::LegacySend(send) => {
                 let amount_sent = self.amount_sent();
                 Some((
-                    PendingKey::new(send.hashables.destination, send.hash()),
+                    PendingKey::new(send.destination(), send.hash()),
                     PendingInfo::new(self.account, amount_sent, Epoch::Epoch0),
                 ))
             }

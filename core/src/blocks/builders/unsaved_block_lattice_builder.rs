@@ -1,5 +1,5 @@
 use crate::{
-    blocks::{open_block::OpenBlockArgs, state_block::EpochBlockArgs},
+    blocks::{open_block::OpenBlockArgs, send_block::SendBlockArgs, state_block::EpochBlockArgs},
     dev_epoch1_signer, epoch_v1_link,
     work::{WorkPool, WorkPoolImpl},
     Account, Amount, Block, BlockHash, ChangeBlock, Epoch, Link, PendingInfo, PendingKey,
@@ -173,13 +173,14 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
             .generate_dev2(frontier.hash.into())
             .unwrap();
 
-        let send = Block::LegacySend(SendBlock::new(
-            &frontier.hash,
-            &destination,
-            &new_balance,
-            self.key,
+        let send: Block = SendBlockArgs {
+            key: self.key,
+            previous: frontier.hash,
+            destination,
+            balance: new_balance,
             work,
-        ));
+        }
+        .into();
 
         self.set_new_frontier(Frontier {
             hash: send.hash(),

@@ -814,16 +814,12 @@ fn bootstrap_confirm_frontiers() {
         .wallets
         .insert_adhoc2(&wallet_id0, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key0 = PrivateKey::new();
 
     // create block to send 500 raw from genesis to key0 and save into node0 ledger without immediately triggering an election
-    let send0 = Block::LegacySend(SendBlock::new(
-        &DEV_GENESIS_HASH,
-        &key0.account(),
-        &(Amount::MAX - Amount::raw(500)),
-        &DEV_GENESIS_KEY,
-        node0.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send0 = lattice.genesis().legacy_send(&key0, 500);
 
     assert_eq!(
         BlockStatus::Progress,
@@ -1047,24 +1043,15 @@ fn fork_bootstrap_flip() {
         .insert_adhoc2(&wallet_id1, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
-    let latest = node1.latest(&DEV_GENESIS_ACCOUNT);
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let mut fork_lattice = lattice.clone();
     let key1 = PrivateKey::new();
-    let send1 = Block::LegacySend(SendBlock::new(
-        &latest,
-        &key1.account(),
-        &(Amount::MAX - Amount::raw(1_000_000)),
-        &DEV_GENESIS_KEY,
-        system.work.generate_dev2(latest.into()).unwrap(),
-    ));
+    let send1 = lattice.genesis().legacy_send(&key1, Amount::raw(1_000_000));
 
     let key2 = PrivateKey::new();
-    let send2 = Block::LegacySend(SendBlock::new(
-        &latest,
-        &key2.account(),
-        &(Amount::MAX - Amount::raw(1_000_000)),
-        &DEV_GENESIS_KEY,
-        system.work.generate_dev2(latest.into()).unwrap(),
-    ));
+    let send2 = fork_lattice
+        .genesis()
+        .legacy_send(&key2, Amount::raw(1_000_000));
 
     // Insert but don't rebroadcast, simulating settled blocks
     assert_eq!(
@@ -1113,37 +1100,14 @@ fn fork_multi_flip() {
     config.peering_port = Some(get_available_port());
     let node2 = system.build_node().config(config).flags(flags).finish();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let mut fork_lattice = lattice.clone();
     let key1 = PrivateKey::new();
-    let send1 = Block::LegacySend(SendBlock::new(
-        &DEV_GENESIS_HASH,
-        &key1.account(),
-        &(Amount::MAX - Amount::raw(100)),
-        &DEV_GENESIS_KEY,
-        system
-            .work
-            .generate_dev2((*DEV_GENESIS_HASH).into())
-            .unwrap(),
-    ));
+    let send1 = lattice.genesis().legacy_send(&key1, 100);
 
     let key2 = PrivateKey::new();
-    let send2 = Block::LegacySend(SendBlock::new(
-        &DEV_GENESIS_HASH,
-        &key2.account(),
-        &(Amount::MAX - Amount::raw(100)),
-        &DEV_GENESIS_KEY,
-        system
-            .work
-            .generate_dev2((*DEV_GENESIS_HASH).into())
-            .unwrap(),
-    ));
-
-    let send3 = Block::LegacySend(SendBlock::new(
-        &send2.hash(),
-        &key2.account(),
-        &(Amount::MAX - Amount::raw(100)),
-        &DEV_GENESIS_KEY,
-        system.work.generate_dev2(send2.hash().into()).unwrap(),
-    ));
+    let send2 = fork_lattice.genesis().legacy_send(&key2, 100);
+    let send3 = fork_lattice.genesis().legacy_send(&key2, 0);
 
     assert_eq!(
         BlockStatus::Progress,

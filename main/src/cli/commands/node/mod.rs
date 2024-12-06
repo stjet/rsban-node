@@ -62,16 +62,6 @@ impl NodeCommand {
         let env = Arc::new(LmdbEnv::new(&path)?);
         let wallets = Wallets::new_null_with_env(env, tokio::runtime::Handle::current());
 
-        println!("Testing hash function");
-
-        SendBlock::new(
-            &BlockHash::zero(),
-            &Account::zero(),
-            &Amount::zero(),
-            &PrivateKey::zero(),
-            0,
-        );
-
         println!("Testing key derivation function");
 
         wallets.kdf.hash_password("", &mut [0; 32]);

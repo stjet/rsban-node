@@ -1,4 +1,4 @@
-use super::{BlockBase, BlockType};
+use super::{Block, BlockBase, BlockType};
 use crate::{
     utils::{BufferWriter, FixedSizeSerialize, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, Link, PendingKey,
@@ -7,67 +7,12 @@ use crate::{
 use anyhow::Result;
 use serde::de::{Unexpected, Visitor};
 
-#[derive(Clone, PartialEq, Eq, Default, Debug)]
-pub struct SendHashables {
-    pub previous: BlockHash,
-    pub destination: Account,
-    pub balance: Amount,
-}
-
-impl SendHashables {
-    pub fn serialized_size() -> usize {
-        BlockHash::serialized_size() + Account::serialized_size() + Amount::serialized_size()
-    }
-
-    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
-        let mut buffer_32 = [0u8; 32];
-        let mut buffer_16 = [0u8; 16];
-
-        stream.read_bytes(&mut buffer_32, 32)?;
-        let previous = BlockHash::from_bytes(buffer_32);
-
-        stream.read_bytes(&mut buffer_32, 32)?;
-        let destination = Account::from_bytes(buffer_32);
-
-        stream.read_bytes(&mut buffer_16, 16)?;
-        let balance = Amount::raw(u128::from_be_bytes(buffer_16));
-
-        Ok(Self {
-            previous,
-            destination,
-            balance,
-        })
-    }
-
-    fn clear(&mut self) {
-        self.previous = BlockHash::zero();
-        self.destination = Account::zero();
-        self.balance = Amount::raw(0);
-    }
-
-    fn hash(&self) -> BlockHash {
-        BlockHashBuilder::new()
-            .update(self.previous.as_bytes())
-            .update(self.destination.as_bytes())
-            .update(self.balance.to_be_bytes())
-            .build()
-    }
-}
-
-impl crate::utils::Serialize for SendHashables {
-    fn serialize(&self, stream: &mut dyn BufferWriter) {
-        self.previous.serialize(stream);
-        self.destination.serialize(stream);
-        self.balance.serialize(stream);
-    }
-}
-
 #[derive(Clone, Default, Debug)]
 pub struct SendBlock {
-    pub hashables: SendHashables,
-    pub signature: Signature,
-    pub work: u64,
-    pub hash: BlockHash,
+    hashables: SendHashables,
+    signature: Signature,
+    work: u64,
+    hash: BlockHash,
 }
 
 impl SendBlock {
@@ -97,13 +42,14 @@ impl SendBlock {
 
     pub fn new_test_instance() -> Self {
         let key = PrivateKey::from(42);
-        SendBlock::new(
-            &BlockHash::from(1),
-            &Account::from(2),
-            &Amount::raw(3),
-            &key,
-            424269420,
-        )
+        SendBlockArgs {
+            key: &key,
+            previous: 1.into(),
+            destination: 2.into(),
+            balance: 3.into(),
+            work: 424269420,
+        }
+        .into()
     }
 
     pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
@@ -152,8 +98,8 @@ impl SendBlock {
         PendingKey::new(self.hashables.destination, self.hash())
     }
 
-    pub fn destination(&self) -> &Account {
-        &self.hashables.destination
+    pub fn destination(&self) -> Account {
+        self.hashables.destination
     }
 
     pub fn dependent_blocks(&self) -> DependentBlocks {
@@ -278,6 +224,95 @@ impl From<JsonSendBlock> for SendBlock {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Default, Debug)]
+struct SendHashables {
+    pub previous: BlockHash,
+    pub destination: Account,
+    pub balance: Amount,
+}
+
+impl SendHashables {
+    pub fn serialized_size() -> usize {
+        BlockHash::serialized_size() + Account::serialized_size() + Amount::serialized_size()
+    }
+
+    pub fn deserialize(stream: &mut dyn Stream) -> Result<Self> {
+        let mut buffer_32 = [0u8; 32];
+        let mut buffer_16 = [0u8; 16];
+
+        stream.read_bytes(&mut buffer_32, 32)?;
+        let previous = BlockHash::from_bytes(buffer_32);
+
+        stream.read_bytes(&mut buffer_32, 32)?;
+        let destination = Account::from_bytes(buffer_32);
+
+        stream.read_bytes(&mut buffer_16, 16)?;
+        let balance = Amount::raw(u128::from_be_bytes(buffer_16));
+
+        Ok(Self {
+            previous,
+            destination,
+            balance,
+        })
+    }
+
+    fn clear(&mut self) {
+        self.previous = BlockHash::zero();
+        self.destination = Account::zero();
+        self.balance = Amount::raw(0);
+    }
+
+    fn hash(&self) -> BlockHash {
+        BlockHashBuilder::new()
+            .update(self.previous.as_bytes())
+            .update(self.destination.as_bytes())
+            .update(self.balance.to_be_bytes())
+            .build()
+    }
+}
+
+impl crate::utils::Serialize for SendHashables {
+    fn serialize(&self, stream: &mut dyn BufferWriter) {
+        self.previous.serialize(stream);
+        self.destination.serialize(stream);
+        self.balance.serialize(stream);
+    }
+}
+
+pub struct SendBlockArgs<'a> {
+    pub key: &'a PrivateKey,
+    pub previous: BlockHash,
+    pub destination: Account,
+    pub balance: Amount,
+    pub work: u64,
+}
+
+impl<'a> From<SendBlockArgs<'a>> for SendBlock {
+    fn from(value: SendBlockArgs<'a>) -> Self {
+        let hashables = SendHashables {
+            previous: value.previous,
+            destination: value.destination,
+            balance: value.balance,
+        };
+
+        let hash = hashables.hash();
+        let signature = value.key.sign(hash.as_bytes());
+
+        Self {
+            hashables,
+            work: value.work,
+            signature,
+            hash,
+        }
+    }
+}
+
+impl<'a> From<SendBlockArgs<'a>> for Block {
+    fn from(value: SendBlockArgs<'a>) -> Self {
+        Block::LegacySend(value.into())
+    }
+}
+
 #[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct JsonSendBlock {
     pub previous: BlockHash,
@@ -360,13 +395,14 @@ mod tests {
     #[test]
     fn create_send_block() {
         let key = PrivateKey::new();
-        let mut block = SendBlock::new(
-            &BlockHash::from(0),
-            &Account::from(1),
-            &Amount::raw(13),
-            &key,
-            2,
-        );
+        let mut block: SendBlock = SendBlockArgs {
+            key: &key,
+            previous: 0.into(),
+            destination: 1.into(),
+            balance: 13.into(),
+            work: 2,
+        }
+        .into();
 
         assert_eq!(block.root(), block.previous().into());
         let hash = block.hash().to_owned();
@@ -387,13 +423,14 @@ mod tests {
     #[test]
     fn serialize() {
         let key = PrivateKey::new();
-        let block1 = SendBlock::new(
-            &BlockHash::from(0),
-            &Account::from(1),
-            &Amount::raw(2),
-            &key,
-            5,
-        );
+        let block1: SendBlock = SendBlockArgs {
+            key: &key,
+            previous: 0.into(),
+            destination: 1.into(),
+            balance: 2.into(),
+            work: 5,
+        }
+        .into();
         let mut stream = MemoryStream::new();
         block1.serialize_without_block_type(&mut stream);
         assert_eq!(SendBlock::serialized_size(), stream.bytes_written());

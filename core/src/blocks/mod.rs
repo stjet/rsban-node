@@ -17,7 +17,7 @@ pub use receive_block::{valid_receive_block_predecessor, ReceiveBlock, ReceiveHa
 
 mod send_block;
 use send_block::JsonSendBlock;
-pub use send_block::{valid_send_block_predecessor, SendBlock, SendHashables};
+pub use send_block::{valid_send_block_predecessor, SendBlock};
 
 mod state_block;
 pub use state_block::{EpochBlockArgs, JsonStateBlock, StateBlock, StateBlockArgs};
@@ -494,7 +494,7 @@ impl SavedBlock {
 
     pub fn destination(&self) -> Option<Account> {
         match &self.block {
-            Block::LegacySend(i) => Some(*i.destination()),
+            Block::LegacySend(i) => Some(i.destination()),
             Block::State(i) => {
                 if self.sideband.details.is_send {
                     Some(i.link().into())

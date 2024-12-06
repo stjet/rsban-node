@@ -19,14 +19,10 @@ mod votes {
     fn add_one() {
         let mut system = System::new();
         let node1 = system.make_node();
+
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let key1 = PrivateKey::new();
-        let send1 = Block::LegacySend(SendBlock::new(
-            &DEV_GENESIS_HASH,
-            &key1.public_key().as_account(),
-            &(Amount::MAX - Amount::raw(100)),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let send1 = lattice.genesis().legacy_send(&key1, 100);
         let send1 = node1.process(send1).unwrap();
         node1
             .election_schedulers

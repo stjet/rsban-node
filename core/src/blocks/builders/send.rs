@@ -1,7 +1,7 @@
 use crate::{
+    blocks::send_block::SendBlockArgs,
     work::{WorkPool, STUB_WORK_POOL},
     Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, PrivateKey, SavedBlock,
-    SendBlock,
 };
 
 pub struct TestLegacySendBlockBuilder {
@@ -71,8 +71,15 @@ impl TestLegacySendBlockBuilder {
         let work = self
             .work
             .unwrap_or_else(|| STUB_WORK_POOL.generate_dev2(previous.into()).unwrap());
-        let block = SendBlock::new(&previous, &destination, &balance, &priv_key, work);
-        Block::LegacySend(block)
+
+        SendBlockArgs {
+            key: &priv_key,
+            previous,
+            destination,
+            balance,
+            work,
+        }
+        .into()
     }
 
     pub fn build_saved(self) -> SavedBlock {

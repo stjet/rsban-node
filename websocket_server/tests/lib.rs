@@ -1,10 +1,10 @@
 use core::panic;
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::{
-    Account, Amount, Block, JsonBlock, Networks, PrivateKey, SendBlock, StateBlock,
-    UnsavedBlockLatticeBuilder, Vote, VoteCode, DEV_GENESIS_KEY,
+    Account, Amount, Block, JsonBlock, Networks, PrivateKey, SendBlock, UnsavedBlockLatticeBuilder,
+    Vote, VoteCode, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::{Message, Publish};
 use rsnano_node::{
     bootstrap::{BootstrapInitiatorExt, BootstrapStarted},
@@ -307,19 +307,9 @@ fn confirmation_options_votes() {
         // Confirm a state block for an in-wallet account
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
         let key = PrivateKey::new();
-        let balance = Amount::MAX;
         let send_amount = node1.config.online_weight_minimum + Amount::raw(1);
-        let previous = *DEV_GENESIS_HASH;
-        let balance = balance - send_amount;
-        let send = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            previous,
-            *DEV_GENESIS_PUB_KEY,
-            balance,
-            key.public_key().as_account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous),
-        ));
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let send = lattice.genesis().send(&key, send_amount);
         let send_hash = send.hash();
         node1.process_active(send);
 
@@ -361,19 +351,9 @@ fn confirmation_options_sideband() {
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
 
         let key = PrivateKey::new();
-        let balance = Amount::MAX;
         let send_amount = node1.config.online_weight_minimum + Amount::raw(1);
-        let previous = *DEV_GENESIS_HASH;
-        let balance = balance - send_amount;
-        let send = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            previous,
-            *DEV_GENESIS_PUB_KEY,
-            balance,
-            key.public_key().as_account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous),
-        ));
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let send = lattice.genesis().send(&key, send_amount);
         node1.process_active(send);
 
         let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
@@ -420,17 +400,8 @@ fn confirmation_options_update() {
         // Confirm a block
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
         let key = PrivateKey::new();
-        let previous = *DEV_GENESIS_HASH;
-        let send = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            previous,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            key.public_key().as_account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous),
-        ));
-        let previous = send.hash();
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let send = lattice.genesis().send(&key, Amount::nano(1000));
         node1.process_active(send);
 
         assert_eq!(websocket.subscriber_count(Topic::Confirmation), 1);
@@ -449,15 +420,7 @@ fn confirmation_options_update() {
         ws_stream.next().await.unwrap().unwrap();
 
 	    // Confirm another block
-        let send2 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            previous,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(2000),
-            key.public_key().as_account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous),
-        ));
+        let send2 = lattice.genesis().send(&key, Amount::nano(1000));
         node1.process_active(send2);
 
         timeout(Duration::from_secs(1), ws_stream.next())
@@ -485,16 +448,8 @@ fn vote() {
         // Quick-confirm a block
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
         let key = PrivateKey::new();
-        let previous = *DEV_GENESIS_HASH;
-        let send = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            previous,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::nano(1000),
-            key.public_key().as_account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous),
-        ));
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let send = lattice.genesis().send(&key, Amount::nano(1000));
         node1.process_active(send);
 
         let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
@@ -558,21 +513,11 @@ fn vote_options_representatives() {
 
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
 	    // Quick-confirm a block
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let key = PrivateKey::new();
-        let mut previous = *DEV_GENESIS_HASH;
         let send_amount = node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1);
-        let send = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            previous,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - send_amount,
-            key.public_key().as_account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous),
-        ));
-        previous = send.hash();
+        let send = lattice.genesis().send(&key, send_amount);
         node1.process_active(send);
-
 
         let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
             panic!("not a text message");
@@ -591,15 +536,7 @@ fn vote_options_representatives() {
         //await ack
         ws_stream.next().await.unwrap().unwrap();
 
-        let send = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            previous,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - send_amount * 2,
-            key.public_key().as_account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous),
-        ));
+        let send = lattice.genesis().send(&key, send_amount);
         node1.process_active(send);
 
         let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
@@ -745,15 +682,8 @@ fn new_unconfirmed_block() {
         ws_stream.next().await.unwrap().unwrap();
 
         // Process a new block
-        let send = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::raw(1),
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let send = lattice.genesis().send(&*DEV_GENESIS_KEY, 1);
         node1.process_local(send.clone()).unwrap();
 
         let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {

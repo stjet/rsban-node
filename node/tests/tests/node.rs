@@ -1,8 +1,9 @@
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBase, BlockHash,
     DifficultyV1, Epoch, Link, OpenBlock, PrivateKey, PublicKey, QualifiedRoot, Root, SendBlock,
-    Signature, StateBlock, TestBlockBuilder, TestLegacySendBlockBuilder, UncheckedInfo, Vote,
-    VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
+    Signature, StateBlock, StateBlockArgs, TestBlockBuilder, TestLegacySendBlockBuilder,
+    UncheckedInfo, UnsavedBlockLatticeBuilder, Vote, VoteSource, VoteWithWeightInfo,
+    DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -2179,15 +2180,15 @@ fn fork_no_vote_quorum() {
     assert_eq!(node1.config.receive_minimum, node2.ledger.weight(&key1));
     assert_eq!(node1.config.receive_minimum, node3.ledger.weight(&key1));
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        block.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        (Amount::MAX / 4) - (node1.config.receive_minimum * 2),
-        Account::from(key1).into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(block.hash()),
-    ));
+    let send1: Block = StateBlockArgs {
+        key: &DEV_GENESIS_KEY,
+        previous: block.hash(),
+        representative: *DEV_GENESIS_PUB_KEY,
+        balance: (Amount::MAX / 4) - (node1.config.receive_minimum * 2),
+        link: Account::from(key1).into(),
+        work: node1.work_generate_dev(block.hash()),
+    }
+    .into();
 
     node1.process(send1.clone()).unwrap();
     node2.process(send1.clone()).unwrap();
@@ -2198,15 +2199,16 @@ fn fork_no_vote_quorum() {
         .deterministic_insert2(&wallet_id3, true)
         .unwrap();
 
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        block.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        (Amount::MAX / 4) - (node1.config.receive_minimum * 2),
-        Account::from(key2).into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(block.hash()),
-    ));
+    let send2: Block = StateBlockArgs {
+        key: &DEV_GENESIS_KEY,
+        previous: block.hash(),
+        representative: *DEV_GENESIS_PUB_KEY,
+        balance: (Amount::MAX / 4) - (node1.config.receive_minimum * 2),
+        link: Account::from(key2).into(),
+        work: node1.work_generate_dev(block.hash()),
+    }
+    .into();
+
     let vote = Vote::new(&PrivateKey::new(), 0, 0, vec![send2.hash()]);
     let confirm = Message::ConfirmAck(ConfirmAck::new_with_own_vote(vote));
     let channel = node2
@@ -2246,16 +2248,10 @@ fn fork_open() {
 
     // create block send1, to send all the balance from genesis to key1
     // this is done to ensure that the open block(s) cannot be voted on and confirmed
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::zero(),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(&key1, Amount::MAX);
+    let mut fork_lattice = lattice.clone();
 
     let channel = make_fake_channel(&node);
 
@@ -2280,15 +2276,7 @@ fn fork_open() {
         .unwrap();
 
     // create the 1st open block to receive send1, which should be regarded as the winner just because it is first
-    let open1 = Block::State(StateBlock::new(
-        key1.account(),
-        BlockHash::zero(),
-        1.into(),
-        Amount::MAX,
-        send1.hash().into(),
-        &key1,
-        node.work_generate_dev(&key1),
-    ));
+    let open1 = lattice.account(&key1).receive_and_change(&send1, 1);
     node.inbound_message_queue.put(
         Message::Publish(Publish::new_forward(open1.clone())),
         channel.info.clone(),
@@ -2297,15 +2285,7 @@ fn fork_open() {
 
     // create 2nd open block, which is a fork of open1 block
     // create the 1st open block to receive send1, which should be regarded as the winner just because it is first
-    let open2 = Block::State(StateBlock::new(
-        key1.account(),
-        BlockHash::zero(),
-        2.into(),
-        Amount::MAX,
-        send1.hash().into(),
-        &key1,
-        node.work_generate_dev(&key1),
-    ));
+    let open2 = fork_lattice.account(&key1).receive_and_change(&send1, 2);
     node.inbound_message_queue.put(
         Message::Publish(Publish::new_forward(open2.clone())),
         channel.info.clone(),
@@ -2383,16 +2363,9 @@ fn online_reps_election() {
     let node = system.build_node().flags(flags).finish();
 
     // Start election
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(&key, Amount::nano(1000));
 
     node.process_active(send1.clone());
     assert_timely_eq(Duration::from_secs(5), || node.active.len(), 1);

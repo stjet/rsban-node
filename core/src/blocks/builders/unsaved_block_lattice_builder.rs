@@ -1,7 +1,7 @@
 use crate::{
     blocks::state_block::EpochBlockArgs,
     dev_epoch1_signer, epoch_v1_link,
-    work::{WorkPool, WorkPoolImpl},
+    work::{StubWorkPool, WorkPool, WorkPoolImpl},
     Account, Amount, Block, BlockHash, ChangeBlock, Epoch, Link, OpenBlock, PendingInfo,
     PendingKey, PrivateKey, PublicKey, ReceiveBlock, Root, SendBlock, StateBlockArgs,
     DEV_GENESIS_BLOCK, DEV_GENESIS_KEY,
@@ -87,6 +87,16 @@ impl UnsavedBlockLatticeBuilder {
         self.pending_receives
             .remove(&PendingKey::new(receiving_account.into(), send_hash))
             .expect("no pending receive found")
+    }
+}
+
+impl Clone for UnsavedBlockLatticeBuilder {
+    fn clone(&self) -> Self {
+        Self {
+            accounts: self.accounts.clone(),
+            work_pool: WorkPoolImpl::new_dev(),
+            pending_receives: self.pending_receives.clone(),
+        }
     }
 }
 
@@ -243,6 +253,15 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
     }
 
     pub fn receive(&mut self, corresponding_send: &Block) -> Block {
+        let frontier = self.get_frontier_or_empty();
+        self.receive_and_change(corresponding_send, frontier.representative)
+    }
+
+    pub fn receive_and_change(
+        &mut self,
+        corresponding_send: &Block,
+        new_representative: impl Into<PublicKey>,
+    ) -> Block {
         assert_eq!(corresponding_send.destination_or_link(), self.key.account());
         let amount = self
             .lattice
@@ -262,7 +281,7 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
         let receive: Block = StateBlockArgs {
             key: self.key,
             previous: frontier.hash,
-            representative: frontier.representative,
+            representative: new_representative.into(),
             balance: new_balance,
             link: corresponding_send.hash().into(),
             work: self.lattice.work_pool.generate_dev2(root).unwrap(),

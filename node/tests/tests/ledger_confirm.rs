@@ -1,6 +1,5 @@
 use rsnano_core::{
-    Amount, Block, BlockHash, ChangeBlock, Epoch, Link, OpenBlock, PrivateKey, PublicKey,
-    ReceiveBlock, SendBlock, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
+    Amount, Block, PrivateKey, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::stats::{DetailType, Direction, StatType};
@@ -317,60 +316,12 @@ fn all_block_types() {
     let state_change = lattice.account(&key2).change(&*DEV_GENESIS_KEY);
     let epoch = lattice.account(&key2).epoch1();
     let epoch1 = lattice.account(&key1).epoch1();
-    let state_send1 = Block::State(StateBlock::new(
-        key1.public_key().as_account(),
-        epoch1.hash(),
-        PublicKey::zero(),
-        Amount::nano(999),
-        key2.public_key().as_account().into(),
-        &key1,
-        node.work_generate_dev(epoch1.hash()),
-    ));
-    let state_receive2 = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        epoch.hash(),
-        PublicKey::zero(),
-        Amount::nano(1001),
-        state_send1.hash().into(),
-        &key2,
-        node.work_generate_dev(epoch.hash()),
-    ));
-    let state_send2 = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        state_receive2.hash(),
-        PublicKey::zero(),
-        Amount::nano(1000),
-        key1.public_key().as_account().into(),
-        &key2,
-        node.work_generate_dev(state_receive2.hash()),
-    ));
-    let state_send3 = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        state_send2.hash(),
-        PublicKey::zero(),
-        Amount::nano(999),
-        key1.public_key().as_account().into(),
-        &key2,
-        node.work_generate_dev(state_send2.hash()),
-    ));
-    let state_send4 = Block::State(StateBlock::new(
-        key1.public_key().as_account(),
-        state_send1.hash(),
-        PublicKey::zero(),
-        Amount::nano(998),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key1,
-        node.work_generate_dev(state_send1.hash()),
-    ));
-    let state_receive3 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1999),
-        state_send4.hash().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash()),
-    ));
+    let state_send1 = lattice.account(&key1).send(&key2, 1);
+    let state_receive2 = lattice.account(&key2).receive(&state_send1);
+    let state_send2 = lattice.account(&key2).send(&key1, 1);
+    let state_send3 = lattice.account(&key2).send(&key1, 1);
+    let state_send4 = lattice.account(&key1).send(&*DEV_GENESIS_KEY, 1);
+    let state_receive3 = lattice.genesis().receive(&state_send4);
     node.process_multi(&[
         send,
         send1,

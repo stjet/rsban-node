@@ -1,6 +1,6 @@
 use rsnano_core::{
-    utils::milliseconds_since_epoch, Amount, Block, PrivateKey, Signature, StateBlock, Vote,
-    VoteCode, VoteSource, DEV_GENESIS_KEY,
+    utils::milliseconds_since_epoch, Amount, PrivateKey, Signature, UnsavedBlockLatticeBuilder,
+    Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
@@ -304,16 +304,11 @@ fn no_broadcast_local() {
         .finish();
 
     // Reduce the weight of genesis to 2x default min voting weight
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key = PrivateKey::new();
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node.config.vote_minimum * 2,
-        (&key).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send = lattice
+        .genesis()
+        .send_all_except(&key, node.config.vote_minimum * 2);
     node.process_local(send.clone()).unwrap();
     assert_timely(Duration::from_secs(10), || node.active.len() > 0);
     assert_eq!(
@@ -379,16 +374,11 @@ fn local_broadcast_without_a_representative() {
         .flags(flags)
         .finish();
     // Reduce the weight of genesis to 2x default min voting weight
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key = PrivateKey::new();
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node.config.vote_minimum,
-        (&key).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send = lattice
+        .genesis()
+        .send_all_except(&key, node.config.vote_minimum);
     node.process_local(send.clone()).unwrap();
     assert_timely(Duration::from_secs(10), || node.active.len() > 0);
     assert_eq!(
@@ -453,16 +443,9 @@ fn no_broadcast_local_with_a_principal_representative() {
         .flags(flags)
         .finish();
     // Reduce the weight of genesis to 2x default min voting weight
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key = PrivateKey::new();
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - (node.config.vote_minimum * 2),
-        (&key).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send = lattice.genesis().send(&key, node.config.vote_minimum * 2);
     node.process_local(send.clone()).unwrap();
     assert_timely(Duration::from_secs(10), || node.active.len() > 0);
     assert_eq!(

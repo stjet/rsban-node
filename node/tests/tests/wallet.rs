@@ -1,6 +1,6 @@
 use rsnano_core::{
     deterministic_key, Account, Amount, Block, BlockHash, Epoch, KeyDerivationFunction, PrivateKey,
-    PublicKey, RawKey, StateBlock, DEV_GENESIS_KEY,
+    PublicKey, RawKey, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
@@ -1398,15 +1398,10 @@ fn search_receivable() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
         .unwrap();
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - node.config.receive_minimum,
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice
+        .genesis()
+        .send(&*DEV_GENESIS_KEY, node.config.receive_minimum);
     node.process(send.clone()).unwrap();
 
     // Pending search should start an election

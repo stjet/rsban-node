@@ -1,6 +1,6 @@
 use rsnano_core::{
-    Amount, Block, BlockHash, Epoch, PrivateKey, Root, Signature, StateBlock,
-    UnsavedBlockLatticeBuilder, Vote, VoteCode, VoteSource, WalletId, DEV_GENESIS_KEY,
+    Amount, BlockHash, Epoch, PrivateKey, Root, Signature, UnsavedBlockLatticeBuilder, Vote,
+    VoteCode, VoteSource, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
@@ -20,16 +20,9 @@ fn check_signature() {
     let mut config = System::default_config();
     config.online_weight_minimum = Amount::MAX;
     let node = system.build_node().config(config).finish();
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(&key1, 100);
     node.process(send1.clone()).unwrap();
     let election1 = start_election(&node, &send1.hash());
     assert_eq!(1, election1.vote_count());
@@ -70,16 +63,10 @@ fn check_signature() {
 fn add_old() {
     let mut system = System::new();
     let node = system.make_node();
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::zero(),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send_max(&key1);
     node.process(send1.clone()).unwrap();
     start_election(&node, &send1.hash());
     assert_timely(Duration::from_secs(5), || {
@@ -97,15 +84,7 @@ fn add_old() {
         .vote_blocking(&vote1, channel.channel_id(), VoteSource::Live);
 
     let key2 = PrivateKey::new();
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::zero(),
-        key2.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send2 = fork_lattice.genesis().send_max(&key2);
     let vote2 = Arc::new(Vote::new(
         &DEV_GENESIS_KEY,
         Vote::TIMESTAMP_MIN * 1,
@@ -135,16 +114,10 @@ fn add_old() {
 fn add_cooldown() {
     let mut system = System::new();
     let node = system.make_node();
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::zero(),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send_max(&key1);
     node.process(send1.clone()).unwrap();
     start_election(&node, &send1.hash());
     assert_timely(Duration::from_secs(5), || {
@@ -162,15 +135,7 @@ fn add_cooldown() {
         .vote_blocking(&vote1, channel.channel_id(), VoteSource::Live);
 
     let key2 = PrivateKey::new();
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::zero(),
-        key2.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send2 = fork_lattice.genesis().send_max(&key2);
     let vote2 = Arc::new(Vote::new(
         &DEV_GENESIS_KEY,
         Vote::TIMESTAMP_MIN * 2,

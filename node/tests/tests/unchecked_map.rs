@@ -1,8 +1,8 @@
 use rsnano_core::{
-    Amount, Block, PrivateKey, StateBlock, UncheckedInfo, UncheckedKey, UnsavedBlockLatticeBuilder,
-    DEV_GENESIS_KEY,
+    Amount, Block, PrivateKey, StateBlockArgs, UncheckedInfo, UncheckedKey,
+    UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{block_processing::UncheckedMap, stats::Stats};
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely, assert_timely_eq};
@@ -115,35 +115,37 @@ fn multiple_get() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
     // Instantiates three blocks
     let key1 = PrivateKey::new();
-    let block1 = Block::State(StateBlock::new(
-        key1.account(),
-        1.into(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(1),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key1,
-        0,
-    ));
+    let block1: Block = StateBlockArgs {
+        key: &key1,
+        previous: 1.into(),
+        representative: *DEV_GENESIS_PUB_KEY,
+        balance: Amount::raw(1),
+        link: (*DEV_GENESIS_ACCOUNT).into(),
+        work: 0,
+    }
+    .into();
+
     let key2 = PrivateKey::new();
-    let block2 = Block::State(StateBlock::new(
-        key2.account(),
-        2.into(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(1),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key2,
-        0,
-    ));
+    let block2: Block = StateBlockArgs {
+        key: &key2,
+        previous: 2.into(),
+        representative: *DEV_GENESIS_PUB_KEY,
+        balance: Amount::raw(1),
+        link: (*DEV_GENESIS_ACCOUNT).into(),
+        work: 0,
+    }
+    .into();
+
     let key3 = PrivateKey::new();
-    let block3 = Block::State(StateBlock::new(
-        key3.account(),
-        3.into(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(1),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key3,
-        0,
-    ));
+    let block3: Block = StateBlockArgs {
+        key: &key3,
+        previous: 3.into(),
+        representative: *DEV_GENESIS_PUB_KEY,
+        balance: Amount::raw(1),
+        link: (*DEV_GENESIS_ACCOUNT).into(),
+        work: 0,
+    }
+    .into();
     // Add the blocks' info to the unchecked table
     unchecked.put(block1.previous().into(), UncheckedInfo::new(block1.clone())); // unchecked1
     unchecked.put(block1.hash().into(), UncheckedInfo::new(block1.clone())); // unchecked2

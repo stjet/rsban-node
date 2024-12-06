@@ -1,12 +1,11 @@
-use std::time::Duration;
-
-use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, WalletId, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, WalletId, DEV_GENESIS_KEY};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     config::{NodeConfig, NodeFlags},
     consensus::ActiveElectionsExt,
     wallets::WalletsExt,
 };
+use std::time::Duration;
 use test_helpers::{assert_timely, assert_timely_eq, System};
 
 #[test]
@@ -27,49 +26,19 @@ fn vote_minimum() {
     let key1 = PrivateKey::new();
     let key2 = PrivateKey::new();
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - node.config.vote_minimum,
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(&key1, node.config.vote_minimum);
     node.process(send1.clone()).unwrap();
 
-    let open1 = Block::State(StateBlock::new(
-        key1.account(),
-        BlockHash::zero(),
-        key1.public_key(),
-        node.config.vote_minimum,
-        send1.hash().into(),
-        &key1,
-        node.work_generate_dev(&key1),
-    ));
+    let open1 = lattice.account(&key1).receive(&send1);
     node.process(open1.clone()).unwrap();
 
-    // send2 with amount vote_minimum - 1 (not voting representative)
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - node.config.vote_minimum * 2 + Amount::raw(1),
-        key2.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash()),
-    ));
+    let send2 = lattice
+        .genesis()
+        .send(&key2, node.config.vote_minimum - Amount::raw(1));
     node.process(send2.clone()).unwrap();
 
-    let open2 = Block::State(StateBlock::new(
-        key2.account(),
-        BlockHash::zero(),
-        key2.public_key(),
-        node.config.vote_minimum - Amount::raw(1),
-        send2.hash().into(),
-        &key2,
-        node.work_generate_dev(&key2),
-    ));
+    let open2 = lattice.account(&key2).receive(&send2);
     node.process(open2.clone()).unwrap();
 
     let wallet_id = node.wallets.wallet_ids()[0];
@@ -157,15 +126,10 @@ fn search_receivable() {
             .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
             .unwrap();
 
-        let send = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - node.config.receive_minimum,
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
+        let send = lattice
+            .genesis()
+            .send(&*DEV_GENESIS_KEY, node.config.receive_minimum);
         node.process(send.clone()).unwrap();
 
         // Pending search should start an election

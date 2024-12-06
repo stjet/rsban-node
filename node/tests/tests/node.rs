@@ -32,6 +32,7 @@ use test_helpers::{
     assert_timely_msg, establish_tcp, get_available_port, make_fake_channel, start_election,
     start_elections, System,
 };
+use tracing::instrument::WithSubscriber;
 
 #[test]
 fn pruning_depth_max_depth() {
@@ -2406,24 +2407,10 @@ fn vote_republish() {
         .unwrap();
 
     // send1 and send2 are forks of each other
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        key2.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(2000),
-        key2.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(&key2, Amount::nano(1000));
+    let send2 = fork_lattice.genesis().send(&key2, Amount::nano(2000));
 
     // process send1 first, this will make sure send1 goes into the ledger and an election is started
     node1.process_active(send1.clone());
@@ -2510,24 +2497,10 @@ fn vote_by_hash_republish() {
         .unwrap();
 
     // send1 and send2 are forks of each other
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        key2.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(2000),
-        key2.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(&key2, Amount::nano(1000));
+    let send2 = fork_lattice.genesis().send(&key2, Amount::nano(2000));
 
     // give block send1 to node1 and check that an election for send1 starts on both nodes
     node1.process_active(send1.clone());
@@ -2578,33 +2551,15 @@ fn fork_election_invalid_block_signature() {
     let node1 = system.make_node();
 
     // send1 and send2 are forks of each other
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(2000),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    let mut send3 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(2000),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice
+        .genesis()
+        .send(&*DEV_GENESIS_KEY, Amount::nano(1000));
+    let send2 = fork_lattice
+        .genesis()
+        .send(&*DEV_GENESIS_KEY, Amount::nano(2000));
+    let mut send3 = send2.clone();
     send3.set_signature(&Signature::new()); // Invalid signature
 
     let channel = make_fake_channel(&node1);
@@ -2652,33 +2607,10 @@ fn confirm_back() {
     let node = system.make_node();
     let key = PrivateKey::new();
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    let open = Block::State(StateBlock::new(
-        key.account(),
-        BlockHash::zero(),
-        key.public_key(),
-        Amount::raw(1),
-        send1.hash().into(),
-        &key,
-        node.work_generate_dev(&key),
-    ));
-    let send2 = Block::State(StateBlock::new(
-        key.account(),
-        open.hash(),
-        key.public_key(),
-        Amount::zero(),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key,
-        node.work_generate_dev(open.hash()),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(&key, 1);
+    let open = lattice.account(&key).receive(&send1);
+    let send2 = lattice.account(&key).send(&*DEV_GENESIS_KEY, 1);
 
     node.process_active(send1.clone());
     node.process_active(open.clone());
@@ -2710,47 +2642,16 @@ fn rollback_vote_self() {
     let key = PrivateKey::new();
 
     // send half the voting weight to a non voting rep to ensure quorum cannot be reached
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::MAX / 2,
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(&key, Amount::MAX / 2);
+    let open = lattice.account(&key).receive(&send1);
 
-    let open = Block::State(StateBlock::new(
-        key.account(),
-        BlockHash::zero(),
-        key.public_key(),
-        Amount::MAX / 2,
-        send1.hash().into(),
-        &key,
-        node.work_generate_dev(&key),
-    ));
-
+    let mut fork_lattice = lattice.clone();
     // send 1 raw
-    let send2 = Block::State(StateBlock::new(
-        key.account(),
-        open.hash(),
-        key.public_key(),
-        open.balance_field().unwrap() - Amount::raw(1),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key,
-        node.work_generate_dev(open.hash()),
-    ));
+    let send2 = lattice.account(&key).send(&*DEV_GENESIS_KEY, 1);
 
     // fork of send2 block
-    let fork = Block::State(StateBlock::new(
-        key.account(),
-        open.hash(),
-        key.public_key(),
-        open.balance_field().unwrap() - Amount::raw(2),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key,
-        node.work_generate_dev(open.hash()),
-    ));
+    let fork = fork_lattice.account(&key).send(&*DEV_GENESIS_KEY, 2);
 
     // Process and mark the first 2 blocks as confirmed to allow voting
     node.process(send1.clone()).unwrap();
@@ -2844,8 +2745,8 @@ fn rollback_vote_self() {
 fn rep_crawler_rep_remove() {
     let mut system = System::new();
     let searching_node = system.make_node(); // will be used to find principal representatives
-    let keys_rep1 = PrivateKey::new(); // Principal representative 1
-    let keys_rep2 = PrivateKey::new(); // Principal representative 2
+    let key_rep1 = PrivateKey::new(); // Principal representative 1
+    let key_rep2 = PrivateKey::new(); // Principal representative 2
 
     let min_pr_weight = searching_node
         .online_reps
@@ -2853,61 +2754,18 @@ fn rep_crawler_rep_remove() {
         .unwrap()
         .minimum_principal_weight();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     // Send enough nanos to Rep1 to make it a principal representative
-    let send_to_rep1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - (min_pr_weight * 2),
-        keys_rep1.account().into(),
-        &DEV_GENESIS_KEY,
-        system
-            .work
-            .generate_dev2((*DEV_GENESIS_HASH).into())
-            .unwrap(),
-    ));
+    let send_to_rep1 = lattice.genesis().send(&key_rep1, min_pr_weight * 2);
 
     // Receive by Rep1
-    let receive_rep1 = Block::State(StateBlock::new(
-        keys_rep1.account(),
-        BlockHash::zero(),
-        keys_rep1.public_key(),
-        min_pr_weight * 2,
-        send_to_rep1.hash().into(),
-        &keys_rep1,
-        system
-            .work
-            .generate_dev2(keys_rep1.public_key().into())
-            .unwrap(),
-    ));
+    let receive_rep1 = lattice.account(&key_rep1).receive(&send_to_rep1);
 
     // Send enough nanos to Rep2 to make it a principal representative
-    let send_to_rep2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send_to_rep1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - (min_pr_weight * 4),
-        keys_rep2.account().into(),
-        &DEV_GENESIS_KEY,
-        system
-            .work
-            .generate_dev2(send_to_rep1.hash().into())
-            .unwrap(),
-    ));
+    let send_to_rep2 = lattice.genesis().send(&key_rep2, min_pr_weight * 4);
 
     // Receive by Rep2
-    let receive_rep2 = Block::State(StateBlock::new(
-        keys_rep2.account(),
-        BlockHash::zero(),
-        keys_rep2.public_key(),
-        min_pr_weight * 2,
-        send_to_rep2.hash().into(),
-        &keys_rep2,
-        system
-            .work
-            .generate_dev2(keys_rep2.public_key().into())
-            .unwrap(),
-    ));
+    let receive_rep2 = lattice.account(&key_rep2).receive(&send_to_rep2);
 
     searching_node.process(send_to_rep1).unwrap();
     searching_node.process(receive_rep1).unwrap();
@@ -2918,7 +2776,7 @@ fn rep_crawler_rep_remove() {
     let channel_rep1 = make_fake_channel(&searching_node);
 
     // Ensure Rep1 is found by the rep_crawler after receiving a vote from it
-    let vote_rep1 = Arc::new(Vote::new(&keys_rep1, 0, 0, vec![*DEV_GENESIS_HASH]));
+    let vote_rep1 = Arc::new(Vote::new(&key_rep1, 0, 0, vec![*DEV_GENESIS_HASH]));
     searching_node
         .rep_crawler
         .force_process(vote_rep1, channel_rep1.channel_id());
@@ -2940,7 +2798,7 @@ fn rep_crawler_rep_remove() {
         min_pr_weight * 2,
         searching_node.ledger.weight(&reps[0].account)
     );
-    assert_eq!(keys_rep1.public_key(), reps[0].account);
+    assert_eq!(key_rep1.public_key(), reps[0].account);
     assert_eq!(channel_rep1.channel_id(), reps[0].channel_id);
 
     // When rep1 disconnects then rep1 should not be found anymore
@@ -3015,7 +2873,7 @@ fn rep_crawler_rep_remove() {
         .clone();
 
     // Rep2 should be found as a principal representative after receiving a vote from it
-    let vote_rep2 = Arc::new(Vote::new(&keys_rep2, 0, 0, vec![*DEV_GENESIS_HASH]));
+    let vote_rep2 = Arc::new(Vote::new(&key_rep2, 0, 0, vec![*DEV_GENESIS_HASH]));
     searching_node
         .rep_crawler
         .force_process(vote_rep2, channel_rep2.channel_id());
@@ -3044,31 +2902,12 @@ fn epoch_conflict_confirm() {
     let config1 = System::default_config_without_backlog_population();
     let node1 = system.build_node().config(config1).finish();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key = PrivateKey::new();
     let epoch_signer = DEV_GENESIS_KEY.clone();
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        key.account().into(),
-        &DEV_GENESIS_KEY,
-        system
-            .work
-            .generate_dev2((*DEV_GENESIS_HASH).into())
-            .unwrap(),
-    ));
-
-    let open = Block::State(StateBlock::new(
-        key.account(),
-        BlockHash::zero(),
-        key.public_key(),
-        Amount::raw(1),
-        send.hash().into(),
-        &key,
-        system.work.generate_dev2(key.public_key().into()).unwrap(),
-    ));
+    let send = lattice.genesis().send(&key, 1);
+    let open = lattice.account(&key).receive(&send);
 
     let change = Block::State(StateBlock::new(
         key.account(),

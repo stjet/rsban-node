@@ -46,7 +46,6 @@ impl<'a> AccountBlockFactory<'a> {
         TestBlockBuilder::legacy_open()
             .source(source)
             .representative(self.public_key())
-            .account(self.account())
             .sign(&self.key)
     }
 

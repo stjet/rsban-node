@@ -29,7 +29,6 @@ fn setup_test_environment(node: Arc<Node>) -> BlockHash {
     let open = TestBlockBuilder::legacy_open()
         .source(send.hash())
         .representative(key.public_key().into())
-        .account(key.public_key().into())
         .sign(&key)
         .work(node.work_generate_dev(key.public_key()))
         .build();

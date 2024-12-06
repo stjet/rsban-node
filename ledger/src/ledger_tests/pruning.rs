@@ -265,7 +265,6 @@ fn pruning_source_rollback_legacy() {
     // Receiving pruned block (open)
     let mut open1 = TestBlockBuilder::legacy_open()
         .source(send2.hash())
-        .account(destination.account())
         .sign(&destination.key)
         .work(
             STUB_WORK_POOL

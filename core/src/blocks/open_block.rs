@@ -1,4 +1,4 @@
-use super::{BlockBase, BlockType};
+use super::{Block, BlockBase, BlockType};
 use crate::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, Link, PrivateKey,
@@ -6,34 +6,12 @@ use crate::{
 };
 use anyhow::Result;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct OpenHashables {
-    /// Block with first send transaction to this account
-    pub source: BlockHash,
-    pub representative: PublicKey,
-    pub account: Account,
-}
-
-impl OpenHashables {
-    fn serialized_size() -> usize {
-        BlockHash::serialized_size() + Account::serialized_size() + Account::serialized_size()
-    }
-
-    fn hash(&self) -> BlockHash {
-        BlockHashBuilder::new()
-            .update(self.source.as_bytes())
-            .update(self.representative.as_bytes())
-            .update(self.account.as_bytes())
-            .build()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct OpenBlock {
-    pub work: u64,
-    pub signature: Signature,
-    pub hashables: OpenHashables,
-    pub hash: BlockHash,
+    work: u64,
+    signature: Signature,
+    hashables: OpenHashables,
+    hash: BlockHash,
 }
 
 impl OpenBlock {
@@ -78,6 +56,10 @@ impl OpenBlock {
 
     pub fn source(&self) -> BlockHash {
         self.hashables.source
+    }
+
+    pub fn representative(&self) -> PublicKey {
+        self.hashables.representative
     }
 
     pub fn serialized_size() -> usize {
@@ -203,6 +185,61 @@ impl BlockBase for OpenBlock {
             work: self.work.into(),
             signature: self.signature.clone(),
         })
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct OpenHashables {
+    /// Block with first send transaction to this account
+    source: BlockHash,
+    representative: PublicKey,
+    account: Account,
+}
+
+impl OpenHashables {
+    fn serialized_size() -> usize {
+        BlockHash::serialized_size() + Account::serialized_size() + Account::serialized_size()
+    }
+
+    fn hash(&self) -> BlockHash {
+        BlockHashBuilder::new()
+            .update(self.source.as_bytes())
+            .update(self.representative.as_bytes())
+            .update(self.account.as_bytes())
+            .build()
+    }
+}
+
+pub struct OpenBlockArgs<'a> {
+    pub key: &'a PrivateKey,
+    pub source: BlockHash,
+    pub representative: PublicKey,
+    pub work: u64,
+}
+
+impl<'a> From<OpenBlockArgs<'a>> for OpenBlock {
+    fn from(value: OpenBlockArgs<'a>) -> Self {
+        let hashables = OpenHashables {
+            source: value.source,
+            representative: value.representative,
+            account: value.key.account(),
+        };
+
+        let hash = hashables.hash();
+        let signature = value.key.sign(hash.as_bytes());
+
+        Self {
+            signature,
+            hashables,
+            hash,
+            work: value.work,
+        }
+    }
+}
+
+impl<'a> From<OpenBlockArgs<'a>> for Block {
+    fn from(value: OpenBlockArgs<'a>) -> Self {
+        Self::LegacyOpen(value.into())
     }
 }
 

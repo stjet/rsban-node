@@ -10,7 +10,7 @@ pub use change_block::{valid_change_block_predecessor, ChangeBlock, ChangeHashab
 
 mod open_block;
 use open_block::JsonOpenBlock;
-pub use open_block::{OpenBlock, OpenHashables};
+pub use open_block::OpenBlock;
 
 mod receive_block;
 use receive_block::JsonReceiveBlock;

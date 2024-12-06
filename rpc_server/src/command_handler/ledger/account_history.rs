@@ -164,7 +164,7 @@ impl<'a> AccountHistoryHelper<'a> {
                 let mut entry = empty_entry();
                 if self.output_raw {
                     entry.block_type = Some(BlockTypeDto::Open);
-                    entry.representative = Some(b.hashables.representative.into());
+                    entry.representative = Some(b.representative().into());
                     entry.source = Some(b.source());
                     entry.opened = Some(b.account());
                 } else {

@@ -1,7 +1,8 @@
 use crate::{
+    blocks::open_block::OpenBlockArgs,
     work::{WorkPool, STUB_WORK_POOL},
-    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, OpenBlock, PrivateKey,
-    PublicKey, SavedBlock,
+    Account, Amount, Block, BlockDetails, BlockHash, BlockSideband, Epoch, PrivateKey, PublicKey,
+    SavedBlock,
 };
 
 pub struct TestLegacyOpenBlockBuilder {
@@ -28,11 +29,6 @@ impl TestLegacyOpenBlockBuilder {
         self
     }
 
-    pub fn account(mut self, account: Account) -> Self {
-        self.account = Some(account);
-        self
-    }
-
     pub fn representative(mut self, representative: PublicKey) -> Self {
         self.representative = Some(representative);
         self
@@ -56,8 +52,13 @@ impl TestLegacyOpenBlockBuilder {
             .work
             .unwrap_or_else(|| STUB_WORK_POOL.generate_dev2(account.into()).unwrap());
 
-        let block = OpenBlock::new(source, representative, account, &prv_key, work);
-        Block::LegacyOpen(block)
+        OpenBlockArgs {
+            key: &prv_key,
+            source,
+            representative,
+            work,
+        }
+        .into()
     }
 
     pub fn build_saved(self) -> SavedBlock {
@@ -101,8 +102,8 @@ mod tests {
         let Block::LegacyOpen(open) = &*block else {
             panic!("not an open block")
         };
-        assert_eq!(open.hashables.source, BlockHash::from(1));
-        assert_eq!(open.hashables.representative, PublicKey::from(2));
+        assert_eq!(open.source(), BlockHash::from(1));
+        assert_eq!(open.representative(), PublicKey::from(2));
         assert_ne!(open.account(), Account::zero());
         assert_eq!(WORK_THRESHOLDS_STUB.validate_entry_block(&block), true);
         assert_ne!(*open.signature(), Signature::new());

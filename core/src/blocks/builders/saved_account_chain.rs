@@ -7,7 +7,7 @@ use crate::{
 
 /// Builds blocks with sideband data as if they were saved in the ledger
 pub struct SavedAccountChain {
-    keypair: PrivateKey,
+    priv_key: PrivateKey,
     account: Account,
     balance: Amount,
     representative: PublicKey,
@@ -25,9 +25,8 @@ impl SavedAccountChain {
         result.balance = Amount::MAX;
         result.add_block(
             TestBlockBuilder::legacy_open()
-                .account(result.account)
                 .source(BlockHash::zero())
-                .sign(&result.keypair)
+                .sign(&result.priv_key)
                 .build(),
             Epoch::Epoch0,
         );
@@ -45,9 +44,8 @@ impl SavedAccountChain {
         self.balance = Amount::nano(1);
         self.add_block(
             TestBlockBuilder::legacy_open()
-                .account(self.account)
                 .source(BlockHash::from(123))
-                .sign(&self.keypair)
+                .sign(&self.priv_key)
                 .build(),
             Epoch::Epoch0,
         );
@@ -59,7 +57,7 @@ impl SavedAccountChain {
             balance: Amount::zero(),
             blocks: Vec::new(),
             representative: PublicKey::zero(),
-            keypair: key,
+            priv_key: key,
             epoch: Epoch::Epoch0,
         }
     }
@@ -126,9 +124,8 @@ impl SavedAccountChain {
         assert_eq!(send_block.destination_or_link(), self.account);
         self.balance = amount;
         let open_block = TestBlockBuilder::legacy_open()
-            .account(self.account)
             .source(send_block.hash())
-            .sign(&self.keypair)
+            .sign(&self.priv_key)
             .build();
         self.add_block(open_block, send_block.epoch())
     }
@@ -168,7 +165,7 @@ impl SavedAccountChain {
         let block_builder = TestBlockBuilder::legacy_receive()
             .previous(self.frontier())
             .source(source)
-            .sign(&self.keypair);
+            .sign(&self.priv_key);
         self.balance += amount;
         self.add_block(block_builder.build(), source_epoch)
     }
@@ -215,10 +212,9 @@ impl SavedAccountChain {
 
     pub fn new_legacy_open_block(&self) -> TestLegacyOpenBlockBuilder {
         TestBlockBuilder::legacy_open()
-            .account(self.account)
             .source(BlockHash::from(123))
             .representative(PublicKey::from(456))
-            .sign(&self.keypair)
+            .sign(&self.priv_key)
     }
 
     pub fn new_state_block(&self) -> TestStateBlockBuilder {
@@ -228,7 +224,7 @@ impl SavedAccountChain {
             .representative(self.representative)
             .link(0)
             .previous(self.frontier())
-            .key(&self.keypair)
+            .key(&self.priv_key)
     }
 
     pub fn new_open_block(&self) -> TestStateBlockBuilder {
@@ -238,7 +234,7 @@ impl SavedAccountChain {
             .representative(1234)
             .link(555)
             .previous(0)
-            .key(&self.keypair)
+            .key(&self.priv_key)
     }
 
     pub fn new_legacy_send_block(&self) -> TestLegacySendBlockBuilder {
@@ -247,7 +243,7 @@ impl SavedAccountChain {
             .destination(Account::from(42))
             .previous_balance(self.balance)
             .amount(1)
-            .sign(self.keypair.clone())
+            .sign(self.priv_key.clone())
     }
 
     pub fn new_send_block(&self) -> TestStateBlockBuilder {
@@ -278,14 +274,14 @@ impl SavedAccountChain {
         TestBlockBuilder::legacy_receive()
             .previous(self.frontier())
             .source(BlockHash::from(123))
-            .sign(&self.keypair)
+            .sign(&self.priv_key)
     }
 
     pub fn new_legacy_change_block(&self) -> TestLegacyChangeBlockBuilder {
         TestBlockBuilder::legacy_change()
             .previous(self.frontier())
             .representative(PublicKey::from(42))
-            .sign(&self.keypair)
+            .sign(&self.priv_key)
     }
 
     pub fn take_blocks(self) -> Vec<SavedBlock> {

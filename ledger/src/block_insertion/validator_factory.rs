@@ -158,10 +158,8 @@ mod tests {
 
     #[test]
     fn pending_receive_info_for_legacy_receive() {
-        let account = Account::from(1111);
-        let previous = TestBlockBuilder::legacy_open()
-            .account(account)
-            .build_saved();
+        let previous = TestBlockBuilder::legacy_open().build_saved();
+        let account = previous.account();
         let block = TestBlockBuilder::legacy_receive()
             .previous(previous.hash())
             .source(BlockHash::from(42))

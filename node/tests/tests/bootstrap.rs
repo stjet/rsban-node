@@ -155,7 +155,6 @@ mod bootstrap_processor {
         let open = TestBlockBuilder::legacy_open()
             .source(send1.hash())
             .representative(key1.public_key())
-            .account(key1.account())
             .sign(&key1)
             .work(node1.work_generate_dev(&key1))
             .build();
@@ -236,7 +235,6 @@ mod bootstrap_processor {
         let open = TestBlockBuilder::legacy_open()
             .source(send1.hash())
             .representative(key.public_key())
-            .account(key.account())
             .sign(&key)
             .work(node1.work_generate_dev(&key))
             .build();
@@ -339,7 +337,6 @@ mod bootstrap_processor {
         let open = TestBlockBuilder::legacy_open()
             .source(send1.hash())
             .representative(key.public_key())
-            .account(key.account())
             .sign(&key)
             .work(node1.work_generate_dev(&key))
             .build();
@@ -527,7 +524,6 @@ mod bootstrap_processor {
         let open = TestBlockBuilder::legacy_open()
             .source(send1.hash())
             .representative(PublicKey::zero())
-            .account(key.account())
             .sign(&key)
             .work(node0.work_generate_dev(&key))
             .build();

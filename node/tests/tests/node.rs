@@ -868,34 +868,20 @@ fn bootstrap_fork_open() {
     let wallet_id0 = node0.wallets.wallet_ids()[0];
     node_config.peering_port = Some(get_available_port());
     let node1 = system.build_node().config(node_config).finish();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key0 = PrivateKey::new();
 
-    let send0 = Block::LegacySend(SendBlock::new(
-        &DEV_GENESIS_HASH,
-        &key0.account(),
-        &(Amount::MAX - Amount::raw(500)),
-        &DEV_GENESIS_KEY,
-        system
-            .work
-            .generate_dev2((*DEV_GENESIS_HASH).into())
-            .unwrap(),
-    ));
+    let send0 = lattice.genesis().send(&key0, 500);
+    let mut fork_lattice = lattice.clone();
 
-    let open0 = Block::LegacyOpen(OpenBlock::new(
-        send0.hash(),
-        PublicKey::from_bytes([1; 32]),
-        key0.account(),
-        &key0,
-        system.work.generate_dev2(key0.public_key().into()).unwrap(),
-    ));
+    let open0 = lattice
+        .account(&key0)
+        .receive_and_change(&send0, PublicKey::from_bytes([1; 32]));
 
-    let open1 = Block::LegacyOpen(OpenBlock::new(
-        send0.hash(),
-        PublicKey::from_bytes([2; 32]),
-        key0.account(),
-        &key0,
-        system.work.generate_dev2(key0.public_key().into()).unwrap(),
-    ));
+    let open1 = fork_lattice
+        .account(&key0)
+        .receive_and_change(&send0, PublicKey::from_bytes([2; 32]));
 
     // Both know about send0
     assert_eq!(
@@ -976,27 +962,13 @@ fn rep_self_vote() {
     let wallet_id = node0.wallets.wallet_ids()[0];
     let rep_big = PrivateKey::new();
 
-    let fund_big = Block::LegacySend(SendBlock::new(
-        &DEV_GENESIS_HASH,
-        &rep_big.account(),
-        &Amount::raw(0xb000_0000_0000_0000_0000_0000_0000_0000),
-        &DEV_GENESIS_KEY,
-        system
-            .work
-            .generate_dev2((*DEV_GENESIS_HASH).into())
-            .unwrap(),
-    ));
-
-    let open_big = Block::LegacyOpen(OpenBlock::new(
-        fund_big.hash(),
-        rep_big.public_key(),
-        rep_big.account(),
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let fund_big = lattice.genesis().send_all_except(
         &rep_big,
-        system
-            .work
-            .generate_dev2(rep_big.public_key().into())
-            .unwrap(),
-    ));
+        Amount::raw(0xb000_0000_0000_0000_0000_0000_0000_0000),
+    );
+
+    let open_big = lattice.account(&rep_big).receive(&fund_big);
 
     assert_eq!(
         BlockStatus::Progress,
@@ -1027,13 +999,10 @@ fn rep_self_vote() {
         .unwrap();
     assert_eq!(node0.wallets.voting_reps_count(), 2);
 
-    let block0 = Block::LegacySend(SendBlock::new(
-        &fund_big.hash(),
-        &rep_big.account(),
-        &Amount::raw(0x6000_0000_0000_0000_0000_0000_0000_0000),
-        &DEV_GENESIS_KEY,
-        system.work.generate_dev2(fund_big.hash().into()).unwrap(),
-    ));
+    let block0 = lattice.genesis().send_all_except(
+        &rep_big,
+        Amount::raw(0x6000_0000_0000_0000_0000_0000_0000_0000),
+    );
 
     assert_eq!(
         BlockStatus::Progress,

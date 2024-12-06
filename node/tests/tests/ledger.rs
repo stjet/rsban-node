@@ -1,6 +1,6 @@
 use rsnano_core::{
-    Account, Amount, Block, BlockHash, Epoch, PrivateKey, PublicKey, SendBlock, Signature,
-    StateBlock, UnsavedBlockLatticeBuilder, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
+    Account, Amount, Block, BlockHash, Epoch, PrivateKey, SendBlock, Signature, StateBlock,
+    UnsavedBlockLatticeBuilder, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
@@ -10,8 +10,7 @@ use test_helpers::{assert_timely, assert_timely_eq, start_elections, System};
 
 mod votes {
     use super::*;
-    use rsnano_core::{StateBlock, UnsavedBlockLatticeBuilder};
-    use rsnano_ledger::DEV_GENESIS_ACCOUNT;
+    use rsnano_core::UnsavedBlockLatticeBuilder;
     use rsnano_node::consensus::ActiveElectionsExt;
     use std::time::SystemTime;
     use test_helpers::start_election;
@@ -218,7 +217,7 @@ fn epoch_open_pending() {
     let key1 = PrivateKey::new();
 
     let send1 = lattice.genesis().send(&key1, 100);
-    let epoch_open = lattice.account(&key1).epoch_open();
+    let epoch_open = lattice.epoch_open(&key1);
 
     let status = node1.process(epoch_open.clone()).unwrap_err();
     assert_eq!(status, BlockStatus::GapEpochOpenPending);
@@ -246,31 +245,16 @@ fn epoch_open_pending() {
 fn block_hash_account_conflict() {
     let mut system = System::new();
     let node1 = system.make_node();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
 
     /*
      * Generate a send block whose destination is a block hash already
      * in the ledger and not an account
      */
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-
-    let receive1 = Block::State(StateBlock::new(
-        key1.account(),
-        BlockHash::zero(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(100),
-        send1.hash().into(),
-        &key1,
-        node1.work_generate_dev(&key1),
-    ));
+    let send1 = lattice.genesis().send(&key1, 100);
+    let receive1 = lattice.account(&key1).receive(&send1);
 
     /*
      * Note that the below link is a block hash when this is intended
@@ -278,28 +262,13 @@ fn block_hash_account_conflict() {
      * received , except by epoch blocks, which can sign an open block
      * for arbitrary accounts.
      */
-    let send2 = Block::State(StateBlock::new(
-        key1.account(),
-        receive1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(90),
-        receive1.hash().into(),
-        &key1,
-        node1.work_generate_dev(receive1.hash()),
-    ));
+    let unreceivable_account = Account::from_bytes(*receive1.hash().as_bytes());
+    let send2 = lattice.account(&key1).send(unreceivable_account, 10);
 
     /*
      * Generate an epoch open for the account with the same value as the block hash
      */
-    let open_epoch1 = Block::State(StateBlock::new(
-        Account::from_bytes(*receive1.hash().as_bytes()),
-        BlockHash::zero(),
-        PublicKey::zero(),
-        Amount::zero(),
-        node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(receive1.hash()),
-    ));
+    let open_epoch1 = lattice.epoch_open(unreceivable_account);
 
     node1.process_multi(&[
         send1.clone(),

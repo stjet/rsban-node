@@ -46,6 +46,37 @@ impl UnsavedBlockLatticeBuilder {
     pub fn account<'a>(&'a mut self, key: &'a PrivateKey) -> UnsavedAccountChainBuilder<'a> {
         UnsavedAccountChainBuilder { lattice: self, key }
     }
+
+    pub fn epoch_open(&mut self, account: impl Into<Account>) -> Block {
+        let account = account.into();
+        assert!(!self.accounts.contains_key(&account));
+        assert!(self
+            .pending_receives
+            .keys()
+            .any(|k| k.receiving_account == account));
+
+        let receive: Block = EpochBlockArgs {
+            epoch_signer: dev_epoch1_signer(),
+            account,
+            previous: BlockHash::zero(),
+            representative: PublicKey::zero(),
+            balance: Amount::zero(),
+            link: epoch_v1_link(),
+            work: self.work_pool.generate_dev2(account.into()).unwrap(),
+        }
+        .into();
+
+        self.accounts.insert(
+            account,
+            Frontier {
+                hash: receive.hash(),
+                representative: PublicKey::zero(),
+                balance: Amount::zero(),
+            },
+        );
+
+        receive
+    }
 }
 
 pub struct UnsavedAccountChainBuilder<'a> {
@@ -166,38 +197,6 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
         });
 
         change
-    }
-
-    pub fn epoch_open(&mut self) -> Block {
-        assert!(!self.lattice.accounts.contains_key(&self.key.account()));
-        assert!(self
-            .lattice
-            .pending_receives
-            .keys()
-            .any(|k| k.receiving_account == self.key.account()));
-
-        let receive: Block = EpochBlockArgs {
-            epoch_signer: dev_epoch1_signer(),
-            account: self.key.account(),
-            previous: BlockHash::zero(),
-            representative: PublicKey::zero(),
-            balance: Amount::zero(),
-            link: epoch_v1_link(),
-            work: self
-                .lattice
-                .work_pool
-                .generate_dev2(self.key.account().into())
-                .unwrap(),
-        }
-        .into();
-
-        self.set_new_frontier(Frontier {
-            hash: receive.hash(),
-            representative: PublicKey::zero(),
-            balance: Amount::zero(),
-        });
-
-        receive
     }
 
     fn set_new_frontier(&mut self, new_frontier: Frontier) {

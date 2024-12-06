@@ -1,7 +1,5 @@
-use rsnano_core::{
-    Amount, Block, PrivateKey, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
-};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
 use rsnano_node::stats::{DetailType, Direction, StatType};
 use std::time::Duration;
 use test_helpers::{assert_timely_eq, System};
@@ -354,31 +352,18 @@ fn all_block_types() {
 fn conflict_rollback_cemented() {
     let mut system = System::new();
     let node1 = system.make_node();
+
     let key1 = PrivateKey::new();
     // create one side of a forked transaction on node1
-    let fork1a = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        (&key1).into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let fork1a = lattice.genesis().send(&key1, 100);
     node1.process(fork1a.clone()).unwrap();
     node1.confirm(fork1a.hash());
 
     // create the other side of the fork on node2
     let key2 = PrivateKey::new();
-    let fork1b = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        (&key2).into(), // Different destination same 'previous'
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
+    let fork1b = fork_lattice.genesis().send(&key2, 100);
     node1.block_processor.force(fork1b.into());
     // node2 already has send2 forced confirmed whilst node1 should have confirmed send1 and therefore we have a cemented fork on node2
     // and node2 should print an error message on the log that it cannot rollback send2 because it is already cemented
@@ -399,16 +384,9 @@ fn conflict_rollback_cemented() {
 fn observers() {
     let mut system = System::new();
     let node1 = system.make_node();
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        (&key1).into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send = lattice.genesis().send(&key1, 100);
     node1.process(send.clone()).unwrap();
     node1.confirm(send.hash());
     assert_eq!(

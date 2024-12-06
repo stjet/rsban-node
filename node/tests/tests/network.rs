@@ -1,7 +1,8 @@
 use rsnano_core::{
-    Account, Amount, Block, Networks, PrivateKey, Root, StateBlock, Vote, DEV_GENESIS_KEY,
+    Account, Amount, Block, Networks, PrivateKey, Root, StateBlockArgs, UnsavedBlockLatticeBuilder,
+    Vote, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::{
     ConfirmAck, Keepalive, Message, MessageHeader, MessageSerializer, ProtocolInfo, Publish,
 };
@@ -124,15 +125,15 @@ fn send_discarded_publish() {
     let node1 = system.make_node();
     let node2 = system.make_node();
 
-    let block = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        2.into(),
-        3.into(),
-        Amount::MAX,
-        4.into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(Root::from(2)),
-    ));
+    let block: Block = StateBlockArgs {
+        key: &DEV_GENESIS_KEY,
+        previous: 2.into(),
+        representative: 3.into(),
+        balance: Amount::MAX,
+        link: 4.into(),
+        work: node1.work_generate_dev(Root::from(2)),
+    }
+    .into();
 
     node1.message_publisher.lock().unwrap().flood(
         &Message::Publish(Publish::new_forward(block)),
@@ -160,19 +161,12 @@ fn send_discarded_publish() {
 fn receivable_processor_confirm_insufficient_pos() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        Account::zero().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(Account::zero(), 1);
     node1.process(send1.clone()).unwrap();
-    let election = start_election(&node1, &send1.hash());
 
+    let election = start_election(&node1, &send1.hash());
     let key1 = PrivateKey::new();
     let vote = Arc::new(Vote::new_final(&key1, vec![send1.hash()]));
     let channel = make_fake_channel(&node1);
@@ -190,19 +184,12 @@ fn receivable_processor_confirm_insufficient_pos() {
 fn receivable_processor_confirm_sufficient_pos() {
     let mut system = System::new();
     let node1 = system.make_node();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        Account::zero().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(Account::zero(), 1);
     node1.process(send1.clone()).unwrap();
-    let election = start_election(&node1, &send1.hash());
 
+    let election = start_election(&node1, &send1.hash());
     let vote = Arc::new(Vote::new_final(&DEV_GENESIS_KEY, vec![send1.hash()]));
     let channel = make_fake_channel(&node1);
     let con1 = Message::ConfirmAck(ConfirmAck::new_with_rebroadcasted_vote(
@@ -236,15 +223,9 @@ fn send_valid_confirm_ack() {
     let key2 = PrivateKey::new();
     node1.insert_into_wallet(&DEV_GENESIS_KEY);
     node2.insert_into_wallet(&key2);
-    let block2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(50),
-        key2.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let block2 = lattice.genesis().send_all_except(&key2, 50);
     node1.process_active(block2);
     // Keep polling until latest block changes
     assert_timely(Duration::from_secs(10), || {
@@ -264,15 +245,9 @@ fn send_valid_publish() {
     node1.insert_into_wallet(&DEV_GENESIS_KEY);
     let key2 = PrivateKey::new();
     node2.insert_into_wallet(&key2);
-    let block2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(50),
-        key2.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let block2 = lattice.genesis().send_all_except(&key2, 50);
     let hash2 = block2.hash();
     let latest2 = node2.latest(&DEV_GENESIS_ACCOUNT);
     node2.process_active(block2);
@@ -296,15 +271,9 @@ fn send_with_receive() {
     let node2 = system.make_node();
     let key2 = PrivateKey::new();
     node1.insert_into_wallet(&DEV_GENESIS_KEY);
-    let block1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - node1.config.receive_minimum,
-        key2.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let block1 = lattice.genesis().send(&key2, node1.config.receive_minimum);
 
     node1.process_active(block1.clone());
     assert_timely(Duration::from_secs(5), || {

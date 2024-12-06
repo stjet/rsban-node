@@ -1,14 +1,8 @@
-use rsnano_core::{
-    Amount, Block, BlockSideband, PrivateKey, SavedBlock, StateBlock, UnsavedBlockLatticeBuilder,
-    DEV_GENESIS_KEY,
-};
-use rsnano_ledger::DEV_GENESIS_PUB_KEY;
+use rsnano_core::{Amount, BlockSideband, PrivateKey, SavedBlock, UnsavedBlockLatticeBuilder};
 use rsnano_network::ChannelId;
 use rsnano_node::block_processing::BlockSource;
 use std::time::Duration;
-use test_helpers::{
-    assert_timely, assert_timely_eq, setup_new_account, start_election, start_elections, System,
-};
+use test_helpers::{assert_timely, assert_timely_eq, start_election, start_elections, System};
 
 #[test]
 fn start_stop() {
@@ -65,44 +59,27 @@ fn add_existing() {
 fn add_two() {
     let mut system = System::new();
     let node = system.make_node();
-    let key1 = PrivateKey::new();
-    let key2 = PrivateKey::new();
-    let key3 = PrivateKey::new();
-    let gk = DEV_GENESIS_KEY.clone();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let key1 = PrivateKey::from(1);
+    let key2 = PrivateKey::from(2);
+    let key3 = PrivateKey::from(3);
 
     // create 2 new accounts, that receive 1 raw each, all blocks are force confirmed
-    let (_send1, open1) =
-        setup_new_account(&node, Amount::raw(1), &gk, &key1, gk.public_key(), true);
-    let (_send2, open2) =
-        setup_new_account(&node, Amount::raw(1), &gk, &key2, gk.public_key(), true);
-    assert_eq!(node.ledger.cemented_count(), 5);
+    let send1 = lattice.genesis().send(&key1, 1);
+    let send2 = lattice.genesis().send(&key2, 1);
+    let open1 = lattice.account(&key1).receive(&send1);
+    let open2 = lattice.account(&key2).receive(&send2);
+    node.process_and_confirm_multi(&[send1, open1.clone(), send2, open2.clone()]);
 
-    // send 1 raw to account key3 from key1
-    let send_a = Block::State(StateBlock::new(
-        key1.public_key().as_account(),
-        open1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::zero(),
-        key3.public_key().as_account().into(),
-        &key1,
-        node.work_generate_dev(open1.hash()),
-    ));
-
-    // send 1 raw to account key3 from key2
-    let send_b = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        open2.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::zero(),
-        key3.public_key().as_account().into(),
-        &key2,
-        node.work_generate_dev(open2.hash()),
-    ));
+    let send_a = lattice.account(&key1).send(&key3, 1);
+    let send_b = lattice.account(&key2).send(&key3, 1);
 
     // activate elections for the previous two send blocks (to account3) that we did not forcefully confirm
     node.process(send_a.clone()).unwrap();
     node.process(send_b.clone()).unwrap();
     start_elections(&node, &[send_a.hash(), send_b.hash()], false);
+
     assert!(node.active.election(&send_a.qualified_root()).is_some());
     assert!(node.active.election(&send_b.qualified_root()).is_some());
     assert_timely_eq(Duration::from_secs(5), || node.active.len(), 2);

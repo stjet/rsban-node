@@ -1,7 +1,7 @@
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBase, BlockHash,
     DifficultyV1, OpenBlock, PrivateKey, PublicKey, QualifiedRoot, Root, SendBlock, Signature,
-    StateBlock, StateBlockArgs, TestBlockBuilder, TestLegacySendBlockBuilder, UncheckedInfo,
+    StateBlockArgs, TestBlockBuilder, TestLegacySendBlockBuilder, UncheckedInfo,
     UnsavedBlockLatticeBuilder, Vote, VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
@@ -3738,27 +3738,14 @@ fn fork_keep() {
     let mut system = System::new();
     let node1 = system.make_node();
     let node2 = system.make_node();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
     let key2 = PrivateKey::new();
     // send1 and send2 fork to different accounts
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        key2.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(&key1, 100);
+    let send2 = fork_lattice.genesis().send(&key2, 100);
     node1.process_active(send1.clone());
     node2.process_active(send1.clone());
     assert_timely_eq(Duration::from_secs(5), || node1.active.len(), 1);

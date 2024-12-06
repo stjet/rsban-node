@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, Vote, DEV_GENESIS_KEY};
+use rsnano_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, Vote, DEV_GENESIS_KEY};
 use rsnano_ledger::{
     DEV_GENESIS_ACCOUNT, DEV_GENESIS_BLOCK, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
 };
@@ -84,49 +84,18 @@ fn rep_weight() {
     let node1 = system.make_node();
     let node2 = system.make_node();
     let node3 = system.make_node();
-    let keypair1 = PrivateKey::new();
-    let keypair2 = PrivateKey::new();
+    let key_non_pr = PrivateKey::new();
+    let key_pr = PrivateKey::new();
     let amount_pr = node.online_reps.lock().unwrap().minimum_principal_weight() + Amount::raw(100);
     let amount_not_pr =
         node.online_reps.lock().unwrap().minimum_principal_weight() - Amount::raw(100);
 
-    let block1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - amount_not_pr,
-        keypair1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    let block2 = Block::State(StateBlock::new(
-        keypair1.account(),
-        BlockHash::zero(),
-        keypair1.public_key(),
-        amount_not_pr,
-        block1.hash().into(),
-        &keypair1,
-        node.work_generate_dev(&keypair1),
-    ));
-    let block3 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        block1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - amount_not_pr - amount_pr,
-        keypair2.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(block1.hash()),
-    ));
-    let block4 = Block::State(StateBlock::new(
-        keypair2.account(),
-        BlockHash::zero(),
-        keypair2.public_key(),
-        amount_pr,
-        block3.hash().into(),
-        &keypair2,
-        node.work_generate_dev(&keypair2),
-    ));
-    let blocks = [block1, block2, block3, block4];
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send_non_pr = lattice.genesis().send(&key_non_pr, amount_not_pr);
+    let open_no_pr = lattice.account(&key_non_pr).receive(&send_non_pr);
+    let send_pr = lattice.genesis().send(&key_pr, amount_pr);
+    let open_pr = lattice.account(&key_pr).receive(&send_pr);
+    let blocks = [send_non_pr, open_no_pr, send_pr, open_pr];
     node.process_multi(&blocks);
     node1.process_multi(&blocks);
     node2.process_multi(&blocks);
@@ -163,8 +132,8 @@ fn rep_weight() {
     };
 
     let vote0 = Arc::new(Vote::new(&DEV_GENESIS_KEY, 0, 0, vec![*DEV_GENESIS_HASH]));
-    let vote1 = Arc::new(Vote::new(&keypair1, 0, 0, vec![*DEV_GENESIS_HASH]));
-    let vote2 = Arc::new(Vote::new(&keypair2, 0, 0, vec![*DEV_GENESIS_HASH]));
+    let vote1 = Arc::new(Vote::new(&key_non_pr, 0, 0, vec![*DEV_GENESIS_HASH]));
+    let vote2 = Arc::new(Vote::new(&key_pr, 0, 0, vec![*DEV_GENESIS_HASH]));
 
     node.rep_crawler.force_process(vote0, channel1);
     node.rep_crawler.force_process(vote1, channel2);

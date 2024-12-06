@@ -1,6 +1,6 @@
 use rsnano_core::{
     work::WorkPoolImpl, Account, Amount, Block, BlockHash, Epoch, Networks, PrivateKey, PublicKey,
-    SavedBlock, StateBlock, TestStateBlockBuilder, WalletId, DEV_GENESIS_KEY,
+    SavedBlock, StateBlockArgs, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
@@ -384,15 +384,15 @@ pub fn setup_chain(node: &Node, count: usize, target: &PrivateKey, confirm: bool
     for _ in 0..count {
         let throwaway = PrivateKey::new();
         balance = balance - Amount::raw(1);
-        let send = Block::State(StateBlock::new(
-            target.account(),
-            latest,
-            target.public_key(),
+        let send: Block = StateBlockArgs {
+            key: &target,
+            previous: latest,
+            representative: target.public_key(),
             balance,
-            throwaway.account().into(),
-            &target,
-            node.work_generate_dev(latest),
-        ));
+            link: throwaway.account().into(),
+            work: node.work_generate_dev(latest),
+        }
+        .into();
         latest = send.hash();
         blocks.push(send);
     }
@@ -426,25 +426,25 @@ pub fn setup_chains(
         let key = PrivateKey::new();
         let amount_sent = Amount::raw(block_count as u128 * 2);
         balance = balance - amount_sent; // Send enough to later create `block_count` blocks
-        let send = Block::State(StateBlock::new(
-            source.account(),
-            latest,
-            source.public_key(),
+        let send: Block = StateBlockArgs {
+            key: source,
+            previous: latest,
+            representative: source.public_key(),
             balance,
-            key.account().into(),
-            source,
-            node.work_generate_dev(latest),
-        ));
+            link: key.account().into(),
+            work: node.work_generate_dev(latest),
+        }
+        .into();
 
-        let open = Block::State(StateBlock::new(
-            key.account(),
-            BlockHash::zero(),
-            key.public_key(),
-            amount_sent,
-            send.hash().into(),
-            &key,
-            node.work_generate_dev(&key),
-        ));
+        let open: Block = StateBlockArgs {
+            key: &key,
+            previous: BlockHash::zero(),
+            representative: key.public_key(),
+            balance: amount_sent,
+            link: send.hash().into(),
+            work: node.work_generate_dev(&key),
+        }
+        .into();
 
         latest = send.hash();
         node.process(send.clone()).unwrap();
@@ -475,27 +475,27 @@ pub fn setup_independent_blocks(node: &Node, count: usize, source: &PrivateKey) 
 
         balance -= 1;
 
-        let send = Block::State(StateBlock::new(
-            account,
-            latest,
-            source.public_key(),
+        let send: Block = StateBlockArgs {
+            key: source,
+            previous: latest,
+            representative: source.public_key(),
             balance,
-            key.public_key().as_account().into(),
-            source,
-            node.work_generate_dev(latest),
-        ));
+            link: key.account().into(),
+            work: node.work_generate_dev(latest),
+        }
+        .into();
 
         latest = send.hash();
 
-        let open = Block::State(StateBlock::new(
-            key.public_key().into(),
-            BlockHash::zero(),
-            key.public_key(),
-            Amount::raw(1),
-            send.hash().into(),
-            &key,
-            node.work_generate_dev(&key),
-        ));
+        let open: Block = StateBlockArgs {
+            key: &key,
+            previous: BlockHash::zero(),
+            representative: key.public_key(),
+            balance: Amount::raw(1),
+            link: send.hash().into(),
+            work: node.work_generate_dev(&key),
+        }
+        .into();
 
         node.process(send.clone()).unwrap();
         let open = node.process(open).unwrap();
@@ -582,15 +582,15 @@ pub fn send_block_to(node: Arc<Node>, account: Account, amount: Amount) -> Block
         .account_balance(&transaction, &*DEV_GENESIS_ACCOUNT)
         .unwrap_or(Amount::MAX);
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
+    let send: Block = StateBlockArgs {
+        key: &DEV_GENESIS_KEY,
         previous,
-        *DEV_GENESIS_PUB_KEY,
-        balance - amount,
-        account.into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(previous),
-    ));
+        representative: *DEV_GENESIS_PUB_KEY,
+        balance: balance - amount,
+        link: account.into(),
+        work: node.work_generate_dev(previous),
+    }
+    .into();
 
     node.process_active(send.clone());
     assert_timely_msg(
@@ -617,15 +617,15 @@ pub fn process_block_local(node: Arc<Node>, account: Account, amount: Amount) ->
         .account_balance(&transaction, &*DEV_GENESIS_ACCOUNT)
         .unwrap_or(Amount::MAX);
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
+    let send: Block = StateBlockArgs {
+        key: &DEV_GENESIS_KEY,
         previous,
-        *DEV_GENESIS_PUB_KEY,
-        balance - amount,
-        account.into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(previous),
-    ));
+        representative: *DEV_GENESIS_PUB_KEY,
+        balance: balance - amount,
+        link: account.into(),
+        work: node.work_generate_dev(previous),
+    }
+    .into();
 
     node.process_local(send.clone()).unwrap();
 
@@ -647,15 +647,15 @@ pub fn process_send_block(node: Arc<Node>, account: Account, amount: Amount) -> 
         .account_balance(&transaction, &*DEV_GENESIS_ACCOUNT)
         .unwrap_or(Amount::MAX);
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
+    let send: Block = StateBlockArgs {
+        key: &DEV_GENESIS_KEY,
         previous,
-        *DEV_GENESIS_PUB_KEY,
-        balance - amount,
-        account.into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(previous),
-    ));
+        representative: *DEV_GENESIS_PUB_KEY,
+        balance: balance - amount,
+        link: account.into(),
+        work: node.work_generate_dev(previous),
+    }
+    .into();
 
     node.process(send.clone()).unwrap();
 
@@ -673,15 +673,15 @@ pub fn process_open_block(node: Arc<Node>, keys: PrivateKey) -> Block {
         .next()
         .unwrap();
 
-    let open = Block::State(StateBlock::new(
-        account,
-        BlockHash::zero(),
-        keys.public_key(),
-        info.amount,
-        key.send_block_hash.into(),
-        &keys,
-        node.work_generate_dev(account),
-    ));
+    let open: Block = StateBlockArgs {
+        key: &keys,
+        previous: BlockHash::zero(),
+        representative: keys.public_key(),
+        balance: info.amount,
+        link: key.send_block_hash.into(),
+        work: node.work_generate_dev(account),
+    }
+    .into();
 
     node.process(open.clone()).unwrap();
 
@@ -706,16 +706,15 @@ pub fn upgrade_epoch(
         .account_balance(&transaction, &account)
         .unwrap_or(Amount::zero());
 
-    let builder = TestStateBlockBuilder::new();
-    let epoch_block = builder
-        .account(account)
-        .previous(latest)
-        .balance(balance)
-        .link(node.ledger.epoch_link(epoch).unwrap())
-        .representative(*DEV_GENESIS_PUB_KEY)
-        .key(&DEV_GENESIS_KEY)
-        .work(node.work_generate_dev(*DEV_GENESIS_HASH))
-        .build();
+    let epoch_block: Block = StateBlockArgs {
+        key: &DEV_GENESIS_KEY,
+        previous: latest,
+        representative: *DEV_GENESIS_PUB_KEY,
+        balance,
+        link: node.ledger.epoch_link(epoch).unwrap(),
+        work: node.work_generate_dev(*DEV_GENESIS_HASH),
+    }
+    .into();
 
     assert_eq!(
         BlockStatus::Progress,
@@ -738,25 +737,25 @@ pub fn setup_new_account(
     let latest = node.latest(&source_account);
     let balance = node.balance(&source_account);
 
-    let send = Block::State(StateBlock::new(
-        source_account,
-        latest,
-        source.public_key(),
-        balance - amount,
-        dest_account.into(),
-        source,
-        node.work_generate_dev(latest),
-    ));
+    let send: Block = StateBlockArgs {
+        key: source,
+        previous: latest,
+        representative: source.public_key(),
+        balance: balance - amount,
+        link: dest_account.into(),
+        work: node.work_generate_dev(latest),
+    }
+    .into();
 
-    let open = Block::State(StateBlock::new(
-        dest_account,
-        BlockHash::zero(),
-        dest_rep,
-        amount,
-        send.hash().into(),
-        dest,
-        node.work_generate_dev(dest_account),
-    ));
+    let open: Block = StateBlockArgs {
+        key: dest,
+        previous: BlockHash::zero(),
+        representative: dest_rep,
+        balance: amount,
+        link: send.hash().into(),
+        work: node.work_generate_dev(dest_account),
+    }
+    .into();
 
     node.process(send.clone()).unwrap();
     node.process(open.clone()).unwrap();

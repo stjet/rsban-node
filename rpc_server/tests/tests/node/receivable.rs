@@ -1,5 +1,5 @@
 use rsnano_core::{
-    Account, Amount, Block, PublicKey, RawKey, StateBlock, WalletId, DEV_GENESIS_KEY,
+    Account, Amount, Block, PublicKey, RawKey, StateBlockArgs, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{wallets::WalletsExt, Node};
@@ -21,15 +21,15 @@ fn send_block(node: Arc<Node>, account: Account, amount: Amount) -> Block {
         .account_balance(&transaction, &*DEV_GENESIS_ACCOUNT)
         .unwrap_or(Amount::MAX);
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
+    let send: Block = StateBlockArgs {
+        key: &DEV_GENESIS_KEY,
         previous,
-        *DEV_GENESIS_PUB_KEY,
-        balance - amount,
-        account.into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(previous),
-    ));
+        representative: *DEV_GENESIS_PUB_KEY,
+        balance: balance - amount,
+        link: account.into(),
+        work: node.work_generate_dev(previous),
+    }
+    .into();
 
     node.process_active(send.clone());
     assert_timely_msg(

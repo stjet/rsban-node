@@ -1,6 +1,5 @@
-use rsnano_core::PublicKey;
-use rsnano_core::{Account, Amount, Block, StateBlock, WalletId, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_core::UnsavedBlockLatticeBuilder;
+use rsnano_core::{Account, Amount, Block, WalletId, DEV_GENESIS_KEY};
 use rsnano_node::wallets::WalletsExt;
 use rsnano_rpc_messages::SignArgs;
 use test_helpers::{setup_rpc_client_and_server, System};
@@ -20,15 +19,8 @@ fn sign() {
         .insert_adhoc2(&wallet_id, &key.private_key(), false)
         .unwrap();
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1_000_000),
-        Account::from(key.public_key()).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice.genesis().send(&key, Amount::raw(1_000_000));
 
     let args: SignArgs = SignArgs {
         block: Some(send.json_representation()),
@@ -61,15 +53,10 @@ fn sign_without_key() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1_000_000),
-        Account::from(PublicKey::zero()).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice
+        .genesis()
+        .send(Account::zero(), Amount::raw(1_000_000));
 
     let result = node
         .runtime

@@ -1,8 +1,8 @@
 use core::panic;
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::{
-    Account, Amount, Block, JsonBlock, Networks, PrivateKey, SendBlock, StateBlock, Vote, VoteCode,
-    DEV_GENESIS_KEY,
+    Account, Amount, Block, JsonBlock, Networks, PrivateKey, SendBlock, StateBlock,
+    UnsavedBlockLatticeBuilder, Vote, VoteCode, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::{Message, Publish};
@@ -41,17 +41,10 @@ fn started_election() {
 
         assert_eq!(1, websocket.subscriber_count(Topic::StartedElection));
 
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         // Create election, causing a websocket message to be emitted
         let key1 = PrivateKey::new();
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::zero(),
-            key1.account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let send1 = lattice.genesis().send_max(&key1);
         let publish1 = Message::Publish(Publish::new_forward(send1.clone()));
         node1
             .inbound_message_queue

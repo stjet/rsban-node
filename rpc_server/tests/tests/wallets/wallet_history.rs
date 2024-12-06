@@ -1,36 +1,19 @@
-use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, WalletId, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_core::{Amount, BlockHash, PrivateKey, UnsavedBlockLatticeBuilder, WalletId};
+use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_node::{wallets::WalletsExt, Node};
 use rsnano_rpc_messages::BlockTypeDto;
 use std::sync::Arc;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 fn setup_test_environment(node: Arc<Node>, keys: PrivateKey, send_amount: Amount) -> BlockHash {
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - send_amount,
-        keys.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(&keys, send_amount);
     node.process(send1.clone()).unwrap();
 
-    let open_block = Block::State(StateBlock::new(
-        keys.account(),
-        BlockHash::zero(),
-        keys.public_key(),
-        send_amount,
-        send1.hash().into(),
-        &keys,
-        node.work_generate_dev(keys.public_key()),
-    ));
+    let open = lattice.account(&keys).receive(&send1);
+    node.process(open.clone()).unwrap();
 
-    node.process(open_block.clone()).unwrap();
-
-    open_block.hash()
+    open.hash()
 }
 
 #[test]

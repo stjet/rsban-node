@@ -1,5 +1,5 @@
-use rsnano_core::{Amount, Block, Link, Root, StateBlock, WalletId, DEV_GENESIS_KEY};
-use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_core::{Amount, UnsavedBlockLatticeBuilder, WalletId, DEV_GENESIS_KEY};
+use rsnano_ledger::BlockStatus;
 use rsnano_node::{wallets::WalletsExt, Node};
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely_eq, setup_rpc_client_and_server, System};
@@ -17,15 +17,10 @@ fn search_receivable_all() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), false)
         .unwrap();
 
-    let send = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - node.config.receive_minimum,
-        Link::from(*DEV_GENESIS_ACCOUNT),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(Root::from(*DEV_GENESIS_HASH)),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice
+        .genesis()
+        .send(&*DEV_GENESIS_KEY, node.config.receive_minimum);
 
     assert_eq!(node.process_local(send).unwrap(), BlockStatus::Progress);
 

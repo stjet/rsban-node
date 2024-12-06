@@ -1,5 +1,5 @@
-use rsnano_core::{Amount, Block, StateBlock, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_core::{UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
+use rsnano_ledger::DEV_GENESIS_ACCOUNT;
 use rsnano_rpc_messages::{BlockSubTypeDto, ProcessArgs};
 use test_helpers::{setup_rpc_client_and_server, System};
 
@@ -10,15 +10,8 @@ fn process() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        DEV_GENESIS_KEY.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(&*DEV_GENESIS_KEY, 100);
 
     let args: ProcessArgs = ProcessArgs::build(send1.json_representation())
         .subtype(BlockSubTypeDto::Send)
@@ -39,15 +32,9 @@ fn process_fails_with_low_work() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        DEV_GENESIS_KEY.account().into(),
-        &DEV_GENESIS_KEY,
-        1,
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let mut send1 = lattice.genesis().send(&*DEV_GENESIS_KEY, 100);
+    send1.set_work(1);
 
     let args: ProcessArgs = ProcessArgs::build(send1.json_representation())
         .subtype(BlockSubTypeDto::Send)

@@ -1,0 +1,6 @@
+.cargo
+.git
+.github
+doc
+scripts
+target

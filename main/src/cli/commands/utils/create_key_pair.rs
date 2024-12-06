@@ -7,7 +7,9 @@ pub(crate) fn create_key_pair(infra: &mut CliInfrastructure) {
     infra
         .console
         .println(format!("Public: {}", key.public_key()));
-    infra.console.println(format!("Account: {}", key.account()));
+    infra
+        .console
+        .println(format!("Account: {}", key.account().encode_account()));
 }
 
 #[cfg(test)]

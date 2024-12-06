@@ -1,8 +1,8 @@
 use rsnano_core::{
-    Account, Amount, Block, BlockHash, Epoch, PrivateKey, SendBlock, Signature, StateBlock,
-    StateBlockArgs, UnsavedBlockLatticeBuilder, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
+    Account, Amount, Block, BlockHash, Epoch, PrivateKey, SendBlock, Signature, StateBlockArgs,
+    UnsavedBlockLatticeBuilder, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{BlockStatus, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
 use rsnano_node::{block_processing::BlockSource, config::NodeConfig};
 use std::{sync::Arc, time::Duration};
@@ -428,35 +428,12 @@ fn unchecked_epoch_invalid() {
 fn unchecked_open() {
     let mut system = System::new();
     let node1 = system.make_node();
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let destination = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        destination.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    let open1 = Block::State(StateBlock::new(
-        destination.account(),
-        BlockHash::zero(),
-        destination.public_key(),
-        Amount::nano(1000),
-        send1.hash().into(),
-        &destination,
-        node1.work_generate_dev(&destination),
-    ));
+    let send1 = lattice.genesis().send(&destination, Amount::nano(1000));
+    let open1 = lattice.account(&destination).receive(&send1);
     // Invalid signature for open block
-    let mut open2 = Block::State(StateBlock::new(
-        destination.account(),
-        BlockHash::zero(),
-        destination.public_key(),
-        Amount::nano(1000),
-        send1.hash().into(),
-        &destination,
-        node1.work_generate_dev(&destination),
-    ));
+    let mut open2 = open1.clone();
     open2.set_signature(&Signature::from_bytes([1; 64]));
 
     // Insert open2 in to the queue before open1
@@ -482,43 +459,13 @@ fn unchecked_open() {
 fn unchecked_receive() {
     let mut system = System::new();
     let node1 = system.make_node();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let destination = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        destination.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(2000),
-        destination.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(send1.hash()),
-    ));
-    let open1 = Block::State(StateBlock::new(
-        destination.account(),
-        BlockHash::zero(),
-        destination.public_key(),
-        Amount::nano(1000),
-        send1.hash().into(),
-        &destination,
-        node1.work_generate_dev(&destination),
-    ));
-    let receive1 = Block::State(StateBlock::new(
-        destination.account(),
-        open1.hash(),
-        destination.public_key(),
-        Amount::nano(2000),
-        send2.hash().into(),
-        &destination,
-        node1.work_generate_dev(open1.hash()),
-    ));
+    let send1 = lattice.genesis().send(&destination, Amount::nano(1000));
+    let send2 = lattice.genesis().send(&destination, Amount::nano(1000));
+    let open1 = lattice.account(&destination).receive(&send1);
+    let receive1 = lattice.account(&destination).receive(&send2);
     node1
         .block_processor
         .add(send1.into(), BlockSource::Live, ChannelId::LOOPBACK);

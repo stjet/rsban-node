@@ -252,74 +252,20 @@ fn send_receive_self() {
     let mut system = System::new();
     let cfg = System::default_config_without_backlog_population();
     let node = system.build_node().config(cfg).finish();
-    let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        latest,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(2),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(latest),
-    ));
-    let receive1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX,
-        send1.hash().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash()),
-    ));
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        receive1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(2),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(receive1.hash()),
-    ));
-    let send3 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send2.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(3),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send2.hash()),
-    ));
-    let receive2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send3.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        send2.hash().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send3.hash()),
-    ));
-    let receive3 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        receive2.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX,
-        send3.hash().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(receive2.hash()),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(&*DEV_GENESIS_KEY, 2);
+    let receive1 = lattice.genesis().receive(&send1);
+    let send2 = lattice.genesis().send(&*DEV_GENESIS_KEY, 2);
+    let send3 = lattice.genesis().send(&*DEV_GENESIS_KEY, 1);
+    let receive2 = lattice.genesis().receive(&send2);
+    let receive3 = lattice.genesis().receive(&send3);
 
     // Send to another account to prevent automatic receiving on the genesis account
     let key1 = PrivateKey::new();
-    let send4 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        receive3.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        node.online_reps.lock().unwrap().quorum_delta(),
-        key1.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(receive3.hash()),
-    ));
+    let send4 = lattice
+        .genesis()
+        .send_all_except(&key1, node.online_reps.lock().unwrap().quorum_delta());
 
     node.process_multi(&[
         send1.clone(),

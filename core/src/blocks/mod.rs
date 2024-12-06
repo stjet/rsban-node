@@ -9,8 +9,7 @@ use change_block::JsonChangeBlock;
 pub use change_block::{valid_change_block_predecessor, ChangeBlock, ChangeHashables};
 
 mod open_block;
-use open_block::JsonOpenBlock;
-pub use open_block::OpenBlock;
+pub use open_block::{JsonOpenBlock, OpenBlock, OpenBlockArgs};
 
 mod receive_block;
 use receive_block::JsonReceiveBlock;

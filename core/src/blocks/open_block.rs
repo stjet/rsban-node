@@ -15,43 +15,19 @@ pub struct OpenBlock {
 }
 
 impl OpenBlock {
-    pub fn new(
-        source: BlockHash,
-        representative: PublicKey,
-        account: Account,
-        prv_key: &PrivateKey,
-        work: u64,
-    ) -> Self {
-        let hashables = OpenHashables {
-            source,
-            representative,
-            account,
-        };
-
-        let hash = hashables.hash();
-        let signature = prv_key.sign(hash.as_bytes());
-
-        Self {
-            work,
-            signature,
-            hashables,
-            hash,
-        }
-    }
-
     pub fn account(&self) -> Account {
         self.hashables.account
     }
 
     pub fn new_test_instance() -> Self {
         let key = PrivateKey::from(42);
-        Self::new(
-            BlockHash::from(123),
-            PublicKey::from(456),
-            Account::from(789),
-            &key,
-            69420,
-        )
+        OpenBlockArgs {
+            key: &key,
+            source: BlockHash::from(123),
+            representative: PublicKey::from(456),
+            work: 69420,
+        }
+        .into()
     }
 
     pub fn source(&self) -> BlockHash {
@@ -281,11 +257,16 @@ mod tests {
         let key = PrivateKey::new();
         let source = BlockHash::from(1);
         let representative = PublicKey::from(2);
-        let account = Account::from(3);
-        let block = OpenBlock::new(source, representative, account, &key, 0);
+        let block: OpenBlock = OpenBlockArgs {
+            key: &key,
+            source,
+            representative,
+            work: 0,
+        }
+        .into();
 
-        assert_eq!(block.account_field(), Some(account));
-        assert_eq!(block.root(), account.into());
+        assert_eq!(block.account_field(), Some(key.account()));
+        assert_eq!(block.root(), key.account().into());
     }
 
     // original test: open_block.deserialize
@@ -308,10 +289,10 @@ mod tests {
             serialized,
             r#"{
   "type": "open",
-  "account": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
+  "account": "nano_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
   "source": "000000000000000000000000000000000000000000000000000000000000007B",
   "representative": "nano_11111111111111111111111111111111111111111111111111gahteczqci",
-  "signature": "791B637D0CB7D333AFC9F4D06870A1B5ADD2857E5C37BBAEEF70C77E0DDC7DF6541CC877EA88BE2483D7E0198BC9455C61E4B7BD98A50352BB5C4AD0E468DF04",
+  "signature": "A8980EB0E15F4722B4644AF254DC88DF4044ABDFB483DDAC36EDA276122D099105C3EF3B3CD677E6438DEE876B84A9433CFC83CF54F864DE034F7D97A3370C07",
   "work": "0000000000010F2C"
 }"#
         );

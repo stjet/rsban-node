@@ -1,6 +1,6 @@
 use rsnano_core::{
     Amount, Block, BlockHash, ChangeBlock, Epoch, Link, OpenBlock, PrivateKey, PublicKey,
-    ReceiveBlock, SendBlock, StateBlock, DEV_GENESIS_KEY,
+    ReceiveBlock, SendBlock, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::stats::{DetailType, Direction, StatType};
@@ -61,117 +61,32 @@ fn multiple_accounts() {
     let mut system = System::new();
     let cfg = System::default_config_without_backlog_population();
     let node = system.build_node().config(cfg).finish();
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
     let key2 = PrivateKey::new();
     let key3 = PrivateKey::new();
-    let latest1 = node.latest(&DEV_GENESIS_ACCOUNT);
 
     let quorum_delta = node.online_reps.lock().unwrap().quorum_delta();
 
     // Send to all accounts
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        latest1,
-        *DEV_GENESIS_PUB_KEY,
-        quorum_delta + Amount::raw(300),
-        key1.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(latest1),
-    ));
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        quorum_delta + Amount::raw(200),
-        key2.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash()),
-    ));
-    let send3 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send2.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        quorum_delta + Amount::raw(100),
-        key3.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send2.hash()),
-    ));
+    let send1 = lattice
+        .genesis()
+        .send_all_except(&key1, quorum_delta + Amount::raw(300));
+    let send2 = lattice.genesis().send(&key2, 100);
+    let send3 = lattice.genesis().send(&key3, 100);
 
     // Open all accounts
-    let open1 = Block::State(StateBlock::new(
-        key1.public_key().as_account(),
-        BlockHash::zero(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - quorum_delta - Amount::raw(300),
-        send1.hash().into(),
-        &key1,
-        node.work_generate_dev(&key1),
-    ));
-    let open2 = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        BlockHash::zero(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(100),
-        send2.hash().into(),
-        &key2,
-        node.work_generate_dev(&key2),
-    ));
-    let open3 = Block::State(StateBlock::new(
-        key3.public_key().as_account(),
-        BlockHash::zero(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(100),
-        send3.hash().into(),
-        &key3,
-        node.work_generate_dev(&key3),
-    ));
+    let open1 = lattice.account(&key1).receive(&send1);
+    let open2 = lattice.account(&key2).receive(&send2);
+    let open3 = lattice.account(&key3).receive(&send3);
 
     // Send and receive various blocks to these accounts
-    let send4 = Block::State(StateBlock::new(
-        key1.public_key().as_account(),
-        open1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(50),
-        key2.public_key().as_account().into(),
-        &key1,
-        node.work_generate_dev(open1.hash()),
-    ));
-    let send5 = Block::State(StateBlock::new(
-        key1.public_key().as_account(),
-        send4.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(10),
-        key2.public_key().as_account().into(),
-        &key1,
-        node.work_generate_dev(send4.hash()),
-    ));
-    let receive1 = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        open2.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - quorum_delta - Amount::raw(250),
-        send4.hash().into(),
-        &key2,
-        node.work_generate_dev(open2.hash()),
-    ));
-    let send6 = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        receive1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(10),
-        key3.public_key().as_account().into(),
-        &key2,
-        node.work_generate_dev(receive1.hash()),
-    ));
-    let receive2 = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        send6.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(50),
-        send5.hash().into(),
-        &key2,
-        node.work_generate_dev(send6.hash()),
-    ));
+    let send4 = lattice.account(&key1).send_all_except(&key2, 50);
+    let send5 = lattice.account(&key1).send(&key2, 40);
+    let receive1 = lattice.account(&key2).receive(&send4);
+    let send6 = lattice.account(&key2).send_all_except(&key3, 10);
+    let receive2 = lattice.account(&key2).receive(&send5);
+
     node.process_multi(&[
         send1.clone(),
         send2.clone(),
@@ -210,16 +125,8 @@ fn multiple_accounts() {
         .is_none());
 
     // The nodes process a live receive which propagates across to all accounts
-    let mut receive3 = Block::State(StateBlock::new(
-        key3.public_key().as_account(),
-        open3.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - quorum_delta - Amount::raw(160),
-        send6.hash().into(),
-        &key3,
-        node.work_generate_dev(open3.hash()),
-    ));
-    node.ledger.process(&mut tx, &mut receive3).unwrap();
+    let receive3 = lattice.account(&key3).receive(&send6);
+    node.ledger.process(&mut tx, &receive3).unwrap();
     let confirmed = node.ledger.confirm(&mut tx, receive3.hash());
     assert_eq!(confirmed.len(), 10);
     assert_eq!(

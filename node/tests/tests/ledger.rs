@@ -10,7 +10,7 @@ use test_helpers::{assert_timely, assert_timely_eq, start_elections, System};
 
 mod votes {
     use super::*;
-    use rsnano_core::StateBlock;
+    use rsnano_core::{StateBlock, UnsavedBlockLatticeBuilder};
     use rsnano_ledger::DEV_GENESIS_ACCOUNT;
     use rsnano_node::consensus::ActiveElectionsExt;
     use std::time::SystemTime;
@@ -100,16 +100,13 @@ mod votes {
             ..System::default_config_without_backlog_population()
         };
         let node1 = system.build_node().config(config).finish();
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let key1 = PrivateKey::new();
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY, // No representative, blocks can't confirm
-            Amount::MAX / 2 - Amount::nano(1000),
-            key1.public_key().as_account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+
+        // No representative, blocks can't confirm
+        let send1 = lattice
+            .genesis()
+            .send_all_except(&key1, Amount::MAX / 2 - Amount::nano(1000));
         node1.process(send1.clone()).unwrap();
         let election1 = start_election(&node1, &send1.hash());
         let vote1 = Arc::new(Vote::new(

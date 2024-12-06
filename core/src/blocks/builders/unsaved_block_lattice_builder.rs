@@ -52,6 +52,15 @@ pub struct UnsavedAccountChainBuilder<'a> {
 }
 
 impl<'a> UnsavedAccountChainBuilder<'a> {
+    pub fn send_all_except(
+        &mut self,
+        destination: impl Into<Account>,
+        keep: impl Into<Amount>,
+    ) -> Block {
+        let frontier = self.get_frontier();
+        self.send(destination, frontier.balance - keep.into())
+    }
+
     pub fn send(&mut self, destination: impl Into<Account>, amount: impl Into<Amount>) -> Block {
         let destination = destination.into();
         let frontier = self.get_frontier();

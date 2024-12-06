@@ -1,8 +1,6 @@
 use rsnano_core::{
-    Amount, Block, BlockHash, PrivateKey, StateBlock, UnsavedBlockLatticeBuilder, Vote, VoteSource,
-    DEV_GENESIS_KEY,
+    Amount, PrivateKey, UnsavedBlockLatticeBuilder, Vote, VoteSource, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
     config::NodeConfig,
     consensus::ElectionBehavior,

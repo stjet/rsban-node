@@ -1,6 +1,6 @@
 use rsnano_core::{
-    Amount, Block, BlockHash, Epoch, PrivateKey, Root, Signature, StateBlock, Vote, VoteCode,
-    VoteSource, WalletId, DEV_GENESIS_KEY,
+    Amount, Block, BlockHash, Epoch, PrivateKey, Root, Signature, StateBlock,
+    UnsavedBlockLatticeBuilder, Vote, VoteCode, VoteSource, WalletId, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
@@ -370,28 +370,18 @@ fn vote_spacing_vote_generator() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
-    let mut send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node.ledger.constants.genesis_amount - Amount::nano(1000),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice
+        .genesis()
+        .send(&*DEV_GENESIS_KEY, Amount::nano(1000));
 
-    let mut send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node.ledger.constants.genesis_amount - Amount::nano(1000) - Amount::raw(1),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
+    let send2 = fork_lattice
+        .genesis()
+        .send(&*DEV_GENESIS_KEY, Amount::nano(1001));
 
     node.ledger
-        .process(&mut node.store.tx_begin_write(), &mut send1)
+        .process(&mut node.store.tx_begin_write(), &send1)
         .unwrap();
     assert!(
         node.stats.count(
@@ -415,7 +405,7 @@ fn vote_spacing_vote_generator() {
         .rollback(&mut node.store.tx_begin_write(), &send1.hash())
         .unwrap();
     node.ledger
-        .process(&mut node.store.tx_begin_write(), &mut send2)
+        .process(&mut node.store.tx_begin_write(), &send2)
         .unwrap();
     node.vote_generators
         .generate_non_final_vote(&(*DEV_GENESIS_HASH).into(), &send2.hash().into());
@@ -464,28 +454,18 @@ fn vote_spacing_rapid() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
-    let mut send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node.ledger.constants.genesis_amount - Amount::nano(1000),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice
+        .genesis()
+        .send(&*DEV_GENESIS_KEY, Amount::nano(1000));
 
-    let mut send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        node.ledger.constants.genesis_amount - Amount::nano(1000) - Amount::raw(1),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
+    let send2 = fork_lattice
+        .genesis()
+        .send(&*DEV_GENESIS_KEY, Amount::nano(1001));
 
     node.ledger
-        .process(&mut node.store.tx_begin_write(), &mut send1)
+        .process(&mut node.store.tx_begin_write(), &send1)
         .unwrap();
     node.vote_generators
         .generate_non_final_vote(&(*DEV_GENESIS_HASH).into(), &send1.hash().into());
@@ -502,7 +482,7 @@ fn vote_spacing_rapid() {
         .rollback(&mut node.ledger.rw_txn(), &send1.hash())
         .unwrap();
     node.ledger
-        .process(&mut node.ledger.rw_txn(), &mut send2)
+        .process(&mut node.ledger.rw_txn(), &send2)
         .unwrap();
     node.vote_generators
         .generate_non_final_vote(&(*DEV_GENESIS_HASH).into(), &send2.hash().into());

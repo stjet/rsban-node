@@ -1,7 +1,5 @@
-use rsnano_core::{
-    Amount, Block, PrivateKey, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
-};
-use rsnano_ledger::{Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
+use rsnano_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
+use rsnano_ledger::Writer;
 use rsnano_node::{
     config::NodeFlags,
     consensus::ActiveElectionsExt,

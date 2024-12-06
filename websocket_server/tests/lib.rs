@@ -83,17 +83,10 @@ fn stopped_election() {
 
         assert_eq!(1, websocket.subscriber_count(Topic::StoppedElection));
 
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         // Create election, then erase it, causing a websocket message to be emitted
         let key1 = PrivateKey::new();
-        let send1 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::zero(),
-            key1.account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+        let send1 = lattice.genesis().send_max(&key1);
         let publish1 = Message::Publish(Publish::new_forward(send1.clone()));
         node1
             .inbound_message_queue
@@ -181,20 +174,13 @@ fn confirmation() {
         ws_stream.next().await.unwrap().unwrap();
 
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
+
+        let unsaved_block_lattice_builder = UnsavedBlockLatticeBuilder::new();
+        let mut lattice = unsaved_block_lattice_builder;
         let key = PrivateKey::new();
-        let mut balance = Amount::MAX;
         let send_amount = node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1);
         // Quick-confirm a block, legacy blocks should work without filtering
-        let mut previous = node1.latest(&DEV_GENESIS_ACCOUNT);
-        balance = balance - send_amount;
-        let send = Block::LegacySend(SendBlock::new(
-            &previous,
-            &key.public_key().as_account(),
-            &balance,
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous),
-        ));
-        previous = send.hash();
+        let send = lattice.genesis().legacy_send(&key, send_amount);
         node1.process_active(send);
 
         let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {
@@ -214,16 +200,7 @@ fn confirmation() {
         ws_stream.next().await.unwrap().unwrap();
 
         // Quick confirm a state block
-        balance = balance - send_amount;
-        let send = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            previous,
-            *DEV_GENESIS_PUB_KEY,
-            balance,
-            key.public_key().as_account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous),
-        ));
+        let send = lattice.genesis().send(&key, send_amount);
         node1.process_active(send);
 
         timeout(Duration::from_secs(1), ws_stream.next())
@@ -250,21 +227,12 @@ fn confirmation_options() {
 
         // Confirm a state block for an in-wallet account
         node1.insert_into_wallet(&DEV_GENESIS_KEY);
+        let mut lattice = UnsavedBlockLatticeBuilder::new();
         let key = PrivateKey::new();
         let mut balance = Amount::MAX;
         let send_amount = node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1);
-        let mut previous = node1.latest(&DEV_GENESIS_ACCOUNT);
         balance = balance - send_amount;
-        let send = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            previous,
-            *DEV_GENESIS_PUB_KEY,
-            balance,
-            key.public_key().as_account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous),
-        ));
-        previous = send.hash();
+        let send = lattice.genesis().send(&key, send_amount);
         node1.process_active(send);
 
         timeout(Duration::from_secs(1), ws_stream.next())
@@ -282,16 +250,8 @@ fn confirmation_options() {
 
         // Quick-confirm another block
         balance = balance - send_amount;
-        let send = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            previous,
-            *DEV_GENESIS_PUB_KEY,
-            balance,
-            key.public_key().as_account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(previous),
-        ));
-        previous = send.hash();
+        let send = lattice.genesis().send(&key, send_amount);
+        let previous = send.hash();
         node1.process_active(send);
 
         let tungstenite::Message::Text(response) = ws_stream.next().await.unwrap().unwrap() else {

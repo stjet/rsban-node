@@ -1,14 +1,16 @@
 use crate::{
+    blocks::state_block::EpochBlockArgs,
+    dev_epoch1_signer, epoch_v1_link,
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, Block, BlockHash, Link, PrivateKey, PublicKey, Root, StateBlockArgs,
-    DEV_GENESIS_BLOCK, DEV_GENESIS_KEY,
+    Account, Amount, Block, BlockHash, Epoch, Link, PendingInfo, PendingKey, PrivateKey, PublicKey,
+    Root, StateBlockArgs, DEV_GENESIS_BLOCK, DEV_GENESIS_KEY,
 };
 use std::collections::HashMap;
 
 pub struct UnsavedBlockLatticeBuilder {
     accounts: HashMap<Account, Frontier>,
     work_pool: WorkPoolImpl,
-    pending_receives: HashMap<BlockHash, Amount>,
+    pending_receives: HashMap<PendingKey, PendingInfo>,
 }
 
 #[derive(Clone)]
@@ -87,7 +89,14 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
             balance: new_balance,
         });
 
-        self.lattice.pending_receives.insert(send.hash(), amount);
+        self.lattice.pending_receives.insert(
+            PendingKey::new(destination, send.hash()),
+            PendingInfo {
+                source: self.key.account(),
+                amount,
+                epoch: Epoch::Epoch0,
+            },
+        );
 
         send
     }
@@ -97,8 +106,12 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
         let amount = self
             .lattice
             .pending_receives
-            .remove(&corresponding_send.hash())
-            .expect("no pending receive found");
+            .remove(&PendingKey::new(
+                self.key.account(),
+                corresponding_send.hash(),
+            ))
+            .expect("no pending receive found")
+            .amount;
 
         let frontier = self.get_frontier_or_empty();
 
@@ -153,6 +166,38 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
         });
 
         change
+    }
+
+    pub fn epoch_open(&mut self) -> Block {
+        assert!(!self.lattice.accounts.contains_key(&self.key.account()));
+        assert!(self
+            .lattice
+            .pending_receives
+            .keys()
+            .any(|k| k.receiving_account == self.key.account()));
+
+        let receive: Block = EpochBlockArgs {
+            epoch_signer: dev_epoch1_signer(),
+            account: self.key.account(),
+            previous: BlockHash::zero(),
+            representative: PublicKey::zero(),
+            balance: Amount::zero(),
+            link: epoch_v1_link(),
+            work: self
+                .lattice
+                .work_pool
+                .generate_dev2(self.key.account().into())
+                .unwrap(),
+        }
+        .into();
+
+        self.set_new_frontier(Frontier {
+            hash: receive.hash(),
+            representative: PublicKey::zero(),
+            balance: Amount::zero(),
+        });
+
+        receive
     }
 
     fn set_new_frontier(&mut self, new_frontier: Frontier) {

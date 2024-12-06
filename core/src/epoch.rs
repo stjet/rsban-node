@@ -1,4 +1,4 @@
-use crate::{Account, Block, Link, PublicKey};
+use crate::{Account, Block, Link, PrivateKey, PublicKey, DEV_GENESIS_KEY};
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
 
@@ -112,6 +112,22 @@ impl TryFrom<u8> for Epoch {
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         FromPrimitive::from_u8(value).ok_or_else(|| anyhow!("invalid epoch value"))
     }
+}
+
+pub fn epoch_v1_link() -> Link {
+    let mut link_bytes = [0u8; 32];
+    link_bytes[..14].copy_from_slice(b"epoch v1 block");
+    Link::from_bytes(link_bytes)
+}
+
+pub fn epoch_v2_link() -> Link {
+    let mut link_bytes = [0u8; 32];
+    link_bytes[..14].copy_from_slice(b"epoch v2 block");
+    Link::from_bytes(link_bytes)
+}
+
+pub fn dev_epoch1_signer() -> &'static PrivateKey {
+    &DEV_GENESIS_KEY
 }
 
 #[cfg(test)]

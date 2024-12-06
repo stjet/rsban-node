@@ -49,7 +49,7 @@ mod account_info;
 pub use account_info::AccountInfo;
 
 mod epoch;
-pub use epoch::{Epoch, Epochs};
+pub use epoch::*;
 
 mod confirmation_height_info;
 pub use confirmation_height_info::ConfirmationHeightInfo;
@@ -339,18 +339,6 @@ impl FromStr for Networks {
 //todo: make configurable in builld script again!
 pub static ACTIVE_NETWORK: LazyLock<Mutex<Networks>> =
     LazyLock::new(|| Mutex::new(Networks::NanoBetaNetwork));
-
-pub fn epoch_v1_link() -> Link {
-    let mut link_bytes = [0u8; 32];
-    link_bytes[..14].copy_from_slice(b"epoch v1 block");
-    Link::from_bytes(link_bytes)
-}
-
-pub fn epoch_v2_link() -> Link {
-    let mut link_bytes = [0u8; 32];
-    link_bytes[..14].copy_from_slice(b"epoch v2 block");
-    Link::from_bytes(link_bytes)
-}
 
 #[derive(PartialEq, Eq, Debug, Default, Clone)]
 pub struct Frontier {

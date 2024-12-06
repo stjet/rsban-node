@@ -1,6 +1,6 @@
 use rsnano_core::{
     Account, Amount, Block, BlockHash, Epoch, PrivateKey, PublicKey, SendBlock, Signature,
-    StateBlock, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
+    StateBlock, UnsavedBlockLatticeBuilder, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
@@ -129,16 +129,15 @@ mod votes {
                 .timestamp,
             Vote::TIMESTAMP_MIN
         );
+
+        let mut fork_lattice = UnsavedBlockLatticeBuilder::new();
         let key2 = PrivateKey::new();
-        let send2 = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            *DEV_GENESIS_HASH,
-            *DEV_GENESIS_PUB_KEY, // No representative, blocks can't confirm
-            Amount::MAX / 2 - Amount::nano(1000),
-            key2.public_key().as_account().into(),
-            &DEV_GENESIS_KEY,
-            node1.work_generate_dev(*DEV_GENESIS_HASH),
-        ));
+
+        // No representative, blocks can't confirm
+        let send2 = fork_lattice
+            .genesis()
+            .send_all_except(&key2, Amount::MAX / 2 - Amount::nano(1000));
+
         assert_eq!(node1.active.publish_block(&send2), false);
         assert_timely(Duration::from_secs(5), || node1.active.active(&send2));
         let vote2 = Arc::new(Vote::new(
@@ -215,16 +214,12 @@ mod votes {
 fn epoch_open_pending() {
     let mut system = System::new();
     let node1 = system.make_node();
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let epoch_open = Block::State(StateBlock::new(
-        key1.account(),
-        BlockHash::zero(),
-        PublicKey::zero(),
-        Amount::zero(),
-        node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(&key1),
-    ));
+
+    let send1 = lattice.genesis().send(&key1, 100);
+    let epoch_open = lattice.account(&key1).epoch_open();
+
     let status = node1.process(epoch_open.clone()).unwrap_err();
     assert_eq!(status, BlockStatus::GapEpochOpenPending);
     node1.block_processor.add(
@@ -239,15 +234,6 @@ fn epoch_open_pending() {
     assert_eq!(blocks.len(), 1);
     assert_eq!(blocks[0].block.full_hash(), epoch_open.full_hash());
     // New block to process epoch open
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(100),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
     node1
         .block_processor
         .add(send1.into(), BlockSource::Live, ChannelId::LOOPBACK);

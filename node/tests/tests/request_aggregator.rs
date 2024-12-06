@@ -1,4 +1,6 @@
-use rsnano_core::{Amount, Block, BlockHash, PrivateKey, StateBlock, DEV_GENESIS_KEY};
+use rsnano_core::{
+    Amount, Block, PrivateKey, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
+};
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_messages::ConfirmAck;
 use rsnano_node::{
@@ -22,15 +24,10 @@ fn one() {
         )
         .unwrap();
 
-    let mut send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let mut send1 = lattice
+        .genesis()
+        .send(&*DEV_GENESIS_KEY, Amount::nano(1000));
 
     let request = vec![(send1.hash(), send1.root())];
 
@@ -162,41 +159,20 @@ fn one_update() {
         )
         .unwrap();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let send1 = lattice.genesis().send(&key1, Amount::nano(1000));
     node.process(send1.clone()).unwrap();
     node.confirm(send1.hash());
 
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(2000),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash()),
-    ));
+    let send2 = lattice
+        .genesis()
+        .send(&*DEV_GENESIS_KEY, Amount::nano(1000));
     node.process(send2.clone()).unwrap();
     node.confirm(send2.hash());
 
-    let receive1 = Block::State(StateBlock::new(
-        key1.account(),
-        BlockHash::zero(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::nano(1000),
-        send1.hash().into(),
-        &key1,
-        node.work_generate_dev(&key1),
-    ));
+    let receive1 = lattice.account(&key1).receive(&send1);
     node.process(receive1.clone()).unwrap();
     node.confirm(receive1.hash());
 
@@ -305,43 +281,13 @@ fn two() {
         )
         .unwrap();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
+    let send1 = lattice.genesis().send(&key1, 1);
+    let send2 = lattice.genesis().send(&*DEV_GENESIS_KEY, 1);
+    let receive1 = lattice.account(&key1).receive(&send1);
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    node.process(send1.clone()).unwrap();
-    node.confirm(send1.hash());
-
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(2),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash()),
-    ));
-    node.process(send2.clone()).unwrap();
-    node.confirm(send2.hash());
-
-    let receive1 = Block::State(StateBlock::new(
-        key1.account(),
-        BlockHash::zero(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(1),
-        send1.hash().into(),
-        &key1,
-        node.work_generate_dev(&key1),
-    ));
-    node.process(receive1.clone()).unwrap();
-    node.confirm(receive1.hash());
+    node.process_and_confirm_multi(&[send1, send2.clone(), receive1.clone()]);
 
     let request = vec![
         (send2.hash(), send2.root()),
@@ -463,19 +409,10 @@ fn split() {
 
     let mut request = Vec::new();
     let mut blocks = Vec::new();
-    let mut previous = *DEV_GENESIS_HASH;
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
 
-    for i in 0..=MAX_VBH {
-        let block = Block::State(StateBlock::new(
-            *DEV_GENESIS_ACCOUNT,
-            previous,
-            *DEV_GENESIS_PUB_KEY,
-            Amount::MAX - Amount::raw(i as u128 + 1),
-            (*DEV_GENESIS_ACCOUNT).into(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(previous),
-        ));
-        previous = block.hash();
+    for _ in 0..=MAX_VBH {
+        let block = lattice.genesis().send(&*DEV_GENESIS_KEY, 1);
         node.process(block.clone()).unwrap();
         request.push((block.hash(), block.root()));
         blocks.push(block);

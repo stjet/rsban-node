@@ -1,6 +1,7 @@
 use rsnano_core::{
-    deterministic_key, Account, Amount, Block, BlockHash, Epoch, KeyDerivationFunction, PrivateKey,
-    PublicKey, RawKey, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
+    deterministic_key, Account, Amount, Block, BlockHash, Epoch, EpochBlockArgs,
+    KeyDerivationFunction, PrivateKey, PublicKey, RawKey, UnsavedBlockLatticeBuilder,
+    DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{
@@ -1305,20 +1306,21 @@ fn epoch_2_receive_unopened() {
             .unwrap();
 
         // Upgrade unopened account to epoch_2
-        let epoch2_unopened = Block::State(StateBlock::new(
-            key.account(),
-            BlockHash::zero(),
-            PublicKey::zero(),
-            Amount::zero(),
-            *node
+        let epoch2_unopened: Block = EpochBlockArgs {
+            epoch_signer: &DEV_GENESIS_KEY,
+            account: key.account(),
+            previous: BlockHash::zero(),
+            representative: PublicKey::zero(),
+            balance: Amount::zero(),
+            link: *node
                 .network_params
                 .ledger
                 .epochs
                 .link(Epoch::Epoch2)
                 .unwrap(),
-            &DEV_GENESIS_KEY,
-            node.work_generate_dev(&key),
-        ));
+            work: node.work_generate_dev(&key),
+        }
+        .into();
         node.process(epoch2_unopened).unwrap();
 
         node.wallets
@@ -1560,14 +1562,15 @@ fn upgrade_genesis_epoch(node: &Node, epoch: Epoch) {
         .account_balance(&tx, &DEV_GENESIS_ACCOUNT)
         .unwrap();
 
-    let mut epoch = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        latest,
-        *DEV_GENESIS_PUB_KEY,
+    let mut epoch: Block = EpochBlockArgs {
+        epoch_signer: &DEV_GENESIS_KEY,
+        account: *DEV_GENESIS_ACCOUNT,
+        previous: latest,
+        representative: *DEV_GENESIS_PUB_KEY,
         balance,
-        node.ledger.epoch_link(epoch).unwrap(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(latest),
-    ));
+        link: node.ledger.epoch_link(epoch).unwrap(),
+        work: node.work_generate_dev(latest),
+    }
+    .into();
     node.ledger.process(&mut tx, &mut epoch).unwrap();
 }

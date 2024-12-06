@@ -95,29 +95,34 @@ impl BlockCreateResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{BlockBase, PrivateKey, RawKey, StateBlock};
+    use rsnano_core::{BlockBase, PrivateKey, PublicKey, RawKey, StateBlock};
     use serde_json::json;
 
     #[test]
     fn serialize_block_create_command() {
         // Create a test StateBlock instance
-        let state_block = StateBlock::new_test_instance();
+        let balance = Amount::from(123);
+        let account = Account::from(42);
+        let representative = PublicKey::from(1);
+        let link = Link::from(2);
+        let work = 4;
+        let previous = BlockHash::from(3);
         let key_pair = PrivateKey::new();
         let raw_key = RawKey::from(key_pair.private_key());
 
         // Create BlockCreateArgs using the test StateBlock data
         let block_create_args = BlockCreateArgs {
             block_type: BlockTypeDto::State,
-            balance: Some(state_block.balance()),
+            balance: Some(balance),
             key: Some(raw_key),
             wallet: None,
-            account: Some(state_block.account()),
+            account: Some(account),
             source: None,
             destination: None,
-            representative: Some(state_block.representative().as_account()),
-            link: Some(state_block.link()),
-            previous: Some(state_block.previous()),
-            work: Some(WorkNonce::from(state_block.work())),
+            representative: Some(representative.as_account()),
+            link: Some(link),
+            previous: Some(previous),
+            work: Some(WorkNonce::from(work)),
             version: Some(WorkVersionDto::Work1),
             difficulty: None,
         };
@@ -132,13 +137,13 @@ mod tests {
         let expected_json = json!({
             "action": "block_create",
             "type": "state",
-            "balance": state_block.balance().to_string_dec(),
+            "balance": balance.to_string_dec(),
             "key": raw_key.encode_hex(),
-            "account": state_block.account().encode_account(),
-            "representative": state_block.representative().as_account(),
-            "link": state_block.link().encode_hex(),
-            "previous": state_block.previous().encode_hex(),
-            "work": format!("{:016X}", state_block.work()),
+            "account": account.encode_account(),
+            "representative": representative.as_account(),
+            "link": link.encode_hex(),
+            "previous": previous.encode_hex(),
+            "work": format!("{:016X}", work),
             "version": "work1"
         });
 

@@ -21,7 +21,7 @@ use send_block::JsonSendBlock;
 pub use send_block::{valid_send_block_predecessor, SendBlock, SendHashables};
 
 mod state_block;
-pub use state_block::{JsonStateBlock, StateBlock, StateBlockArgs};
+pub use state_block::{EpochBlockArgs, JsonStateBlock, StateBlock, StateBlockArgs};
 
 mod builders;
 pub use builders::*;

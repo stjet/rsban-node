@@ -1,10 +1,12 @@
 use crate::{
-    blocks::{open_block::OpenBlockArgs, send_block::SendBlockArgs, state_block::EpochBlockArgs},
+    blocks::{
+        open_block::OpenBlockArgs, receive_block::ReceiveBlockArgs, send_block::SendBlockArgs,
+        state_block::EpochBlockArgs,
+    },
     dev_epoch1_signer, epoch_v1_link,
     work::{WorkPool, WorkPoolImpl},
     Account, Amount, Block, BlockHash, ChangeBlock, Epoch, Link, PendingInfo, PendingKey,
-    PrivateKey, PublicKey, ReceiveBlock, Root, SendBlock, StateBlockArgs, DEV_GENESIS_BLOCK,
-    DEV_GENESIS_KEY,
+    PrivateKey, PublicKey, Root, StateBlockArgs, DEV_GENESIS_BLOCK, DEV_GENESIS_KEY,
 };
 use std::collections::HashMap;
 
@@ -258,12 +260,13 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
         let new_balance = frontier.balance + amount;
         let work = self.lattice.work_pool.generate_dev2(root).unwrap();
 
-        let receive = Block::LegacyReceive(ReceiveBlock::new(
-            frontier.hash,
-            corresponding_send.hash(),
-            self.key,
+        let receive: Block = ReceiveBlockArgs {
+            key: self.key,
+            previous: frontier.hash,
+            source: corresponding_send.hash(),
             work,
-        ));
+        }
+        .into();
 
         self.set_new_frontier(Frontier {
             hash: receive.hash(),

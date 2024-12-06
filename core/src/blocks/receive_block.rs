@@ -1,4 +1,4 @@
-use super::{BlockBase, BlockType};
+use super::{Block, BlockBase, BlockType};
 use crate::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, DependentBlocks, JsonBlock, Link, PrivateKey,
@@ -6,50 +6,24 @@ use crate::{
 };
 use anyhow::Result;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct ReceiveHashables {
-    pub previous: BlockHash,
-    pub source: BlockHash,
-}
-
-impl ReceiveHashables {
-    fn serialized_size() -> usize {
-        BlockHash::serialized_size() + BlockHash::serialized_size()
-    }
-
-    fn hash(&self) -> BlockHash {
-        BlockHashBuilder::new()
-            .update(self.previous.as_bytes())
-            .update(self.source.as_bytes())
-            .build()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct ReceiveBlock {
-    pub work: u64,
-    pub signature: Signature,
-    pub hashables: ReceiveHashables,
-    pub hash: BlockHash,
+    work: u64,
+    signature: Signature,
+    hashables: ReceiveHashables,
+    hash: BlockHash,
 }
 
 impl ReceiveBlock {
-    pub fn new(previous: BlockHash, source: BlockHash, priv_key: &PrivateKey, work: u64) -> Self {
-        let hashables = ReceiveHashables { previous, source };
-        let hash = hashables.hash();
-        let signature = priv_key.sign(hash.as_bytes());
-
-        Self {
-            work,
-            signature,
-            hashables,
-            hash,
-        }
-    }
-
     pub fn new_test_instance() -> Self {
         let key = PrivateKey::from(42);
-        ReceiveBlock::new(BlockHash::from(123), BlockHash::from(456), &key, 69420)
+        ReceiveBlockArgs {
+            key: &key,
+            previous: 123.into(),
+            source: 456.into(),
+            work: 69420,
+        }
+        .into()
     }
 
     // Receive blocks always have a source
@@ -183,6 +157,56 @@ impl BlockBase for ReceiveBlock {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct ReceiveHashables {
+    previous: BlockHash,
+    source: BlockHash,
+}
+
+impl ReceiveHashables {
+    fn serialized_size() -> usize {
+        BlockHash::serialized_size() + BlockHash::serialized_size()
+    }
+
+    fn hash(&self) -> BlockHash {
+        BlockHashBuilder::new()
+            .update(self.previous.as_bytes())
+            .update(self.source.as_bytes())
+            .build()
+    }
+}
+
+pub struct ReceiveBlockArgs<'a> {
+    pub key: &'a PrivateKey,
+    pub previous: BlockHash,
+    pub source: BlockHash,
+    pub work: u64,
+}
+
+impl<'a> From<ReceiveBlockArgs<'a>> for ReceiveBlock {
+    fn from(value: ReceiveBlockArgs<'a>) -> Self {
+        let hashables = ReceiveHashables {
+            previous: value.previous,
+            source: value.source,
+        };
+        let hash = hashables.hash();
+        let signature = value.key.sign(hash.as_bytes());
+
+        Self {
+            work: value.work,
+            signature,
+            hashables,
+            hash,
+        }
+    }
+}
+
+impl<'a> From<ReceiveBlockArgs<'a>> for Block {
+    fn from(value: ReceiveBlockArgs<'a>) -> Self {
+        Block::LegacyReceive(value.into())
+    }
+}
+
 #[derive(PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct JsonReceiveBlock {
     pub previous: BlockHash,
@@ -217,7 +241,13 @@ mod tests {
     fn create_block() {
         let key = PrivateKey::new();
         let previous = BlockHash::from(1);
-        let block = ReceiveBlock::new(previous, BlockHash::from(2), &key, 4);
+        let block: ReceiveBlock = ReceiveBlockArgs {
+            key: &key,
+            previous,
+            source: 2.into(),
+            work: 4,
+        }
+        .into();
         assert_eq!(block.previous(), previous);
         assert_eq!(block.root(), previous.into());
     }
@@ -227,7 +257,13 @@ mod tests {
     #[test]
     fn serialize() {
         let key1 = PrivateKey::new();
-        let block1 = ReceiveBlock::new(BlockHash::from(0), BlockHash::from(1), &key1, 4);
+        let block1: ReceiveBlock = ReceiveBlockArgs {
+            key: &key1,
+            previous: 0.into(),
+            source: 1.into(),
+            work: 4,
+        }
+        .into();
         let mut stream = MemoryStream::new();
         block1.serialize_without_block_type(&mut stream);
         assert_eq!(ReceiveBlock::serialized_size(), stream.bytes_written());

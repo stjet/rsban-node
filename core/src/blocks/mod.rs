@@ -12,8 +12,9 @@ mod open_block;
 pub use open_block::{JsonOpenBlock, OpenBlock, OpenBlockArgs};
 
 mod receive_block;
-use receive_block::JsonReceiveBlock;
-pub use receive_block::{valid_receive_block_predecessor, ReceiveBlock, ReceiveHashables};
+pub use receive_block::{
+    valid_receive_block_predecessor, JsonReceiveBlock, ReceiveBlock, ReceiveBlockArgs,
+};
 
 mod send_block;
 use send_block::JsonSendBlock;

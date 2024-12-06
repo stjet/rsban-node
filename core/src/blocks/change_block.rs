@@ -6,31 +6,12 @@ use crate::{
 };
 use anyhow::Result;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct ChangeHashables {
-    pub previous: BlockHash,
-    pub representative: PublicKey,
-}
-
-impl ChangeHashables {
-    fn serialized_size() -> usize {
-        BlockHash::serialized_size() + Account::serialized_size()
-    }
-
-    fn hash(&self) -> BlockHash {
-        BlockHashBuilder::new()
-            .update(self.previous.as_bytes())
-            .update(self.representative.as_bytes())
-            .build()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct ChangeBlock {
-    pub work: u64,
-    pub signature: Signature,
-    pub hashables: ChangeHashables,
-    pub hash: BlockHash,
+    work: u64,
+    signature: Signature,
+    hashables: ChangeHashables,
+    hash: BlockHash,
 }
 
 impl ChangeBlock {
@@ -190,6 +171,25 @@ impl BlockBase for ChangeBlock {
             work: self.work.into(),
             signature: self.signature.clone(),
         })
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct ChangeHashables {
+    pub previous: BlockHash,
+    pub representative: PublicKey,
+}
+
+impl ChangeHashables {
+    fn serialized_size() -> usize {
+        BlockHash::serialized_size() + Account::serialized_size()
+    }
+
+    fn hash(&self) -> BlockHash {
+        BlockHashBuilder::new()
+            .update(self.previous.as_bytes())
+            .update(self.representative.as_bytes())
+            .build()
     }
 }
 

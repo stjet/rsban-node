@@ -17,7 +17,7 @@ pub use receive_block::{valid_receive_block_predecessor, ReceiveBlock, ReceiveHa
 
 mod send_block;
 use send_block::JsonSendBlock;
-pub use send_block::{valid_send_block_predecessor, SendBlock};
+pub use send_block::{valid_send_block_predecessor, SendBlock, SendBlockArgs};
 
 mod state_block;
 pub use state_block::{EpochBlockArgs, JsonStateBlock, StateBlock, StateBlockArgs};

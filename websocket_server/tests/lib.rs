@@ -1,8 +1,8 @@
 use core::panic;
 use futures_util::{SinkExt, StreamExt};
 use rsnano_core::{
-    Account, Amount, Block, JsonBlock, Networks, PrivateKey, SendBlock, UnsavedBlockLatticeBuilder,
-    Vote, VoteCode, DEV_GENESIS_KEY,
+    Account, Amount, Block, JsonBlock, Networks, PrivateKey, SendBlockArgs,
+    UnsavedBlockLatticeBuilder, Vote, VoteCode, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::{Message, Publish};
@@ -280,8 +280,13 @@ fn confirmation_options() {
         // Confirm a legacy block
         // When filtering options are enabled, legacy blocks are always filtered
         balance = balance - send_amount;
-        let send = Block::LegacySend(SendBlock::new(&previous, &key.public_key().as_account(), &balance, &DEV_GENESIS_KEY,
-                node1.work_generate_dev(previous)));
+        let send: Block = SendBlockArgs{ 
+            key: &DEV_GENESIS_KEY, 
+            previous, 
+            destination: key.account(), 
+            balance, 
+            work:  node1.work_generate_dev(previous)
+        }.into();
         node1.process_active(send);
         timeout(Duration::from_secs(1), ws_stream.next())
             .await

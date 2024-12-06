@@ -16,30 +16,6 @@ pub struct SendBlock {
 }
 
 impl SendBlock {
-    pub fn new(
-        previous: &BlockHash,
-        destination: &Account,
-        balance: &Amount,
-        private_key: &PrivateKey,
-        work: u64,
-    ) -> Self {
-        let hashables = SendHashables {
-            previous: *previous,
-            destination: *destination,
-            balance: *balance,
-        };
-
-        let hash = hashables.hash();
-        let signature = private_key.sign(hash.as_bytes());
-
-        Self {
-            hashables,
-            work,
-            signature,
-            hash,
-        }
-    }
-
     pub fn new_test_instance() -> Self {
         let key = PrivateKey::from(42);
         SendBlockArgs {

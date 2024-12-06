@@ -1,6 +1,6 @@
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBase, BlockHash,
-    DifficultyV1, PrivateKey, PublicKey, QualifiedRoot, Root, SendBlock, Signature, StateBlockArgs,
+    DifficultyV1, PrivateKey, PublicKey, QualifiedRoot, Root, Signature, StateBlockArgs,
     TestBlockBuilder, TestLegacySendBlockBuilder, UncheckedInfo, UnsavedBlockLatticeBuilder, Vote,
     VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
 };
@@ -1189,30 +1189,14 @@ fn fork_multi_flip() {
 fn fork_publish_inactive() {
     let mut system = System::new();
     let node = system.make_node();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let mut fork_lattice = lattice.clone();
     let key1 = PrivateKey::new();
     let key2 = PrivateKey::new();
 
-    let send1 = Block::LegacySend(SendBlock::new(
-        &DEV_GENESIS_HASH,
-        &key1.account(),
-        &(Amount::MAX - Amount::raw(100)),
-        &DEV_GENESIS_KEY,
-        system
-            .work
-            .generate_dev2((*DEV_GENESIS_HASH).into())
-            .unwrap(),
-    ));
-
-    let send2 = Block::LegacySend(SendBlock::new(
-        &DEV_GENESIS_HASH,
-        &key2.account(),
-        &(Amount::MAX - Amount::raw(100)),
-        &DEV_GENESIS_KEY,
-        system
-            .work
-            .generate_dev2((*DEV_GENESIS_HASH).into())
-            .unwrap(),
-    ));
+    let send1 = lattice.genesis().legacy_send(&key1, 100);
+    let send2 = fork_lattice.genesis().legacy_send(&key2, 100);
 
     node.process_active(send1.clone());
     assert_timely_msg(
@@ -1698,8 +1682,6 @@ fn quick_confirm() {
     let node1 = system.make_node();
     let wallet_id = node1.wallets.wallet_ids()[0];
     let key = PrivateKey::new();
-    let previous = node1.latest(&DEV_GENESIS_ACCOUNT);
-    let genesis_start_balance = node1.balance(&DEV_GENESIS_ACCOUNT);
 
     node1
         .wallets
@@ -1710,13 +1692,11 @@ fn quick_confirm() {
         .insert_adhoc2(&wallet_id, &DEV_GENESIS_KEY.private_key(), true)
         .unwrap();
 
-    let send = Block::LegacySend(SendBlock::new(
-        &previous,
-        &key.account(),
-        &(node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1)),
-        &DEV_GENESIS_KEY,
-        system.work.generate_dev2(previous.into()).unwrap(),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice.genesis().send_all_except(
+        &key,
+        node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1),
+    );
 
     node1.process_active(send.clone());
 
@@ -1733,7 +1713,7 @@ fn quick_confirm() {
 
     assert_eq!(
         node1.balance(&key.account()),
-        genesis_start_balance - (node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1))
+        Amount::MAX - (node1.online_reps.lock().unwrap().quorum_delta() + Amount::raw(1))
     );
 }
 
@@ -1743,32 +1723,10 @@ fn send_out_of_order() {
     let node1 = system.make_node();
     let key2 = PrivateKey::new();
 
-    let send1 = Block::LegacySend(SendBlock::new(
-        &DEV_GENESIS_HASH,
-        &key2.account(),
-        &(Amount::MAX - node1.config.receive_minimum),
-        &DEV_GENESIS_KEY,
-        system
-            .work
-            .generate_dev2((*DEV_GENESIS_HASH).into())
-            .unwrap(),
-    ));
-
-    let send2 = Block::LegacySend(SendBlock::new(
-        &send1.hash(),
-        &key2.account(),
-        &(Amount::MAX - node1.config.receive_minimum * 2),
-        &DEV_GENESIS_KEY,
-        system.work.generate_dev2(send1.hash().into()).unwrap(),
-    ));
-
-    let send3 = Block::LegacySend(SendBlock::new(
-        &send2.hash(),
-        &key2.account(),
-        &(Amount::MAX - node1.config.receive_minimum * 3),
-        &DEV_GENESIS_KEY,
-        system.work.generate_dev2(send2.hash().into()).unwrap(),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(&key2, node1.config.receive_minimum);
+    let send2 = lattice.genesis().send(&key2, node1.config.receive_minimum);
+    let send3 = lattice.genesis().send(&key2, node1.config.receive_minimum);
 
     node1.process_active(send3.clone());
     node1.process_active(send2.clone());
@@ -1985,17 +1943,10 @@ fn local_block_broadcast() {
     let node1 = system.build_node().config(node_config).finish();
     let node2 = system.make_disconnected_node();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let latest_hash = *DEV_GENESIS_HASH;
 
-    let send1 = Block::LegacySend(SendBlock::new(
-        &latest_hash,
-        &key1.account(),
-        &(Amount::MAX - Amount::nano(1000)),
-        &DEV_GENESIS_KEY,
-        system.work.generate_dev2(latest_hash.into()).unwrap(),
-    ));
-
+    let send1 = lattice.genesis().send(&key1, 1000);
     let qualified_root = send1.qualified_root();
     let send_hash = send1.hash();
     node1.process_local(send1).unwrap();
@@ -2905,21 +2856,14 @@ fn node_receive_quorum() {
 
     let wallet_id = node1.wallets.wallet_ids()[0];
     let key = PrivateKey::new();
-    let previous = node1.latest(&DEV_GENESIS_ACCOUNT);
 
     node1
         .wallets
         .insert_adhoc2(&wallet_id, &key.private_key(), true)
         .unwrap();
 
-    let send = Block::LegacySend(SendBlock::new(
-        &previous,
-        &key.account(),
-        &(node1.ledger.constants.genesis_amount - Amount::nano(1000)),
-        &DEV_GENESIS_KEY,
-        system.work.generate_dev2(previous.into()).unwrap(),
-    ));
-
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send = lattice.genesis().send(&key, Amount::nano(1000));
     node1.process_active(send.clone());
 
     assert_timely_msg(

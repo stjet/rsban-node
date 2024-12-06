@@ -2,7 +2,7 @@ use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
 use rsnano_core::{
     Account, Amount, Block, BlockDetails, BlockHash, ChangeBlock, Epoch, OpenBlockArgs, PendingKey,
-    PrivateKey, PublicKey, ReceiveBlock, Root, SavedBlock, SendBlock, StateBlockArgs,
+    PrivateKey, PublicKey, ReceiveBlock, Root, SavedBlock, SendBlockArgs, StateBlockArgs,
 };
 use rsnano_node::Node;
 use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateResponse, BlockTypeDto};
@@ -180,13 +180,14 @@ impl RpcCommandHandler {
                     && !amount.is_zero()
                 {
                     if balance >= amount {
-                        let block = Block::LegacySend(SendBlock::new(
-                            &previous,
-                            &destination,
-                            &(balance - amount),
-                            &prv_key,
+                        let block: Block = SendBlockArgs {
+                            key: &prv_key,
+                            previous,
+                            destination,
+                            balance: balance - amount,
                             work,
-                        ));
+                        }
+                        .into();
                         root = previous.into();
                         block
                     } else {

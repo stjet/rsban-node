@@ -1,9 +1,8 @@
 use rsnano_core::{
     utils::milliseconds_since_epoch, work::WorkPool, Account, Amount, Block, BlockBase, BlockHash,
-    DifficultyV1, Epoch, Link, OpenBlock, PrivateKey, PublicKey, QualifiedRoot, Root, SendBlock,
-    Signature, StateBlock, StateBlockArgs, TestBlockBuilder, TestLegacySendBlockBuilder,
-    UncheckedInfo, UnsavedBlockLatticeBuilder, Vote, VoteSource, VoteWithWeightInfo,
-    DEV_GENESIS_KEY,
+    DifficultyV1, OpenBlock, PrivateKey, PublicKey, QualifiedRoot, Root, SendBlock, Signature,
+    StateBlock, StateBlockArgs, TestBlockBuilder, TestLegacySendBlockBuilder, UncheckedInfo,
+    UnsavedBlockLatticeBuilder, Vote, VoteSource, VoteWithWeightInfo, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{
     BlockStatus, Writer, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
@@ -32,7 +31,6 @@ use test_helpers::{
     assert_timely_msg, establish_tcp, get_available_port, make_fake_channel, start_election,
     start_elections, System,
 };
-use tracing::instrument::WithSubscriber;
 
 #[test]
 fn pruning_depth_max_depth() {
@@ -3634,141 +3632,39 @@ fn dependency_graph() {
         .build_node()
         .config(System::default_config_without_backlog_population())
         .finish();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
     let key2 = PrivateKey::new();
     let key3 = PrivateKey::new();
 
     // Send to key1
-    let gen_send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        key1.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let gen_send1 = lattice.genesis().send(&key1, 1);
 
     // Receive from genesis
-    let key1_open = Block::State(StateBlock::new(
-        key1.account(),
-        BlockHash::zero(),
-        key1.public_key(),
-        Amount::raw(1),
-        gen_send1.hash().into(),
-        &key1,
-        node.work_generate_dev(&key1),
-    ));
+    let key1_open = lattice.account(&key1).receive(&gen_send1);
     // Send to genesis
-    let key1_send1 = Block::State(StateBlock::new(
-        key1.account(),
-        key1_open.hash(),
-        key1.public_key(),
-        Amount::zero(),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key1,
-        node.work_generate_dev(key1_open.hash()),
-    ));
+    let key1_send1 = lattice.account(&key1).send(&*DEV_GENESIS_KEY, 1);
     // Receive from key1
-    let gen_receive = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        gen_send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX,
-        key1_send1.hash().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(gen_send1.hash()),
-    ));
+    let gen_receive = lattice.genesis().receive(&key1_send1);
     // Send to key2
-    let gen_send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        gen_receive.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(2),
-        key2.account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(gen_receive.hash()),
-    ));
+    let gen_send2 = lattice.genesis().send(&key2, 2);
     // Receive from genesis
-    let key2_open = Block::State(StateBlock::new(
-        key2.account(),
-        BlockHash::zero(),
-        key2.public_key(),
-        Amount::raw(2),
-        gen_send2.hash().into(),
-        &key2,
-        node.work_generate_dev(&key2),
-    ));
+    let key2_open = lattice.account(&key2).receive(&gen_send2);
     // Send to key3
-    let key2_send1 = Block::State(StateBlock::new(
-        key2.account(),
-        key2_open.hash(),
-        key2.public_key(),
-        Amount::raw(1),
-        key3.account().into(),
-        &key2,
-        node.work_generate_dev(key2_open.hash()),
-    ));
+    let key2_send1 = lattice.account(&key2).send(&key3, 1);
     // Receive from key2
-    let key3_open = Block::State(StateBlock::new(
-        key3.account(),
-        BlockHash::zero(),
-        key3.public_key(),
-        Amount::raw(1),
-        key2_send1.hash().into(),
-        &key3,
-        node.work_generate_dev(&key3),
-    ));
+    let key3_open = lattice.account(&key3).receive(&key2_send1);
     // Send to key1
-    let key2_send2 = Block::State(StateBlock::new(
-        key2.account(),
-        key2_send1.hash(),
-        key2.public_key(),
-        Amount::zero(),
-        key1.account().into(),
-        &key2,
-        node.work_generate_dev(key2_send1.hash()),
-    ));
+    let key2_send2 = lattice.account(&key2).send_max(&key1);
     // Receive from key2
-    let key1_receive = Block::State(StateBlock::new(
-        key1.account(),
-        key1_send1.hash(),
-        key1.public_key(),
-        Amount::raw(1),
-        key2_send2.hash().into(),
-        &key1,
-        node.work_generate_dev(key1_send1.hash()),
-    ));
+    let key1_receive = lattice.account(&key1).receive(&key2_send2);
     // Send to key3
-    let key1_send2 = Block::State(StateBlock::new(
-        key1.account(),
-        key1_receive.hash(),
-        key1.public_key(),
-        Amount::zero(),
-        key3.account().into(),
-        &key1,
-        node.work_generate_dev(key1_receive.hash()),
-    ));
+    let key1_send2 = lattice.account(&key1).send_max(&key3);
     // Receive from key1
-    let key3_receive = Block::State(StateBlock::new(
-        key3.account(),
-        key3_open.hash(),
-        key3.public_key(),
-        Amount::raw(2),
-        key1_send2.hash().into(),
-        &key3,
-        node.work_generate_dev(key3_open.hash()),
-    ));
+    let key3_receive = lattice.account(&key3).receive(&key1_send2);
     // Upgrade key3
-    let key3_epoch = Block::State(StateBlock::new(
-        key3.account(),
-        key3_receive.hash(),
-        key3.public_key(),
-        Amount::raw(2),
-        node.ledger.epoch_link(Epoch::Epoch1).unwrap(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(key3_receive.hash()),
-    ));
+    let key3_epoch = lattice.account(&key3).epoch1();
 
     for node in &system.nodes {
         node.process_multi(&[

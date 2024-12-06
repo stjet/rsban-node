@@ -9,21 +9,14 @@ use test_helpers::{assert_timely_eq, System};
 
 #[test]
 fn single() {
-    let amount = Amount::MAX;
     let mut system = System::new();
     let node = system.make_node();
     let key1 = PrivateKey::new();
     node.insert_into_wallet(&DEV_GENESIS_KEY);
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let latest1 = node.latest(&DEV_GENESIS_ACCOUNT);
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        latest1,
-        *DEV_GENESIS_PUB_KEY,
-        amount - Amount::raw(100),
-        key1.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(latest1),
-    ));
+    let send1 = lattice.genesis().send(&key1, 100);
     node.process(send1.clone()).unwrap();
     let mut tx = node.ledger.rw_txn();
     assert_eq!(
@@ -198,112 +191,32 @@ fn send_receive_between_2_accounts() {
     let mut system = System::new();
     let cfg = System::default_config_without_backlog_population();
     let node = system.build_node().config(cfg).finish();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
-    let key1_acc = key1.public_key().as_account();
-    let latest = node.latest(&DEV_GENESIS_ACCOUNT);
 
     let quorum_delta = node.online_reps.lock().unwrap().quorum_delta();
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        latest,
-        *DEV_GENESIS_PUB_KEY,
-        quorum_delta + Amount::raw(2),
-        key1.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(latest),
-    ));
-    let open1 = Block::State(StateBlock::new(
-        key1_acc,
-        BlockHash::zero(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - quorum_delta - Amount::raw(2),
-        send1.hash().into(),
-        &key1,
-        node.work_generate_dev(key1_acc),
-    ));
-    let send2 = Block::State(StateBlock::new(
-        key1_acc,
-        open1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(1000),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key1,
-        node.work_generate_dev(open1.hash()),
-    ));
-    let send3 = Block::State(StateBlock::new(
-        key1_acc,
-        send2.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(900),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key1,
-        node.work_generate_dev(send2.hash()),
-    ));
-    let send4 = Block::State(StateBlock::new(
-        key1_acc,
-        send3.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(500),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &key1,
-        node.work_generate_dev(send3.hash()),
-    ));
-    let receive1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1000),
-        send2.hash().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash()),
-    ));
-    let receive2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        receive1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(900),
-        send3.hash().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(receive1.hash()),
-    ));
-    let receive3 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        receive2.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(500),
-        send4.hash().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(receive2.hash()),
-    ));
-    let send5 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        receive3.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        quorum_delta + Amount::raw(1),
-        key1.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(receive3.hash()),
-    ));
-    let receive4 = Block::State(StateBlock::new(
-        key1_acc,
-        send4.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::raw(500) + (Amount::MAX - Amount::raw(500) - quorum_delta - Amount::raw(1)),
-        send5.hash().into(),
-        &key1,
-        node.work_generate_dev(send4.hash()),
-    ));
+    let send1 = lattice
+        .genesis()
+        .send_all_except(&key1, quorum_delta + Amount::raw(2));
+
+    let open1 = lattice.account(&key1).receive(&send1);
+    let send2 = lattice
+        .account(&key1)
+        .send_all_except(&*DEV_GENESIS_PUB_KEY, 1000);
+
+    let send3 = lattice.account(&key1).send(&*DEV_GENESIS_KEY, 100);
+    let send4 = lattice.account(&key1).send(&*DEV_GENESIS_KEY, 400);
+    let receive1 = lattice.genesis().receive(&send2);
+    let receive2 = lattice.genesis().receive(&send3);
+    let receive3 = lattice.genesis().receive(&send4);
+    let send5 = lattice
+        .genesis()
+        .send_all_except(&key1, quorum_delta + Amount::raw(1));
+    let receive4 = lattice.account(&key1).receive(&send5);
     let key2 = PrivateKey::new();
-    let send6 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send5.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        quorum_delta,
-        key2.public_key().as_account().into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send5.hash()),
-    ));
+    let send6 = lattice.genesis().send(&key2, Amount::raw(1));
     // Unpocketed send
 
     node.process_multi(&[

@@ -1,6 +1,6 @@
 use rsnano_core::{
     Account, Amount, Block, BlockHash, Epoch, PrivateKey, SendBlock, Signature, StateBlock,
-    UnsavedBlockLatticeBuilder, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
+    StateBlockArgs, UnsavedBlockLatticeBuilder, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_network::ChannelId;
@@ -305,37 +305,13 @@ fn block_hash_account_conflict() {
 fn unchecked_epoch() {
     let mut system = System::new();
     let node1 = system.make_node();
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let destination = PrivateKey::new();
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        destination.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-
-    let open1 = Block::State(StateBlock::new(
-        destination.account(),
-        BlockHash::zero(),
-        destination.public_key(),
-        Amount::nano(1000),
-        send1.hash().into(),
-        &destination,
-        node1.work_generate_dev(&destination),
-    ));
-
-    let epoch1 = Block::State(StateBlock::new(
-        destination.account(),
-        open1.hash(),
-        destination.public_key(),
-        Amount::nano(1000),
-        node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(&open1.hash()),
-    ));
+    let send1 = lattice.genesis().send(&destination, Amount::nano(1000));
+    let open1 = lattice.account(&destination).receive(&send1);
+    let epoch1 = lattice.account(&destination).epoch1();
 
     node1.block_processor.add(
         epoch1.clone().into(),
@@ -376,46 +352,34 @@ fn unchecked_epoch_invalid() {
         .config(System::default_config_without_backlog_population())
         .finish();
 
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let destination = PrivateKey::new();
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        destination.account().into(),
-        &DEV_GENESIS_KEY,
-        node1.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-    let open1 = Block::State(StateBlock::new(
-        destination.account(),
-        BlockHash::zero(),
-        destination.public_key(),
-        Amount::nano(1000),
-        send1.hash().into(),
-        &destination,
-        node1.work_generate_dev(&destination),
-    ));
+
+    let send1 = lattice.genesis().send(&destination, Amount::nano(1000));
+    let open1 = lattice.account(&destination).receive(&send1);
 
     // Epoch block with account own signature
-    let epoch1 = Block::State(StateBlock::new(
-        destination.account(),
-        open1.hash(),
-        destination.public_key(),
-        Amount::nano(1000),
-        node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
-        &destination,
-        node1.work_generate_dev(open1.hash()),
-    ));
+    let epoch1: Block = StateBlockArgs {
+        key: &destination,
+        previous: open1.hash(),
+        representative: destination.public_key(),
+        balance: Amount::nano(1000),
+        link: node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
+        work: node1.work_generate_dev(open1.hash()),
+    }
+    .into();
+
     // Pseudo epoch block (send subtype, destination - epoch link)
-    let epoch2 = Block::State(StateBlock::new(
-        destination.account(),
-        open1.hash(),
-        destination.public_key(),
-        Amount::nano(999),
-        node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
-        &destination,
-        node1.work_generate_dev(open1.hash()),
-    ));
+    let epoch2: Block = StateBlockArgs {
+        key: &destination,
+        previous: open1.hash(),
+        representative: destination.public_key(),
+        balance: Amount::nano(999),
+        link: node1.ledger.epoch_link(Epoch::Epoch1).unwrap(),
+        work: node1.work_generate_dev(open1.hash()),
+    }
+    .into();
+
     node1.block_processor.add(
         epoch1.clone().into(),
         BlockSource::Live,

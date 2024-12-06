@@ -1,8 +1,8 @@
 use rsnano_core::{
-    Account, Amount, Block, BlockHash, Link, PrivateKey, StateBlock, UncheckedKey,
-    UnsavedBlockLatticeBuilder, WalletId, DEV_GENESIS_KEY,
+    Account, Amount, Block, BlockHash, PrivateKey, UncheckedKey, UnsavedBlockLatticeBuilder,
+    WalletId, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
 use rsnano_messages::BulkPull;
 use rsnano_network::{
     bandwidth_limiter::BandwidthLimiter, Channel, ChannelInfo, NullNetworkObserver,

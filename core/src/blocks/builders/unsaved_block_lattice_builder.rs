@@ -199,6 +199,31 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
         change
     }
 
+    pub fn epoch1(&mut self) -> Block {
+        let frontier = self.get_frontier();
+        let epoch: Block = EpochBlockArgs {
+            epoch_signer: dev_epoch1_signer(),
+            account: self.key.account(),
+            previous: frontier.hash,
+            representative: frontier.representative,
+            balance: frontier.balance,
+            link: epoch_v1_link(),
+            work: self
+                .lattice
+                .work_pool
+                .generate_dev2(frontier.hash.into())
+                .unwrap(),
+        }
+        .into();
+
+        self.set_new_frontier(Frontier {
+            hash: epoch.hash(),
+            ..frontier
+        });
+
+        epoch
+    }
+
     fn set_new_frontier(&mut self, new_frontier: Frontier) {
         self.lattice
             .accounts

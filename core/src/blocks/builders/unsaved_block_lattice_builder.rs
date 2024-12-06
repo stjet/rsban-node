@@ -1,7 +1,7 @@
 use crate::{
     blocks::state_block::EpochBlockArgs,
     dev_epoch1_signer, epoch_v1_link,
-    work::{StubWorkPool, WorkPool, WorkPoolImpl},
+    work::{WorkPool, WorkPoolImpl},
     Account, Amount, Block, BlockHash, ChangeBlock, Epoch, Link, OpenBlock, PendingInfo,
     PendingKey, PrivateKey, PublicKey, ReceiveBlock, Root, SendBlock, StateBlockArgs,
     DEV_GENESIS_BLOCK, DEV_GENESIS_KEY,

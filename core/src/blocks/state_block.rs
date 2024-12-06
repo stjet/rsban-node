@@ -14,104 +14,7 @@ pub struct StateBlock {
     work: u64,
 }
 
-#[allow(clippy::too_many_arguments)]
 impl StateBlock {
-    pub fn new(
-        account: Account,
-        previous: BlockHash,
-        representative: PublicKey,
-        balance: Amount,
-        link: Link,
-        keys: &PrivateKey,
-        work: u64,
-    ) -> Self {
-        Self::new_obsolete(account, previous, representative, balance, link, keys, work)
-    }
-
-    // Don't use this anymore
-    fn new_obsolete(
-        account: Account,
-        previous: BlockHash,
-        representative: PublicKey,
-        balance: Amount,
-        link: Link,
-        prv_key: &PrivateKey,
-        work: u64,
-    ) -> Self {
-        let hashables = StateHashables {
-            account,
-            previous,
-            representative,
-            balance,
-            link,
-        };
-
-        let hash = hashables.hash();
-        let signature = prv_key.sign(hash.as_bytes());
-
-        Self {
-            work,
-            signature,
-            hashables,
-            hash,
-        }
-    }
-
-    pub fn new_test_instance_with_key(key: &PrivateKey) -> Self {
-        Self::new(
-            key.account(),
-            BlockHash::from(456),
-            PublicKey::from(789),
-            Amount::raw(420),
-            Link::from(111),
-            &key,
-            69420,
-        )
-    }
-
-    pub fn new_test_instance() -> Self {
-        let key = PrivateKey::from(42);
-        Self::new_test_instance_with_key(&key)
-    }
-
-    pub fn with_signature(
-        account: Account,
-        previous: BlockHash,
-        representative: PublicKey,
-        balance: Amount,
-        link: Link,
-        signature: Signature,
-        work: u64,
-    ) -> Self {
-        let hashables = StateHashables {
-            account,
-            previous,
-            representative,
-            balance,
-            link,
-        };
-        let hash = hashables.hash();
-        Self {
-            work,
-            signature,
-            hashables,
-            hash,
-        }
-    }
-
-    pub fn new_test_open() -> Self {
-        let key = PrivateKey::from(42);
-        Self::new(
-            key.account(),
-            BlockHash::zero(),
-            PublicKey::from(789),
-            Amount::raw(420),
-            Link::from(111),
-            &key,
-            69420,
-        )
-    }
-
     pub fn verify_signature(&self) -> anyhow::Result<()> {
         self.account()
             .as_key()
@@ -464,7 +367,7 @@ mod tests {
 
     #[test]
     fn serialize_serde() {
-        let block = Block::State(StateBlock::new_test_instance());
+        let block = Block::new_test_instance();
         let serialized = serde_json::to_string_pretty(&block).unwrap();
         assert_eq!(
             serialized,

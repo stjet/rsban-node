@@ -154,15 +154,34 @@ pub enum Block {
 
 impl Block {
     pub fn new_test_instance() -> Self {
-        Self::State(StateBlock::new_test_instance())
+        let key = PrivateKey::from(42);
+        Self::new_test_instance_with_key(key)
     }
 
     pub fn new_test_open() -> Self {
-        Self::State(StateBlock::new_test_open())
+        let key = PrivateKey::from(42);
+        StateBlockArgs {
+            key: &key,
+            previous: BlockHash::zero(),
+            representative: 789.into(),
+            balance: 420.into(),
+            link: 111.into(),
+            work: 69420,
+        }
+        .into()
     }
 
     pub fn new_test_instance_with_key(key: impl Into<PrivateKey>) -> Self {
-        Self::State(StateBlock::new_test_instance_with_key(&key.into()))
+        let key = key.into();
+        StateBlockArgs {
+            key: &key,
+            previous: 456.into(),
+            representative: 789.into(),
+            balance: 420.into(),
+            link: 111.into(),
+            work: 69420,
+        }
+        .into()
     }
 
     pub fn block_type(&self) -> BlockType {

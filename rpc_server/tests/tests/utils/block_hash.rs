@@ -1,4 +1,4 @@
-use rsnano_core::{Block, BlockHash, StateBlock};
+use rsnano_core::{Block, BlockHash};
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -8,7 +8,7 @@ fn block_hash() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let block = Block::State(StateBlock::new_test_instance()).json_representation();
+    let block = Block::new_test_instance().json_representation();
 
     let result = node
         .runtime

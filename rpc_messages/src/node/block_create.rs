@@ -95,7 +95,7 @@ impl BlockCreateResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{Block, BlockBase, PrivateKey, PublicKey, RawKey, StateBlock};
+    use rsnano_core::{Block, PrivateKey, PublicKey, RawKey};
     use serde_json::json;
 
     #[test]
@@ -237,19 +237,19 @@ mod tests {
 
     #[test]
     fn deserialize_block_create_dto() {
-        let block = StateBlock::new_test_instance();
+        let hash = BlockHash::from(123);
+        let block = Block::new_test_instance();
 
         let json = json!({
-            "hash": block.hash(),
+            "hash": hash,
             "difficulty": "000000000000000A",
             "block": block.json_representation()
         });
 
         let json_string = serde_json::to_string(&json).unwrap();
-
         let dto: BlockCreateResponse = serde_json::from_str(&json_string).unwrap();
 
-        assert_eq!(dto.hash, block.hash());
+        assert_eq!(dto.hash, hash);
         assert_eq!(dto.difficulty, 10.into());
         assert_eq!(dto.block, block.json_representation());
     }

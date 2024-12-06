@@ -1,8 +1,4 @@
-use rsnano_core::{
-    Account, Amount, Block, BlockHash, PrivateKey, StateBlock, UnsavedBlockLatticeBuilder,
-    DEV_GENESIS_KEY,
-};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_core::{Account, PrivateKey, UnsavedBlockLatticeBuilder};
 use std::time::Duration;
 use test_helpers::{assert_timely, System};
 

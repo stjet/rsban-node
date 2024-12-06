@@ -151,7 +151,7 @@ fn bypass_max_requests_cap() {
     let mut flags = NodeFlags::default();
     flags.disable_request_loop = true;
     flags.disable_rep_crawler = true;
-    let node1 = system.build_node().flags(flags.clone()).finish();
+    let _node1 = system.build_node().flags(flags.clone()).finish();
     let node2 = system.build_node().flags(flags).finish();
 
     let mut solicitor = ConfirmationSolicitor::new(

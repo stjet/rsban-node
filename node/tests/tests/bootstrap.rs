@@ -1279,10 +1279,8 @@ mod bootstrap_processor {
 }
 
 mod bulk_pull {
-    use rsnano_core::{StateBlockArgs, UnsavedBlockLatticeBuilder};
-    use rsnano_ledger::DEV_GENESIS_PUB_KEY;
-
     use super::*;
+    use rsnano_core::{StateBlockArgs, UnsavedBlockLatticeBuilder};
 
     // If the account doesn't exist, current == end so there's no iteration
     #[test]
@@ -1556,13 +1554,11 @@ mod bulk_pull {
 }
 
 mod frontier_req {
+    use super::*;
     use rsnano_core::UnsavedBlockLatticeBuilder;
-    use rsnano_ledger::DEV_GENESIS_PUB_KEY;
     use rsnano_messages::FrontierReq;
     use rsnano_node::bootstrap::FrontierReqServer;
     use std::thread::sleep;
-
-    use super::*;
 
     #[test]
     fn begin() {

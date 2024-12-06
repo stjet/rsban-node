@@ -1,6 +1,6 @@
 use crate::work::WorkPool;
-use crate::{work::STUB_WORK_POOL, BlockHash, ChangeBlock};
-use crate::{Account, Block, PrivateKey, PublicKey};
+use crate::{work::STUB_WORK_POOL, BlockHash};
+use crate::{Account, Block, ChangeBlockArgs, PrivateKey, PublicKey};
 
 pub struct TestLegacyChangeBlockBuilder {
     account: Option<Account>,
@@ -54,8 +54,13 @@ impl TestLegacyChangeBlockBuilder {
             .work
             .unwrap_or_else(|| STUB_WORK_POOL.generate_dev2(previous.into()).unwrap());
 
-        let block = ChangeBlock::new(previous, representative, &prv_key, work);
-        Block::LegacyChange(block)
+        ChangeBlockArgs {
+            key: &prv_key,
+            previous,
+            representative,
+            work,
+        }
+        .into()
     }
 }
 

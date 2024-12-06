@@ -6,7 +6,7 @@ pub use block_sideband::BlockSideband;
 
 mod change_block;
 use change_block::JsonChangeBlock;
-pub use change_block::{valid_change_block_predecessor, ChangeBlock, ChangeHashables};
+pub use change_block::{valid_change_block_predecessor, ChangeBlock, ChangeBlockArgs};
 
 mod open_block;
 pub use open_block::{JsonOpenBlock, OpenBlock, OpenBlockArgs};

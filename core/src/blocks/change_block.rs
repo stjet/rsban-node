@@ -1,4 +1,4 @@
-use super::BlockBase;
+use super::{Block, BlockBase};
 use crate::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, Serialize, Stream},
     Account, Amount, BlockHash, BlockHashBuilder, BlockType, DependentBlocks, JsonBlock, Link,
@@ -15,31 +15,15 @@ pub struct ChangeBlock {
 }
 
 impl ChangeBlock {
-    pub fn new(
-        previous: BlockHash,
-        representative: PublicKey,
-        prv_key: &PrivateKey,
-        work: u64,
-    ) -> Self {
-        let hashables = ChangeHashables {
-            previous,
-            representative,
-        };
-
-        let hash = hashables.hash();
-        let signature = prv_key.sign(hash.as_bytes());
-
-        Self {
-            work,
-            signature,
-            hashables,
-            hash,
-        }
-    }
-
     pub fn new_test_instance() -> Self {
         let key = PrivateKey::from(42);
-        Self::new(BlockHash::from(123), PublicKey::from(456), &key, 69420)
+        ChangeBlockArgs {
+            key: &key,
+            previous: 123.into(),
+            representative: 456.into(),
+            work: 69420,
+        }
+        .into()
     }
 
     pub fn mandatory_representative(&self) -> PublicKey {
@@ -175,9 +159,9 @@ impl BlockBase for ChangeBlock {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct ChangeHashables {
-    pub previous: BlockHash,
-    pub representative: PublicKey,
+struct ChangeHashables {
+    previous: BlockHash,
+    representative: PublicKey,
 }
 
 impl ChangeHashables {
@@ -190,6 +174,38 @@ impl ChangeHashables {
             .update(self.previous.as_bytes())
             .update(self.representative.as_bytes())
             .build()
+    }
+}
+
+pub struct ChangeBlockArgs<'a> {
+    pub key: &'a PrivateKey,
+    pub previous: BlockHash,
+    pub representative: PublicKey,
+    pub work: u64,
+}
+
+impl<'a> From<ChangeBlockArgs<'a>> for ChangeBlock {
+    fn from(value: ChangeBlockArgs<'a>) -> Self {
+        let hashables = ChangeHashables {
+            previous: value.previous,
+            representative: value.representative,
+        };
+
+        let hash = hashables.hash();
+        let signature = value.key.sign(hash.as_bytes());
+
+        Self {
+            work: value.work,
+            signature,
+            hashables,
+            hash,
+        }
+    }
+}
+
+impl<'a> From<ChangeBlockArgs<'a>> for Block {
+    fn from(value: ChangeBlockArgs<'a>) -> Self {
+        Block::LegacyChange(value.into())
     }
 }
 
@@ -228,7 +244,13 @@ mod tests {
     fn create_block() {
         let key1 = PrivateKey::new();
         let previous = BlockHash::from(1);
-        let block = ChangeBlock::new(previous.clone(), PublicKey::from(2), &key1, 5);
+        let block: ChangeBlock = ChangeBlockArgs {
+            key: &key1,
+            previous,
+            representative: 2.into(),
+            work: 5,
+        }
+        .into();
         assert_eq!(block.previous(), previous);
         assert_eq!(block.root(), block.previous().into());
     }
@@ -237,7 +259,13 @@ mod tests {
     #[test]
     fn serialize() {
         let key1 = PrivateKey::new();
-        let block1 = ChangeBlock::new(BlockHash::from(1), PublicKey::from(2), &key1, 5);
+        let block1: ChangeBlock = ChangeBlockArgs {
+            key: &key1,
+            previous: 1.into(),
+            representative: 2.into(),
+            work: 5,
+        }
+        .into();
         let mut stream = MemoryStream::new();
         block1.serialize_without_block_type(&mut stream);
         assert_eq!(ChangeBlock::serialized_size(), stream.bytes_written());

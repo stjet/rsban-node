@@ -5,7 +5,7 @@ use crate::{
     },
     dev_epoch1_signer, epoch_v1_link,
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, Block, BlockHash, ChangeBlock, Epoch, Link, PendingInfo, PendingKey,
+    Account, Amount, Block, BlockHash, ChangeBlockArgs, Epoch, Link, PendingInfo, PendingKey,
     PrivateKey, PublicKey, Root, StateBlockArgs, DEV_GENESIS_BLOCK, DEV_GENESIS_KEY,
 };
 use std::collections::HashMap;
@@ -331,12 +331,13 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
             .generate_dev2(frontier.hash.into())
             .unwrap();
 
-        let change = Block::LegacyChange(ChangeBlock::new(
-            frontier.hash,
-            new_representative,
-            self.key,
+        let change: Block = ChangeBlockArgs {
+            key: self.key,
+            previous: frontier.hash,
+            representative: new_representative,
             work,
-        ));
+        }
+        .into();
 
         self.set_new_frontier(Frontier {
             hash: change.hash(),

@@ -448,4 +448,10 @@ mod tests {
                 .unwrap()
         );
     }
+
+    #[test]
+    fn serialize_work_nonce() {
+        let serialized = serde_json::to_string(&WorkNonce::from(123)).unwrap();
+        assert_eq!(serialized, "\"000000000000007B\"");
+    }
 }

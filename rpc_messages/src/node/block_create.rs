@@ -95,7 +95,7 @@ impl BlockCreateResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{BlockBase, PrivateKey, PublicKey, RawKey, StateBlock};
+    use rsnano_core::{Block, BlockBase, PrivateKey, PublicKey, RawKey, StateBlock};
     use serde_json::json;
 
     #[test]
@@ -159,67 +159,76 @@ mod tests {
 
     #[test]
     fn deserialize_block_create_command() {
-        // Create a test StateBlock instance
-        let state_block = StateBlock::new_test_instance();
-        let key_pair = PrivateKey::new();
-        let raw_key = RawKey::from(key_pair.private_key());
+        let json = r#"{
+    "action": "block_create",
+    "json_block": "true",
+    "type": "state",
+    "balance": "1000000000000000000000000000000",
+    "key": "0000000000000000000000000000000000000000000000000000000000000002",
+    "representative": "nano_1hza3f7wiiqa7ig3jczyxj5yo86yegcmqk3criaz838j91sxcckpfhbhhra1",
+    "link": "19D3D919475DEED4696B5D13018151D1AF88B2BD3BCFF048B45031C1F36D1858",
+    "previous": "F47B23107E5F34B2CE06F562B5C435DF72A533251CB414C51B2B62A8F63A00E4",
+    "account": "nano_1hza3f7wiiqa7ig3jczyxj5yo86yegcmqk3criaz838j91sxcckpfhbhhra1",
+    "work": "0000000000000123",
+    "version": "work1"
+}"#;
 
-        // Create JSON representation
-        let json = json!({
-            "action": "block_create",
-            "type": "state",
-            "balance": state_block.balance().to_string_dec(),
-            "key": raw_key.encode_hex(),
-            "account": state_block.account().encode_account(),
-            "representative": state_block.representative().as_account(),
-            "link": state_block.link().encode_hex(),
-            "previous": state_block.previous().encode_hex(),
-            "work": format!("{:016X}", state_block.work()),
-            "version": "work1"
-        });
+        let command: RpcCommand = serde_json::from_str(json).unwrap();
 
-        // Serialize JSON to string
-        let json_string = serde_json::to_string(&json).unwrap();
-
-        // Deserialize the string to RpcCommand
-        let command: RpcCommand = serde_json::from_str(&json_string).unwrap();
-
-        // Expected BlockCreateArgs
-        let expected_args = BlockCreateArgs {
+        let expected_command = RpcCommand::block_create(BlockCreateArgs {
             block_type: BlockTypeDto::State,
-            balance: Some(state_block.balance()),
-            key: Some(raw_key),
+            balance: Some(Amount::nano(1)),
+            key: Some(RawKey::decode_hex("2").unwrap()),
             wallet: None,
-            account: Some(state_block.account()),
+            account: Some(
+                Account::decode_account(
+                    "nano_1hza3f7wiiqa7ig3jczyxj5yo86yegcmqk3criaz838j91sxcckpfhbhhra1",
+                )
+                .unwrap(),
+            ),
             source: None,
             destination: None,
-            representative: Some(state_block.representative_field().unwrap().into()),
-            link: Some(state_block.link()),
-            previous: Some(state_block.previous()),
-            work: Some(WorkNonce::from(state_block.work())),
+            representative: Some(
+                Account::decode_account(
+                    "nano_1hza3f7wiiqa7ig3jczyxj5yo86yegcmqk3criaz838j91sxcckpfhbhhra1",
+                )
+                .unwrap(),
+            ),
+            link: Some(
+                Link::decode_hex(
+                    "19D3D919475DEED4696B5D13018151D1AF88B2BD3BCFF048B45031C1F36D1858",
+                )
+                .unwrap(),
+            ),
+            previous: Some(
+                BlockHash::decode_hex(
+                    "F47B23107E5F34B2CE06F562B5C435DF72A533251CB414C51B2B62A8F63A00E4",
+                )
+                .unwrap(),
+            ),
+            work: Some(WorkNonce::from(0x123)),
             version: Some(WorkVersionDto::Work1),
             difficulty: None,
-        };
+        });
 
-        // Expected command
-        let expected_command = RpcCommand::block_create(expected_args);
-
-        // Assert that the deserialized command matches the expected command
         assert_eq!(command, expected_command);
     }
 
     #[test]
-    fn serialize_block_create_dto() {
-        let block = StateBlock::new_test_instance();
-
-        let dto = BlockCreateResponse::new(block.hash(), 10.into(), block.json_representation());
+    fn serialize_block_create_response() {
+        let block = Block::new_test_instance();
+        let dto = BlockCreateResponse::new(
+            BlockHash::from(123),
+            WorkNonce::from(456),
+            block.json_representation(),
+        );
 
         let serialized = serde_json::to_string_pretty(&dto).unwrap();
         let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
 
         let expected_json = json!({
-            "hash": block.hash(),
-            "difficulty": "000000000000000A",
+            "hash": dto.hash,
+            "difficulty": dto.difficulty,
             "block": block.json_representation()
         });
 

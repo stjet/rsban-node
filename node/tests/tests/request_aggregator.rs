@@ -1,7 +1,4 @@
-use rsnano_core::{
-    Amount, Block, PrivateKey, StateBlock, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
-};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsnano_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
 use rsnano_messages::ConfirmAck;
 use rsnano_node::{
     config::NodeFlags,
@@ -492,15 +489,10 @@ fn channel_max_queue() {
         )
         .unwrap();
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::nano(1000),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice
+        .genesis()
+        .send(&*DEV_GENESIS_KEY, Amount::nano(1000));
     node.process(send1.clone()).unwrap();
 
     let request = vec![(send1.hash(), send1.root())];
@@ -526,25 +518,9 @@ fn cannot_vote() {
     flags.disable_request_loop = true;
     let node = system.build_node().flags(flags).finish();
 
-    let send1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(*DEV_GENESIS_HASH),
-    ));
-
-    let send2 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        send1.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(2),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send1.hash()),
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let send1 = lattice.genesis().send(&*DEV_GENESIS_KEY, 1);
+    let send2 = lattice.genesis().send(&*DEV_GENESIS_KEY, 1);
     node.process(send1.clone()).unwrap();
     let send2 = node.process(send2.clone()).unwrap();
 

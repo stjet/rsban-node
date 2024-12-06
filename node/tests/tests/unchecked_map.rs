@@ -1,5 +1,6 @@
 use rsnano_core::{
-    Amount, Block, PrivateKey, StateBlock, UncheckedInfo, UncheckedKey, DEV_GENESIS_KEY,
+    Amount, Block, PrivateKey, StateBlock, UncheckedInfo, UncheckedKey, UnsavedBlockLatticeBuilder,
+    DEV_GENESIS_KEY,
 };
 use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use rsnano_node::{block_processing::UncheckedMap, stats::Stats};
@@ -9,15 +10,8 @@ use test_helpers::{assert_timely, assert_timely_eq};
 #[test]
 fn one_bootstrap() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
-    let block1 = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        0,
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let block1 = lattice.genesis().send(&*DEV_GENESIS_KEY, 1);
     unchecked.put(block1.hash().into(), UncheckedInfo::new(block1.clone()));
 
     // Waits for the block1 to get saved in the database
@@ -44,15 +38,8 @@ fn one_bootstrap() {
 #[test]
 fn simple() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
-    let block = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        0,
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let block = lattice.genesis().send(&*DEV_GENESIS_KEY, 1);
     // Asserts the block wasn't added yet to the unchecked table
     let block_listing1 = unchecked.get(&block.previous().into());
     assert!(block_listing1.is_empty());
@@ -78,15 +65,8 @@ fn simple() {
 #[test]
 fn multiple() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
-    let block = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        0,
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let block = lattice.genesis().send(&*DEV_GENESIS_KEY, 1);
     // Asserts the block wasn't added yet to the unchecked table
     let block_listing1 = unchecked.get(&block.previous().into());
     assert!(block_listing1.is_empty());
@@ -109,15 +89,8 @@ fn multiple() {
 #[test]
 fn double_put() {
     let unchecked = UncheckedMap::new(65536, Arc::new(Stats::default()), false);
-    let block = Block::State(StateBlock::new(
-        *DEV_GENESIS_ACCOUNT,
-        *DEV_GENESIS_HASH,
-        *DEV_GENESIS_PUB_KEY,
-        Amount::MAX - Amount::raw(1),
-        (*DEV_GENESIS_ACCOUNT).into(),
-        &DEV_GENESIS_KEY,
-        0,
-    ));
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
+    let block = lattice.genesis().send(&*DEV_GENESIS_KEY, 1);
     // Asserts the block wasn't added yet to the unchecked table
     let block_listing1 = unchecked.get(&block.previous().into());
     assert!(block_listing1.is_empty());

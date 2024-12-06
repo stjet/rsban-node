@@ -297,104 +297,26 @@ fn all_block_types() {
     let mut system = System::new();
     let cfg = System::default_config_without_backlog_population();
     let node = system.build_node().config(cfg).finish();
-    let latest = node.latest(&DEV_GENESIS_ACCOUNT);
+
+    let mut lattice = UnsavedBlockLatticeBuilder::new();
     let key1 = PrivateKey::new();
     let key2 = PrivateKey::new();
 
-    let send = Block::LegacySend(SendBlock::new(
-        &latest,
-        &key1.public_key().as_account(),
-        &(Amount::MAX - Amount::nano(1000)),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(latest),
-    ));
-    let send1 = Block::LegacySend(SendBlock::new(
-        &send.hash(),
-        &key2.public_key().as_account(),
-        &(Amount::MAX - Amount::nano(2000)),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(send.hash()),
-    ));
-    let open = Block::LegacyOpen(OpenBlock::new(
-        send.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        key1.public_key().as_account(),
-        &key1,
-        node.work_generate_dev(&key1),
-    ));
-    let state_open = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        BlockHash::zero(),
-        PublicKey::zero(),
-        Amount::nano(1000),
-        send1.hash().into(),
-        &key2,
-        node.work_generate_dev(&key2),
-    ));
-    let send2 = Block::LegacySend(SendBlock::new(
-        &open.hash(),
-        &key2.public_key().as_account(),
-        &Amount::zero(),
-        &key1,
-        node.work_generate_dev(open.hash()),
-    ));
-    let state_receive = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        state_open.hash(),
-        PublicKey::zero(),
-        Amount::nano(2000),
-        send2.hash().into(),
-        &key2,
-        node.work_generate_dev(state_open.hash()),
-    ));
-    let state_send = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        state_receive.hash(),
-        PublicKey::zero(),
-        Amount::nano(1000),
-        key1.public_key().as_account().into(),
-        &key2,
-        node.work_generate_dev(state_receive.hash()),
-    ));
-    let receive = Block::LegacyReceive(ReceiveBlock::new(
-        send2.hash(),
-        state_send.hash(),
-        &key1,
-        node.work_generate_dev(send2.hash()),
-    ));
-    let change = Block::LegacyChange(ChangeBlock::new(
-        receive.hash(),
-        key2.public_key(),
-        &key1,
-        node.work_generate_dev(receive.hash()),
-    ));
-    let state_change = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        state_send.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::nano(1000),
-        Link::zero(),
-        &key2,
-        node.work_generate_dev(state_send.hash()),
-    ));
-    let epoch = Block::State(StateBlock::new(
-        key2.public_key().as_account(),
-        state_change.hash(),
-        *DEV_GENESIS_PUB_KEY,
-        Amount::nano(1000),
-        node.ledger.epoch_link(Epoch::Epoch1).unwrap(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(state_change.hash()),
-    ));
-    let epoch1 = Block::State(StateBlock::new(
-        key1.public_key().as_account(),
-        change.hash(),
-        key2.public_key(),
-        Amount::nano(1000),
-        node.ledger.epoch_link(Epoch::Epoch1).unwrap(),
-        &DEV_GENESIS_KEY,
-        node.work_generate_dev(change.hash()),
-    ));
+    let send = lattice.genesis().legacy_send(&key1, Amount::nano(1000));
+    let send1 = lattice.genesis().legacy_send(&key2, Amount::nano(1000));
+    let open = lattice.account(&key1).legacy_open(&send);
+    let state_open = lattice.account(&key2).receive(&send1);
+    let send2 = lattice
+        .account(&key1)
+        .legacy_send(&key2, Amount::nano(1000));
+
+    let state_receive = lattice.account(&key2).receive(&send2);
+    let state_send = lattice.account(&key2).send(&key1, Amount::nano(1000));
+    let receive = lattice.account(&key1).legacy_receive(&state_send);
+    let change = lattice.account(&key1).legacy_change(&key2);
+    let state_change = lattice.account(&key2).change(&*DEV_GENESIS_KEY);
+    let epoch = lattice.account(&key2).epoch1();
+    let epoch1 = lattice.account(&key1).epoch1();
     let state_send1 = Block::State(StateBlock::new(
         key1.public_key().as_account(),
         epoch1.hash(),

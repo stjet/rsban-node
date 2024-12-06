@@ -2,8 +2,9 @@ use crate::{
     blocks::state_block::EpochBlockArgs,
     dev_epoch1_signer, epoch_v1_link,
     work::{WorkPool, WorkPoolImpl},
-    Account, Amount, Block, BlockHash, Epoch, Link, PendingInfo, PendingKey, PrivateKey, PublicKey,
-    Root, StateBlockArgs, DEV_GENESIS_BLOCK, DEV_GENESIS_KEY,
+    Account, Amount, Block, BlockHash, ChangeBlock, Epoch, Link, OpenBlock, PendingInfo,
+    PendingKey, PrivateKey, PublicKey, ReceiveBlock, Root, SendBlock, StateBlockArgs,
+    DEV_GENESIS_BLOCK, DEV_GENESIS_KEY,
 };
 use std::collections::HashMap;
 
@@ -77,6 +78,16 @@ impl UnsavedBlockLatticeBuilder {
 
         receive
     }
+
+    fn pop_pending_receive(
+        &mut self,
+        receiving_account: impl Into<Account>,
+        send_hash: BlockHash,
+    ) -> PendingInfo {
+        self.pending_receives
+            .remove(&PendingKey::new(receiving_account.into(), send_hash))
+            .expect("no pending receive found")
+    }
 }
 
 pub struct UnsavedAccountChainBuilder<'a> {
@@ -92,6 +103,48 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
     ) -> Block {
         let frontier = self.get_frontier();
         self.send(destination, frontier.balance - keep.into())
+    }
+
+    pub fn legacy_send(
+        &mut self,
+        destination: impl Into<Account>,
+        amount: impl Into<Amount>,
+    ) -> Block {
+        let destination = destination.into();
+        let frontier = self.get_frontier();
+        let amount = amount.into();
+        let new_balance = frontier.balance - amount;
+
+        let work = self
+            .lattice
+            .work_pool
+            .generate_dev2(frontier.hash.into())
+            .unwrap();
+
+        let send = Block::LegacySend(SendBlock::new(
+            &frontier.hash,
+            &destination,
+            &new_balance,
+            self.key,
+            work,
+        ));
+
+        self.set_new_frontier(Frontier {
+            hash: send.hash(),
+            balance: new_balance,
+            ..frontier
+        });
+
+        self.lattice.pending_receives.insert(
+            PendingKey::new(destination, send.hash()),
+            PendingInfo {
+                source: self.key.account(),
+                amount,
+                epoch: Epoch::Epoch0,
+            },
+        );
+
+        send
     }
 
     pub fn send(&mut self, destination: impl Into<Account>, amount: impl Into<Amount>) -> Block {
@@ -132,16 +185,68 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
         send
     }
 
+    pub fn legacy_open(&mut self, corresponding_send: &Block) -> Block {
+        assert!(!self.lattice.accounts.contains_key(&self.key.account()));
+        assert_eq!(corresponding_send.destination_or_link(), self.key.account());
+
+        let amount = self
+            .lattice
+            .pop_pending_receive(self.key, corresponding_send.hash())
+            .amount;
+
+        let root: Root = self.key.account().into();
+
+        let work = self.lattice.work_pool.generate_dev2(root).unwrap();
+        let receive = Block::LegacyOpen(OpenBlock::new(
+            corresponding_send.hash(),
+            self.key.public_key(),
+            self.key.account(),
+            &self.key,
+            work,
+        ));
+
+        self.set_new_frontier(Frontier {
+            hash: receive.hash(),
+            representative: self.key.public_key(),
+            balance: amount,
+        });
+
+        receive
+    }
+
+    pub fn legacy_receive(&mut self, corresponding_send: &Block) -> Block {
+        assert_eq!(corresponding_send.destination_or_link(), self.key.account());
+        let amount = self
+            .lattice
+            .pop_pending_receive(self.key, corresponding_send.hash())
+            .amount;
+
+        let frontier = self.get_frontier();
+        let root: Root = frontier.hash.into();
+        let new_balance = frontier.balance + amount;
+        let work = self.lattice.work_pool.generate_dev2(root).unwrap();
+
+        let receive = Block::LegacyReceive(ReceiveBlock::new(
+            frontier.hash,
+            corresponding_send.hash(),
+            self.key,
+            work,
+        ));
+
+        self.set_new_frontier(Frontier {
+            hash: receive.hash(),
+            representative: frontier.representative,
+            balance: new_balance,
+        });
+
+        receive
+    }
+
     pub fn receive(&mut self, corresponding_send: &Block) -> Block {
         assert_eq!(corresponding_send.destination_or_link(), self.key.account());
         let amount = self
             .lattice
-            .pending_receives
-            .remove(&PendingKey::new(
-                self.key.account(),
-                corresponding_send.hash(),
-            ))
-            .expect("no pending receive found")
+            .pop_pending_receive(self.key, corresponding_send.hash())
             .amount;
 
         let frontier = self.get_frontier_or_empty();
@@ -171,6 +276,31 @@ impl<'a> UnsavedAccountChainBuilder<'a> {
         });
 
         receive
+    }
+
+    pub fn legacy_change(&mut self, new_representative: impl Into<PublicKey>) -> Block {
+        let frontier = self.get_frontier();
+        let new_representative = new_representative.into();
+        let work = self
+            .lattice
+            .work_pool
+            .generate_dev2(frontier.hash.into())
+            .unwrap();
+
+        let change = Block::LegacyChange(ChangeBlock::new(
+            frontier.hash,
+            new_representative,
+            self.key,
+            work,
+        ));
+
+        self.set_new_frontier(Frontier {
+            hash: change.hash(),
+            representative: new_representative,
+            ..frontier
+        });
+
+        change
     }
 
     pub fn change(&mut self, new_representative: impl Into<PublicKey>) -> Block {

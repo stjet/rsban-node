@@ -61,10 +61,10 @@ impl NetworkConstants {
 
     pub fn new(work: WorkThresholds, network: Networks) -> Self {
         match network {
-            Networks::NanoDevNetwork => Self::dev(work),
-            Networks::NanoBetaNetwork => Self::beta(work),
-            Networks::NanoLiveNetwork | Networks::Invalid => Self::live(work),
-            Networks::NanoTestNetwork => Self::test(work),
+            Networks::BananoDevNetwork => Self::dev(work),
+            Networks::BananoBetaNetwork => Self::beta(work),
+            Networks::BananoLiveNetwork | Networks::Invalid => Self::live(work),
+            Networks::BananoTestNetwork => Self::test(work),
         }
     }
 
@@ -86,7 +86,7 @@ impl NetworkConstants {
         let protocol_info = ProtocolInfo::default();
         Self {
             work,
-            current_network: Networks::NanoLiveNetwork,
+            current_network: Networks::BananoLiveNetwork,
             protocol_version: protocol_info.version_using,
             protocol_version_min: protocol_info.version_min,
             bootstrap_protocol_version_min: BootstrapAscendingConfig::default()
@@ -121,7 +121,7 @@ impl NetworkConstants {
 
     pub fn for_beta() -> Self {
         Self {
-            current_network: Networks::NanoBetaNetwork,
+            current_network: Networks::BananoBetaNetwork,
             default_node_port: 54000,
             default_rpc_port: 55000,
             default_ipc_port: 56000,
@@ -134,7 +134,7 @@ impl NetworkConstants {
 
     fn beta(work: WorkThresholds) -> Self {
         Self {
-            current_network: Networks::NanoBetaNetwork,
+            current_network: Networks::BananoBetaNetwork,
             default_node_port: 54000,
             default_rpc_port: 55000,
             default_ipc_port: 56000,
@@ -147,7 +147,7 @@ impl NetworkConstants {
 
     fn test(work: WorkThresholds) -> Self {
         Self {
-            current_network: Networks::NanoTestNetwork,
+            current_network: Networks::BananoTestNetwork,
             default_node_port: test_node_port(),
             default_rpc_port: test_rpc_port(),
             default_ipc_port: test_ipc_port(),
@@ -159,7 +159,7 @@ impl NetworkConstants {
     fn dev(work: WorkThresholds) -> Self {
         let cleanup_period = Duration::from_secs(1);
         Self {
-            current_network: Networks::NanoDevNetwork,
+            current_network: Networks::BananoDevNetwork,
             default_node_port: 44000,
             default_rpc_port: 45000,
             default_ipc_port: 46000,
@@ -186,19 +186,19 @@ impl NetworkConstants {
     }
 
     pub fn is_live_network(&self) -> bool {
-        self.current_network == Networks::NanoLiveNetwork
+        self.current_network == Networks::BananoLiveNetwork
     }
 
     pub fn is_beta_network(&self) -> bool {
-        self.current_network == Networks::NanoBetaNetwork
+        self.current_network == Networks::BananoBetaNetwork
     }
 
     pub fn is_dev_network(&self) -> bool {
-        self.current_network == Networks::NanoDevNetwork
+        self.current_network == Networks::BananoDevNetwork
     }
 
     pub fn is_test_network(&self) -> bool {
-        self.current_network == Networks::NanoTestNetwork
+        self.current_network == Networks::BananoTestNetwork
     }
 
     /** Initial value is ACTIVE_NETWORK compile flag, but can be overridden by a CLI flag */
@@ -222,10 +222,10 @@ impl NetworkConstants {
      */
     pub fn set_active_network_from_str(network: impl AsRef<str>) -> Result<()> {
         let net = match network.as_ref() {
-            "live" => Networks::NanoLiveNetwork,
-            "beta" => Networks::NanoBetaNetwork,
-            "dev" => Networks::NanoDevNetwork,
-            "test" => Networks::NanoTestNetwork,
+            "live" => Networks::BananoLiveNetwork,
+            "beta" => Networks::BananoBetaNetwork,
+            "dev" => Networks::BananoDevNetwork,
+            "test" => Networks::BananoTestNetwork,
             _ => bail!("invalid network"),
         };
         Self::set_active_network(net);
@@ -238,10 +238,10 @@ impl NetworkConstants {
 
     pub fn get_current_network_as_string(&self) -> &str {
         match self.current_network {
-            Networks::NanoDevNetwork => "dev",
-            Networks::NanoBetaNetwork => "beta",
-            Networks::NanoLiveNetwork => "live",
-            Networks::NanoTestNetwork => "test",
+            Networks::BananoDevNetwork => "dev",
+            Networks::BananoBetaNetwork => "beta",
+            Networks::BananoLiveNetwork => "live",
+            Networks::BananoTestNetwork => "test",
             Networks::Invalid => panic!("invalid network"),
         }
     }
@@ -249,21 +249,21 @@ impl NetworkConstants {
     pub fn default_for(network: Networks) -> Self {
         match network {
             Networks::Invalid => Self::empty(),
-            Networks::NanoBetaNetwork => Self::new(
+            Networks::BananoBetaNetwork => Self::new(
                 WorkThresholds::publish_beta().clone(),
-                Networks::NanoBetaNetwork,
+                Networks::BananoBetaNetwork,
             ),
-            Networks::NanoDevNetwork => Self::new(
+            Networks::BananoDevNetwork => Self::new(
                 WorkThresholds::publish_dev().clone(),
-                Networks::NanoDevNetwork,
+                Networks::BananoDevNetwork,
             ),
-            Networks::NanoLiveNetwork => Self::new(
+            Networks::BananoLiveNetwork => Self::new(
                 WorkThresholds::publish_full().clone(),
-                Networks::NanoLiveNetwork,
+                Networks::BananoLiveNetwork,
             ),
-            Networks::NanoTestNetwork => Self::new(
+            Networks::BananoTestNetwork => Self::new(
                 WorkThresholds::publish_test().clone(),
-                Networks::NanoTestNetwork,
+                Networks::BananoTestNetwork,
             ),
         }
     }

@@ -28,14 +28,14 @@ impl GenerateConfigArgs {
     pub(crate) fn generate_config(&self) -> Result<()> {
         let (toml_str, config_type) = if self.node {
             let daemon_toml: DaemonToml = (&DaemonConfig::new(
-                &NetworkParams::new(Networks::NanoBetaNetwork),
+                &NetworkParams::new(Networks::BananoBetaNetwork),
                 get_cpu_count(),
             ))
                 .into();
             (toml::to_string(&daemon_toml)?, "node")
         } else {
             let rpc_server_toml: RpcServerToml =
-                (&RpcServerConfig::default_for(Networks::NanoBetaNetwork, get_cpu_count())).into();
+                (&RpcServerConfig::default_for(Networks::BananoBetaNetwork, get_cpu_count())).into();
             (toml::to_string(&rpc_server_toml)?, "rpc")
         };
 

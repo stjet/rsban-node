@@ -60,9 +60,9 @@ impl std::fmt::Debug for WorkThresholds {
 
 static PUBLISH_FULL: LazyLock<WorkThresholds> = LazyLock::new(|| {
     WorkThresholds::new(
-        0xffffffc000000000,
-        0xfffffff800000000, // 8x higher than epoch_1
-        0xfffffe0000000000, // 8x lower than epoch_1
+        0xfffffe0000000000,
+        0xfffffff000000000, // 8x higher than epoch_1
+        0x0000000000000000, // 8x lower than epoch_1
     )
 });
 
@@ -133,10 +133,10 @@ impl WorkThresholds {
 
     pub fn default_for(network: Networks) -> Self {
         match network {
-            Networks::NanoDevNetwork => Self::publish_dev().clone(),
-            Networks::NanoBetaNetwork => Self::publish_beta().clone(),
-            Networks::NanoLiveNetwork => Self::publish_full().clone(),
-            Networks::NanoTestNetwork => Self::publish_test().clone(),
+            Networks::BananoDevNetwork => Self::publish_dev().clone(),
+            Networks::BananoBetaNetwork => Self::publish_beta().clone(),
+            Networks::BananoLiveNetwork => Self::publish_full().clone(),
+            Networks::BananoTestNetwork => Self::publish_test().clone(),
             Networks::Invalid => {
                 panic!("no default network set")
             }

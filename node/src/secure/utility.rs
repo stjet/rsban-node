@@ -22,10 +22,10 @@ pub fn working_path_for(network: Networks) -> Option<PathBuf> {
     dirs::home_dir().and_then(|mut path| {
         let subdir = match network {
             Networks::Invalid => return None,
-            Networks::NanoDevNetwork => "NanoDev",
-            Networks::NanoBetaNetwork => "NanoBeta",
-            Networks::NanoLiveNetwork => "Nano",
-            Networks::NanoTestNetwork => "NanoTest",
+            Networks::BananoDevNetwork => "BananoDev",
+            Networks::BananoBetaNetwork => "BananoBeta",
+            Networks::BananoLiveNetwork => "Banano",
+            Networks::BananoTestNetwork => "BananoTest",
         };
         path.push(subdir);
         Some(path)
@@ -33,7 +33,7 @@ pub fn working_path_for(network: Networks) -> Option<PathBuf> {
 }
 
 pub fn unique_path() -> Option<PathBuf> {
-    unique_path_for(Networks::NanoDevNetwork)
+    unique_path_for(Networks::BananoDevNetwork)
 }
 
 pub fn unique_path_for(network: Networks) -> Option<PathBuf> {

@@ -20,8 +20,8 @@ static TEST_PUBLIC_KEY_DATA: LazyLock<String> = LazyLock::new(|| {
 static DEV_GENESIS_DATA: &str = r###"{
 	"type": "open",
 	"source": "B0311EA55708D6A53C75CDBF88300259C6D018522FE3D4D0A242E431F9E8B6D0",
-	"representative": "xrb_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo",
-	"account": "xrb_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo",
+	"representative": "ban_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo",
+	"account": "ban_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtdo",
 	"work": "7b42a00ee91d5810",
 	"signature": "ECDA914373A2F0CA1296475BAEE40500A7F0A7AD72A5A80C81D7FAB7F6C802B2CC7DB50F5DD0FB25B2EF11761FA7344A158DD5A700B21BD47DE5BD0F63153A02"
     }"###;
@@ -29,19 +29,19 @@ static DEV_GENESIS_DATA: &str = r###"{
 static BETA_GENESIS_DATA: &str = r###"{
 	"type": "open",
 	"source": "259A438A8F9F9226130C84D902C237AF3E57C0981C7D709C288046B110D8C8AC",
-	"representative": "nano_1betag7az9wk6rbis38s1d35hdsycz1bi95xg4g4j148p6afjk7embcurda4",
-	"account": "nano_1betag7az9wk6rbis38s1d35hdsycz1bi95xg4g4j148p6afjk7embcurda4",
+	"representative": "ban_1betag7az9wk6rbis38s1d35hdsycz1bi95xg4g4j148p6afjk7embcurda4",
+	"account": "ban_1betag7az9wk6rbis38s1d35hdsycz1bi95xg4g4j148p6afjk7embcurda4",
 	"work": "e87a3ce39b43b84c",
 	"signature": "BC588273AC689726D129D3137653FB319B6EE6DB178F97421D11D075B46FD52B6748223C8FF4179399D35CB1A8DF36F759325BD2D3D4504904321FAFB71D7602"
     }"###;
 
 static LIVE_GENESIS_DATA: &str = r###"{
-	"type": "open",
-	"source": "E89208DD038FBB269987689621D52292AE9C35941A7484756ECCED92A65093BA",
-	"representative": "xrb_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
-	"account": "xrb_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
-	"work": "62f05417dd3fb691",
-	"signature": "9F0C933C8ADE004D808EA1985FA746A7E95BA2A38F867640F53EC8F180BDFE9E2C1268DEAD7C2664F356E37ABA362BC58E46DBA03E523A7B5A19E4B6EB12BB02"
+  "type": "open",
+	"source": "2514452A978F08D1CF76BB40B6AD064183CF275D3CC5D3E0515DC96E2112AD4E",
+	"representative": "ban_1bananobh5rat99qfgt1ptpieie5swmoth87thi74qgbfrij7dcgjiij94xr",
+	"account": "ban_1bananobh5rat99qfgt1ptpieie5swmoth87thi74qgbfrij7dcgjiij94xr",
+	"work": "fa055f79fa56abcf",
+	"signature": "533DCAB343547B93C4128E779848DEA5877D3278CB5EA948BB3A9AA1AE0DB293DE6D9DA4F69E8D1DDFA385F9B4C5E4F38DFA42C00D7B183560435D07AFA18900"
     }"###;
 
 static TEST_GENESIS_DATA: LazyLock<String> = LazyLock::new(|| {
@@ -50,8 +50,8 @@ static TEST_GENESIS_DATA: LazyLock<String> = LazyLock::new(|| {
         r###"{
         "type": "open",
         "source": "45C6FF9D1706D61F0821327752671BDA9F9ED2DA40326B01935AB566FB9E08ED",
-        "representative": "nano_1jg8zygjg3pp5w644emqcbmjqpnzmubfni3kfe1s8pooeuxsw49fdq1mco9j",
-        "account": "nano_1jg8zygjg3pp5w644emqcbmjqpnzmubfni3kfe1s8pooeuxsw49fdq1mco9j",
+        "representative": "ban_1jg8zygjg3pp5w644emqcbmjqpnzmubfni3kfe1s8pooeuxsw49fdq1mco9j",
+        "account": "ban_1jg8zygjg3pp5w644emqcbmjqpnzmubfni3kfe1s8pooeuxsw49fdq1mco9j",
         "work": "bc1ef279c1a34eb1",
         "signature": "15049467CAEE3EC768639E8E35792399B6078DA763DA4EBA8ECAD33B0EDC4AF2E7403893A5A602EB89B978DABEF1D6606BB00F3C0EE11449232B143B6E07170E"
         }"###,
@@ -59,7 +59,7 @@ static TEST_GENESIS_DATA: LazyLock<String> = LazyLock::new(|| {
 });
 
 pub static LEDGER_CONSTANTS_STUB: LazyLock<LedgerConstants> =
-    LazyLock::new(|| LedgerConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork));
+    LazyLock::new(|| LedgerConstants::new(WORK_THRESHOLDS_STUB.clone(), Networks::BananoDevNetwork));
 
 pub static DEV_GENESIS_BLOCK: LazyLock<SavedBlock> =
     LazyLock::new(|| LEDGER_CONSTANTS_STUB.genesis_block.clone());
@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn test_parse_block() {
-        let block_str = r###"{"type": "open", "source": "37FCEA4DA94F1635484EFCBA57483C4C654F573B435C09D8AACE1CB45E63FFB1", "representative": "nano_1fzwxb8tkmrp8o66xz7tcx65rm57bxdmpitw39ecomiwpjh89zxj33juzt6p", "account": "nano_1fzwxb8tkmrp8o66xz7tcx65rm57bxdmpitw39ecomiwpjh89zxj33juzt6p", "work": "ef0547d86748c71b", "signature": "13E33D1ADA50A79B64741C5159C0C0AFE0515581B47ABD73676FE02A1D600CDB637050D37BF92C9629649AE92949814BB57C6B5B0A44BF76E2F33043A3DF2D01"}"###;
+        let block_str = r###"{"type": "open", "source": "37FCEA4DA94F1635484EFCBA57483C4C654F573B435C09D8AACE1CB45E63FFB1", "representative": "ban_1fzwxb8tkmrp8o66xz7tcx65rm57bxdmpitw39ecomiwpjh89zxj33juzt6p", "account": "ban_1fzwxb8tkmrp8o66xz7tcx65rm57bxdmpitw39ecomiwpjh89zxj33juzt6p", "work": "ef0547d86748c71b", "signature": "13E33D1ADA50A79B64741C5159C0C0AFE0515581B47ABD73676FE02A1D600CDB637050D37BF92C9629649AE92949814BB57C6B5B0A44BF76E2F33043A3DF2D01"}"###;
         let block = parse_block_from_genesis_data(block_str).unwrap();
         assert_eq!(block.block_type(), BlockType::LegacyOpen);
     }
@@ -120,10 +120,10 @@ impl LedgerConstants {
         let test_genesis_block = parse_block_from_genesis_data(TEST_GENESIS_DATA.as_str()).unwrap();
 
         let genesis_block = match network {
-            Networks::NanoDevNetwork => dev_genesis_block,
-            Networks::NanoBetaNetwork => beta_genesis_block,
-            Networks::NanoTestNetwork => test_genesis_block,
-            Networks::NanoLiveNetwork => live_genesis_block,
+            Networks::BananoDevNetwork => dev_genesis_block,
+            Networks::BananoBetaNetwork => beta_genesis_block,
+            Networks::BananoTestNetwork => test_genesis_block,
+            Networks::BananoLiveNetwork => live_genesis_block,
             Networks::Invalid => panic!("invalid network"),
         };
         let genesis_account = genesis_block.account_field().unwrap();
@@ -137,14 +137,14 @@ impl LedgerConstants {
         let epoch_link_v1 = epoch_v1_link();
 
         let nano_live_epoch_v2_signer = Account::decode_account(
-            "nano_3qb6o6i1tkzr6jwr5s7eehfxwg9x6eemitdinbpi7u8bjjwsgqfj4wzser3x",
+            "ban_3qb6o6i1tkzr6jwr5s7eehfxwg9x6eemitdinbpi7u8bjjwsgqfj4wzser3x",
         )
         .unwrap();
         let epoch_2_signer = match network {
-            Networks::NanoDevNetwork => DEV_GENESIS_KEY.public_key(),
-            Networks::NanoBetaNetwork => nano_beta_account.into(),
-            Networks::NanoLiveNetwork => nano_live_epoch_v2_signer.into(),
-            Networks::NanoTestNetwork => nano_test_account.into(),
+            Networks::BananoDevNetwork => DEV_GENESIS_KEY.public_key(),
+            Networks::BananoBetaNetwork => nano_beta_account.into(),
+            Networks::BananoLiveNetwork => nano_live_epoch_v2_signer.into(),
+            Networks::BananoTestNetwork => nano_test_account.into(),
             _ => panic!("invalid network"),
         };
         let epoch_link_v2 = epoch_v2_link();
@@ -167,32 +167,32 @@ impl LedgerConstants {
     pub fn live() -> Self {
         Self::new(
             WorkThresholds::publish_full().clone(),
-            Networks::NanoLiveNetwork,
+            Networks::BananoLiveNetwork,
         )
     }
 
     pub fn beta() -> Self {
         Self::new(
             WorkThresholds::publish_beta().clone(),
-            Networks::NanoBetaNetwork,
+            Networks::BananoBetaNetwork,
         )
     }
 
     pub fn test() -> Self {
         Self::new(
             WorkThresholds::publish_test().clone(),
-            Networks::NanoTestNetwork,
+            Networks::BananoTestNetwork,
         )
     }
 
     pub fn dev() -> Self {
         Self::new(
             WorkThresholds::publish_dev().clone(),
-            Networks::NanoDevNetwork,
+            Networks::BananoDevNetwork,
         )
     }
 
     pub fn unit_test() -> Self {
-        Self::new(WORK_THRESHOLDS_STUB.clone(), Networks::NanoDevNetwork)
+        Self::new(WORK_THRESHOLDS_STUB.clone(), Networks::BananoDevNetwork)
     }
 }

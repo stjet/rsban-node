@@ -37,7 +37,7 @@ pub(crate) struct CurrentArgs {
 impl CurrentArgs {
     pub(crate) fn current(&self) -> Result<()> {
         let path = get_path(&self.data_path, &self.network);
-        let network = Networks::NanoBetaNetwork;
+        let network = Networks::BananoBetaNetwork;
         let network_params = NetworkParams::new(network);
         let parallelism = get_cpu_count();
 

@@ -24,7 +24,7 @@ impl Account {
             number >>= 5;
             result.push(account_encode(r));
         }
-        result.push_str("_onan"); // nano_
+        result.push_str("_nab"); // ban_
         result.chars().rev().collect()
     }
 
@@ -74,7 +74,7 @@ impl<'de> Visitor<'de> for AccountVisitor {
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter
-            .write_str("an account in the form \"nano_...\" or a node ID in the form \"node_...\"")
+            .write_str("an account in the form \"ban_...\" or a node ID in the form \"node_...\"")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -84,7 +84,7 @@ impl<'de> Visitor<'de> for AccountVisitor {
         Account::decode_account(v).map_err(|_| {
             serde::de::Error::invalid_value(
                 Unexpected::Str(v),
-                &"an account in the form \"nano_...\"",
+                &"an account in the form \"ban_...\"",
             )
         })
     }
@@ -130,15 +130,11 @@ impl<'a> EncodedAccountStr<'a> {
     }
 
     fn has_valid_prefix(&self) -> bool {
-        self.has_xrb_prefix() || self.has_nano_prefix() || self.has_node_id_prefix()
+        self.has_ban_prefix() || self.has_node_id_prefix()
     }
 
-    fn has_xrb_prefix(&self) -> bool {
-        self.0.starts_with("xrb_") || self.0.starts_with("xrb-")
-    }
-
-    fn has_nano_prefix(&self) -> bool {
-        self.0.starts_with("nano_") || self.0.starts_with("nano-")
+    fn has_ban_prefix(&self) -> bool {
+        self.0.starts_with("ban_") || self.0.starts_with("ban-")
     }
 
     fn has_node_id_prefix(&self) -> bool {
@@ -146,21 +142,14 @@ impl<'a> EncodedAccountStr<'a> {
     }
 
     fn is_length_valid(&self) -> bool {
-        if self.has_xrb_prefix() && self.0.chars().count() != 64 {
-            return false;
-        }
-        if self.has_nano_prefix() && self.0.chars().count() != 65 {
+        if self.has_ban_prefix() && self.0.chars().count() != 65 {
             return false;
         }
         true
     }
 
     fn prefix_len(&self) -> usize {
-        if self.has_xrb_prefix() {
-            4
-        } else {
-            5
-        }
+        4 //ban_
     }
 
     fn first_digit(&self) -> Option<char> {
@@ -268,7 +257,7 @@ mod tests {
         let encoded = account.encode_account();
         assert_eq!(
             encoded,
-            "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+            "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
         );
         let copy = Account::decode_account(&encoded).expect("decode failed");
         assert_eq!(account, copy);
@@ -281,7 +270,7 @@ mod tests {
         let encoded = account.encode_account();
         assert_eq!(
             encoded,
-            "nano_3zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzc3yoon41"
+            "ban_3zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzc3yoon41"
         );
         let copy = Account::decode_account(&encoded).expect("decode failed");
         assert_eq!(account, copy);
@@ -304,23 +293,11 @@ mod tests {
         let encoded = account.encode_account();
         assert_eq!(
             encoded,
-            "nano_3szoyggo7d3koqwqjgyhftkirykzqhgwoqnpdjc4i47fotgyyts1j8ab3mti"
+            "ban_3szoyggo7d3koqwqjgyhftkirykzqhgwoqnpdjc4i47fotgyyts1j8ab3mti"
         );
         assert_eq!(
             Account::decode_account(&encoded).expect("could not decode"),
             account
-        );
-    }
-
-    #[test]
-    fn decode_xrb_variant() {
-        assert_eq!(
-            Account::decode_account(
-                "xrb_3szoyggo7d3koqwqjgyhftkirykzqhgwoqnpdjc4i47fotgyyts1j8ab3mti"
-            )
-            .unwrap(),
-            Account::decode_hex("E7F5F39D52AC32ADF978BBCF6EA50C7A5FBBDDCADE965C542808ADAE9DEF6B20")
-                .unwrap()
         );
     }
 
@@ -340,7 +317,7 @@ mod tests {
     fn decode_invalid_checksum() {
         assert_eq!(
             Account::decode_account(
-                "nano_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtd1"
+                "ban_3e3j5tkog48pnny9dmfzj1r16pg8t1e76dz5tmac6iq689wyjfpiij4txtd1"
             )
             .unwrap_err()
             .to_string(),
@@ -353,14 +330,14 @@ mod tests {
         let serialized = serde_json::to_string_pretty(&Account::from(123)).unwrap();
         assert_eq!(
             serialized,
-            "\"nano_111111111111111111111111111111111111111111111111115uwdgas549\""
+            "\"ban_111111111111111111111111111111111111111111111111115uwdgas549\""
         );
     }
 
     #[test]
     fn serde_deserialize() {
         let deserialized: Account = serde_json::from_str(
-            "\"nano_111111111111111111111111111111111111111111111111115uwdgas549\"",
+            "\"ban_111111111111111111111111111111111111111111111111115uwdgas549\"",
         )
         .unwrap();
         assert_eq!(deserialized, Account::from(123));

@@ -993,7 +993,7 @@ mod tests {
     }
 
     fn create_default_daemon_config() -> DaemonConfig {
-        let mut config = DaemonConfig::new2(Networks::NanoBetaNetwork, 8);
+        let mut config = DaemonConfig::new2(Networks::BananoBetaNetwork, 8);
         config.rpc.child_process.rpc_path = PathBuf::from("/home/foo/nano_rpc");
         config
     }

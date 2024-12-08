@@ -37,17 +37,17 @@ pub struct NetworkConfig {
 
 impl NetworkConfig {
     pub fn default_for(network: Networks) -> Self {
-        let is_dev = network == Networks::NanoDevNetwork;
+        let is_dev = network == Networks::BananoDevNetwork;
         Self {
             max_inbound_connections: if is_dev { 128 } else { 2048 },
             max_outbound_connections: if is_dev { 128 } else { 2048 },
             allow_local_peers: true,
             max_peers_per_ip: match network {
-                Networks::NanoDevNetwork | Networks::NanoBetaNetwork => 256,
+                Networks::BananoDevNetwork | Networks::BananoBetaNetwork => 256,
                 _ => 4,
             },
             max_peers_per_subnetwork: match network {
-                Networks::NanoDevNetwork | Networks::NanoBetaNetwork => 256,
+                Networks::BananoDevNetwork | Networks::BananoBetaNetwork => 256,
                 _ => 16,
             },
             max_attempts_per_ip: if is_dev { 128 } else { 1 },
@@ -56,9 +56,9 @@ impl NetworkConfig {
             disable_max_peers_per_subnetwork: false,
             disable_network: false,
             listening_port: match network {
-                Networks::NanoDevNetwork => 44000,
-                Networks::NanoBetaNetwork => 54000,
-                Networks::NanoTestNetwork => 17076,
+                Networks::BananoDevNetwork => 44000,
+                Networks::BananoBetaNetwork => 54000,
+                Networks::BananoTestNetwork => 17076,
                 _ => 7075,
             },
         }
@@ -102,7 +102,7 @@ impl NetworkInfo {
 
     #[allow(dead_code)]
     pub fn new_test_instance() -> Self {
-        Self::new(NetworkConfig::default_for(Networks::NanoDevNetwork))
+        Self::new(NetworkConfig::default_for(Networks::BananoDevNetwork))
     }
 
     pub fn on_new_realtime_channel(

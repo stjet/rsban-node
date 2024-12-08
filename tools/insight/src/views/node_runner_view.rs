@@ -13,9 +13,9 @@ impl<'a> NodeRunnerView<'a> {
 
     pub fn show(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            self.network_radio_button(ui, Networks::NanoLiveNetwork);
-            self.network_radio_button(ui, Networks::NanoBetaNetwork);
-            self.network_radio_button(ui, Networks::NanoTestNetwork);
+            self.network_radio_button(ui, Networks::BananoLiveNetwork);
+            self.network_radio_button(ui, Networks::BananoBetaNetwork);
+            self.network_radio_button(ui, Networks::BananoTestNetwork);
             ui.add_enabled(
                 self.model.can_start_node(),
                 TextEdit::singleline(&mut self.model.data_path),

@@ -102,7 +102,7 @@ impl BootstrapConnections {
             populate_connections_started: AtomicBool::new(false),
             attempts: Arc::new(Mutex::new(BootstrapAttempts::new())),
             mutex: Mutex::new(BootstrapConnectionsData::default()),
-            config: BootstrapInitiatorConfig::default_for(Networks::NanoDevNetwork),
+            config: BootstrapInitiatorConfig::default_for(Networks::BananoDevNetwork),
             connections_count: AtomicU32::new(0),
             new_connections_empty: AtomicBool::new(false),
             stopped: AtomicBool::new(false),

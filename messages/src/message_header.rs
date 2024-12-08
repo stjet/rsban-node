@@ -77,7 +77,7 @@ impl Default for ProtocolInfo {
             version_using: 0x15,
             version_max: 0x15,
             version_min: 0x14,
-            network: Networks::NanoLiveNetwork,
+            network: Networks::BananoLiveNetwork,
         }
     }
 }
@@ -288,7 +288,7 @@ mod tests {
             version_using: 2,
             version_max: 3,
             version_min: 1,
-            network: Networks::NanoDevNetwork,
+            network: Networks::BananoDevNetwork,
         };
         MessageHeader {
             message_type: MessageType::Keepalive,
@@ -299,7 +299,7 @@ mod tests {
 
     #[test]
     fn serialize_header() {
-        let protocol_info = ProtocolInfo::default_for(Networks::NanoDevNetwork);
+        let protocol_info = ProtocolInfo::default_for(Networks::BananoDevNetwork);
         let mut header = MessageHeader::new(MessageType::Publish, protocol_info);
         header.extensions = 0xABCD.into();
 
@@ -308,7 +308,7 @@ mod tests {
 
         let bytes = stream.as_bytes();
         assert_eq!(bytes.len(), 8);
-        assert_eq!(bytes[0], 0x52);
+        assert_eq!(bytes[0], 0x42);
         assert_eq!(bytes[1], 0x41);
         assert_eq!(bytes[2], protocol_info.version_using);
         assert_eq!(bytes[3], protocol_info.version_max);

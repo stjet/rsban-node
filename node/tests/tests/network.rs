@@ -465,7 +465,7 @@ fn duplicate_revert_vote() {
     sleep(Duration::from_millis(500)); // Give the node time to process the vote
 
     let mut serializer =
-        MessageSerializer::new(ProtocolInfo::default_for(Networks::NanoDevNetwork));
+        MessageSerializer::new(ProtocolInfo::default_for(Networks::BananoDevNetwork));
     let msg2_bytes = serializer.serialize(&message2);
     let payload_bytes = &msg2_bytes[MessageHeader::SERIALIZED_SIZE..];
     assert_eq!(node1.network_filter.check_message(payload_bytes), false);
@@ -542,7 +542,7 @@ fn expire_duplicate_filter() {
 
     // The filter should expire the vote after some time
     let mut serializer =
-        MessageSerializer::new(ProtocolInfo::default_for(Networks::NanoDevNetwork));
+        MessageSerializer::new(ProtocolInfo::default_for(Networks::BananoDevNetwork));
     let msg_bytes = serializer.serialize(&message);
     let payload_bytes = &msg_bytes[MessageHeader::SERIALIZED_SIZE..];
     assert!(node1.network_filter.check_message(&payload_bytes));

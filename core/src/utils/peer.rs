@@ -96,16 +96,16 @@ mod tests {
 
     #[test]
     fn test_peer_serialize() {
-        let peer = Peer::new("192.168.1.1", 7075);
+        let peer = Peer::new("192.168.1.1", 7071);
         let serialized = serde_json::to_string(&peer).unwrap();
-        assert_eq!(serialized, "\"192.168.1.1:7075\"");
+        assert_eq!(serialized, "\"192.168.1.1:7071\"");
     }
 
     #[test]
     fn test_peer_deserialize() {
-        let serialized = "\"192.168.1.1:7075\"";
+        let serialized = "\"192.168.1.1:7071\"";
         let peer: Peer = serde_json::from_str(serialized).unwrap();
-        assert_eq!(peer, Peer::new("192.168.1.1", 7075));
+        assert_eq!(peer, Peer::new("192.168.1.1", 7071));
     }
 
     #[test]

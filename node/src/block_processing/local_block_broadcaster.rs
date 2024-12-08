@@ -31,7 +31,7 @@ pub struct LocalBlockBroadcasterConfig {
 impl LocalBlockBroadcasterConfig {
     pub fn new(network: Networks) -> Self {
         match network {
-            Networks::NanoDevNetwork => Self::default_for_dev_network(),
+            Networks::BananoDevNetwork => Self::default_for_dev_network(),
             _ => Default::default(),
         }
     }

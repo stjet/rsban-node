@@ -714,7 +714,7 @@ fn create_node_with_websocket(system: &mut System) -> (Arc<Node>, Arc<WebsocketL
         websocket_config: WebsocketConfig {
             enabled: true,
             port: websocket_port,
-            ..WebsocketConfig::new(&NetworkConstants::default_for(Networks::NanoDevNetwork))
+            ..WebsocketConfig::new(&NetworkConstants::default_for(Networks::BananoDevNetwork))
         },
         ..System::default_config()
     };

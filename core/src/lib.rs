@@ -299,23 +299,23 @@ pub fn deterministic_key(seed: &RawKey, index: u32) -> RawKey {
 pub enum Networks {
     Invalid = 0x0,
     // Low work parameters, publicly known genesis key, dev IP ports
-    NanoDevNetwork = 0x5241, // 'R', 'A'
+    BananoDevNetwork = 0x4241, // 'B', 'A'
     // Normal work parameters, secret beta genesis key, beta IP ports
-    NanoBetaNetwork = 0x5242, // 'R', 'B'
+    BananoBetaNetwork = 0x4242, // 'B', 'B'
     // Normal work parameters, secret live key, live IP ports
-    NanoLiveNetwork = 0x5243, // 'R', 'C'
+    BananoLiveNetwork = 0x4258, // 'B', 'X'
     // Normal work parameters, secret test genesis key, test IP ports
-    NanoTestNetwork = 0x5258, // 'R', 'X'
+    BananoTestNetwork = 0x4243, // 'B', 'C'
 }
 
 impl Networks {
     pub fn as_str(&self) -> &str {
         match self {
             Networks::Invalid => "invalid",
-            Networks::NanoDevNetwork => "dev",
-            Networks::NanoBetaNetwork => "beta",
-            Networks::NanoLiveNetwork => "live",
-            Networks::NanoTestNetwork => "test",
+            Networks::BananoDevNetwork => "dev",
+            Networks::BananoBetaNetwork => "beta",
+            Networks::BananoLiveNetwork => "live",
+            Networks::BananoTestNetwork => "test",
         }
     }
 }
@@ -325,10 +325,10 @@ impl FromStr for Networks {
 
     fn from_str(s: &str) -> Result<Networks, Self::Err> {
         match s {
-            "dev" => Ok(Networks::NanoDevNetwork),
-            "beta" => Ok(Networks::NanoBetaNetwork),
-            "live" => Ok(Networks::NanoLiveNetwork),
-            "test" => Ok(Networks::NanoTestNetwork),
+            "dev" => Ok(Networks::BananoDevNetwork),
+            "beta" => Ok(Networks::BananoBetaNetwork),
+            "live" => Ok(Networks::BananoLiveNetwork),
+            "test" => Ok(Networks::BananoTestNetwork),
             _ => Err("Invalid network"),
         }
     }
@@ -336,7 +336,7 @@ impl FromStr for Networks {
 //
 //todo: make configurable in builld script again!
 pub static ACTIVE_NETWORK: LazyLock<Mutex<Networks>> =
-    LazyLock::new(|| Mutex::new(Networks::NanoBetaNetwork));
+    LazyLock::new(|| Mutex::new(Networks::BananoBetaNetwork));
 
 #[derive(PartialEq, Eq, Debug, Default, Clone)]
 pub struct Frontier {

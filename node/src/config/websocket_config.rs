@@ -27,7 +27,7 @@ mod tests {
     fn websocket_config() {
         let cfg = WebsocketConfig::new(&NetworkConstants::new(
             WorkThresholds::publish_full().clone(),
-            crate::config::Networks::NanoLiveNetwork,
+            crate::config::Networks::BananoLiveNetwork,
         ));
         assert_eq!(cfg.enabled, false);
         assert_eq!(cfg.port, 7078);

@@ -145,7 +145,7 @@ pub(crate) struct NodeArgs {
 
 impl NodeArgs {
     pub fn create_test_instance() -> Self {
-        let network_params = NetworkParams::new(Networks::NanoDevNetwork);
+        let network_params = NetworkParams::new(Networks::BananoDevNetwork);
         let config = NodeConfig::new(None, &network_params, 2);
         Self {
             runtime: tokio::runtime::Handle::current(),
@@ -1709,14 +1709,14 @@ mod tests {
             let mut app_path = std::env::temp_dir();
             app_path.push(format!("rsnano-test-{}", Uuid::new_v4().simple()));
             let config = NodeConfig::new_test_instance();
-            let network_params = NetworkParams::new(Networks::NanoDevNetwork);
+            let network_params = NetworkParams::new(Networks::BananoDevNetwork);
             let work = Arc::new(WorkPoolImpl::new(
                 network_params.work.clone(),
                 1,
                 Duration::ZERO,
             ));
 
-            let node = NodeBuilder::new(Networks::NanoDevNetwork)
+            let node = NodeBuilder::new(Networks::BananoDevNetwork)
                 .data_path(app_path.clone())
                 .config(config)
                 .network_params(network_params)

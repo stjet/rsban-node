@@ -223,17 +223,17 @@ mod tests {
         let rpc_toml: RpcServerToml = from_str(&toml_str).expect("Failed to deserialize TOML");
 
         let mut deserialized_rpc_config =
-            RpcServerConfig::default_for(Networks::NanoBetaNetwork, 8);
+            RpcServerConfig::default_for(Networks::BananoBetaNetwork, 8);
         deserialized_rpc_config.merge_toml(&rpc_toml);
 
-        let default_rpc_config = RpcServerConfig::default_for(Networks::NanoBetaNetwork, 8);
+        let default_rpc_config = RpcServerConfig::default_for(Networks::BananoBetaNetwork, 8);
 
         assert_eq!(&deserialized_rpc_config, &default_rpc_config);
     }
 
     #[test]
     fn serialize_defaults() {
-        let default_rpc_config = RpcServerConfig::default_for(Networks::NanoBetaNetwork, 8);
+        let default_rpc_config = RpcServerConfig::default_for(Networks::BananoBetaNetwork, 8);
 
         let default_rpc_toml: RpcServerToml = (&default_rpc_config).into();
 

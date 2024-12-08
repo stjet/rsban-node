@@ -109,7 +109,7 @@ impl RunDaemonArgs {
             .as_ref()
             .map(|s| Networks::from_str(s).map_err(|e| anyhow!(e)))
             .transpose()
-            .map(|n| n.unwrap_or(Networks::NanoLiveNetwork))
+            .map(|n| n.unwrap_or(Networks::BananoLiveNetwork))
     }
 
     pub(crate) fn get_flags(&self) -> NodeFlags {

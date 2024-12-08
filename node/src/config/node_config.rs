@@ -106,10 +106,10 @@ pub struct NodeConfig {
 }
 
 static DEFAULT_LIVE_PEER_NETWORK: Lazy<String> =
-    Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering.nano.org"));
+    Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "livenet.banano.cc"));
 
 static DEFAULT_BETA_PEER_NETWORK: Lazy<String> =
-    Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering-beta.nano.org"));
+    Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "livenet-beta.banano.cc"));
 
 static DEFAULT_TEST_PEER_NETWORK: Lazy<String> =
     Lazy::new(|| get_env_or_default_string("NANO_DEFAULT_PEER", "peering-test.nano.org"));
@@ -144,11 +144,11 @@ impl NodeConfig {
         let mut preconfigured_representatives = Vec::new();
         let default_port = network_params.network.default_node_port;
         match network_params.network.current_network {
-            Networks::NanoDevNetwork => {
+            Networks::BananoDevNetwork => {
                 enable_voting = true;
                 preconfigured_representatives.push(network_params.ledger.genesis_account.into());
             }
-            Networks::NanoBetaNetwork => {
+            Networks::BananoBetaNetwork => {
                 preconfigured_peers
                     .push(Peer::new(DEFAULT_BETA_PEER_NETWORK.clone(), default_port));
                 preconfigured_representatives.push(
@@ -159,7 +159,7 @@ impl NodeConfig {
                     .into(),
                 );
             }
-            Networks::NanoLiveNetwork => {
+            Networks::BananoLiveNetwork => {
                 preconfigured_peers
                     .push(Peer::new(DEFAULT_LIVE_PEER_NETWORK.clone(), default_port));
                 preconfigured_representatives.push(
@@ -211,7 +211,7 @@ impl NodeConfig {
                     .unwrap(),
                 );
             }
-            Networks::NanoTestNetwork => {
+            Networks::BananoTestNetwork => {
                 preconfigured_peers
                     .push(Peer::new(DEFAULT_TEST_PEER_NETWORK.clone(), default_port));
                 preconfigured_representatives.push(network_params.ledger.genesis_account.into());

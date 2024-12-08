@@ -8,6 +8,10 @@ pub struct Amount {
     raw: u128, // native endian!
 }
 
+//banano has 29 digits of raw isntead of 30
+//100000000000000000000000000000: 1 banano is 10**29
+//1000000000000000000000000000000: 1 nano is 10**30
+
 impl Amount {
     pub const MAX: Amount = Amount::raw(u128::MAX);
 
@@ -15,24 +19,24 @@ impl Amount {
         Self { raw: value }
     }
 
-    /// 10^24 raw or 0.000001 nano
+    /// 10^23 raw or 0.000001 nano
     pub const fn micronano(value: u128) -> Self {
         Self {
-            raw: value * 10u128.pow(24),
+            raw: value * 10u128.pow(23),
         }
     }
 
-    /// 10^27 raw or 0.001 nano
+    /// 10^26 raw or 0.001 nano
     pub const fn millinano(value: u128) -> Self {
         Self {
-            raw: value * 10u128.pow(27),
+            raw: value * 10u128.pow(26),
         }
     }
 
-    /// 10^30 raw
+    /// 10^29 raw
     pub const fn nano(value: u128) -> Self {
         Self {
-            raw: value * 10u128.pow(30),
+            raw: value * 10u128.pow(29),
         }
     }
 
@@ -91,7 +95,7 @@ impl Amount {
     }
 
     pub fn format_balance(&self, precision: usize) -> String {
-        let precision = std::cmp::min(precision, 30);
+        let precision = std::cmp::min(precision, 29);
         let nano_ratio = Amount::nano(1).number();
         if self.raw == 0 || self.raw >= nano_ratio / num_traits::pow(10, precision) {
             let whole = self.raw / nano_ratio;
@@ -101,7 +105,7 @@ impl Amount {
             let mut result = buf.to_string();
             if decimals != 0 && precision > 0 {
                 result.push('.');
-                let decimals_string = format!("{:030}", decimals);
+                let decimals_string = format!("{:029}", decimals);
                 let trimmed = decimals_string.trim_end_matches('0');
                 let decimals_count = std::cmp::min(
                     precision,
@@ -293,68 +297,68 @@ mod tests {
     fn format_balance() {
         assert_eq!("0", Amount::raw(0).format_balance(2));
         assert_eq!(
-            "340,282,366",
+            "3,402,823,669",
             Amount::decode_hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
                 .unwrap()
                 .format_balance(0)
         );
         assert_eq!(
-            "340,282,366.920938463463374607431768211455",
+            "3,402,823,669.20938463463374607431768211455",
             Amount::decode_hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
                 .unwrap()
                 .format_balance(64)
         );
         assert_eq!(
-            "340,282,366",
+            "3,402,823,669",
             Amount::decode_hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")
                 .unwrap()
                 .format_balance(0)
         );
         assert_eq!(
-            "340,282,366.920938463463374607431768211454",
+            "3,402,823,669.20938463463374607431768211454",
             Amount::decode_hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")
                 .unwrap()
                 .format_balance(64)
         );
         assert_eq!(
-            "170,141,183",
+            "1,701,411,834",
             Amount::decode_hex("7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")
                 .unwrap()
                 .format_balance(0)
         );
         assert_eq!(
-            "170,141,183.460469231731687303715884105726",
+            "1,701,411,834.60469231731687303715884105726",
             Amount::decode_hex("7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE")
                 .unwrap()
                 .format_balance(64)
         );
         assert_eq!(
             "1",
-            Amount::decode_dec("1000000000000000000000000000000")
+            Amount::decode_dec("100000000000000000000000000000")
                 .unwrap()
                 .format_balance(2)
         );
         assert_eq!(
             "1.2",
-            Amount::decode_dec("1200000000000000000000000000000")
+            Amount::decode_dec("120000000000000000000000000000")
                 .unwrap()
                 .format_balance(2)
         );
         assert_eq!(
             "1.23",
-            Amount::decode_dec("1230000000000000000000000000000")
+            Amount::decode_dec("123000000000000000000000000000")
                 .unwrap()
                 .format_balance(2)
         );
         assert_eq!(
             "1.2",
-            Amount::decode_dec("1230000000000000000000000000000")
+            Amount::decode_dec("123000000000000000000000000000")
                 .unwrap()
                 .format_balance(1)
         );
         assert_eq!(
             "1",
-            Amount::decode_dec("1230000000000000000000000000000")
+            Amount::decode_dec("123000000000000000000000000000")
                 .unwrap()
                 .format_balance(0)
         );

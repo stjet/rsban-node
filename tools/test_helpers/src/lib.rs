@@ -39,7 +39,7 @@ pub struct System {
 impl System {
     pub fn new() -> Self {
         init_tracing();
-        let network_params = NetworkParams::new(Networks::NanoDevNetwork);
+        let network_params = NetworkParams::new(Networks::BananoDevNetwork);
 
         Self {
             runtime: Arc::new(AsyncRuntime::default()),
@@ -56,7 +56,7 @@ impl System {
     }
 
     pub fn default_config() -> NodeConfig {
-        let network_params = NetworkParams::new(Networks::NanoDevNetwork);
+        let network_params = NetworkParams::new(Networks::BananoDevNetwork);
         let port = get_available_port();
         let mut config = NodeConfig::new(Some(port), &network_params, 1);
         config.representative_vote_weight_minimum = Amount::zero();

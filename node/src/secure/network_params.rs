@@ -7,7 +7,7 @@ use rsnano_core::{work::WorkThresholds, Networks};
 use rsnano_ledger::LedgerConstants;
 
 pub static DEV_NETWORK_PARAMS: Lazy<NetworkParams> =
-    Lazy::new(|| NetworkParams::new(Networks::NanoDevNetwork));
+    Lazy::new(|| NetworkParams::new(Networks::BananoDevNetwork));
 
 #[derive(Clone)]
 pub struct NetworkParams {
@@ -23,11 +23,11 @@ pub struct NetworkParams {
 
 impl NetworkParams {
     pub fn new(network: Networks) -> Self {
-        let work = if network == Networks::NanoLiveNetwork {
+        let work = if network == Networks::BananoLiveNetwork {
             WorkThresholds::publish_full()
-        } else if network == Networks::NanoBetaNetwork {
+        } else if network == Networks::BananoBetaNetwork {
             WorkThresholds::publish_beta()
-        } else if network == Networks::NanoTestNetwork {
+        } else if network == Networks::BananoTestNetwork {
             WorkThresholds::publish_test()
         } else {
             WorkThresholds::publish_dev()

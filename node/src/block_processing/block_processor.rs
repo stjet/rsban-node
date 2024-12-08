@@ -215,7 +215,7 @@ impl BlockProcessor {
 
     pub fn new_test_instance(ledger: Arc<Ledger>) -> Self {
         BlockProcessor::new(
-            BlockProcessorConfig::new_for(Networks::NanoDevNetwork),
+            BlockProcessorConfig::new_for(Networks::BananoDevNetwork),
             ledger,
             Arc::new(UncheckedMap::default()),
             Arc::new(Stats::default()),

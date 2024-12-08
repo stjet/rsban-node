@@ -20,7 +20,7 @@ impl NodeRunnerViewModel {
         msg_recorder: Arc<MessageRecorder>,
         clock: Arc<SteadyClock>,
     ) -> Self {
-        let network = Networks::NanoLiveNetwork;
+        let network = Networks::BananoLiveNetwork;
         let mut model = Self {
             node_runner,
             msg_recorder,
@@ -28,7 +28,7 @@ impl NodeRunnerViewModel {
             network,
             data_path: String::new(),
         };
-        model.set_network(Networks::NanoLiveNetwork);
+        model.set_network(Networks::BananoLiveNetwork);
         model
     }
 

@@ -12,7 +12,7 @@ pub(crate) fn get_bootstrap_weights(network: Networks) -> (u64, HashMap<PublicKe
 }
 
 fn get_bootstrap_weights_bin(network: Networks) -> &'static [u8] {
-    if network == Networks::NanoLiveNetwork {
+    if network == Networks::BananoLiveNetwork {
         include_bytes!("../../rep_weights_live.bin")
     } else {
         include_bytes!("../../rep_weights_beta.bin")
@@ -75,12 +75,12 @@ mod tests {
     #[test]
     fn bootstrap_weights_bin() {
         assert_eq!(
-            get_bootstrap_weights_bin(Networks::NanoLiveNetwork).len(),
+            get_bootstrap_weights_bin(Networks::BananoLiveNetwork).len(),
             6400,
             "expected live weights don't match'"
         );
         assert_eq!(
-            get_bootstrap_weights_bin(Networks::NanoBetaNetwork).len(),
+            get_bootstrap_weights_bin(Networks::BananoBetaNetwork).len(),
             0,
             "expected beta weights don't match'"
         );
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn bootstrap_weights() {
-        let (max_blocks, weights) = get_bootstrap_weights(Networks::NanoLiveNetwork);
+        let (max_blocks, weights) = get_bootstrap_weights(Networks::BananoLiveNetwork);
         assert_eq!(weights.len(), 133);
         assert_eq!(max_blocks, 201_514_829);
     }

@@ -254,6 +254,9 @@ mod tests {
             assert!((multi - expected).abs() < 1e-10);
         };
 
+        //this test fails
+        //https://github.com/BananoCoin/banano/blob/v26.1/nano/core_test/difficulty.cpp
+
         // live
         assert_multiplier(full.epoch_2, full.epoch_1, 8.0);
         assert_multiplier(full.epoch_2_receive, full.epoch_1, 1.0 / 8.0);

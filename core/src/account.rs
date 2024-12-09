@@ -142,7 +142,7 @@ impl<'a> EncodedAccountStr<'a> {
     }
 
     fn is_length_valid(&self) -> bool {
-        if self.has_ban_prefix() && self.0.chars().count() != 65 {
+        if self.has_ban_prefix() && self.0.chars().count() != 64 {
             return false;
         }
         true

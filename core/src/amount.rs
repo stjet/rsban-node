@@ -267,7 +267,7 @@ mod tests {
     fn construct_amount_in_nano() {
         assert_eq!(
             Amount::nano(1).to_string_dec(),
-            "1000000000000000000000000000000"
+            "100000000000000000000000000000"
         );
     }
 

@@ -293,7 +293,7 @@ mod tests {
                 is_receive: false,
                 is_epoch: false
             }),
-            0xffffffc000000000
+            0xfffffe0000000000
         );
     }
 
@@ -306,7 +306,7 @@ mod tests {
                 is_receive: true,
                 is_epoch: false
             }),
-            0xffffffc000000000
+            0xfffffe0000000000
         );
     }
 
@@ -319,7 +319,7 @@ mod tests {
                 is_receive: false,
                 is_epoch: false
             }),
-            0xffffffc000000000
+            0xfffffe0000000000
         );
     }
 
@@ -332,7 +332,7 @@ mod tests {
                 is_receive: true,
                 is_epoch: false
             }),
-            0xffffffc000000000
+            0xfffffe0000000000
         );
     }
 
@@ -345,7 +345,7 @@ mod tests {
                 is_receive: false,
                 is_epoch: false
             }),
-            0xfffffff800000000
+            0xfffffff000000000
         );
     }
 
@@ -358,7 +358,7 @@ mod tests {
                 is_receive: true,
                 is_epoch: false
             }),
-            0xfffffe0000000000
+            0x0000000000000000
         );
     }
 
@@ -367,7 +367,7 @@ mod tests {
         let json_block = r###"{
   "type": "send",
   "previous": "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19B728948",
-  "destination": "nano_13ezf4od79h1tgj9aiu4djzcmmguendtjfuhwfukhuucboua8cpoihmh8byo",
+  "destination": "ban_13ezf4od79h1tgj9aiu4djzcmmguendtjfuhwfukhuucboua8cpoihmh8byo",
   "balance": "FD89D89D89D89D89D89D89D89D89D89D",
   "signature": "5B11B17DB9C8FE0CC58CAC6A6EECEF9CB122DA8A81C6D3DB1B5EE3AB065AA8F8CB1D6765C8EB91B58530C5FF5987AD95E6D34BB57F44257E20795EE412E61600",
   "work": "3c82cc724905ee95"

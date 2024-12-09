@@ -204,7 +204,7 @@ mod tests {
     fn regression_validate_weird_signature2() {
         let public_key = PublicKey::from(
             Account::decode_account(
-                "nano_11a11111111111111111111111111111111111111111111111116iq5p4i8",
+                "ban_11a11111111111111111111111111111111111111111111111116iq5p4i8",
             )
             .unwrap(),
         );

@@ -44,7 +44,7 @@ impl From<u128> for NodeId {
 impl Display for NodeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut result = Account::from_bytes(self.0).encode_account();
-        result.replace_range(0..4, "node");
+        result.replace_range(0..3, "node"); //ban_ is 0..3, nano_ is 0..4
         write!(f, "{}", result)
     }
 }
@@ -61,7 +61,7 @@ impl FromStr for NodeId {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut node_id = s.to_string();
         if node_id.starts_with("node_") {
-            node_id.replace_range(0..5, "nano_");
+            node_id.replace_range(0..5, "ban_");
             let account = Account::decode_account(node_id)?;
             Ok(Self::from_bytes(*account.as_bytes()))
         } else {

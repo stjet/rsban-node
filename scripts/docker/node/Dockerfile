@@ -1,4 +1,4 @@
-FROM ubuntu:22.04 as builder
+FROM ubuntu:22.04 AS builder
 
 ARG COMPILER=gcc
 ARG NANO_NETWORK=live

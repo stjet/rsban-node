@@ -1,6 +1,6 @@
-use rsnano_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
-use rsnano_ledger::Writer;
-use rsnano_node::{
+use rsban_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
+use rsban_ledger::Writer;
+use rsban_node::{
     config::NodeFlags,
     consensus::ActiveElectionsExt,
     stats::{DetailType, Direction, StatType},

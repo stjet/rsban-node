@@ -11,17 +11,17 @@ use crate::{
     NetworkParams,
 };
 use rand::{thread_rng, Rng};
-use rsnano_core::{
+use rsban_core::{
     utils::{get_env_or_default_string, ContainerInfo},
     work::{WorkPoolImpl, WorkThresholds},
     Account, Amount, Block, BlockDetails, BlockHash, Epoch, KeyDerivationFunction, Link, NoValue,
     PendingKey, PrivateKey, PublicKey, RawKey, Root, SavedBlock, StateBlockArgs, WalletId,
 };
-use rsnano_ledger::{Ledger, RepWeightCache};
-use rsnano_messages::{Message, Publish};
-use rsnano_network::DropPolicy;
-use rsnano_nullable_lmdb::{DatabaseFlags, LmdbDatabase, WriteFlags};
-use rsnano_store_lmdb::{
+use rsban_ledger::{Ledger, RepWeightCache};
+use rsban_messages::{Message, Publish};
+use rsban_network::DropPolicy;
+use rsban_nullable_lmdb::{DatabaseFlags, LmdbDatabase, WriteFlags};
+use rsban_store_lmdb::{
     create_backup_file, BinaryDbIterator, KeyType, LmdbEnv, LmdbIteratorImpl, LmdbWalletStore,
     LmdbWriteTransaction, Transaction,
 };
@@ -273,7 +273,7 @@ impl Wallets {
             Ok(bytes) => Ok(Some(
                 BlockHash::from_slice(bytes).ok_or_else(|| anyhow!("invalid block hash"))?,
             )),
-            Err(rsnano_nullable_lmdb::Error::NotFound) => Ok(None),
+            Err(rsban_nullable_lmdb::Error::NotFound) => Ok(None),
             Err(e) => Err(e.into()),
         }
     }

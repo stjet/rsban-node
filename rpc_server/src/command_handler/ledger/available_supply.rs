@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::{Account, Amount};
-use rsnano_rpc_messages::AvailableSupplyReponse;
+use rsban_core::{Account, Amount};
+use rsban_rpc_messages::AvailableSupplyReponse;
 
 impl RpcCommandHandler {
     pub(crate) fn available_supply(&self) -> AvailableSupplyReponse {
@@ -30,7 +30,7 @@ impl RpcCommandHandler {
         let burned_balance = self.node.ledger.account_receivable(
             &tx,
             &Account::decode_account(
-                "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+                "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
             )
             .unwrap(),
             false,

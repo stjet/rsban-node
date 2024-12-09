@@ -1,6 +1,6 @@
-use rsnano_core::{Account, Amount};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-use rsnano_rpc_messages::AccountInfoArgs;
+use rsban_core::{Account, Amount};
+use rsban_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsban_rpc_messages::AccountInfoArgs;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -16,7 +16,7 @@ fn account_info() {
             .account_info(
                 AccountInfoArgs::build(
                     Account::decode_account(
-                        "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+                        "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
                     )
                     .unwrap(),
                 )

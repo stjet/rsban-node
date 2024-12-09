@@ -1,7 +1,7 @@
 use crate::command_handler::RpcCommandHandler;
 use indexmap::IndexMap;
-use rsnano_core::{Account, Amount};
-use rsnano_rpc_messages::{
+use rsban_core::{Account, Amount};
+use rsban_rpc_messages::{
     unwrap_bool_or_false, unwrap_u64_or_max, RepresentativesArgs, RepresentativesResponse,
 };
 

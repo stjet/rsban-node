@@ -1,5 +1,5 @@
 use crate::{AccountBalanceResponse, RpcBool};
-use rsnano_core::Account;
+use rsban_core::Account;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -59,24 +59,24 @@ mod tests {
     use crate::RpcCommand;
 
     use super::*;
-    use rsnano_core::Amount;
+    use rsban_core::Amount;
 
     #[test]
     fn deserialize_accounts_balances_rpc_command() {
         let accounts = vec![
             Account::decode_account(
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )
             .unwrap(),
             Account::decode_account(
-                "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7",
+                "ban_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7",
             )
             .unwrap(),
         ];
 
         let command = RpcCommand::AccountsBalances(accounts.clone().into());
         let serialized = serde_json::to_string(&command).unwrap();
-        let expected = r#"{"action":"accounts_balances","accounts":["nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3","nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"]}"#;
+        let expected = r#"{"action":"accounts_balances","accounts":["ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3","ban_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"]}"#;
         assert_eq!(serialized, expected);
 
         let args = AccountsBalancesArgsBuilder::new(accounts)
@@ -84,7 +84,7 @@ mod tests {
             .finish();
         let command = RpcCommand::AccountsBalances(args);
         let serialized = serde_json::to_string(&command).unwrap();
-        let expected = r#"{"action":"accounts_balances","accounts":["nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3","nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"],"include_only_confirmed":"false"}"#;
+        let expected = r#"{"action":"accounts_balances","accounts":["ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3","ban_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"],"include_only_confirmed":"false"}"#;
         assert_eq!(serialized, expected);
     }
 
@@ -94,8 +94,8 @@ mod tests {
         {
             "action": "accounts_balances",
             "accounts": [
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
-                "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                "ban_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
             ],
             "include_only_confirmed": "true"
         }"#;
@@ -108,14 +108,14 @@ mod tests {
                 assert_eq!(
                     args.accounts[0],
                     Account::decode_account(
-                        "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+                        "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
                     )
                     .unwrap()
                 );
                 assert_eq!(
                     args.accounts[1],
                     Account::decode_account(
-                        "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
+                        "ban_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
                     )
                     .unwrap()
                 );
@@ -128,8 +128,8 @@ mod tests {
         {
             "action": "accounts_balances",
             "accounts": [
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
-                "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                "ban_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
             ]
         }"#;
 
@@ -148,11 +148,11 @@ mod tests {
     fn test_accounts_balances_args_builder() {
         let accounts = vec![
             Account::decode_account(
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )
             .unwrap(),
             Account::decode_account(
-                "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7",
+                "ban_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7",
             )
             .unwrap(),
         ];
@@ -175,7 +175,7 @@ mod tests {
         let mut balances = HashMap::new();
         balances.insert(
             Account::decode_account(
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )
             .unwrap(),
             AccountBalanceResponse {
@@ -186,7 +186,7 @@ mod tests {
         );
         balances.insert(
             Account::decode_account(
-                "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7",
+                "ban_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7",
             )
             .unwrap(),
             AccountBalanceResponse {
@@ -206,7 +206,7 @@ mod tests {
             dto.balances
                 .get(
                     &Account::decode_account(
-                        "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+                        "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
                     )
                     .unwrap()
                 )
@@ -218,7 +218,7 @@ mod tests {
             dto.balances
                 .get(
                     &Account::decode_account(
-                        "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
+                        "ban_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
                     )
                     .unwrap()
                 )
@@ -233,12 +233,12 @@ mod tests {
         let json_data = r#"
         {
             "balances": {
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3": {
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3": {
                     "balance": "325586539664609129644855132177",
                     "pending": "2309372032769300000000000000000000",
                     "receivable": "2309372032769300000000000000000000"
                 },
-                "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7": {
+                "ban_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7": {
                     "balance": "10000000",
                     "pending": "0",
                     "receivable": "0"
@@ -254,7 +254,7 @@ mod tests {
             .balances
             .get(
                 &Account::decode_account(
-                    "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                    "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
                 )
                 .unwrap(),
             )
@@ -276,7 +276,7 @@ mod tests {
             .balances
             .get(
                 &Account::decode_account(
-                    "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7",
+                    "ban_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7",
                 )
                 .unwrap(),
             )

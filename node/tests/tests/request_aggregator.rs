@@ -1,6 +1,6 @@
-use rsnano_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
-use rsnano_messages::ConfirmAck;
-use rsnano_node::{
+use rsban_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
+use rsban_messages::ConfirmAck;
+use rsban_node::{
     config::NodeFlags,
     stats::{DetailType, Direction, StatType},
     wallets::WalletsExt,

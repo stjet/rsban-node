@@ -2,7 +2,7 @@ use crate::{
     utils::{ipv4_address_or_ipv6_subnet, map_address_to_subnetwork},
     ChannelDirection,
 };
-use rsnano_nullable_clock::Timestamp;
+use rsban_nullable_clock::Timestamp;
 use std::{
     collections::HashMap,
     net::{Ipv6Addr, SocketAddrV6},

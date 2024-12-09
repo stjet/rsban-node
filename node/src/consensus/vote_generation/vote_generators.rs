@@ -3,9 +3,9 @@ use crate::{
     config::NodeConfig, consensus::VoteBroadcaster, stats::Stats, transport::MessagePublisher,
     wallets::Wallets, NetworkParams,
 };
-use rsnano_core::{utils::ContainerInfo, BlockHash, Root, SavedBlock};
-use rsnano_ledger::Ledger;
-use rsnano_network::ChannelId;
+use rsban_core::{utils::ContainerInfo, BlockHash, Root, SavedBlock};
+use rsban_ledger::Ledger;
+use rsban_network::ChannelId;
 use std::{sync::Arc, time::Duration};
 
 pub struct VoteGenerators {

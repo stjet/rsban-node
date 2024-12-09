@@ -1,6 +1,6 @@
 use rand::{seq::IteratorRandom, thread_rng};
-use rsnano_messages::Keepalive;
-use rsnano_network::{ChannelId, DeadChannelCleanupStep};
+use rsban_messages::Keepalive;
+use rsban_network::{ChannelId, DeadChannelCleanupStep};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -83,7 +83,7 @@ impl DeadChannelCleanupStep for LatestKeepalivesCleanup {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::utils::{TEST_ENDPOINT_2, TEST_ENDPOINT_3};
+    use rsban_core::utils::{TEST_ENDPOINT_2, TEST_ENDPOINT_3};
 
     #[test]
     fn empty() {

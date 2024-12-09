@@ -1,6 +1,6 @@
-use rsnano_core::{Account, Amount, JsonBlock, TestBlockBuilder, DEV_GENESIS_KEY};
-use rsnano_ledger::DEV_GENESIS_HASH;
-use rsnano_rpc_messages::ConfirmationInfoArgs;
+use rsban_core::{Account, Amount, JsonBlock, TestBlockBuilder, DEV_GENESIS_KEY};
+use rsban_ledger::DEV_GENESIS_HASH;
+use rsban_rpc_messages::ConfirmationInfoArgs;
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 

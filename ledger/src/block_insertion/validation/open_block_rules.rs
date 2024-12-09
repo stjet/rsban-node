@@ -1,6 +1,6 @@
 use super::BlockValidator;
 use crate::BlockStatus;
-use rsnano_core::Block;
+use rsban_core::Block;
 
 impl<'a> BlockValidator<'a> {
     pub(crate) fn ensure_block_is_not_for_burn_account(&self) -> Result<(), BlockStatus> {

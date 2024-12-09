@@ -1,5 +1,5 @@
 use crate::{RpcCommand, WalletWithPasswordArgs};
-use rsnano_core::WalletId;
+use rsban_core::WalletId;
 
 impl RpcCommand {
     pub fn password_enter(wallet: WalletId, password: String) -> Self {
@@ -10,7 +10,7 @@ impl RpcCommand {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::WalletId;
+    use rsban_core::WalletId;
     use serde_json::to_string_pretty;
 
     #[test]

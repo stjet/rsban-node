@@ -1,5 +1,5 @@
-use rsnano_core::WalletId;
-use rsnano_node::wallets::WalletsExt;
+use rsban_core::WalletId;
+use rsban_node::wallets::WalletsExt;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]

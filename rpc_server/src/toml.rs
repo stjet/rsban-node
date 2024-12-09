@@ -121,8 +121,8 @@ impl RpcServerProcessConfig {
 #[cfg(test)]
 mod tests {
     use crate::{RpcServerConfig, RpcServerToml};
-    use rsnano_core::Networks;
-    use rsnano_node::config::NetworkConstants;
+    use rsban_core::Networks;
+    use rsban_node::config::NetworkConstants;
     use toml::{from_str, to_string};
 
     static DEFAULT_TOML_STR: &str = r#"

@@ -3,8 +3,8 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     transport::{FairQueue, FairQueueInfo},
 };
-use rsnano_core::{utils::ContainerInfo, Vote, VoteSource};
-use rsnano_network::{ChannelId, DeadChannelCleanupStep};
+use rsban_core::{utils::ContainerInfo, Vote, VoteSource};
+use rsban_network::{ChannelId, DeadChannelCleanupStep};
 use std::{
     collections::VecDeque,
     mem::size_of,

@@ -1,5 +1,5 @@
-use rsnano_node::Node;
-use rsnano_nullable_clock::Timestamp;
+use rsban_node::Node;
+use rsban_nullable_clock::Timestamp;
 
 use crate::rate_calculator::RateCalculator;
 

@@ -1,5 +1,5 @@
 use crate::{RpcBool, RpcCommand, RpcU64};
-use rsnano_core::{Account, Amount, BlockHash};
+use rsban_core::{Account, Amount, BlockHash};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -114,13 +114,13 @@ mod tests {
         ledger::{LedgerAccountInfo, LedgerArgs, LedgerResponse},
         RpcCommand,
     };
-    use rsnano_core::{Account, Amount, BlockHash};
+    use rsban_core::{Account, Amount, BlockHash};
     use serde_json::json;
 
     #[test]
     fn test_ledger_rpc_command_serialization() {
         let account = Account::decode_account(
-            "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
+            "ban_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
         )
         .unwrap();
         let ledger_args = LedgerArgs::builder()
@@ -140,7 +140,7 @@ mod tests {
 
         let expected = json!({
             "action": "ledger",
-            "account": "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
+            "account": "ban_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
             "count": "1000",
             "representative": "true",
             "weight": "true",
@@ -157,7 +157,7 @@ mod tests {
     fn test_ledger_rpc_command_deserialization() {
         let json_str = r#"{
             "action": "ledger",
-            "account": "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
+            "account": "ban_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
             "count": "1000",
             "representative": "true",
             "weight": "true",
@@ -176,7 +176,7 @@ mod tests {
                     args.account,
                     Some(
                         Account::decode_account(
-                            "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est"
+                            "ban_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est"
                         )
                         .unwrap()
                     )
@@ -201,7 +201,7 @@ mod tests {
         let mut accounts = HashMap::new();
         accounts.insert(
             Account::decode_account(
-                "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
+                "ban_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
             )
             .unwrap(),
             LedgerAccountInfo {
@@ -222,7 +222,7 @@ mod tests {
                 block_count: 50.into(),
                 representative: Some(
                     Account::decode_account(
-                        "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                        "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
                     )
                     .unwrap(),
                 ),
@@ -238,14 +238,14 @@ mod tests {
 
         let expected = json!({
             "accounts": {
-                "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est": {
+                "ban_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est": {
                     "frontier": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
                     "open_block": "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
                     "representative_block": "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
                     "balance": "10000000000000000000000000000000",
                     "modified_timestamp": "1553174994",
                     "block_count": "50",
-                    "representative": "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                    "representative": "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
                     "weight": "10000000000000000000000000000000",
                     "pending": "10000000000000000000000000000",
                     "receivable": "10000000000000000000000000000"
@@ -260,14 +260,14 @@ mod tests {
     fn test_ledger_dto_deserialization() {
         let json_str = r#"{
             "accounts": {
-                "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est": {
+                "ban_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est": {
                     "frontier": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
                     "open_block": "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
                     "representative_block": "991CF190094C00F0B68E2E5F75F6BEE95A2E0BD93CEAA4A6734DB9F19C34F1ED",
                     "balance": "10000000000000000000000000000000",
                     "modified_timestamp": "1553174994",
                     "block_count": "50",
-                    "representative": "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                    "representative": "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
                     "weight": "10000000000000000000000000000000",
                     "pending": "10000000000000000000000000000",
                     "receivable": "10000000000000000000000000000"
@@ -280,7 +280,7 @@ mod tests {
         assert_eq!(deserialized.accounts.len(), 1);
 
         let account = Account::decode_account(
-            "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
+            "ban_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
         )
         .unwrap();
         let account_info = deserialized.accounts.get(&account).unwrap();
@@ -316,7 +316,7 @@ mod tests {
             account_info.representative,
             Some(
                 Account::decode_account(
-                    "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+                    "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
                 )
                 .unwrap()
             )

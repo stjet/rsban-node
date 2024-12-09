@@ -3,8 +3,8 @@ use crate::{
     stats::Stats,
     utils::{CancellationToken, Runnable},
 };
-use rsnano_ledger::Ledger;
-use rsnano_network::PeerConnector;
+use rsban_ledger::Ledger;
+use rsban_network::PeerConnector;
 use std::{net::SocketAddrV6, sync::Arc, time::Duration};
 use tracing::info;
 
@@ -72,8 +72,8 @@ impl Runnable for PeerCacheConnector {
 mod tests {
     use super::*;
     use crate::stats::Direction;
-    use rsnano_core::utils::{parse_endpoint, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3};
-    use rsnano_output_tracker::OutputTrackerMt;
+    use rsban_core::utils::{parse_endpoint, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3};
+    use rsban_output_tracker::OutputTrackerMt;
     use std::time::UNIX_EPOCH;
     use tracing_test::traced_test;
 

@@ -1,5 +1,5 @@
 use crate::RpcCommand;
-use rsnano_core::RawKey;
+use rsban_core::RawKey;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -22,7 +22,7 @@ impl KeyExpandArgs {
 #[cfg(test)]
 mod tests {
     use super::{KeyExpandArgs, RpcCommand};
-    use rsnano_core::RawKey;
+    use rsban_core::RawKey;
     use serde_json::{from_str, to_string_pretty};
 
     #[test]

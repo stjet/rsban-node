@@ -1,7 +1,7 @@
 use crate::cli::get_path;
 use anyhow::Result;
 use clap::{ArgGroup, Parser};
-use rsnano_store_lmdb::{LmdbEnv, LmdbOnlineWeightStore};
+use rsban_store_lmdb::{LmdbEnv, LmdbOnlineWeightStore};
 use std::sync::Arc;
 
 #[derive(Parser)]

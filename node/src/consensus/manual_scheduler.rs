@@ -1,6 +1,6 @@
 use super::{ActiveElections, ActiveElectionsExt, ElectionBehavior};
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::{utils::ContainerInfo, Amount, Block, SavedBlock};
+use rsban_core::{utils::ContainerInfo, Amount, Block, SavedBlock};
 use std::{
     collections::VecDeque,
     mem::size_of,

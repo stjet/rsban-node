@@ -1,5 +1,5 @@
 use crate::{common::AmountRpcMessage, RpcCommand};
-use rsnano_core::Amount;
+use rsban_core::Amount;
 
 impl RpcCommand {
     pub fn raw_to_nano(amount: Amount) -> Self {
@@ -10,7 +10,7 @@ impl RpcCommand {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::Amount;
+    use rsban_core::Amount;
     use serde_json::{from_str, to_string_pretty};
 
     #[test]

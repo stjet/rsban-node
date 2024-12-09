@@ -1,7 +1,7 @@
-use rsnano_core::UnsavedBlockLatticeBuilder;
-use rsnano_core::{Account, Amount, Block, WalletId, DEV_GENESIS_KEY};
-use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::SignArgs;
+use rsban_core::UnsavedBlockLatticeBuilder;
+use rsban_core::{Account, Amount, Block, WalletId, DEV_GENESIS_KEY};
+use rsban_node::wallets::WalletsExt;
+use rsban_rpc_messages::SignArgs;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -11,7 +11,7 @@ fn sign() {
 
     let server = setup_rpc_client_and_server(node.clone(), false);
 
-    let key = rsnano_core::PrivateKey::new();
+    let key = rsban_core::PrivateKey::new();
 
     let wallet_id = WalletId::zero();
     node.wallets.create(wallet_id);

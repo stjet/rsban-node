@@ -1,5 +1,5 @@
 use crate::{RpcBool, RpcCommand};
-use rsnano_core::{RawKey, WalletId};
+use rsban_core::{RawKey, WalletId};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {

@@ -1,5 +1,5 @@
 use crate::block_rollback::tests::RollbackTest;
-use rsnano_core::{
+use rsban_core::{
     Account, AccountInfo, Amount, BlockSubType, Epoch, PendingInfo, PendingKey, SavedAccountChain,
 };
 

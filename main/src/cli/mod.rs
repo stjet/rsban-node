@@ -4,9 +4,9 @@ use commands::{
     config::ConfigCommand, ledger::LedgerCommand, node::NodeCommand, utils::UtilsCommand,
     wallets::WalletsCommand,
 };
-use rsnano_core::{Networks, PrivateKeyFactory};
-use rsnano_node::{config::NetworkConstants, working_path};
-use rsnano_nullable_console::Console;
+use rsban_core::{Networks, PrivateKeyFactory};
+use rsban_node::{config::NetworkConstants, working_path};
+use rsban_nullable_console::Console;
 use std::{path::PathBuf, str::FromStr};
 
 mod commands;

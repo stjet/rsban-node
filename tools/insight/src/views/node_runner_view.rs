@@ -1,6 +1,6 @@
 use crate::view_models::NodeRunnerViewModel;
 use eframe::egui::{Button, RadioButton, TextEdit, Ui};
-use rsnano_core::Networks;
+use rsban_core::Networks;
 
 pub(crate) struct NodeRunnerView<'a> {
     model: &'a mut NodeRunnerViewModel,

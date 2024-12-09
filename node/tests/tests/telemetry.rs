@@ -1,5 +1,5 @@
-use rsnano_messages::{Message, TelemetryAck};
-use rsnano_node::{
+use rsban_messages::{Message, TelemetryAck};
+use rsban_node::{
     config::NodeFlags,
     stats::{DetailType, Direction, StatType},
     NodeExt,

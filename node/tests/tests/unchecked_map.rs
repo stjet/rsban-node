@@ -1,9 +1,9 @@
-use rsnano_core::{
+use rsban_core::{
     Amount, Block, PrivateKey, StateBlockArgs, UncheckedInfo, UncheckedKey,
     UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
-use rsnano_node::{block_processing::UncheckedMap, stats::Stats};
+use rsban_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
+use rsban_node::{block_processing::UncheckedMap, stats::Stats};
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely, assert_timely_eq};
 

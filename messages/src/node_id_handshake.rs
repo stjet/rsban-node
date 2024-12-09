@@ -3,7 +3,7 @@ use crate::Cookie;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
 use rand::{thread_rng, Rng};
-use rsnano_core::{
+use rsban_core::{
     utils::{BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream},
     write_hex_bytes, Account, BlockHash, NodeId, PrivateKey, PublicKey, Signature,
 };

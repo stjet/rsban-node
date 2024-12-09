@@ -1,5 +1,5 @@
 use crate::{common::CountArgs, RpcCommand};
-use rsnano_core::{BlockHash, JsonBlock};
+use rsban_core::{BlockHash, JsonBlock};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

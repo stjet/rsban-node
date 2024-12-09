@@ -1,10 +1,10 @@
-use rsnano_core::Amount;
-use rsnano_node::consensus::{Bucket, PriorityBucketConfig};
+use rsban_core::Amount;
+use rsban_node::consensus::{Bucket, PriorityBucketConfig};
 use test_helpers::System;
 
 mod bucket {
     use super::*;
-    use rsnano_core::SavedBlock;
+    use rsban_core::SavedBlock;
 
     #[test]
     fn construction() {
@@ -124,9 +124,9 @@ mod bucket {
 }
 
 mod election_scheduler {
-    use rsnano_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
-    use rsnano_ledger::DEV_GENESIS_ACCOUNT;
-    use rsnano_node::{config::NodeConfig, consensus::ActiveElectionsExt};
+    use rsban_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
+    use rsban_ledger::DEV_GENESIS_ACCOUNT;
+    use rsban_node::{config::NodeConfig, consensus::ActiveElectionsExt};
     use std::time::Duration;
     use test_helpers::{assert_timely, assert_timely_eq, System};
 
@@ -201,7 +201,7 @@ mod election_scheduler {
         let node = system
             .build_node()
             .config(NodeConfig {
-                active_elections: rsnano_node::consensus::ActiveElectionsConfig {
+                active_elections: rsban_node::consensus::ActiveElectionsConfig {
                     size: 1,
                     ..Default::default()
                 },

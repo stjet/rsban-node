@@ -1,4 +1,4 @@
-use rsnano_core::Account;
+use rsban_core::Account;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashSet;

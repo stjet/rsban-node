@@ -4,9 +4,9 @@ use crate::{
     Channel, ChannelDirection, ChannelId, ChannelMode, DeadChannelCleanupStep, DropPolicy,
     NetworkInfo, NetworkObserver, NullNetworkObserver, TrafficType,
 };
-use rsnano_core::utils::NULL_ENDPOINT;
-use rsnano_nullable_clock::SteadyClock;
-use rsnano_nullable_tcp::TcpStream;
+use rsban_core::utils::NULL_ENDPOINT;
+use rsban_nullable_clock::SteadyClock;
+use rsban_nullable_tcp::TcpStream;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, RwLock},

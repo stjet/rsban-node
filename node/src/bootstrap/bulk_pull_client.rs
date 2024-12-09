@@ -10,9 +10,9 @@ use crate::{
     utils::ThreadPool,
 };
 use async_trait::async_trait;
-use rsnano_core::{work::WorkThresholds, Account, Block, BlockHash};
-use rsnano_messages::{BulkPull, Message};
-use rsnano_network::ChannelReader;
+use rsban_core::{work::WorkThresholds, Account, Block, BlockHash};
+use rsban_messages::{BulkPull, Message};
+use rsban_network::ChannelReader;
 use std::{
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},

@@ -1,7 +1,7 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::anyhow;
-use rsnano_core::{UncheckedInfo, UncheckedKey};
-use rsnano_rpc_messages::{HashRpcMessage, UncheckedGetResponse};
+use rsban_core::{UncheckedInfo, UncheckedKey};
+use rsban_rpc_messages::{HashRpcMessage, UncheckedGetResponse};
 use std::cell::RefCell;
 
 impl RpcCommandHandler {

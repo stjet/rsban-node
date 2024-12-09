@@ -1,5 +1,5 @@
-use rsnano_ledger::DEV_GENESIS_HASH;
-use rsnano_rpc_messages::WorkValidateArgs;
+use rsban_ledger::DEV_GENESIS_HASH;
+use rsban_rpc_messages::WorkValidateArgs;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]

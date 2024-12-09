@@ -1,8 +1,8 @@
-use rsnano_core::{
+use rsban_core::{
     utils::{BufferReader, Deserialize, StreamExt},
     Account, Amount, Networks, PublicKey,
 };
-use rsnano_ledger::RepWeightCache;
+use rsban_ledger::RepWeightCache;
 use std::collections::HashMap;
 use tracing::info;
 

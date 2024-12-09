@@ -3,7 +3,7 @@ use crate::{
     ledger_constants::{DEV_GENESIS_PUB_KEY, LEDGER_CONSTANTS_STUB},
     DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
-use rsnano_core::{utils::seconds_since_epoch, Account, BlockType};
+use rsban_core::{utils::seconds_since_epoch, Account, BlockType};
 
 #[test]
 fn account_balance_is_none_for_unknown_account() {

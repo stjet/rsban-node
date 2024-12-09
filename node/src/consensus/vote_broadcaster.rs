@@ -1,8 +1,8 @@
 use super::VoteProcessorQueue;
 use crate::transport::MessagePublisher;
-use rsnano_core::{Vote, VoteSource};
-use rsnano_messages::{ConfirmAck, Message};
-use rsnano_network::{ChannelId, DropPolicy, TrafficType};
+use rsban_core::{Vote, VoteSource};
+use rsban_messages::{ConfirmAck, Message};
+use rsban_network::{ChannelId, DropPolicy, TrafficType};
 use std::{
     ops::Deref,
     sync::{Arc, Mutex},

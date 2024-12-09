@@ -1,5 +1,5 @@
 use crate::{block_insertion::validation::tests::BlockValidationTest, BlockStatus};
-use rsnano_core::{
+use rsban_core::{
     AccountInfo, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, PendingInfo, PendingKey,
 };
 

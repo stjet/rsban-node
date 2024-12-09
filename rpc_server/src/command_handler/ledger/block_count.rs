@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::BlockCountResponse;
+use rsban_rpc_messages::BlockCountResponse;
 
 impl RpcCommandHandler {
     pub(crate) fn block_count(&self) -> BlockCountResponse {

@@ -3,11 +3,11 @@ use crate::{
     LmdbReadTransaction, LmdbWriteTransaction, Transaction, CONFIRMATION_HEIGHT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
-use rsnano_core::{
+use rsban_core::{
     utils::{BufferReader, Deserialize},
     Account, ConfirmationHeightInfo,
 };
-use rsnano_nullable_lmdb::ConfiguredDatabase;
+use rsban_nullable_lmdb::ConfiguredDatabase;
 use std::sync::Arc;
 
 pub type ConfirmationHeightIterator<'txn> = BinaryDbIterator<'txn, Account, ConfirmationHeightInfo>;
@@ -146,7 +146,7 @@ impl ConfiguredConfirmationHeightDatabaseBuilder {
 mod tests {
     use super::*;
     use crate::PutEvent;
-    use rsnano_core::BlockHash;
+    use rsban_core::BlockHash;
 
     struct Fixture {
         env: Arc<LmdbEnv>,

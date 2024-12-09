@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::{SetResponse, WalletRepresentativeSetArgs};
+use rsban_node::wallets::WalletsExt;
+use rsban_rpc_messages::{SetResponse, WalletRepresentativeSetArgs};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_representative_set(

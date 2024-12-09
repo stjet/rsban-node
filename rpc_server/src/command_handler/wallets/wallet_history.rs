@@ -1,6 +1,6 @@
 use crate::command_handler::{ledger::AccountHistoryHelper, RpcCommandHandler};
-use rsnano_core::{Account, BlockHash};
-use rsnano_rpc_messages::{HistoryEntry, WalletHistoryArgs, WalletHistoryResponse};
+use rsban_core::{Account, BlockHash};
+use rsban_rpc_messages::{HistoryEntry, WalletHistoryArgs, WalletHistoryResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_history(

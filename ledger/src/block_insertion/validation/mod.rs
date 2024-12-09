@@ -9,7 +9,7 @@ mod tests;
 
 use super::BlockInsertInstructions;
 use crate::BlockStatus;
-use rsnano_core::{
+use rsban_core::{
     work::WorkThresholds, Account, AccountInfo, Block, Epochs, PendingInfo, SavedBlock,
 };
 

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use bitvec::prelude::*;
 use num_traits::FromPrimitive;
-use rsnano_core::{
+use rsban_core::{
     utils::{BufferWriter, MemoryStream, Serialize, Stream},
     Networks,
 };
@@ -264,13 +264,13 @@ impl Debug for MessageHeader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::utils::MemoryStream;
+    use rsban_core::utils::MemoryStream;
 
     #[test]
     fn message_header_to_string() {
         assert_eq!(
             test_header().to_string(),
-            "NetID: 5241(dev), VerMaxUsingMin: 3/2/1, MsgType: 2(keepalive), Extensions: 000E"
+            "NetID: 4241(dev), VerMaxUsingMin: 3/2/1, MsgType: 2(keepalive), Extensions: 000E"
         );
     }
 

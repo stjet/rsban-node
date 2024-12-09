@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{RemovedDto, WalletWithAccountArgs};
+use rsban_rpc_messages::{RemovedDto, WalletWithAccountArgs};
 
 impl RpcCommandHandler {
     pub(crate) fn account_remove(&self, args: WalletWithAccountArgs) -> anyhow::Result<RemovedDto> {

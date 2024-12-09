@@ -1,10 +1,10 @@
 use super::MessageVariant;
 use anyhow::Result;
 use bitvec::prelude::BitArray;
-use rsnano_core::utils::{
+use rsban_core::utils::{
     BufferWriter, Deserialize, FixedSizeSerialize, MemoryStream, Serialize, Stream, StreamExt,
 };
-use rsnano_core::{to_hex_string, Account, BlockHash, NodeId, PrivateKey, Signature};
+use rsban_core::{to_hex_string, Account, BlockHash, NodeId, PrivateKey, Signature};
 use serde_derive::Serialize;
 use std::fmt::Display;
 use std::mem::size_of;

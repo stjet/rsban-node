@@ -3,8 +3,8 @@ use super::{StatFileWriter, StatsConfig, StatsLogSink};
 use anyhow::Result;
 use bounded_vec_deque::BoundedVecDeque;
 use once_cell::sync::Lazy;
-use rsnano_core::utils::get_env_bool;
-use rsnano_messages::MessageType;
+use rsban_core::utils::get_env_bool;
+use rsban_messages::MessageType;
 use std::{
     collections::BTreeMap,
     sync::{atomic::AtomicU64, Arc, Condvar, Mutex, RwLock},

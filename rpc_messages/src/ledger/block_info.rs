@@ -1,5 +1,5 @@
 use crate::{common::HashRpcMessage, BlockSubTypeDto, RpcBool, RpcCommand, RpcU64};
-use rsnano_core::{Account, Amount, BlockHash, JsonBlock};
+use rsban_core::{Account, Amount, BlockHash, JsonBlock};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -32,14 +32,14 @@ pub struct BlockInfoResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::Block;
+    use rsban_core::Block;
     use serde_json::json;
 
     #[test]
     fn serialize_block_info_dto() {
         let block_info = BlockInfoResponse {
             block_account: Account::decode_account(
-                "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
+                "ban_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
             )
             .unwrap(),
             amount: Some(Amount::raw(30000000000000000000000000000000000u128)),
@@ -63,7 +63,7 @@ mod tests {
         assert_eq!(
             serialized,
             json!({
-                "block_account": "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
+                "block_account": "ban_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
                 "amount": "30000000000000000000000000000000000",
                 "balance": "5606157000000000000000000000000000000",
                 "height": "58",
@@ -72,12 +72,12 @@ mod tests {
                 "confirmed": "true",
                 "contents": {
                     "type": "state",
-                    "account": "nano_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
+                    "account": "ban_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
                     "previous": "00000000000000000000000000000000000000000000000000000000000001C8",
-                    "representative": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
+                    "representative": "ban_11111111111111111111111111111111111111111111111111ros3kc7wyy",
                     "balance": "420",
                     "link": "000000000000000000000000000000000000000000000000000000000000006F",
-                    "link_as_account": "nano_111111111111111111111111111111111111111111111111115hkrzwewgm",
+                    "link_as_account": "ban_111111111111111111111111111111111111111111111111115hkrzwewgm",
                     "signature": "F26EC6180795C63CFEC46F929DCF6269445208B6C1C837FA64925F1D61C218D4D263F9A73A4B76E3174888C6B842FC1380AC15183FA67E92B2091FEBCCBDB308",
                     "work": "0000000000010F2C"
                   },
@@ -89,7 +89,7 @@ mod tests {
     #[test]
     fn deserialize_block_info_dto() {
         let json = json!({
-            "block_account": "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
+            "block_account": "ban_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est",
             "amount": "30000000000000000000000000000000000",
             "balance": "5606157000000000000000000000000000000",
             "height": "58",
@@ -98,12 +98,12 @@ mod tests {
             "confirmed": "true",
             "contents": {
                 "type": "state",
-                "account": "nano_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
+                "account": "ban_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
                 "previous": "00000000000000000000000000000000000000000000000000000000000001C8",
-                "representative": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
+                "representative": "ban_11111111111111111111111111111111111111111111111111ros3kc7wyy",
                 "balance": "420",
                 "link": "000000000000000000000000000000000000000000000000000000000000006F",
-                "link_as_account": "nano_111111111111111111111111111111111111111111111111115hkrzwewgm",
+                "link_as_account": "ban_111111111111111111111111111111111111111111111111115hkrzwewgm",
                 "signature": "F26EC6180795C63CFEC46F929DCF6269445208B6C1C837FA64925F1D61C218D4D263F9A73A4B76E3174888C6B842FC1380AC15183FA67E92B2091FEBCCBDB308",
                 "work": "0000000000010F2C"
               },
@@ -115,7 +115,7 @@ mod tests {
         assert_eq!(
             deserialized.block_account,
             Account::decode_account(
-                "nano_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est"
+                "ban_1ipx847tk8o46pwxt5qjdbncjqcbwcc1rrmqnkztrfjy5k7z4imsrata9est"
             )
             .unwrap()
         );

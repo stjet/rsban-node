@@ -1,4 +1,4 @@
-use rsnano_core::{Account, Amount};
+use rsban_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 
 use crate::{RpcBool, RpcU64};
@@ -95,7 +95,7 @@ mod tests {
     fn serialize_accounts_receivable_args_options_some() {
         let args = AccountsReceivableArgs {
             accounts: vec![Account::decode_account(
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )
             .unwrap()],
             count: Some(10.into()),
@@ -109,7 +109,7 @@ mod tests {
         let serialized = serde_json::to_string(&args).unwrap();
 
         assert!(serialized.contains(
-            "\"accounts\":[\"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3\"]"
+            "\"accounts\":[\"ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3\"]"
         ));
         assert!(serialized.contains("\"count\":\"10\""));
         assert!(serialized.contains("\"threshold\":\"1000\""));
@@ -121,7 +121,7 @@ mod tests {
     #[test]
     fn deserialize_accounts_receivable_args_options_some() {
         let json = r#"{
-            "accounts": ["nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"],
+            "accounts": ["ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"],
             "count": "5",
             "threshold": "1000",
             "source": "true",
@@ -136,7 +136,7 @@ mod tests {
         assert_eq!(
             deserialized.accounts[0],
             Account::decode_account(
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
             )
             .unwrap()
         );
@@ -152,7 +152,7 @@ mod tests {
     fn serialize_accounts_receivable_args_options_none() {
         let args = AccountsReceivableArgs {
             accounts: vec![Account::decode_account(
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )
             .unwrap()],
             count: Some(10.into()),
@@ -166,7 +166,7 @@ mod tests {
         let serialized = serde_json::to_string(&args).unwrap();
 
         assert!(serialized.contains(
-            "\"accounts\":[\"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3\"]"
+            "\"accounts\":[\"ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3\"]"
         ));
         assert!(serialized.contains("\"count\":\"10\""));
         assert!(!serialized.contains("\"threshold\""));
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn deserialize_accounts_receivable_args_options_none() {
         let json = r#"{
-            "accounts": ["nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"],
+            "accounts": ["ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"],
             "count": "5"
         }"#;
 
@@ -188,7 +188,7 @@ mod tests {
         assert_eq!(
             deserialized.accounts[0],
             Account::decode_account(
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
             )
             .unwrap()
         );

@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Result};
 use clap::Parser;
-use rsnano_core::Networks;
-use rsnano_daemon::DaemonBuilder;
-use rsnano_node::config::NodeFlags;
+use rsban_core::Networks;
+use rsban_daemon::DaemonBuilder;
+use rsban_node::config::NodeFlags;
 use std::{path::PathBuf, str::FromStr};
 use tracing_subscriber::EnvFilter;
 

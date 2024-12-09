@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{HostWithPortArgs, StartedResponse};
+use rsban_rpc_messages::{HostWithPortArgs, StartedResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn keepalive(&self, args: HostWithPortArgs) -> anyhow::Result<StartedResponse> {
@@ -14,9 +14,9 @@ impl RpcCommandHandler {
 mod tests {
     use super::*;
     use crate::command_handler::{test_rpc_command_requires_control, test_rpc_command_with_node};
-    use rsnano_core::utils::Peer;
-    use rsnano_node::Node;
-    use rsnano_rpc_messages::RpcCommand;
+    use rsban_core::utils::Peer;
+    use rsban_node::Node;
+    use rsban_rpc_messages::RpcCommand;
     use std::sync::Arc;
 
     #[tokio::test]

@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::Account;
-use rsnano_rpc_messages::{AccountsRepresentativesResponse, AccountsRpcMessage};
+use rsban_core::Account;
+use rsban_rpc_messages::{AccountsRepresentativesResponse, AccountsRpcMessage};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {

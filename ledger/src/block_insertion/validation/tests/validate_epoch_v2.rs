@@ -1,6 +1,6 @@
 use super::BlockValidationTest;
 use crate::BlockStatus;
-use rsnano_core::{epoch_v2_link, Amount, Epoch, PrivateKey};
+use rsban_core::{epoch_v2_link, Amount, Epoch, PrivateKey};
 
 #[test]
 fn fails_if_directly_upgrading_from_epoch_0_to_epoch_2() {

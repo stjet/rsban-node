@@ -10,8 +10,8 @@ use crate::{
     utils::ThreadPool,
 };
 use rand::{thread_rng, Rng};
-use rsnano_core::{Account, Block, BlockHash};
-use rsnano_ledger::Ledger;
+use rsban_core::{Account, Block, BlockHash};
+use rsban_ledger::Ledger;
 use std::{
     collections::VecDeque,
     net::{Ipv6Addr, SocketAddrV6},

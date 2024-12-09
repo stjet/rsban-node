@@ -1,7 +1,7 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_node::bootstrap::BootstrapInitiatorExt;
-use rsnano_rpc_messages::{BootstrapArgs, SuccessResponse};
+use rsban_node::bootstrap::BootstrapInitiatorExt;
+use rsban_rpc_messages::{BootstrapArgs, SuccessResponse};
 use std::net::SocketAddrV6;
 
 impl RpcCommandHandler {

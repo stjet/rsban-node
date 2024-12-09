@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{ChangedResponse, WalletWithPasswordArgs};
+use rsban_rpc_messages::{ChangedResponse, WalletWithPasswordArgs};
 
 impl RpcCommandHandler {
     pub(crate) fn password_change(

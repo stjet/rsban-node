@@ -1,10 +1,10 @@
-use rsnano_core::{
+use rsban_core::{
     work::WorkPoolImpl, Account, Amount, Block, BlockHash, Epoch, Networks, PrivateKey, PublicKey,
     SavedBlock, StateBlockArgs, WalletId, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-use rsnano_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
-use rsnano_node::{
+use rsban_ledger::{BlockStatus, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsban_network::{Channel, ChannelDirection, ChannelInfo, ChannelMode};
+use rsban_node::{
     block_processing::BacklogPopulationConfig,
     config::{NodeConfig, NodeFlags},
     consensus::{ActiveElectionsExt, Election},
@@ -13,9 +13,9 @@ use rsnano_node::{
     wallets::WalletsExt,
     NetworkParams, Node, NodeBuilder, NodeExt,
 };
-use rsnano_nullable_tcp::TcpStream;
-use rsnano_rpc_client::{NanoRpcClient, Url};
-use rsnano_rpc_server::run_rpc_server;
+use rsban_nullable_tcp::TcpStream;
+use rsban_rpc_client::{NanoRpcClient, Url};
+use rsban_rpc_server::run_rpc_server;
 use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr, TcpListener},
     sync::{

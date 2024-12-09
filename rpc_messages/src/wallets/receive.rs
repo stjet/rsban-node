@@ -1,5 +1,5 @@
 use crate::RpcCommand;
-use rsnano_core::{Account, BlockHash, WalletId, WorkNonce};
+use rsban_core::{Account, BlockHash, WalletId, WorkNonce};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -57,7 +57,7 @@ mod tests {
         )
         .unwrap();
         let account = Account::decode_account(
-            "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
         )
         .unwrap();
         let block = BlockHash::decode_hex(
@@ -72,7 +72,7 @@ mod tests {
         let serialized = serde_json::to_value(&receive_args).unwrap();
         let expected = json!({
             "wallet": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "account": "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            "account": "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
             "work": "0000000000000001"
         });
@@ -84,7 +84,7 @@ mod tests {
     fn deserialize_receive_args() {
         let json_str = r#"{
             "wallet": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "account": "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            "account": "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
             "work": "0000000000000001"
         }"#;
@@ -101,7 +101,7 @@ mod tests {
         assert_eq!(
             deserialized.account,
             Account::decode_account(
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
             )
             .unwrap()
         );
@@ -123,7 +123,7 @@ mod tests {
             )
             .unwrap(),
             account: Account::decode_account(
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             )
             .unwrap(),
             block: BlockHash::decode_hex(
@@ -146,7 +146,7 @@ mod tests {
         )
         .unwrap();
         let account = Account::decode_account(
-            "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
         )
         .unwrap();
         let block = BlockHash::decode_hex(
@@ -164,7 +164,7 @@ mod tests {
         let expected = json!({
             "action": "receive",
             "wallet": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-            "account": "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            "account": "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
             "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
             "work": "0000000000000001"
         });
@@ -177,7 +177,7 @@ mod tests {
         let json_str = r#"{
         "action": "receive",
         "wallet": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
-        "account": "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+        "account": "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
         "block": "000D1BAEC8EC208142C99059B393051BAC8380F9B5A2E6B2489A277D81789F3F",
         "work": "0000000000000001"
     }"#;
@@ -196,7 +196,7 @@ mod tests {
                 assert_eq!(
                     args.account,
                     Account::decode_account(
-                        "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+                        "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
                     )
                     .unwrap()
                 );
@@ -220,7 +220,7 @@ mod tests {
         )
         .unwrap();
         let account = Account::decode_account(
-            "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+            "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
         )
         .unwrap();
         let block = BlockHash::decode_hex(

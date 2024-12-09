@@ -1,5 +1,5 @@
 use crate::RpcU64;
-use rsnano_core::{Account, Amount};
+use rsban_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -28,7 +28,7 @@ impl UnopenedResponse {
 mod tests {
     use super::*;
     use crate::RpcCommand;
-    use rsnano_core::Account;
+    use rsban_core::Account;
     use serde_json::{from_value, json, to_value};
 
     #[test]
@@ -43,7 +43,7 @@ mod tests {
         assert_eq!(
             json,
             json!({
-                "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+                "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
                 "count": "1"
             })
         );
@@ -61,7 +61,7 @@ mod tests {
         assert_eq!(
             json,
             json!({
-                "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+                "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
                 "count": "1",
                 "threshold": "0"
             })
@@ -80,7 +80,7 @@ mod tests {
             json,
             json!({
                 "action": "unopened",
-                "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+                "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
             })
         );
     }
@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn deserialize_unopened_args_threshold_none() {
         let json = json!({
-            "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+            "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
             "count": "1"
         });
 
@@ -108,7 +108,7 @@ mod tests {
     fn deserialize_unopened_command_threshold_some() {
         let json = json!({
             "action": "unopened",
-            "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+            "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
             "count": "1",
             "threshold": "0"
         });

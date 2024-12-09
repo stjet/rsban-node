@@ -3,7 +3,7 @@ use crate::{
     consensus::ActiveElectionsExt,
     stats::{DetailType, StatType, Stats},
 };
-use rsnano_core::{Amount, Block, QualifiedRoot, SavedBlock};
+use rsban_core::{Amount, Block, QualifiedRoot, SavedBlock};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet, HashMap},

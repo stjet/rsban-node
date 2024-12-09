@@ -7,12 +7,12 @@ use crate::{
     RepWeightsUpdater, RepresentativeBlockFinder, WriteGuard, WriteQueue,
 };
 use rand::{thread_rng, Rng};
-use rsnano_core::{
+use rsban_core::{
     utils::{seconds_since_epoch, ContainerInfo},
     Account, AccountInfo, Amount, Block, BlockHash, BlockSubType, ConfirmationHeightInfo,
     DependentBlocks, Epoch, Link, PendingInfo, PendingKey, PublicKey, Root, SavedBlock,
 };
-use rsnano_store_lmdb::{
+use rsban_store_lmdb::{
     ConfiguredAccountDatabaseBuilder, ConfiguredBlockDatabaseBuilder,
     ConfiguredConfirmationHeightDatabaseBuilder, ConfiguredPeersDatabaseBuilder,
     ConfiguredPendingDatabaseBuilder, ConfiguredPrunedDatabaseBuilder, LedgerCache,

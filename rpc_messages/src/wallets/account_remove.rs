@@ -1,5 +1,5 @@
 use crate::{RpcCommand, WalletWithAccountArgs};
-use rsnano_core::{Account, WalletId};
+use rsban_core::{Account, WalletId};
 
 impl RpcCommand {
     pub fn account_remove(wallet: WalletId, account: Account) -> Self {
@@ -10,7 +10,7 @@ impl RpcCommand {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::Account;
+    use rsban_core::Account;
     use serde_json::to_string_pretty;
 
     #[test]
@@ -20,7 +20,7 @@ mod tests {
             r#"{
   "action": "account_remove",
   "wallet": "0000000000000000000000000000000000000000000000000000000000000001",
-  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+  "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
 }"#
         )
     }

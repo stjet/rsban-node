@@ -1,5 +1,5 @@
 use crate::consensus::Election;
-use rsnano_core::BlockHash;
+use rsban_core::BlockHash;
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,

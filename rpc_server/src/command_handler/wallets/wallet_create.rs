@@ -1,7 +1,7 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::WalletId;
-use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::{WalletCreateArgs, WalletCreateResponse};
+use rsban_core::WalletId;
+use rsban_node::wallets::WalletsExt;
+use rsban_rpc_messages::{WalletCreateArgs, WalletCreateResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_create(

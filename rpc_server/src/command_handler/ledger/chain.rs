@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::BlockHash;
-use rsnano_rpc_messages::{
+use rsban_core::BlockHash;
+use rsban_rpc_messages::{
     unwrap_bool_or_false, unwrap_u64_or_zero, BlockHashesResponse, ChainArgs,
 };
 

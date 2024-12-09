@@ -1,7 +1,7 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_node::bootstrap::BootstrapInitiatorExt;
-use rsnano_rpc_messages::{unwrap_bool_or_false, BootstrapAnyArgs, SuccessResponse};
+use rsban_node::bootstrap::BootstrapInitiatorExt;
+use rsban_rpc_messages::{unwrap_bool_or_false, BootstrapAnyArgs, SuccessResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn bootstrap_any(&self, args: BootstrapAnyArgs) -> anyhow::Result<SuccessResponse> {

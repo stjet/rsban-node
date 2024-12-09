@@ -1,6 +1,6 @@
 use super::*;
 use bitvec::prelude::BitArray;
-use rsnano_core::utils::{BufferReader, BufferWriter, Serialize};
+use rsban_core::utils::{BufferReader, BufferWriter, Serialize};
 use std::fmt::Display;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -177,7 +177,7 @@ pub fn validate_header(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{TestBlockBuilder, Vote};
+    use rsban_core::{TestBlockBuilder, Vote};
 
     #[test]
     fn exact_confirm_ack() {

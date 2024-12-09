@@ -9,10 +9,10 @@ pub use cleanup::*;
 pub use peered_container::InsertResult;
 pub use peered_rep::PeeredRep;
 use primitive_types::U256;
-use rsnano_core::{utils::ContainerInfo, Amount, PublicKey};
-use rsnano_ledger::RepWeightCache;
-use rsnano_network::ChannelId;
-use rsnano_nullable_clock::Timestamp;
+use rsban_core::{utils::ContainerInfo, Amount, PublicKey};
+use rsban_ledger::RepWeightCache;
+use rsban_network::ChannelId;
+use rsban_nullable_clock::Timestamp;
 use std::{cmp::max, sync::Arc, time::Duration};
 use {online_container::OnlineContainer, peered_container::PeeredContainer};
 
@@ -234,7 +234,7 @@ impl Default for OnlineReps {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_nullable_clock::SteadyClock;
+    use rsban_nullable_clock::SteadyClock;
     use std::time::Duration;
 
     #[test]

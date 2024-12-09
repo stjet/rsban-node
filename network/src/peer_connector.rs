@@ -2,9 +2,9 @@ use crate::{
     ChannelDirection, ChannelMode, Network, NetworkObserver, NullNetworkObserver,
     NullResponseServerSpawner, ResponseServerSpawner,
 };
-use rsnano_nullable_clock::SteadyClock;
-use rsnano_nullable_tcp::TcpStream;
-use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
+use rsban_nullable_clock::SteadyClock;
+use rsban_nullable_tcp::TcpStream;
+use rsban_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{net::SocketAddrV6, sync::Arc, time::Duration};
 use tokio_util::sync::CancellationToken;
 
@@ -159,7 +159,7 @@ async fn connect_stream(peer: SocketAddrV6) -> tokio::io::Result<TcpStream> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::utils::TEST_ENDPOINT_1;
+    use rsban_core::utils::TEST_ENDPOINT_1;
 
     #[tokio::test]
     async fn track_connections() {

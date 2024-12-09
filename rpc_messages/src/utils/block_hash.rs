@@ -1,5 +1,5 @@
 use crate::RpcCommand;
-use rsnano_core::JsonBlock;
+use rsban_core::JsonBlock;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -22,7 +22,7 @@ impl BlockHashArgs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::Block;
+    use rsban_core::Block;
 
     #[test]
     fn serialize_block_hash_args() {
@@ -35,12 +35,12 @@ mod tests {
             r#"{
   "block": {
     "type": "state",
-    "account": "nano_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
+    "account": "ban_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
     "previous": "00000000000000000000000000000000000000000000000000000000000001C8",
-    "representative": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
+    "representative": "ban_11111111111111111111111111111111111111111111111111ros3kc7wyy",
     "balance": "420",
     "link": "000000000000000000000000000000000000000000000000000000000000006F",
-    "link_as_account": "nano_111111111111111111111111111111111111111111111111115hkrzwewgm",
+    "link_as_account": "ban_111111111111111111111111111111111111111111111111115hkrzwewgm",
     "signature": "F26EC6180795C63CFEC46F929DCF6269445208B6C1C837FA64925F1D61C218D4D263F9A73A4B76E3174888C6B842FC1380AC15183FA67E92B2091FEBCCBDB308",
     "work": "0000000000010F2C"
   }
@@ -53,12 +53,12 @@ mod tests {
         let json = r#"{
   "block": {
     "type": "state",
-    "account": "nano_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
+    "account": "ban_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
     "previous": "00000000000000000000000000000000000000000000000000000000000001C8",
-    "representative": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
+    "representative": "ban_11111111111111111111111111111111111111111111111111ros3kc7wyy",
     "balance": "420",
     "link": "000000000000000000000000000000000000000000000000000000000000006F",
-    "link_as_account": "nano_111111111111111111111111111111111111111111111111115hkrzwewgm",
+    "link_as_account": "ban_111111111111111111111111111111111111111111111111115hkrzwewgm",
     "signature": "F26EC6180795C63CFEC46F929DCF6269445208B6C1C837FA64925F1D61C218D4D263F9A73A4B76E3174888C6B842FC1380AC15183FA67E92B2091FEBCCBDB308",
     "work": "0000000000010F2C"
   }
@@ -85,12 +85,12 @@ mod tests {
   "action": "block_hash",
   "block": {
     "type": "state",
-    "account": "nano_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
+    "account": "ban_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
     "previous": "00000000000000000000000000000000000000000000000000000000000001C8",
-    "representative": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
+    "representative": "ban_11111111111111111111111111111111111111111111111111ros3kc7wyy",
     "balance": "420",
     "link": "000000000000000000000000000000000000000000000000000000000000006F",
-    "link_as_account": "nano_111111111111111111111111111111111111111111111111115hkrzwewgm",
+    "link_as_account": "ban_111111111111111111111111111111111111111111111111115hkrzwewgm",
     "signature": "F26EC6180795C63CFEC46F929DCF6269445208B6C1C837FA64925F1D61C218D4D263F9A73A4B76E3174888C6B842FC1380AC15183FA67E92B2091FEBCCBDB308",
     "work": "0000000000010F2C"
   }
@@ -104,12 +104,12 @@ mod tests {
   "action": "block_hash",
   "block": {
     "type": "state",
-    "account": "nano_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
+    "account": "ban_39y535msmkzb31bx73tdnf8iken5ucw9jt98re7nriduus6cgs6uonjdm8r5",
     "previous": "00000000000000000000000000000000000000000000000000000000000001C8",
-    "representative": "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy",
+    "representative": "ban_11111111111111111111111111111111111111111111111111ros3kc7wyy",
     "balance": "420",
     "link": "000000000000000000000000000000000000000000000000000000000000006F",
-    "link_as_account": "nano_111111111111111111111111111111111111111111111111115hkrzwewgm",
+    "link_as_account": "ban_111111111111111111111111111111111111111111111111115hkrzwewgm",
     "signature": "F26EC6180795C63CFEC46F929DCF6269445208B6C1C837FA64925F1D61C218D4D263F9A73A4B76E3174888C6B842FC1380AC15183FA67E92B2091FEBCCBDB308",
     "work": "0000000000010F2C"
   }

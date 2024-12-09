@@ -1,9 +1,9 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::BlockHash;
-use rsnano_node::Node;
-use rsnano_rpc_messages::{ExistsResponse, ReceivableExistsArgs};
-use rsnano_store_lmdb::LmdbReadTransaction;
+use rsban_core::BlockHash;
+use rsban_node::Node;
+use rsban_rpc_messages::{ExistsResponse, ReceivableExistsArgs};
+use rsban_store_lmdb::LmdbReadTransaction;
 use std::sync::Arc;
 
 impl RpcCommandHandler {
@@ -20,7 +20,7 @@ impl RpcCommandHandler {
         };
 
         let mut exists = if block.is_send() {
-            let pending_key = rsnano_core::PendingKey::new(block.destination().unwrap(), args.hash);
+            let pending_key = rsban_core::PendingKey::new(block.destination().unwrap(), args.hash);
             self.node
                 .ledger
                 .any()

@@ -6,7 +6,7 @@ impl RpcCommand {
     }
 }
 
-use rsnano_core::{Account, NodeId, PublicKey};
+use rsban_core::{Account, NodeId, PublicKey};
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -49,7 +49,7 @@ mod tests {
         let serialized = serde_json::to_value(&node_id_dto).unwrap();
         let expected = json!({
             "public": "0000000000000000000000000000000000000000000000000000000000000000",
-            "as_account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+            "as_account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
             "node_id": "node_1111111111111111111111111111111111111111111111111111hifc8npp"
         });
 
@@ -60,7 +60,7 @@ mod tests {
     fn deserialize_node_id_dto() {
         let json_str = r#"{
             "public": "0000000000000000000000000000000000000000000000000000000000000000",
-            "as_account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+            "as_account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
             "node_id": "node_1111111111111111111111111111111111111111111111111111hifc8npp"
         }"#;
 

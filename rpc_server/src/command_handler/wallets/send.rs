@@ -1,8 +1,8 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::BlockDetails;
-use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::{BlockDto, SendArgs};
+use rsban_core::BlockDetails;
+use rsban_node::wallets::WalletsExt;
+use rsban_rpc_messages::{BlockDto, SendArgs};
 
 impl RpcCommandHandler {
     pub(crate) fn send(&self, args: SendArgs) -> anyhow::Result<BlockDto> {

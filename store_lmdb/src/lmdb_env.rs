@@ -5,8 +5,8 @@ use crate::{
 use anyhow::bail;
 use lmdb::EnvironmentFlags;
 use lmdb_sys::MDB_SUCCESS;
-use rsnano_core::utils::memory_intensive_instrumentation;
-use rsnano_nullable_lmdb::{
+use rsban_core::utils::memory_intensive_instrumentation;
+use rsban_nullable_lmdb::{
     ConfiguredDatabase, ConfiguredDatabaseBuilder, EnvironmentOptions, EnvironmentStubBuilder,
     LmdbDatabase, LmdbEnvironment,
 };

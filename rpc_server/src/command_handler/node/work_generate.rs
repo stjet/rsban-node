@@ -1,8 +1,8 @@
 use super::difficulty_ledger;
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::{Block, BlockType, DifficultyV1};
-use rsnano_rpc_messages::{WorkGenerateArgs, WorkGenerateDto};
+use rsban_core::{Block, BlockType, DifficultyV1};
+use rsban_rpc_messages::{WorkGenerateArgs, WorkGenerateDto};
 
 impl RpcCommandHandler {
     pub(crate) fn work_generate(&self, args: WorkGenerateArgs) -> anyhow::Result<WorkGenerateDto> {

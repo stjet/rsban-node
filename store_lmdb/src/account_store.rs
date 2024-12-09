@@ -4,13 +4,13 @@ use crate::{
     LmdbReadTransaction, LmdbWriteTransaction, Transaction, ACCOUNT_TEST_DATABASE,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
-use rsnano_core::{
+use rsban_core::{
     utils::{BufferReader, Deserialize},
     Account, AccountInfo,
 };
-use rsnano_nullable_lmdb::ConfiguredDatabase;
+use rsban_nullable_lmdb::ConfiguredDatabase;
 #[cfg(feature = "output_tracking")]
-use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
+use rsban_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::{ops::RangeBounds, sync::Arc};
 
 pub type AccountIterator<'txn> = BinaryDbIterator<'txn, Account, AccountInfo>;
@@ -179,7 +179,7 @@ impl ConfiguredAccountDatabaseBuilder {
 mod tests {
     use super::*;
     use crate::{DeleteEvent, PutEvent};
-    use rsnano_core::{Amount, BlockHash};
+    use rsban_core::{Amount, BlockHash};
     use std::sync::Mutex;
 
     struct Fixture {

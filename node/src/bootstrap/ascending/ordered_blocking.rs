@@ -2,7 +2,7 @@ use super::{
     ordered_priorities::PriorityEntry,
     priority::{Priority, PriorityKeyDesc},
 };
-use rsnano_core::{Account, BlockHash};
+use rsban_core::{Account, BlockHash};
 use std::{
     collections::{BTreeMap, VecDeque},
     mem::size_of,

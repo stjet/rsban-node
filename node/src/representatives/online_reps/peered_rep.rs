@@ -1,6 +1,6 @@
-use rsnano_core::PublicKey;
-use rsnano_network::ChannelId;
-use rsnano_nullable_clock::Timestamp;
+use rsban_core::PublicKey;
+use rsban_network::ChannelId;
+use rsban_nullable_clock::Timestamp;
 
 /// A representative to which we have a direct connection
 #[derive(Clone, Debug, PartialEq, Eq)]

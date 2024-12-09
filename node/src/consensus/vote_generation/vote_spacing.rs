@@ -1,6 +1,6 @@
 #[cfg(test)]
 use mock_instant::thread_local::Instant;
-use rsnano_core::{BlockHash, Root};
+use rsban_core::{BlockHash, Root};
 #[cfg(not(test))]
 use std::time::Instant;
 use std::{

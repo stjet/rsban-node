@@ -1,10 +1,10 @@
 use super::{ActiveElections, Bucket, BucketExt, PriorityBucketConfig};
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::{
+use rsban_core::{
     utils::ContainerInfo, Account, AccountInfo, Amount, ConfirmationHeightInfo, SavedBlock,
 };
-use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::{LmdbReadTransaction, Transaction};
+use rsban_ledger::Ledger;
+use rsban_store_lmdb::{LmdbReadTransaction, Transaction};
 use std::{
     cmp::max,
     sync::{Arc, Condvar, Mutex},

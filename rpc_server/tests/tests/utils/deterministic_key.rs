@@ -1,4 +1,4 @@
-use rsnano_core::{Account, PublicKey, RawKey};
+use rsban_core::{Account, PublicKey, RawKey};
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]
@@ -31,7 +31,7 @@ fn deterministic_key() {
     assert_eq!(
         result.account,
         Account::decode_account(
-            "nano_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
+            "ban_3i1aq1cchnmbn9x5rsbap8b15akfh7wj7pwskuzi7ahz8oq6cobd99d4r3b7"
         )
         .unwrap()
     );

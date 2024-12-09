@@ -1,4 +1,4 @@
-use rsnano_core::{utils::ContainerInfo, BlockHash, Root, Vote};
+use rsban_core::{utils::ContainerInfo, BlockHash, Root, Vote};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     mem::size_of,
@@ -159,7 +159,7 @@ fn clean(data: &mut LocalVoteHistoryData, max_cache: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::PrivateKey;
+    use rsban_core::PrivateKey;
 
     #[test]
     fn empty_history() {

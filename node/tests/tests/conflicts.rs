@@ -1,6 +1,6 @@
-use rsnano_core::{Amount, BlockSideband, PrivateKey, SavedBlock, UnsavedBlockLatticeBuilder};
-use rsnano_network::ChannelId;
-use rsnano_node::block_processing::BlockSource;
+use rsban_core::{Amount, BlockSideband, PrivateKey, SavedBlock, UnsavedBlockLatticeBuilder};
+use rsban_network::ChannelId;
+use rsban_node::block_processing::BlockSource;
 use std::time::Duration;
 use test_helpers::{assert_timely, assert_timely_eq, start_election, start_elections, System};
 

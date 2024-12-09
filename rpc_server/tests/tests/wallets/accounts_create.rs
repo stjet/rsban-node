@@ -1,6 +1,6 @@
-use rsnano_core::WalletId;
-use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::AccountsCreateArgs;
+use rsban_core::WalletId;
+use rsban_node::wallets::WalletsExt;
+use rsban_rpc_messages::AccountsCreateArgs;
 use std::time::Duration;
 use test_helpers::{assert_timely, setup_rpc_client_and_server, System};
 

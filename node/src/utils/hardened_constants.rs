@@ -1,6 +1,6 @@
 use once_cell::sync::Lazy;
 use rand::Rng;
-use rsnano_core::{Account, PublicKey};
+use rsban_core::{Account, PublicKey};
 
 pub struct HardenedConstants {
     pub not_an_account: Account,

@@ -1,9 +1,9 @@
-use rsnano_core::utils::get_cpu_count;
-use rsnano_node::{
+use rsban_core::utils::get_cpu_count;
+use rsban_node::{
     config::{DaemonConfig, Networks, NodeFlags},
     Node, NodeBuilder, NodeCallbacks, NodeExt,
 };
-use rsnano_rpc_server::{run_rpc_server, RpcServerConfig};
+use rsban_rpc_server::{run_rpc_server, RpcServerConfig};
 use std::{future::Future, path::PathBuf, sync::Arc};
 use tokio::net::TcpListener;
 

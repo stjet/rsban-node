@@ -1,6 +1,6 @@
 use super::BlockValidationTest;
 use crate::BlockStatus;
-use rsnano_core::{Account, BlockDetails, BlockHash, BlockSideband, Epoch, PublicKey};
+use rsban_core::{Account, BlockDetails, BlockHash, BlockSideband, Epoch, PublicKey};
 
 #[test]
 fn valid_legacy_change_block() {

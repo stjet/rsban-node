@@ -1,7 +1,7 @@
-use rsnano_core::{Account, Amount, WalletId, DEV_GENESIS_KEY};
-use rsnano_ledger::DEV_GENESIS_ACCOUNT;
-use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::SendArgs;
+use rsban_core::{Account, Amount, WalletId, DEV_GENESIS_KEY};
+use rsban_ledger::DEV_GENESIS_ACCOUNT;
+use rsban_node::wallets::WalletsExt;
+use rsban_rpc_messages::SendArgs;
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
@@ -19,7 +19,7 @@ fn send() {
     let server = setup_rpc_client_and_server(node.clone(), true);
 
     let destination = Account::decode_account(
-        "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+        "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
     )
     .unwrap();
     let amount = Amount::raw(1000000);
@@ -69,7 +69,7 @@ fn send_fails_without_enable_control() {
     let server = setup_rpc_client_and_server(node.clone(), false);
 
     let destination = Account::decode_account(
-        "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
+        "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3",
     )
     .unwrap();
     let amount = Amount::raw(1000000);

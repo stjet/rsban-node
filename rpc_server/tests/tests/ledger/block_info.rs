@@ -1,5 +1,5 @@
-use rsnano_core::{Amount, BlockHash};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_BLOCK, DEV_GENESIS_HASH};
+use rsban_core::{Amount, BlockHash};
+use rsban_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_BLOCK, DEV_GENESIS_HASH};
 use std::time::{SystemTime, UNIX_EPOCH};
 use test_helpers::{setup_rpc_client_and_server, System};
 

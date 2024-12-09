@@ -1,7 +1,7 @@
-use rsnano_core::{PrivateKey, UnsavedBlockLatticeBuilder, WalletId, DEV_GENESIS_KEY};
-use rsnano_network::ChannelMode;
-use rsnano_node::{config::NodeFlags, wallets::WalletsExt};
-use rsnano_rpc_messages::BootstrapArgs;
+use rsban_core::{PrivateKey, UnsavedBlockLatticeBuilder, WalletId, DEV_GENESIS_KEY};
+use rsban_network::ChannelMode;
+use rsban_node::{config::NodeFlags, wallets::WalletsExt};
+use rsban_rpc_messages::BootstrapArgs;
 use std::time::Duration;
 use test_helpers::{assert_timely_eq, setup_rpc_client_and_server, System};
 

@@ -1,5 +1,5 @@
 use crate::{RpcBool, RpcCommand, RpcU16, RpcU64};
-use rsnano_core::{Account, Amount, BlockHash};
+use rsban_core::{Account, Amount, BlockHash};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -167,7 +167,7 @@ mod tests {
 
         assert!(serialized.contains(r#""action": "account_info""#));
         assert!(serialized.contains(
-            r#""account": "nano_111111111111111111111111111111111111111111111111115uwdgas549""#
+            r#""account": "ban_111111111111111111111111111111111111111111111111115uwdgas549""#
         ));
         assert!(serialized.contains(r#""representative": "true""#));
         assert!(serialized.contains(r#""weight": "true""#));
@@ -179,7 +179,7 @@ mod tests {
     fn deserialize_account_info_command_with_optionals() {
         let json = r#"{
             "action": "account_info",
-            "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549",
+            "account": "ban_111111111111111111111111111111111111111111111111115uwdgas549",
             "representative": "true",
             "weight": "true",
             "receivable": "true",
@@ -208,7 +208,7 @@ mod tests {
             serde_json::to_string_pretty(&RpcCommand::account_info(args)).unwrap(),
             r#"{
   "action": "account_info",
-  "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549"
+  "account": "ban_111111111111111111111111111111111111111111111111115uwdgas549"
 }"#
         )
     }

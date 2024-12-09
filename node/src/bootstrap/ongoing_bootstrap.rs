@@ -5,9 +5,9 @@ use crate::{
     utils::ThreadPool,
     NetworkParams,
 };
-use rsnano_core::Account;
-use rsnano_ledger::Ledger;
-use rsnano_network::{ChannelMode, NetworkInfo};
+use rsban_core::Account;
+use rsban_ledger::Ledger;
+use rsban_network::{ChannelMode, NetworkInfo};
 use std::{
     sync::{
         atomic::{AtomicU32, Ordering},

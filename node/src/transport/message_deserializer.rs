@@ -1,7 +1,7 @@
 use super::NetworkFilter;
-use rsnano_core::{utils::BufferReader, work::WorkThresholds};
-use rsnano_messages::*;
-use rsnano_network::AsyncBufferReader;
+use rsban_core::{utils::BufferReader, work::WorkThresholds};
+use rsban_messages::*;
+use rsban_network::AsyncBufferReader;
 use std::sync::Arc;
 
 pub struct MessageDeserializer<T: AsyncBufferReader + Send> {
@@ -118,6 +118,7 @@ mod tests {
 
     #[tokio::test]
     async fn insufficient_work() {
+        //guessing this fails because receives require 0 work, so probably fine
         let protocol = ProtocolInfo::default();
         let mut publish = Publish::new_test_instance();
         publish.block.set_work(0);

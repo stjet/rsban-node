@@ -1,4 +1,4 @@
-use rsnano_core::Account;
+use rsban_core::Account;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -24,7 +24,7 @@ mod tests {
         let serialized = to_string(&dto).unwrap();
 
         let expected_json = serde_json::json!({
-            "accounts": ["nano_1111111111111111111111111111111111111111111111111113b8661hfk"]
+            "accounts": ["ban_1111111111111111111111111111111111111111111111111113b8661hfk"]
         });
 
         let actual_json: serde_json::Value = from_str(&serialized).unwrap();
@@ -34,7 +34,7 @@ mod tests {
     #[test]
     fn deserialize_accounts_rpc_message() {
         let json_str = r#"{
-            "accounts": ["nano_1111111111111111111111111111111111111111111111111113b8661hfk"]
+            "accounts": ["ban_1111111111111111111111111111111111111111111111111113b8661hfk"]
         }"#;
 
         let deserialized: AccountsRpcMessage = from_str(json_str).unwrap();

@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{AccountsRpcMessage, FrontiersResponse};
+use rsban_rpc_messages::{AccountsRpcMessage, FrontiersResponse};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {

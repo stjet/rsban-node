@@ -1,7 +1,7 @@
 use super::{InboundMessageQueue, RealtimeMessageHandler};
 use crate::config::{NodeConfig, NodeFlags};
-use rsnano_messages::Message;
-use rsnano_network::{ChannelId, ChannelInfo};
+use rsban_messages::Message;
+use rsban_network::{ChannelId, ChannelInfo};
 use std::{
     cmp::{max, min},
     collections::VecDeque,

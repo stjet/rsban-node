@@ -1,9 +1,9 @@
-use rsnano_core::{
+use rsban_core::{
     Account, Amount, Block, PublicKey, RawKey, StateBlockArgs, WalletId, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{ReceivableArgs, ReceivableResponse};
+use rsban_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsban_node::{wallets::WalletsExt, Node};
+use rsban_rpc_messages::{ReceivableArgs, ReceivableResponse};
 use std::sync::Arc;
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};

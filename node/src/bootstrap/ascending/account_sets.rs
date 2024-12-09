@@ -4,8 +4,8 @@ use super::{
     priority::Priority,
 };
 use crate::bootstrap::ascending::ordered_priorities::PriorityEntry;
-use rsnano_core::{utils::ContainerInfo, Account, BlockHash};
-use rsnano_nullable_clock::Timestamp;
+use rsban_core::{utils::ContainerInfo, Account, BlockHash};
+use rsban_nullable_clock::Timestamp;
 use std::{cmp::min, time::Duration};
 
 #[derive(Clone, Debug, PartialEq)]

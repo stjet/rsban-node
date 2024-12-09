@@ -1,4 +1,4 @@
-use rsnano_core::Amount;
+use rsban_core::Amount;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]

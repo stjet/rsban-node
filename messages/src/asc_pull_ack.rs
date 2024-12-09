@@ -1,6 +1,6 @@
 use bitvec::prelude::BitArray;
 use num_traits::FromPrimitive;
-use rsnano_core::{
+use rsban_core::{
     utils::{BufferWriter, Deserialize, Serialize, Stream, StreamExt},
     Account, Block, BlockHash, BlockType, Frontier,
 };
@@ -247,7 +247,7 @@ impl Serialize for AccountInfoAckPayload {
 mod tests {
     use super::*;
     use crate::{assert_deserializable, Message};
-    use rsnano_core::TestBlockBuilder;
+    use rsban_core::TestBlockBuilder;
 
     #[test]
     fn serialize_blocks() {
@@ -305,6 +305,6 @@ mod tests {
                 account_conf_height: 6,
             }),
         });
-        assert_eq!(ack.to_string(), "\naccount public key:nano_1111111111111111111111111111111111111111111111111113b8661hfk account open:0000000000000000000000000000000000000000000000000000000000000002 account head:0000000000000000000000000000000000000000000000000000000000000003 block count:4 confirmation frontier:0000000000000000000000000000000000000000000000000000000000000005 confirmation height:6");
+        assert_eq!(ack.to_string(), "\naccount public key:ban_1111111111111111111111111111111111111111111111111113b8661hfk account open:0000000000000000000000000000000000000000000000000000000000000002 account head:0000000000000000000000000000000000000000000000000000000000000003 block count:4 confirmation frontier:0000000000000000000000000000000000000000000000000000000000000005 confirmation height:6");
     }
 }

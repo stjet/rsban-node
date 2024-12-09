@@ -4,9 +4,9 @@ mod parse_message_error;
 pub use ledger_stats::LedgerStats;
 pub use network_stats::*;
 
-use rsnano_core::VoteSource;
-use rsnano_ledger::BlockStatus;
-use rsnano_messages::Message;
+use rsban_core::VoteSource;
+use rsban_ledger::BlockStatus;
+use rsban_messages::Message;
 
 use super::DetailType;
 

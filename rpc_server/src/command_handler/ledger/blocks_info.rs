@@ -1,7 +1,7 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::{BlockHash, BlockType, PendingKey};
-use rsnano_rpc_messages::{
+use rsban_core::{BlockHash, BlockType, PendingKey};
+use rsban_rpc_messages::{
     unwrap_bool_or_false, BlockInfoResponse, BlocksInfoArgs, BlocksInfoResponse,
 };
 use std::collections::HashMap;

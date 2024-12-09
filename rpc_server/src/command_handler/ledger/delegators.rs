@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::{Account, Amount, PublicKey};
-use rsnano_rpc_messages::{unwrap_u64_or, DelegatorsArgs, DelegatorsResponse};
+use rsban_core::{Account, Amount, PublicKey};
+use rsban_rpc_messages::{unwrap_u64_or, DelegatorsArgs, DelegatorsResponse};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {

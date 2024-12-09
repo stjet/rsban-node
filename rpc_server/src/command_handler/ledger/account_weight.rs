@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{AccountWeightArgs, WeightDto};
+use rsban_rpc_messages::{AccountWeightArgs, WeightDto};
 
 impl RpcCommandHandler {
     pub(crate) fn account_weight(&self, args: AccountWeightArgs) -> WeightDto {

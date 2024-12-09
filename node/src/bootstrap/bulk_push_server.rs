@@ -6,11 +6,11 @@ use crate::{
     utils::{ErrorCode, ThreadPool},
 };
 use num_traits::FromPrimitive;
-use rsnano_core::{
+use rsban_core::{
     utils::BufferReader, work::WorkThresholds, Block, BlockType, ChangeBlock, OpenBlock,
     ReceiveBlock, SendBlock, StateBlock,
 };
-use rsnano_network::AsyncBufferReader;
+use rsban_network::AsyncBufferReader;
 use std::{
     ops::Deref,
     sync::{Arc, Mutex, Weak},

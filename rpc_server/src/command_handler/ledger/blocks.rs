@@ -1,7 +1,7 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::anyhow;
-use rsnano_core::{BlockHash, JsonBlock};
-use rsnano_rpc_messages::{BlocksResponse, HashesArgs};
+use rsban_core::{BlockHash, JsonBlock};
+use rsban_rpc_messages::{BlocksResponse, HashesArgs};
 use std::collections::HashMap;
 
 impl RpcCommandHandler {

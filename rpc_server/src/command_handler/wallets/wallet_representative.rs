@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{WalletRepresentativeResponse, WalletRpcMessage};
+use rsban_rpc_messages::{WalletRepresentativeResponse, WalletRpcMessage};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_representative(

@@ -6,9 +6,9 @@ use crate::{
     NullNetworkObserver, TrafficType, WriteQueueAdapter,
 };
 use async_trait::async_trait;
-use rsnano_core::utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2};
-use rsnano_nullable_clock::{SteadyClock, Timestamp};
-use rsnano_nullable_tcp::TcpStream;
+use rsban_core::utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2};
+use rsban_nullable_clock::{SteadyClock, Timestamp};
+use rsban_nullable_tcp::TcpStream;
 use std::{
     fmt::Display,
     net::{Ipv6Addr, SocketAddrV6},

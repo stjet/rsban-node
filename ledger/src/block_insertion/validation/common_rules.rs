@@ -1,6 +1,6 @@
 use super::BlockValidator;
 use crate::BlockStatus;
-use rsnano_core::PublicKey;
+use rsban_core::PublicKey;
 
 impl<'a> BlockValidator<'a> {
     pub(crate) fn ensure_block_does_not_exist_yet(&self) -> Result<(), BlockStatus> {

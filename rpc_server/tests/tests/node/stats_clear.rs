@@ -1,4 +1,4 @@
-use rsnano_node::stats::{DetailType, Direction, StatType};
+use rsban_node::stats::{DetailType, Direction, StatType};
 use std::time::Duration;
 use test_helpers::{setup_rpc_client_and_server, System};
 

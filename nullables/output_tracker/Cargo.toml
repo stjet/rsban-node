@@ -1,5 +1,5 @@
 [package]
-name = "rsnano_output_tracker"
+name = "rsban_output_tracker"
 version = "0.1.0"
 edition = "2021"
 

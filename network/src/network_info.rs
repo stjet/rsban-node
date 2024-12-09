@@ -6,8 +6,8 @@ use crate::{
     ChannelId, ChannelInfo, ChannelMode, TrafficType,
 };
 use rand::{seq::SliceRandom, thread_rng};
-use rsnano_core::{utils::ContainerInfo, Networks, NodeId};
-use rsnano_nullable_clock::Timestamp;
+use rsban_core::{utils::ContainerInfo, Networks, NodeId};
+use rsban_nullable_clock::Timestamp;
 use std::{
     collections::HashMap,
     net::{Ipv6Addr, SocketAddrV6},
@@ -701,7 +701,7 @@ pub struct ChannelsInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::utils::{NULL_ENDPOINT, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3};
+    use rsban_core::utils::{NULL_ENDPOINT, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3};
 
     #[test]
     fn newly_added_channel_is_not_a_realtime_channel() {

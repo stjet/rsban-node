@@ -1,5 +1,5 @@
 use crate::message_collection::RecordedMessage;
-use rsnano_network::ChannelDirection;
+use rsban_network::ChannelDirection;
 
 #[derive(Clone)]
 pub(crate) struct MessageViewModel {

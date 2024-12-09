@@ -1,4 +1,4 @@
-use rsnano_core::RawKey;
+use rsban_core::RawKey;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]

@@ -3,9 +3,9 @@ use anyhow::Result;
 use clap::{CommandFactory, Parser, Subcommand};
 use generate_config::GenerateConfigArgs;
 use initialize::InitializeArgs;
-use rsnano_core::{Account, Amount, BlockHash, PrivateKey, SendBlock};
-use rsnano_node::{wallets::Wallets, BUILD_INFO, VERSION_STRING};
-use rsnano_store_lmdb::LmdbEnv;
+use rsban_core::{Account, Amount, BlockHash, PrivateKey, SendBlock};
+use rsban_node::{wallets::Wallets, BUILD_INFO, VERSION_STRING};
+use rsban_store_lmdb::LmdbEnv;
 use run_daemon::RunDaemonArgs;
 use std::{sync::Arc, time::Instant};
 

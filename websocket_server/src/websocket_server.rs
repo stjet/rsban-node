@@ -1,9 +1,9 @@
 use super::WebsocketListener;
-use rsnano_core::{
+use rsban_core::{
     Account, Amount, BlockHash, BlockType, SavedBlock, Vote, VoteCode, VoteWithWeightInfo,
 };
-use rsnano_messages::TelemetryData;
-use rsnano_node::{
+use rsban_messages::TelemetryData;
+use rsban_node::{
     bootstrap::{BootstrapCallbackData, BootstrapInitiator, BootstrapStarted, BootstrapStopped},
     config::WebsocketConfig,
     consensus::{
@@ -12,7 +12,7 @@ use rsnano_node::{
     wallets::Wallets,
     Telemetry,
 };
-use rsnano_websocket_messages::{new_block_arrived_message, OutgoingMessageEnvelope, Topic};
+use rsban_websocket_messages::{new_block_arrived_message, OutgoingMessageEnvelope, Topic};
 use serde::{Deserialize, Serialize};
 use std::{
     net::{IpAddr, SocketAddr, SocketAddrV6},

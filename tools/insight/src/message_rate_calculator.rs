@@ -1,6 +1,6 @@
 use crate::{message_collection::RecordedMessage, rate_calculator::RateCalculator};
-use rsnano_network::ChannelDirection;
-use rsnano_nullable_clock::Timestamp;
+use rsban_network::ChannelDirection;
+use rsban_nullable_clock::Timestamp;
 use std::{
     sync::atomic::{AtomicU64, Ordering},
     time::Duration,

@@ -1,9 +1,9 @@
 use num_traits::FromPrimitive;
-use rsnano_core::{
+use rsban_core::{
     utils::{TEST_ENDPOINT_1, TEST_ENDPOINT_2},
     NodeId,
 };
-use rsnano_nullable_clock::Timestamp;
+use rsban_nullable_clock::Timestamp;
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
     sync::{

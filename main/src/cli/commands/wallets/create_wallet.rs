@@ -2,9 +2,9 @@ use crate::cli::get_path;
 use anyhow::{anyhow, Result};
 use clap::{ArgGroup, Parser};
 use rand::{thread_rng, Rng};
-use rsnano_core::{RawKey, WalletId};
-use rsnano_node::wallets::{Wallets, WalletsExt};
-use rsnano_store_lmdb::LmdbEnv;
+use rsban_core::{RawKey, WalletId};
+use rsban_node::wallets::{Wallets, WalletsExt};
+use rsban_store_lmdb::LmdbEnv;
 use std::sync::Arc;
 
 #[derive(Parser)]

@@ -1,6 +1,6 @@
 use anyhow::anyhow;
-use rsnano_core::{Account, PublicKey};
-use rsnano_rpc_messages::{KeyExpandArgs, KeyPairDto};
+use rsban_core::{Account, PublicKey};
+use rsban_rpc_messages::{KeyExpandArgs, KeyPairDto};
 
 pub fn key_expand(args: KeyExpandArgs) -> anyhow::Result<KeyPairDto> {
     let public: PublicKey = (&args.key)

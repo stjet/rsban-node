@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use rsnano_core::{Account, Amount};
+use rsban_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

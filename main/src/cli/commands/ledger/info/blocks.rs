@@ -1,7 +1,7 @@
 use crate::cli::get_path;
 use anyhow::Result;
 use clap::{ArgGroup, Parser};
-use rsnano_store_lmdb::LmdbStore;
+use rsban_store_lmdb::LmdbStore;
 
 #[derive(Parser)]
 #[command(group = ArgGroup::new("input")

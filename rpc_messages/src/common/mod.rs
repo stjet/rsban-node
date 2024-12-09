@@ -48,7 +48,7 @@ pub use success::*;
 pub use valid::*;
 pub use wallet::*;
 
-use rsnano_core::{BlockSubType, BlockType, WorkVersion};
+use rsban_core::{BlockSubType, BlockType, WorkVersion};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]

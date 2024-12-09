@@ -3,8 +3,8 @@ use crate::{
     VotingConstants,
 };
 use once_cell::sync::Lazy;
-use rsnano_core::{work::WorkThresholds, Networks};
-use rsnano_ledger::LedgerConstants;
+use rsban_core::{work::WorkThresholds, Networks};
+use rsban_ledger::LedgerConstants;
 
 pub static DEV_NETWORK_PARAMS: Lazy<NetworkParams> =
     Lazy::new(|| NetworkParams::new(Networks::BananoDevNetwork));

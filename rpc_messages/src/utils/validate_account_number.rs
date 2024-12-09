@@ -9,7 +9,7 @@ impl RpcCommand {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::Account;
+    use rsban_core::Account;
     use serde_json::to_string_pretty;
 
     #[test]
@@ -21,7 +21,7 @@ mod tests {
             .unwrap(),
             r#"{
   "action": "validate_account_number",
-  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+  "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
 }"#
         )
     }
@@ -30,7 +30,7 @@ mod tests {
     fn deserialize_validate_account_number_command() {
         let json_str = r#"{
 "action": "validate_account_number",
-"account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+"account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
 }"#;
         let deserialized: RpcCommand = serde_json::from_str(json_str).unwrap();
         let expected_command =

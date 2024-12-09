@@ -1,10 +1,10 @@
-use rsnano_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, Vote, DEV_GENESIS_KEY};
-use rsnano_ledger::{
+use rsban_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, Vote, DEV_GENESIS_KEY};
+use rsban_ledger::{
     DEV_GENESIS_ACCOUNT, DEV_GENESIS_BLOCK, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY,
 };
-use rsnano_messages::{ConfirmAck, Message};
-use rsnano_network::{ChannelId, ChannelMode, DropPolicy, TrafficType};
-use rsnano_node::NodeExt;
+use rsban_messages::{ConfirmAck, Message};
+use rsban_network::{ChannelId, ChannelMode, DropPolicy, TrafficType};
+use rsban_node::NodeExt;
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_always_eq, assert_never, assert_timely_eq, System};
 

@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{
+use rsban_rpc_messages::{
     ConfirmationEntry, ConfirmationHistoryArgs, ConfirmationHistoryResponse, ConfirmationStats,
 };
 use std::time::{Duration, UNIX_EPOCH};

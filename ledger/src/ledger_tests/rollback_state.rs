@@ -4,7 +4,7 @@ use crate::{
     ledger_tests::AccountBlockFactory,
     DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
-use rsnano_core::{Amount, Epoch, PendingInfo, PendingKey, PublicKey};
+use rsban_core::{Amount, Epoch, PendingInfo, PendingKey, PublicKey};
 
 #[test]
 fn rollback_send() {

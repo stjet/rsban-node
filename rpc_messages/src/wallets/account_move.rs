@@ -1,5 +1,5 @@
 use crate::RpcCommand;
-use rsnano_core::{Account, WalletId};
+use rsban_core::{Account, WalletId};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -22,7 +22,7 @@ pub struct AccountMoveArgs {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::Account;
+    use rsban_core::Account;
     use serde_json::{from_str, to_string_pretty, Value};
 
     #[test]
@@ -38,7 +38,7 @@ mod tests {
             "action": "account_move",
             "wallet": "0000000000000000000000000000000000000000000000000000000000000001",
             "source": "0000000000000000000000000000000000000000000000000000000000000002",
-            "accounts": ["nano_1111111111111111111111111111111111111111111111111111hifc8npp"]
+            "accounts": ["ban_1111111111111111111111111111111111111111111111111111hifc8npp"]
         }"#;
 
         let expected_json: Value = from_str(expected).unwrap();

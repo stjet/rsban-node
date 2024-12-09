@@ -1,5 +1,5 @@
 [package]
-name = "rsnano_store_lmdb"
+name = "rsban_store_lmdb"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,12 +9,12 @@ edition = "2021"
 output_tracking = []
 
 [dev-dependencies]
-rsnano_store_lmdb = { path = ".", features = ["output_tracking"] }
+rsban_store_lmdb = { path = ".", features = ["output_tracking"] }
 
 [dependencies]
-rsnano_core = { path = "../core" }
-rsnano_output_tracker = { path = "../nullables/output_tracker" }
-rsnano_nullable_lmdb = { path = "../nullables/lmdb" }
+rsban_core = { path = "../core" }
+rsban_output_tracker = { path = "../nullables/output_tracker" }
+rsban_nullable_lmdb = { path = "../nullables/lmdb" }
 lmdb-rkv = "0.14"
 lmdb-rkv-sys = "0.11"
 primitive-types = "0"

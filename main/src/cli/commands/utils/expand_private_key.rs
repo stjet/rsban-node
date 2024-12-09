@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use rsnano_core::{Account, PrivateKey, PublicKey};
+use rsban_core::{Account, PrivateKey, PublicKey};
 
 #[derive(Parser)]
 pub(crate) struct ExpandPrivateKeyArgs {

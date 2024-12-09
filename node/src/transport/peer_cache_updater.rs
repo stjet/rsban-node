@@ -2,10 +2,10 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     utils::{CancellationToken, Runnable},
 };
-use rsnano_ledger::Ledger;
-use rsnano_network::{ChannelInfo, NetworkInfo};
-use rsnano_nullable_clock::SystemTimeFactory;
-use rsnano_store_lmdb::LmdbWriteTransaction;
+use rsban_ledger::Ledger;
+use rsban_network::{ChannelInfo, NetworkInfo};
+use rsban_nullable_clock::SystemTimeFactory;
+use rsban_store_lmdb::LmdbWriteTransaction;
 use std::{
     net::SocketAddrV6,
     sync::{Arc, RwLock},
@@ -103,11 +103,11 @@ impl Runnable for PeerCacheUpdater {
 mod tests {
     use super::*;
     use crate::stats::Direction;
-    use rsnano_core::utils::{
+    use rsban_core::utils::{
         new_test_timestamp, NULL_ENDPOINT, TEST_ENDPOINT_1, TEST_ENDPOINT_2, TEST_ENDPOINT_3,
     };
-    use rsnano_network::{ChannelDirection, ChannelMode};
-    use rsnano_nullable_clock::Timestamp;
+    use rsban_network::{ChannelDirection, ChannelMode};
+    use rsban_nullable_clock::Timestamp;
     use std::{net::SocketAddrV6, time::SystemTime};
     use tracing_test::traced_test;
 

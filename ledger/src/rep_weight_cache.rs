@@ -1,5 +1,5 @@
-use rsnano_core::{utils::ContainerInfo, Account, Amount, PublicKey};
-use rsnano_store_lmdb::LedgerCache;
+use rsban_core::{utils::ContainerInfo, Account, Amount, PublicKey};
+use rsban_store_lmdb::LedgerCache;
 use std::{
     collections::HashMap,
     mem::size_of,

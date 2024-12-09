@@ -1,6 +1,6 @@
 use crate::{common::WalletRpcMessage, RpcCommand};
-use rsnano_core::Account;
-use rsnano_core::WalletId;
+use rsban_core::Account;
+use rsban_core::WalletId;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -23,7 +23,7 @@ impl WalletRepresentativeResponse {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::WalletId;
+    use rsban_core::WalletId;
     use serde_json::to_string_pretty;
 
     #[test]

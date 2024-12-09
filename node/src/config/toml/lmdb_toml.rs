@@ -1,4 +1,4 @@
-use rsnano_store_lmdb::{LmdbConfig, SyncStrategy};
+use rsban_store_lmdb::{LmdbConfig, SyncStrategy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]

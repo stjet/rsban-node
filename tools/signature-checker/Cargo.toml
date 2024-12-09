@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rsnano_core = { path = "../../core" }
-rsnano_ledger = { path = "../../ledger" }
-rsnano_store_lmdb = { path = "../../store_lmdb" }
+rsban_core = { path = "../../core" }
+rsban_ledger = { path = "../../ledger" }
+rsban_store_lmdb = { path = "../../store_lmdb" }
 ed25519-dalek-blake2b = "1.0.2"

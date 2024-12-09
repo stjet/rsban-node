@@ -1,6 +1,6 @@
 use crate::ledger::Ledger;
-use rsnano_core::{Block, BlockBase, BlockHash, DependentBlocks, SavedBlock, StateBlock};
-use rsnano_store_lmdb::Transaction;
+use rsban_core::{Block, BlockBase, BlockHash, DependentBlocks, SavedBlock, StateBlock};
+use rsban_store_lmdb::Transaction;
 
 /// Finds all dependent blocks for a given block.
 /// There can be at most two dependencies per block, namely "previous" and "link/source".

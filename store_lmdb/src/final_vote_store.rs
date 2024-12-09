@@ -2,7 +2,7 @@ use crate::{
     BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
-use rsnano_core::{BlockHash, QualifiedRoot, Root};
+use rsban_core::{BlockHash, QualifiedRoot, Root};
 use std::sync::Arc;
 
 pub type FinalVoteIterator<'txn> = BinaryDbIterator<'txn, QualifiedRoot, BlockHash>;

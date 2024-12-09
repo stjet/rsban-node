@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use rsnano_core::{Account, WalletId};
-    use rsnano_node::wallets::WalletsExt;
+    use rsban_core::{Account, WalletId};
+    use rsban_node::wallets::WalletsExt;
     use std::time::Duration;
     use test_helpers::{assert_timely, setup_rpc_client_and_server, System};
 

@@ -1,5 +1,5 @@
 use crate::RpcCommand;
-use rsnano_core::{Account, WalletId};
+use rsban_core::{Account, WalletId};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -26,7 +26,7 @@ impl WalletAddWatchArgs {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::Account;
+    use rsban_core::Account;
     use serde_json::to_string_pretty;
 
     #[test]
@@ -41,7 +41,7 @@ mod tests {
   "action": "wallet_add_watch",
   "wallet": "0000000000000000000000000000000000000000000000000000000000000001",
   "accounts": [
-    "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+    "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
   ]
 }"#
         )

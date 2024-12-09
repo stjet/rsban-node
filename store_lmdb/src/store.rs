@@ -7,7 +7,7 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_CP_COMPACT, MDB_SUCCESS};
-use rsnano_core::utils::seconds_since_epoch;
+use rsban_core::utils::seconds_since_epoch;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::CString,

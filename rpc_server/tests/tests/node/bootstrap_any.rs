@@ -1,5 +1,5 @@
-use rsnano_node::config::NodeFlags;
-use rsnano_rpc_messages::BootstrapAnyArgs;
+use rsban_node::config::NodeFlags;
+use rsban_rpc_messages::BootstrapAnyArgs;
 use test_helpers::{send_block, setup_rpc_client_and_server, System};
 
 #[test]

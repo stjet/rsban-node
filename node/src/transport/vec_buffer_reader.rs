@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use rsnano_network::AsyncBufferReader;
+use rsban_network::AsyncBufferReader;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct VecBufferReader {

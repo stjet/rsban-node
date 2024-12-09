@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use rsnano_core::{Account, Amount, BlockHash};
+use rsban_core::{Account, Amount, BlockHash};
 use serde::{Deserialize, Serialize};
 
 use crate::{RpcBool, RpcU64, RpcU8};
@@ -159,7 +159,7 @@ mod tests {
             .unwrap(),
             r#"{
   "action": "receivable",
-  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+  "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
   "count": "1"
 }"#
         )
@@ -182,7 +182,7 @@ mod tests {
         let mut blocks = IndexMap::new();
         blocks.insert(Account::zero(), vec![BlockHash::zero()]);
         let works = AccountsReceivableResponse::Simple(AccountsReceivableSimple { blocks });
-        let expected_json = r#"{"blocks":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":["0000000000000000000000000000000000000000000000000000000000000000"]}}"#;
+        let expected_json = r#"{"blocks":{"ban_1111111111111111111111111111111111111111111111111111hifc8npp":["0000000000000000000000000000000000000000000000000000000000000000"]}}"#;
 
         let serialized = serde_json::to_string(&works).unwrap();
 
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn deserialize_wallet_receivable_dto_blocks() {
-        let json_data = r#"{"blocks":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":["0000000000000000000000000000000000000000000000000000000000000000"]}}"#;
+        let json_data = r#"{"blocks":{"ban_1111111111111111111111111111111111111111111111111111hifc8npp":["0000000000000000000000000000000000000000000000000000000000000000"]}}"#;
         let works: AccountsReceivableResponse = serde_json::from_str(json_data).unwrap();
 
         let mut expected_blocks = IndexMap::new();
@@ -213,7 +213,7 @@ mod tests {
 
         let works = AccountsReceivableResponse::Threshold(AccountsReceivableThreshold { blocks });
 
-        let expected_json = r#"{"blocks":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":{"0000000000000000000000000000000000000000000000000000000000000000":"1000"}}}"#;
+        let expected_json = r#"{"blocks":{"ban_1111111111111111111111111111111111111111111111111111hifc8npp":{"0000000000000000000000000000000000000000000000000000000000000000":"1000"}}}"#;
         let serialized = serde_json::to_string(&works).unwrap();
 
         assert_eq!(serialized, expected_json);
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn deserialize_wallet_receivable_dto_threshold() {
-        let json_data = r#"{"blocks":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":{"0000000000000000000000000000000000000000000000000000000000000000":"1000"}}}"#;
+        let json_data = r#"{"blocks":{"ban_1111111111111111111111111111111111111111111111111111hifc8npp":{"0000000000000000000000000000000000000000000000000000000000000000":"1000"}}}"#;
         let works: AccountsReceivableResponse = serde_json::from_str(json_data).unwrap();
 
         let mut expected_blocks = IndexMap::new();
@@ -252,7 +252,7 @@ mod tests {
 
         let works = AccountsReceivableResponse::Source(AccountsReceivableSource { blocks });
 
-        let expected_json = r#"{"blocks":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":{"0000000000000000000000000000000000000000000000000000000000000000":{"amount":"1000","source":"nano_1111111111111111111111111111111111111111111111111111hifc8npp"}}}}"#;
+        let expected_json = r#"{"blocks":{"ban_1111111111111111111111111111111111111111111111111111hifc8npp":{"0000000000000000000000000000000000000000000000000000000000000000":{"amount":"1000","source":"ban_1111111111111111111111111111111111111111111111111111hifc8npp"}}}}"#;
         let serialized = serde_json::to_string(&works).unwrap();
 
         assert_eq!(serialized, expected_json);
@@ -260,7 +260,7 @@ mod tests {
 
     #[test]
     fn deserialize_wallet_receivable_dto_source() {
-        let json_data = r#"{"blocks":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":{"0000000000000000000000000000000000000000000000000000000000000000":{"amount":"1000","source":"nano_1111111111111111111111111111111111111111111111111111hifc8npp"}}}}"#;
+        let json_data = r#"{"blocks":{"ban_1111111111111111111111111111111111111111111111111111hifc8npp":{"0000000000000000000000000000000000000000000000000000000000000000":{"amount":"1000","source":"ban_1111111111111111111111111111111111111111111111111111hifc8npp"}}}}"#;
         let works: AccountsReceivableResponse = serde_json::from_str(json_data).unwrap();
 
         let mut expected_blocks = IndexMap::new();

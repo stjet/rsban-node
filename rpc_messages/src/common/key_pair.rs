@@ -1,4 +1,4 @@
-use rsnano_core::{Account, PublicKey, RawKey};
+use rsban_core::{Account, PublicKey, RawKey};
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -21,7 +21,7 @@ impl KeyPairDto {
 #[cfg(test)]
 mod tests {
     use crate::common::KeyPairDto;
-    use rsnano_core::{Account, PublicKey, RawKey};
+    use rsban_core::{Account, PublicKey, RawKey};
 
     #[test]
     fn serialize_keypair_dto() {
@@ -34,7 +34,7 @@ mod tests {
             r#"{
   "private": "0000000000000000000000000000000000000000000000000000000000000000",
   "public": "0000000000000000000000000000000000000000000000000000000000000000",
-  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+  "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
 }"#
         );
     }
@@ -43,7 +43,7 @@ mod tests {
     fn deserialize_keypair_dto() {
         let json_str = r#"{"private":"0000000000000000000000000000000000000000000000000000000000000000",
             "public":"0000000000000000000000000000000000000000000000000000000000000000",
-            "account":"nano_1111111111111111111111111111111111111111111111111111hifc8npp"}"#;
+            "account":"ban_1111111111111111111111111111111111111111111111111111hifc8npp"}"#;
 
         let deserialized: KeyPairDto = serde_json::from_str(json_str).unwrap();
 

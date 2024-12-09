@@ -1,6 +1,6 @@
 use crate::{ledger_constants::LEDGER_CONSTANTS_STUB, Ledger, LedgerConstants, RepWeightCache};
-use rsnano_core::{Account, Amount, ConfirmationHeightInfo};
-use rsnano_store_lmdb::{LmdbStore, LmdbWriteTransaction, TestDbFile};
+use rsban_core::{Account, Amount, ConfirmationHeightInfo};
+use rsban_store_lmdb::{LmdbStore, LmdbWriteTransaction, TestDbFile};
 use std::sync::Arc;
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-use rsnano_core::{
+use rsban_core::{
     epoch_v1_link, epoch_v2_link,
     utils::{get_env_or_default_string, seconds_since_epoch},
     work::{WorkThresholds, WORK_THRESHOLDS_STUB},
@@ -78,7 +78,7 @@ fn parse_block_from_genesis_data(genesis_data: &str) -> anyhow::Result<Block> {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::BlockType;
+    use rsban_core::BlockType;
 
     use super::*;
 

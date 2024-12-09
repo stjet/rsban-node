@@ -5,7 +5,7 @@ use crate::{
     ledger_tests::helpers::{setup_legacy_open_block, setup_open_block, AccountBlockFactory},
     Ledger, LedgerContext, RepWeightCache, DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH,
 };
-use rsnano_core::{
+use rsban_core::{
     utils::{new_test_timestamp, TEST_ENDPOINT_1},
     Account, Amount, BlockHash, PublicKey, QualifiedRoot, Root, SavedAccountChain,
     TestBlockBuilder, DEV_GENESIS_KEY,

@@ -44,4 +44,4 @@ ENTRYPOINT ["/usr/bin/rsban_node"]
 CMD ["node", "run"]
 
 ARG REPOSITORY=banano/rsban-node
-LABEL org.opencontainers.image.source https://github.com/$REPOSITORY
+LABEL org.opencontainers.image.source=https://github.com/$REPOSITORY

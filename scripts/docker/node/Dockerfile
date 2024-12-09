@@ -1,4 +1,4 @@
-FROM ubuntu:22.04 as builder
+FROM ubuntu:22.04 AS builder
 
 ARG COMPILER=gcc
 ARG NANO_NETWORK=live
@@ -30,7 +30,7 @@ FROM ubuntu:22.04
 RUN groupadd --gid 1000 bananode && \
     useradd --uid 1000 --gid bananode --shell /bin/bash --create-home bananode
 
-COPY --from=builder /tmp/src/target/release/rsbanano_node /usr/bin
+COPY --from=builder /tmp/src/target/release/rsban_node /usr/bin
 COPY --from=builder /etc/banano-network /etc
 
 COPY scripts/docker/node/config /usr/share/banano/config
@@ -40,8 +40,8 @@ WORKDIR /root
 USER root
 
 ENV PATH="${PATH}:/usr/bin"
-ENTRYPOINT ["/usr/bin/rsbanano_node"]
+ENTRYPOINT ["/usr/bin/rsban_node"]
 CMD ["node", "run"]
 
-ARG REPOSITORY=banano/rsbanano-node
-LABEL org.opencontainers.image.source https://github.com/$REPOSITORY
+ARG REPOSITORY=banano/rsban-node
+LABEL org.opencontainers.image.source=https://github.com/$REPOSITORY

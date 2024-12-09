@@ -27,7 +27,7 @@ RsBanano is a fork of RsNano, which is a Rust port of the original Nano node.
 
     docker build -f scripts/docker/node/Dockerfile -t rsbanano-node https://github.com/stjet/rsbanano-node.git#develop
 
-    docker run -p 54000:54000 -v ~/BananoBeta:/root/BananoBeta rsbanano-node:latest node run --network=beta
+    docker run -p 54019:54019 -v ~/BananoBeta:/root/BananoBeta rsbanano-node:latest node run --network=beta
 
 ## Option 3: Build from source
 

@@ -56,10 +56,10 @@ impl NetworkConfig {
             disable_max_peers_per_subnetwork: false,
             disable_network: false,
             listening_port: match network {
-                Networks::BananoDevNetwork => 44000,
-                Networks::BananoBetaNetwork => 54000,
-                Networks::BananoTestNetwork => 17076,
-                _ => 7075,
+                Networks::BananoDevNetwork => 44019,
+                Networks::BananoBetaNetwork => 54019,
+                Networks::BananoTestNetwork => 17019,
+                _ => 7072,
             },
         }
     }

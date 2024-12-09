@@ -91,10 +91,11 @@ impl NetworkConstants {
             protocol_version_min: protocol_info.version_min,
             bootstrap_protocol_version_min: BootstrapAscendingConfig::default()
                 .min_protocol_version,
-            default_node_port: 7075,
-            default_rpc_port: 7076,
-            default_ipc_port: 7077,
-            default_websocket_port: 7078,
+            /// https://github.com/BananoCoin/banano/wiki/Network-Specifications#default-ports
+            default_node_port: 7071,
+            default_rpc_port: 7072,
+            default_ipc_port: 7073,
+            default_websocket_port: 7074,
             aec_loop_interval: Duration::from_millis(300),
             cleanup_period,
             keepalive_period: Duration::from_secs(15),

@@ -5,9 +5,9 @@
 [![Discord](https://img.shields.io/badge/discord-join%20chat-orange.svg)](https://discord.gg/kBwvAyxEWE)
 
 
-### What is RsNano?
+### What is RsBanano?
 
-RsNano is a Rust port of the original Nano node.
+RsBanano is a fork of RsNano, which is a Rust port of the original Nano node.
 
 ### Links & Resources
 
@@ -19,38 +19,38 @@ RsNano is a Rust port of the original Nano node.
 
 **Please mind that this project is still in its early stages and hasn't been thoroughly tested yet!**
 
-## Option 1: Run the official docker image
+## Option 1: Run the official Docker image
 
-    docker run -p 54000:54000 -v ~/NanoBeta:/root/NanoBeta simpago/rsnano:V1.0RC1 nano_node daemon --network=beta
+    TBA
 
-## Option 2: Build your own docker image
+## Option 2: Build your own Docker image
 
-    docker build -f scripts/docker/node/Dockerfile -t rsnano-node https://github.com/simpago/rsnano-node.git#develop
+    docker build -f scripts/docker/node/Dockerfile -t rsbanano-node https://github.com/stjet/rsbanano-node.git#develop
 
-    docker run -p 54000:54000 -v ~/NanoBeta:/root/NanoBeta rsnano-node:latest node run --network=beta
+    docker run -p 54000:54000 -v ~/BananoBeta:/root/BananoBeta rsbanano-node:latest node run --network=beta
 
 ## Option 3: Build from source
 
-Currently you can only build RsNano on Linux and on Mac.
+Currently you can only build RsBanano on Linux and on Mac.
 
-To just build and run the rsnano_node:
+To just build and run the rsbanano_node:
 
-    git clone https://github.com/simpago/rsnano-node.git
-    cd rsnano-node/main
+    git clone https://github.com/stjet/rsbanano-node.git
+    cd rsbanano-node/main
     cargo build --release
     cargo run --release -- node run --network=beta
 
-To install and run the rsnano_node executable:
+To install and run the rsbanano_node executable:
 
-    git clone https://github.com/simpago/rsnano-node.git
-    cd rsnano-node
+    git clone https://github.com/stjet/rsbanano-node.git
+    cd rsbanano-node
     cargo install --path main
-    rsnano_node node run --network=beta
+    rsbanano_node node run --network=beta
 
 ### Contact us
 
 We want to hear about any trouble, success, delight, or pain you experience when
-using RsNano. Let us know by [filing an issue](https://github.com/simpago/rsnano-node/issues), or joining us on [Discord](https://discord.gg/kBwvAyxEWE).
+using RsBanano. Let us know by [filing an issue](https://github.com/stjet/rsbanano-node/issues), or joining the [RsNano Discord](https://discord.gg/kBwvAyxEWE) for issues common to both RsNano and RsBanano.
 
 # The codebase
 

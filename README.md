@@ -50,7 +50,7 @@ To install and run the rsbanano_node executable:
 ### Contact us
 
 We want to hear about any trouble, success, delight, or pain you experience when
-using RsBanano. Let us know by [filing an issue](https://github.com/simpago/rsnano-node/issues), or joining us on [Discord](https://discord.gg/kBwvAyxEWE).
+using RsBanano. Let us know by [filing an issue](https://github.com/stjet/rsbanano-node/issues), or joining the [RsNano Discord](https://discord.gg/kBwvAyxEWE) for issues common to both RsNano and RsBanano.
 
 # The codebase
 

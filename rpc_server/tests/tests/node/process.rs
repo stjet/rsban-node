@@ -1,6 +1,6 @@
-use rsnano_core::{UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
-use rsnano_ledger::DEV_GENESIS_ACCOUNT;
-use rsnano_rpc_messages::{BlockSubTypeDto, ProcessArgs};
+use rsban_core::{UnsavedBlockLatticeBuilder, DEV_GENESIS_KEY};
+use rsban_ledger::DEV_GENESIS_ACCOUNT;
+use rsban_rpc_messages::{BlockSubTypeDto, ProcessArgs};
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]

@@ -1,13 +1,13 @@
-use rsnano_core::{Amount, BlockHash, TestBlockBuilder, DEV_GENESIS_KEY};
-use rsnano_ledger::DEV_GENESIS_HASH;
-use rsnano_node::Node;
-use rsnano_rpc_messages::RepublishArgs;
+use rsban_core::{Amount, BlockHash, TestBlockBuilder, DEV_GENESIS_KEY};
+use rsban_ledger::DEV_GENESIS_HASH;
+use rsban_node::Node;
+use rsban_rpc_messages::RepublishArgs;
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 
 fn setup_test_environment(node: Arc<Node>) -> BlockHash {
     let genesis_hash = *DEV_GENESIS_HASH;
-    let key = rsnano_core::PrivateKey::new();
+    let key = rsban_core::PrivateKey::new();
 
     // Create and process send block
     let send = TestBlockBuilder::legacy_send()

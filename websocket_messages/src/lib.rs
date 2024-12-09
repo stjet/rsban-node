@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate num_derive;
 
-use rsnano_core::{
+use rsban_core::{
     utils::milliseconds_since_epoch, work::WorkThresholds, BlockHash, DifficultyV1, SavedBlock,
     WorkVersion,
 };

@@ -1,4 +1,4 @@
-use rsnano_core::{Account, WalletId};
+use rsban_core::{Account, WalletId};
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -26,7 +26,7 @@ mod tests {
 
         let expected_json = serde_json::json!({
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
-            "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+            "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
         });
 
         let actual_json: serde_json::Value = from_str(&serialized).unwrap();
@@ -37,7 +37,7 @@ mod tests {
     fn deserialize_wallet_with_account_args() {
         let json_str = r#"{
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
-            "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+            "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
         }"#;
 
         let deserialized: WalletWithAccountArgs = from_str(json_str).unwrap();

@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_node::{BUILD_INFO, VERSION_STRING};
-use rsnano_rpc_messages::VersionResponse;
+use rsban_node::{BUILD_INFO, VERSION_STRING};
+use rsban_rpc_messages::VersionResponse;
 
 impl RpcCommandHandler {
     pub(crate) fn version(&self) -> VersionResponse {

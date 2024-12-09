@@ -1,6 +1,6 @@
 use super::BlockInfoResponse;
 use crate::{RpcBool, RpcCommand};
-use rsnano_core::BlockHash;
+use rsban_core::BlockHash;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

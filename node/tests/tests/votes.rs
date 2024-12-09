@@ -1,9 +1,9 @@
-use rsnano_core::{
+use rsban_core::{
     Amount, BlockHash, Epoch, PrivateKey, Root, Signature, UnsavedBlockLatticeBuilder, Vote,
     VoteCode, VoteSource, WalletId, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-use rsnano_node::{
+use rsban_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsban_node::{
     consensus::VoteSpacing,
     stats::{DetailType, Direction, StatType},
     wallets::WalletsExt,

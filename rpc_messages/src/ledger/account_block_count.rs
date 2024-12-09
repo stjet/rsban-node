@@ -1,5 +1,5 @@
 use crate::{AccountArg, RpcCommand, RpcU64};
-use rsnano_core::Account;
+use rsban_core::Account;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -35,7 +35,7 @@ impl AccountBlockCountResponse {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::Account;
+    use rsban_core::Account;
     use serde_json::{from_str, to_string_pretty};
 
     #[test]
@@ -45,7 +45,7 @@ mod tests {
                 .unwrap(),
             r#"{
   "action": "account_block_count",
-  "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549"
+  "account": "ban_111111111111111111111111111111111111111111111111115uwdgas549"
 }"#
         )
     }

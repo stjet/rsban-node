@@ -1,5 +1,5 @@
 use crate::{RpcBool, RpcBoolNumber};
-use rsnano_core::BlockHash;
+use rsban_core::BlockHash;
 use serde::{Deserialize, Serialize};
 
 impl From<BlockHash> for BootstrapLazyArgs {

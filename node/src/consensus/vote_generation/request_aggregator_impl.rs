@@ -1,7 +1,7 @@
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::{BlockHash, Root, SavedBlock};
-use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::LmdbReadTransaction;
+use rsban_core::{BlockHash, Root, SavedBlock};
+use rsban_ledger::Ledger;
+use rsban_store_lmdb::LmdbReadTransaction;
 
 pub(super) struct RequestAggregatorImpl<'a> {
     ledger: &'a Ledger,

@@ -1,5 +1,5 @@
 use crate::{RpcCommand, RpcU64};
-use rsnano_core::Account;
+use rsban_core::Account;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -26,7 +26,7 @@ impl FrontiersArgs {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::Account;
+    use rsban_core::Account;
     use serde_json::to_string_pretty;
 
     #[test]
@@ -35,7 +35,7 @@ mod tests {
             to_string_pretty(&RpcCommand::frontiers(Account::zero(), 1)).unwrap(),
             r#"{
   "action": "frontiers",
-  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+  "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
   "count": "1"
 }"#
         )
@@ -45,7 +45,7 @@ mod tests {
     fn deserialize_frontiers_command() {
         let json_str = r#"{
   "action": "frontiers",
-  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+  "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
   "count": "1"
     }"#;
         let deserialized: RpcCommand = serde_json::from_str(json_str).unwrap();

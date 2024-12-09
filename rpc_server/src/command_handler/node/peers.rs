@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{DetailedPeers, PeerInfo, PeersArgs, PeersDto, SimplePeers};
+use rsban_rpc_messages::{DetailedPeers, PeerInfo, PeersArgs, PeersDto, SimplePeers};
 use std::{collections::HashMap, net::SocketAddrV6};
 
 impl RpcCommandHandler {

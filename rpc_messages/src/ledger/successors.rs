@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::{ChainArgs, RpcCommand};
-    use rsnano_core::BlockHash;
+    use rsban_core::BlockHash;
     use serde_json::{from_value, json};
 
     #[test]

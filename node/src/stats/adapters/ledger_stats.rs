@@ -1,6 +1,6 @@
 use crate::stats::{DetailType, Direction, StatType, Stats};
-use rsnano_core::{Block, BlockSubType};
-use rsnano_ledger::LedgerObserver;
+use rsban_core::{Block, BlockSubType};
+use rsban_ledger::LedgerObserver;
 use std::sync::Arc;
 
 pub struct LedgerStats {

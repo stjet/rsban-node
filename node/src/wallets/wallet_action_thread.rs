@@ -1,5 +1,5 @@
 use super::Wallet;
-use rsnano_core::Amount;
+use rsban_core::Amount;
 use std::{
     collections::BTreeMap,
     sync::{

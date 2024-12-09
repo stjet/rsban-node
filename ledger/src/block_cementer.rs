@@ -1,6 +1,6 @@
 use crate::{LedgerConstants, LedgerObserver, LedgerSetAny, LedgerSetConfirmed};
-use rsnano_core::{BlockHash, ConfirmationHeightInfo, SavedBlock};
-use rsnano_store_lmdb::{LmdbStore, LmdbWriteTransaction, Transaction};
+use rsban_core::{BlockHash, ConfirmationHeightInfo, SavedBlock};
+use rsban_store_lmdb::{LmdbStore, LmdbWriteTransaction, Transaction};
 use std::{collections::VecDeque, sync::atomic::Ordering};
 
 /// Cements Blocks in the ledger

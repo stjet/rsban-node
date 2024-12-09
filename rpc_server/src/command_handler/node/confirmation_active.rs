@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{unwrap_u64_or_zero, ConfirmationActiveArgs, ConfirmationActiveResponse};
+use rsban_rpc_messages::{unwrap_u64_or_zero, ConfirmationActiveArgs, ConfirmationActiveResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn confirmation_active(

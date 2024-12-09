@@ -1,10 +1,10 @@
 use super::rollback_planner::RollbackPlanner;
 use crate::Ledger;
-use rsnano_core::{
+use rsban_core::{
     utils::seconds_since_epoch, Account, AccountInfo, Block, BlockHash, ConfirmationHeightInfo,
     PendingInfo, PendingKey, PublicKey, SavedBlock,
 };
-use rsnano_store_lmdb::Transaction;
+use rsban_store_lmdb::Transaction;
 
 pub(crate) struct RollbackPlannerFactory<'a> {
     ledger: &'a Ledger,

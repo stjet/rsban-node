@@ -1,4 +1,4 @@
-use rsnano_core::utils::ContainerInfo;
+use rsban_core::utils::ContainerInfo;
 use std::{
     cmp::min,
     collections::{BTreeMap, HashMap, VecDeque},

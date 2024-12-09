@@ -1,6 +1,6 @@
-use rsnano_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, WalletId, DEV_GENESIS_KEY};
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
-use rsnano_node::{
+use rsban_core::{Amount, PrivateKey, UnsavedBlockLatticeBuilder, WalletId, DEV_GENESIS_KEY};
+use rsban_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_PUB_KEY};
+use rsban_node::{
     config::{NodeConfig, NodeFlags},
     consensus::ActiveElectionsExt,
     wallets::WalletsExt,

@@ -1,4 +1,4 @@
-use rsnano_rpc_messages::PeersDto;
+use rsban_rpc_messages::PeersDto;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]

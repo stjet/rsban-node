@@ -1,5 +1,5 @@
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::{utils::ContainerInfo, BlockHash, HashOrAccount, UncheckedInfo, UncheckedKey};
+use rsban_core::{utils::ContainerInfo, BlockHash, HashOrAccount, UncheckedInfo, UncheckedKey};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, VecDeque},
@@ -397,7 +397,7 @@ impl EntriesContainer {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_core::Block;
+    use rsban_core::Block;
 
     use super::*;
 

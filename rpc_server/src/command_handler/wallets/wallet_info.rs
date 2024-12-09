@@ -1,7 +1,7 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::Amount;
-use rsnano_rpc_messages::{WalletInfoResponse, WalletRpcMessage};
-use rsnano_store_lmdb::KeyType;
+use rsban_core::Amount;
+use rsban_rpc_messages::{WalletInfoResponse, WalletRpcMessage};
+use rsban_store_lmdb::KeyType;
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_info(&self, args: WalletRpcMessage) -> anyhow::Result<WalletInfoResponse> {

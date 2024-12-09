@@ -1,7 +1,7 @@
 use super::rollback_planner::RollbackInstructions;
 use crate::Ledger;
-use rsnano_core::{Amount, PublicKey};
-use rsnano_store_lmdb::LmdbWriteTransaction;
+use rsban_core::{Amount, PublicKey};
+use rsban_store_lmdb::LmdbWriteTransaction;
 use std::sync::atomic::Ordering;
 
 /// Updates the ledger according to the RollbackInstructions

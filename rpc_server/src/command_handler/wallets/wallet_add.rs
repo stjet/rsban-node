@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::{AccountResponse, WalletAddArgs};
+use rsban_node::wallets::WalletsExt;
+use rsban_rpc_messages::{AccountResponse, WalletAddArgs};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_add(&self, args: WalletAddArgs) -> anyhow::Result<AccountResponse> {

@@ -3,8 +3,8 @@ use crate::{
     stats::{DetailType, Direction, StatType, Stats},
     NetworkParams,
 };
-use rsnano_core::{utils::ContainerInfo, Account, PublicKey};
-use rsnano_ledger::RepWeightCache;
+use rsban_core::{utils::ContainerInfo, Account, PublicKey};
+use rsban_ledger::RepWeightCache;
 use std::{
     collections::HashSet,
     mem::size_of,

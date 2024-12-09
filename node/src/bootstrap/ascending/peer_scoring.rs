@@ -1,5 +1,5 @@
 use super::BootstrapAscendingConfig;
-use rsnano_network::{ChannelId, ChannelInfo, TrafficType};
+use rsban_network::{ChannelId, ChannelInfo, TrafficType};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{Arc, Weak},

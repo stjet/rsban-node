@@ -1,4 +1,4 @@
-use rsnano_core::{Account, PrivateKey, UnsavedBlockLatticeBuilder};
+use rsban_core::{Account, PrivateKey, UnsavedBlockLatticeBuilder};
 use std::time::Duration;
 use test_helpers::{assert_timely, System};
 

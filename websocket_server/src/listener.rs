@@ -1,8 +1,8 @@
 use super::{ConfirmationJsonOptions, ConfirmationOptions, Options, WebsocketSessionEntry};
 use crate::WebsocketSession;
-use rsnano_core::{Account, Amount, BlockSideband, MaybeSavedBlock, VoteWithWeightInfo};
-use rsnano_node::{consensus::ElectionStatus, wallets::Wallets};
-use rsnano_websocket_messages::{OutgoingMessageEnvelope, Topic};
+use rsban_core::{Account, Amount, BlockSideband, MaybeSavedBlock, VoteWithWeightInfo};
+use rsban_node::{consensus::ElectionStatus, wallets::Wallets};
+use rsban_websocket_messages::{OutgoingMessageEnvelope, Topic};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{

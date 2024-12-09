@@ -1,6 +1,6 @@
 use super::OnlineReps;
-use rsnano_core::Amount;
-use rsnano_ledger::RepWeightCache;
+use rsban_core::Amount;
+use rsban_ledger::RepWeightCache;
 use std::{sync::Arc, time::Duration};
 
 pub const DEFAULT_ONLINE_WEIGHT_MINIMUM: Amount = Amount::nano(60_000_000);

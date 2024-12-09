@@ -2,7 +2,7 @@ use super::{
     get_node_toml_config_path, read_toml_file, DaemonToml, NodeConfig, NodeRpcConfig, OpenclConfig,
 };
 use crate::NetworkParams;
-use rsnano_core::Networks;
+use rsban_core::Networks;
 use std::path::Path;
 
 #[derive(Debug, PartialEq)]

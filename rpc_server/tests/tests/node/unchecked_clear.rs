@@ -1,5 +1,5 @@
-use rsnano_core::{Account, Amount, Block, BlockHash, PrivateKey, StateBlockArgs};
-use rsnano_ledger::{DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsban_core::{Account, Amount, Block, BlockHash, PrivateKey, StateBlockArgs};
+use rsban_ledger::{DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
 use std::time::Duration;
 use test_helpers::{assert_timely, setup_rpc_client_and_server, System};
 

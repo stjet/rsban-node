@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{AccountResponse, HashRpcMessage};
+use rsban_rpc_messages::{AccountResponse, HashRpcMessage};
 
 impl RpcCommandHandler {
     pub(crate) fn block_account(&self, args: HashRpcMessage) -> anyhow::Result<AccountResponse> {

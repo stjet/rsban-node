@@ -1,8 +1,8 @@
 use crate::cli::get_path;
 use anyhow::Result;
 use clap::{ArgGroup, Parser};
-use rsnano_node::wallets::Wallets;
-use rsnano_store_lmdb::LmdbEnv;
+use rsban_node::wallets::Wallets;
+use rsban_store_lmdb::LmdbEnv;
 use std::sync::Arc;
 
 #[derive(Parser)]

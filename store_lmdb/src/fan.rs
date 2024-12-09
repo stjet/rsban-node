@@ -1,5 +1,5 @@
 use rand::{thread_rng, Rng};
-use rsnano_core::RawKey;
+use rsban_core::RawKey;
 
 /// The fan spreads a key out over the heap to decrease the likelihood of it being recovered by memory inspection
 pub struct Fan {

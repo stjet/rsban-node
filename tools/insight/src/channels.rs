@@ -1,9 +1,9 @@
 use crate::message_collection::MessageCollection;
-use rsnano_core::Amount;
-use rsnano_ledger::RepWeightCache;
-use rsnano_messages::TelemetryData;
-use rsnano_network::{ChannelDirection, ChannelId, ChannelInfo};
-use rsnano_node::representatives::PeeredRep;
+use rsban_core::Amount;
+use rsban_ledger::RepWeightCache;
+use rsban_messages::TelemetryData;
+use rsban_network::{ChannelDirection, ChannelId, ChannelInfo};
+use rsban_node::representatives::PeeredRep;
 use std::{
     collections::{HashMap, HashSet},
     net::SocketAddrV6,

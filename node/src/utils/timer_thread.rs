@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
+use rsban_output_tracker::{OutputListenerMt, OutputTrackerMt};
 
 // Runs a task periodically in it's own thread
 pub struct TimerThread<T: Runnable + 'static> {

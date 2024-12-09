@@ -1,5 +1,5 @@
 use crate::{common::WalletRpcMessage, RpcCommand};
-use rsnano_core::{Account, WalletId, WorkNonce};
+use rsban_core::{Account, WalletId, WorkNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -23,7 +23,7 @@ impl AccountsWithWorkResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{Account, WalletId, WorkNonce};
+    use rsban_core::{Account, WalletId, WorkNonce};
     use serde_json::to_string_pretty;
     use std::collections::HashMap;
 
@@ -53,7 +53,7 @@ mod tests {
 
         let works = AccountsWithWorkResponse::new(works_map);
 
-        let expected_json = r#"{"works":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000001"}}"#;
+        let expected_json = r#"{"works":{"ban_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000001"}}"#;
         let serialized = serde_json::to_string(&works).unwrap();
 
         assert_eq!(serialized, expected_json);
@@ -61,7 +61,7 @@ mod tests {
 
     #[test]
     fn deserialize_wallet_work_get_dto() {
-        let json_data = r#"{"works":{"nano_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000001"}}"#;
+        let json_data = r#"{"works":{"ban_1111111111111111111111111111111111111111111111111111hifc8npp":"0000000000000001"}}"#;
         let works: AccountsWithWorkResponse = serde_json::from_str(json_data).unwrap();
 
         let mut expected_works_map = HashMap::new();

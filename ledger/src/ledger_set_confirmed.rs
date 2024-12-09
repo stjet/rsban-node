@@ -1,5 +1,5 @@
-use rsnano_core::{Account, Amount, BlockHash, PendingInfo, PendingKey, SavedBlock};
-use rsnano_store_lmdb::{LmdbStore, Transaction};
+use rsban_core::{Account, Amount, BlockHash, PendingInfo, PendingKey, SavedBlock};
+use rsban_store_lmdb::{LmdbStore, Transaction};
 
 pub struct LedgerSetConfirmed<'a> {
     store: &'a LmdbStore,
@@ -136,7 +136,7 @@ impl<'a> Iterator for ConfirmedReceivableIterator<'a> {
 #[cfg(test)]
 mod tests {
     use crate::Ledger;
-    use rsnano_core::{
+    use rsban_core::{
         Account, BlockHash, ConfirmationHeightInfo, PendingInfo, PendingKey, SavedBlock,
     };
 

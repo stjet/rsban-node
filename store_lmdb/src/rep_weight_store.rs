@@ -3,13 +3,13 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use lmdb_sys::{MDB_cursor_op, MDB_FIRST, MDB_NEXT};
-use rsnano_core::{
+use rsban_core::{
     utils::{BufferReader, Deserialize},
     Amount, PublicKey,
 };
-use rsnano_nullable_lmdb::ConfiguredDatabase;
+use rsban_nullable_lmdb::ConfiguredDatabase;
 #[cfg(feature = "output_tracking")]
-use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
+use rsban_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::sync::Arc;
 
 pub struct LmdbRepWeightStore {

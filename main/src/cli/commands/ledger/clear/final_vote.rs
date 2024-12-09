@@ -1,8 +1,8 @@
 use crate::cli::get_path;
 use anyhow::Result;
 use clap::{ArgGroup, Parser};
-use rsnano_core::Root;
-use rsnano_store_lmdb::{LmdbEnv, LmdbFinalVoteStore};
+use rsban_core::Root;
+use rsban_store_lmdb::{LmdbEnv, LmdbFinalVoteStore};
 use std::sync::Arc;
 
 #[derive(Parser)]

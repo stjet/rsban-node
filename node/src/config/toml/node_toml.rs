@@ -1,6 +1,6 @@
 use super::*;
 use crate::config::NodeConfig;
-use rsnano_core::{utils::Peer, Account, Amount};
+use rsban_core::{utils::Peer, Account, Amount};
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, time::Duration};
 

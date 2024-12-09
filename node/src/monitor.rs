@@ -3,8 +3,8 @@ use crate::{
     representatives::OnlineReps,
     utils::{CancellationToken, Runnable},
 };
-use rsnano_ledger::Ledger;
-use rsnano_network::NetworkInfo;
+use rsban_ledger::Ledger;
+use rsban_network::NetworkInfo;
 use std::{
     sync::{Arc, Mutex, RwLock},
     time::Instant,

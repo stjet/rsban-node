@@ -1,6 +1,6 @@
-use rsnano_core::{utils::ContainerInfo, Account, BlockHash, PendingKey};
-use rsnano_ledger::Ledger;
-use rsnano_store_lmdb::LmdbReadTransaction;
+use rsban_core::{utils::ContainerInfo, Account, BlockHash, PendingKey};
+use rsban_ledger::Ledger;
+use rsban_store_lmdb::LmdbReadTransaction;
 use std::{collections::VecDeque, sync::Arc};
 
 const BATCH_SIZE: usize = 512;
@@ -187,8 +187,8 @@ impl PendingDatabaseIterator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{PrivateKey, UnsavedBlockLatticeBuilder};
-    use rsnano_ledger::LedgerContext;
+    use rsban_core::{PrivateKey, UnsavedBlockLatticeBuilder};
+    use rsban_ledger::LedgerContext;
 
     #[test]
     fn pending_database_scanner() {

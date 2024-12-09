@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{LockedResponse, WalletRpcMessage};
+use rsban_rpc_messages::{LockedResponse, WalletRpcMessage};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_lock(&self, args: WalletRpcMessage) -> anyhow::Result<LockedResponse> {

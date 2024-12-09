@@ -1,4 +1,4 @@
-use rsnano_core::{
+use rsban_core::{
     Account, AccountInfo, Amount, BlockHash, BlockSubType, ConfirmationHeightInfo, Epoch, Epochs,
     PendingInfo, PendingKey, PublicKey, SavedBlock,
 };

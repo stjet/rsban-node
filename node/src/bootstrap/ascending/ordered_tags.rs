@@ -1,5 +1,5 @@
-use rsnano_core::{Account, BlockHash, HashOrAccount};
-use rsnano_nullable_clock::Timestamp;
+use rsban_core::{Account, BlockHash, HashOrAccount};
+use rsban_nullable_clock::Timestamp;
 use std::{
     collections::{HashMap, VecDeque},
     mem::size_of,

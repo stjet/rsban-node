@@ -1,5 +1,5 @@
 use crate::RpcF32;
-use rsnano_core::WorkNonce;
+use rsban_core::WorkNonce;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]

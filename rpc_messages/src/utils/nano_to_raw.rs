@@ -1,5 +1,5 @@
 use crate::{common::AmountRpcMessage, RpcCommand};
-use rsnano_core::Amount;
+use rsban_core::Amount;
 
 impl RpcCommand {
     pub fn nano_to_raw(amount: u64) -> Self {
@@ -17,7 +17,7 @@ mod tests {
         assert_eq!(
             to_string_pretty(&RpcCommand::nano_to_raw(1)).unwrap(),
             r#"{
-  "action": "nano_to_raw",
+  "action": "ban_to_raw",
   "amount": "1"
 }"#
         );

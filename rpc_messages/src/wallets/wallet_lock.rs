@@ -1,5 +1,5 @@
 use crate::{common::WalletRpcMessage, RpcCommand};
-use rsnano_core::WalletId;
+use rsban_core::WalletId;
 
 impl RpcCommand {
     pub fn wallet_lock(wallet: WalletId) -> Self {

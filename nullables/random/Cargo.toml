@@ -1,5 +1,5 @@
 [package]
-name = "rsnano_nullable_random"
+name = "rsban_nullable_random"
 version = "0.1.0"
 edition = "2021"
 

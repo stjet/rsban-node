@@ -17,7 +17,7 @@ pub use node_config::*;
 pub use node_flags::*;
 pub use node_rpc_config::*;
 pub use opencl_config::*;
-pub use rsnano_core::Networks;
+pub use rsban_core::Networks;
 use serde::de::DeserializeOwned;
 use std::path::{Path, PathBuf};
 pub use toml::DaemonToml;

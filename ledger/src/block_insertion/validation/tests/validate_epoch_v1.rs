@@ -1,6 +1,6 @@
 use super::BlockValidationTest;
 use crate::BlockStatus;
-use rsnano_core::{AccountInfo, Amount, BlockDetails, Epoch};
+use rsban_core::{AccountInfo, Amount, BlockDetails, Epoch};
 
 #[test]
 fn updgrade_to_epoch_v1() {

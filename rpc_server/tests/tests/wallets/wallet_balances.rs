@@ -1,6 +1,6 @@
-use rsnano_core::{Account, Amount, PublicKey, RawKey, UnsavedBlockLatticeBuilder, WalletId};
-use rsnano_node::{wallets::WalletsExt, Node};
-use rsnano_rpc_messages::{AccountBalanceResponse, AccountsBalancesResponse, WalletBalancesArgs};
+use rsban_core::{Account, Amount, PublicKey, RawKey, UnsavedBlockLatticeBuilder, WalletId};
+use rsban_node::{wallets::WalletsExt, Node};
+use rsban_rpc_messages::{AccountBalanceResponse, AccountsBalancesResponse, WalletBalancesArgs};
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 

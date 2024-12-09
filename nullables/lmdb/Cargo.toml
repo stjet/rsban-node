@@ -1,5 +1,5 @@
 [package]
-name = "rsnano_nullable_lmdb"
+name = "rsban_nullable_lmdb"
 version = "0.1.0"
 edition = "2021"
 

@@ -1,6 +1,6 @@
 use super::priority::{Priority, PriorityKeyDesc};
-use rsnano_core::Account;
-use rsnano_nullable_clock::Timestamp;
+use rsban_core::Account;
+use rsban_nullable_clock::Timestamp;
 use std::collections::BTreeMap;
 use std::collections::VecDeque;
 use std::mem::size_of;

@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use reqwest::{IntoUrl, Method, StatusCode};
-use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
+use rsban_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{collections::HashMap, sync::Arc};
 

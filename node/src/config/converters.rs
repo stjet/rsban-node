@@ -3,7 +3,7 @@ use crate::{
     block_processing::{BacklogPopulationConfig, BlockProcessorConfig},
     bootstrap::BootstrapInitiatorConfig,
 };
-use rsnano_network::{bandwidth_limiter::BandwidthLimiterConfig, NetworkConfig};
+use rsban_network::{bandwidth_limiter::BandwidthLimiterConfig, NetworkConfig};
 use std::time::Duration;
 
 impl From<&GlobalConfig> for BlockProcessorConfig {

@@ -3,9 +3,9 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     utils::{ThreadPool, ThreadPoolImpl},
 };
-use rsnano_core::{utils::ContainerInfo, BlockHash, SavedBlock};
-use rsnano_ledger::{Ledger, WriteGuard, Writer};
-use rsnano_store_lmdb::LmdbWriteTransaction;
+use rsban_core::{utils::ContainerInfo, BlockHash, SavedBlock};
+use rsban_ledger::{Ledger, WriteGuard, Writer};
+use rsban_store_lmdb::LmdbWriteTransaction;
 use std::{
     collections::{HashSet, VecDeque},
     sync::{
@@ -424,7 +424,7 @@ pub(crate) struct Context {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{ConfirmationHeightInfo, SavedAccountChain};
+    use rsban_core::{ConfirmationHeightInfo, SavedAccountChain};
     use std::time::Duration;
 
     #[test]

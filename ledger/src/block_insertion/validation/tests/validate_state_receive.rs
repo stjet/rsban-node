@@ -1,5 +1,5 @@
 use crate::{block_insertion::validation::tests::BlockValidationTest, BlockStatus};
-use rsnano_core::{AccountInfo, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, PendingKey};
+use rsban_core::{AccountInfo, Amount, BlockDetails, BlockHash, BlockSideband, Epoch, PendingKey};
 
 #[test]
 fn valid_receive_block() {

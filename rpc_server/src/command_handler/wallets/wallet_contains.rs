@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{ExistsResponse, WalletWithAccountArgs};
+use rsban_rpc_messages::{ExistsResponse, WalletWithAccountArgs};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_contains(

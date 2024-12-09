@@ -1,8 +1,8 @@
 use super::{FairQueue, MessageCallback};
 use crate::stats::{DetailType, StatType, Stats};
-use rsnano_core::utils::ContainerInfo;
-use rsnano_messages::Message;
-use rsnano_network::{ChannelId, ChannelInfo, DeadChannelCleanupStep};
+use rsban_core::utils::ContainerInfo;
+use rsban_messages::Message;
+use rsban_network::{ChannelId, ChannelInfo, DeadChannelCleanupStep};
 use std::{
     collections::VecDeque,
     sync::{Arc, Condvar, Mutex},
@@ -140,7 +140,7 @@ struct State {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_messages::Message;
+    use rsban_messages::Message;
 
     #[test]
     fn put_and_get_one_message() {

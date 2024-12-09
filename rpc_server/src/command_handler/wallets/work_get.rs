@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{WalletWithAccountArgs, WorkResponse};
+use rsban_rpc_messages::{WalletWithAccountArgs, WorkResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn work_get(&self, args: WalletWithAccountArgs) -> anyhow::Result<WorkResponse> {

@@ -1,6 +1,6 @@
 use crate::{RpcBool, RpcCommand, RpcU16, RpcU32, RpcU64, RpcU8};
-use rsnano_core::{to_hex_string, BlockHash, NodeId, Signature};
-use rsnano_messages::TelemetryData;
+use rsban_core::{to_hex_string, BlockHash, NodeId, Signature};
+use rsban_messages::TelemetryData;
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 use std::net::{Ipv6Addr, SocketAddrV6};
 
@@ -159,8 +159,8 @@ impl<'de> Deserialize<'de> for TelemetryResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{to_hex_string, BlockHash, Signature};
-    use rsnano_messages::TelemetryData;
+    use rsban_core::{to_hex_string, BlockHash, Signature};
+    use rsban_messages::TelemetryData;
     use std::time::UNIX_EPOCH;
 
     fn create_test_telemetry_data() -> TelemetryData {

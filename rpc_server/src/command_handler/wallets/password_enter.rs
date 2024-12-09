@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_node::wallets::{WalletsError, WalletsExt};
-use rsnano_rpc_messages::{ValidResponse, WalletWithPasswordArgs};
+use rsban_node::wallets::{WalletsError, WalletsExt};
+use rsban_rpc_messages::{ValidResponse, WalletWithPasswordArgs};
 
 impl RpcCommandHandler {
     pub(crate) fn password_enter(

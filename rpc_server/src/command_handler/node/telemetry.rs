@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_rpc_messages::{TelemetryArgs, TelemetryDto, TelemetryResponse};
+use rsban_rpc_messages::{TelemetryArgs, TelemetryDto, TelemetryResponse};
 use std::net::SocketAddrV6;
 
 impl RpcCommandHandler {

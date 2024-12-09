@@ -1,5 +1,5 @@
 [package]
-name = "rsnano_messages"
+name = "rsban_messages"
 version = "0.1.0"
 authors = ["Gustav Schauwecker <service@simpago.com>"]
 edition = "2021"
@@ -7,7 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rsnano_core = { path = "../core" }
+rsban_core = { path = "../core" }
 anyhow = "1"
 bitvec = "1"
 num = "0"

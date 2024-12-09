@@ -2,7 +2,7 @@ use crate::{
     common::{BlockTypeDto, WorkVersionDto},
     RpcCommand, RpcU64,
 };
-use rsnano_core::{Account, Amount, BlockHash, JsonBlock, Link, RawKey, WalletId, WorkNonce};
+use rsban_core::{Account, Amount, BlockHash, JsonBlock, Link, RawKey, WalletId, WorkNonce};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -95,7 +95,7 @@ impl BlockCreateResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{Block, PrivateKey, PublicKey, RawKey};
+    use rsban_core::{Block, PrivateKey, PublicKey, RawKey};
     use serde_json::json;
 
     #[test]
@@ -165,10 +165,10 @@ mod tests {
     "type": "state",
     "balance": "1000000000000000000000000000000",
     "key": "0000000000000000000000000000000000000000000000000000000000000002",
-    "representative": "nano_1hza3f7wiiqa7ig3jczyxj5yo86yegcmqk3criaz838j91sxcckpfhbhhra1",
+    "representative": "ban_1hza3f7wiiqa7ig3jczyxj5yo86yegcmqk3criaz838j91sxcckpfhbhhra1",
     "link": "19D3D919475DEED4696B5D13018151D1AF88B2BD3BCFF048B45031C1F36D1858",
     "previous": "F47B23107E5F34B2CE06F562B5C435DF72A533251CB414C51B2B62A8F63A00E4",
-    "account": "nano_1hza3f7wiiqa7ig3jczyxj5yo86yegcmqk3criaz838j91sxcckpfhbhhra1",
+    "account": "ban_1hza3f7wiiqa7ig3jczyxj5yo86yegcmqk3criaz838j91sxcckpfhbhhra1",
     "work": "0000000000000123",
     "version": "work1"
 }"#;
@@ -182,7 +182,7 @@ mod tests {
             wallet: None,
             account: Some(
                 Account::decode_account(
-                    "nano_1hza3f7wiiqa7ig3jczyxj5yo86yegcmqk3criaz838j91sxcckpfhbhhra1",
+                    "ban_1hza3f7wiiqa7ig3jczyxj5yo86yegcmqk3criaz838j91sxcckpfhbhhra1",
                 )
                 .unwrap(),
             ),
@@ -190,7 +190,7 @@ mod tests {
             destination: None,
             representative: Some(
                 Account::decode_account(
-                    "nano_1hza3f7wiiqa7ig3jczyxj5yo86yegcmqk3criaz838j91sxcckpfhbhhra1",
+                    "ban_1hza3f7wiiqa7ig3jczyxj5yo86yegcmqk3criaz838j91sxcckpfhbhhra1",
                 )
                 .unwrap(),
             ),

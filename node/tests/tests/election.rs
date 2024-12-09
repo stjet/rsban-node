@@ -1,7 +1,7 @@
-use rsnano_core::{
+use rsban_core::{
     Amount, PrivateKey, UnsavedBlockLatticeBuilder, Vote, VoteSource, DEV_GENESIS_KEY,
 };
-use rsnano_node::{
+use rsban_node::{
     config::NodeConfig,
     consensus::ElectionBehavior,
     stats::{DetailType, Direction, StatType},

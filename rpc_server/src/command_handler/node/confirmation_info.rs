@@ -1,8 +1,8 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::{anyhow, bail};
 use indexmap::IndexMap;
-use rsnano_core::{Account, Amount};
-use rsnano_rpc_messages::{ConfirmationBlockInfoDto, ConfirmationInfoArgs, ConfirmationInfoDto};
+use rsban_core::{Account, Amount};
+use rsban_rpc_messages::{ConfirmationBlockInfoDto, ConfirmationInfoArgs, ConfirmationInfoDto};
 
 impl RpcCommandHandler {
     pub(crate) fn confirmation_info(

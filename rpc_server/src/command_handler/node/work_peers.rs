@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::RpcError;
+use rsban_rpc_messages::RpcError;
 use tracing::warn;
 
 impl RpcCommandHandler {

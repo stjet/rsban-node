@@ -7,8 +7,8 @@ use std::{
 
 use anyhow::Result;
 use rand::Rng;
-use rsnano_core::{utils::ContainerInfo, Account, Signature};
-use rsnano_messages::Cookie;
+use rsban_core::{utils::ContainerInfo, Account, Signature};
+use rsban_messages::Cookie;
 
 /// Node ID cookies for node ID handshakes
 pub struct SynCookies {

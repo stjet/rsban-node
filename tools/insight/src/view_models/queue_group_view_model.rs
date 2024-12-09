@@ -1,5 +1,5 @@
 use num_format::{Locale, ToFormattedString};
-use rsnano_node::transport::{FairQueueInfo, QueueInfo};
+use rsban_node::transport::{FairQueueInfo, QueueInfo};
 use std::{fmt::Debug, hash::Hash};
 use strum::IntoEnumIterator;
 

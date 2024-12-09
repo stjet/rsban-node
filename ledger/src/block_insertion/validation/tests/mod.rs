@@ -12,7 +12,7 @@ mod validate_state_send;
 use crate::{
     block_insertion::BlockInsertInstructions, ledger_constants::LEDGER_CONSTANTS_STUB, BlockStatus,
 };
-use rsnano_core::{
+use rsban_core::{
     work::WORK_THRESHOLDS_STUB, Account, Amount, Block, Epoch, PendingInfo, SavedAccountChain,
 };
 

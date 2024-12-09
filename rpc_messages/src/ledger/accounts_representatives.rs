@@ -1,5 +1,5 @@
 use crate::{common::AccountsRpcMessage, RpcCommand};
-use rsnano_core::Account;
+use rsban_core::Account;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -19,7 +19,7 @@ pub struct AccountsRepresentativesResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::Account;
+    use rsban_core::Account;
     use serde_json::{from_str, to_string_pretty};
 
     #[test]
@@ -32,7 +32,7 @@ mod tests {
             r#"{
   "action": "accounts_representatives",
   "accounts": [
-    "nano_111111111111111111111111111111111111111111111111115uwdgas549"
+    "ban_111111111111111111111111111111111111111111111111115uwdgas549"
   ]
 }"#
         )
@@ -60,7 +60,7 @@ mod tests {
             to_string_pretty(&dto).unwrap(),
             r#"{
   "representatives": {
-    "nano_111111111111111111111111111111111111111111111111115uwdgas549": "nano_11111111111111111111111111111111111111111111111111gahteczqci"
+    "ban_111111111111111111111111111111111111111111111111115uwdgas549": "ban_11111111111111111111111111111111111111111111111111gahteczqci"
   }
 }"#
         );
@@ -70,7 +70,7 @@ mod tests {
     fn deserialize_accounts_representatives_dto_without_errors() {
         let json = r#"{
   "representatives": {
-    "nano_111111111111111111111111111111111111111111111111115uwdgas549": "nano_11111111111111111111111111111111111111111111111111gahteczqci"
+    "ban_111111111111111111111111111111111111111111111111115uwdgas549": "ban_11111111111111111111111111111111111111111111111111gahteczqci"
   }
 }"#;
         let dto: AccountsRepresentativesResponse = from_str(json).unwrap();
@@ -99,10 +99,10 @@ mod tests {
             to_string_pretty(&dto).unwrap(),
             r#"{
   "representatives": {
-    "nano_111111111111111111111111111111111111111111111111115uwdgas549": "nano_11111111111111111111111111111111111111111111111111gahteczqci"
+    "ban_111111111111111111111111111111111111111111111111115uwdgas549": "ban_11111111111111111111111111111111111111111111111111gahteczqci"
   },
   "errors": {
-    "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy": "Invalid account"
+    "ban_11111111111111111111111111111111111111111111111111ros3kc7wyy": "Invalid account"
   }
 }"#
         );
@@ -112,10 +112,10 @@ mod tests {
     fn deserialize_accounts_representatives_dto_with_errors() {
         let json = r#"{
   "representatives": {
-    "nano_111111111111111111111111111111111111111111111111115uwdgas549": "nano_11111111111111111111111111111111111111111111111111gahteczqci"
+    "ban_111111111111111111111111111111111111111111111111115uwdgas549": "ban_11111111111111111111111111111111111111111111111111gahteczqci"
   },
   "errors": {
-    "nano_11111111111111111111111111111111111111111111111111ros3kc7wyy": "Invalid account"
+    "ban_11111111111111111111111111111111111111111111111111ros3kc7wyy": "Invalid account"
   }
 }"#;
         let dto: AccountsRepresentativesResponse = from_str(json).unwrap();

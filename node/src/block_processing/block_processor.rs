@@ -3,13 +3,13 @@ use crate::{
     stats::{DetailType, StatType, Stats},
     transport::{FairQueue, FairQueueInfo},
 };
-use rsnano_core::{
+use rsban_core::{
     utils::ContainerInfo, work::WorkThresholds, Block, BlockType, Epoch, HashOrAccount, Networks,
     SavedBlock, UncheckedInfo,
 };
-use rsnano_ledger::{BlockStatus, Ledger, Writer};
-use rsnano_network::{ChannelId, DeadChannelCleanupStep};
-use rsnano_store_lmdb::LmdbWriteTransaction;
+use rsban_ledger::{BlockStatus, Ledger, Writer};
+use rsban_network::{ChannelId, DeadChannelCleanupStep};
+use rsban_store_lmdb::LmdbWriteTransaction;
 use std::{
     collections::VecDeque,
     mem::size_of,

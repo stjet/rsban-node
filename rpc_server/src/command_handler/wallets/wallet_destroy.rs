@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_rpc_messages::{DestroyedResponse, WalletRpcMessage};
+use rsban_rpc_messages::{DestroyedResponse, WalletRpcMessage};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_destroy(

@@ -2,7 +2,7 @@ use super::TallyKey;
 use crate::stats::{DetailType, StatType, Stats};
 #[cfg(test)]
 use mock_instant::thread_local::Instant;
-use rsnano_core::{utils::ContainerInfo, Amount, BlockHash, PublicKey, Vote, VoteCode};
+use rsban_core::{utils::ContainerInfo, Amount, BlockHash, PublicKey, Vote, VoteCode};
 #[cfg(not(test))]
 use std::time::Instant;
 use std::{
@@ -520,7 +520,7 @@ mod tests {
     use super::*;
     use crate::stats::Direction;
     use mock_instant::thread_local::MockClock;
-    use rsnano_core::PrivateKey;
+    use rsban_core::PrivateKey;
 
     fn create_vote(rep: &PrivateKey, hash: &BlockHash, timestamp_offset: u64) -> Arc<Vote> {
         Arc::new(Vote::new(

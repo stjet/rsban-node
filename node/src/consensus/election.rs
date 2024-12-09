@@ -3,7 +3,7 @@ use crate::{
     stats::{DetailType, StatType},
     utils::HardenedConstants,
 };
-use rsnano_core::{
+use rsban_core::{
     Amount, Block, BlockHash, MaybeSavedBlock, PublicKey, QualifiedRoot, Root, SavedBlock,
 };
 use std::{
@@ -52,7 +52,7 @@ impl Election {
 
         let data = ElectionData {
             status: ElectionStatus {
-                winner: Some(rsnano_core::MaybeSavedBlock::Saved(block.clone())),
+                winner: Some(rsban_core::MaybeSavedBlock::Saved(block.clone())),
                 election_end: SystemTime::now(),
                 block_count: 1,
                 election_status_type: super::ElectionStatusType::Ongoing,

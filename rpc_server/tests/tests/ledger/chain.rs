@@ -1,7 +1,7 @@
-use rsnano_core::{Amount, PrivateKey, WalletId, DEV_GENESIS_KEY};
-use rsnano_ledger::DEV_GENESIS_ACCOUNT;
-use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::ChainArgs;
+use rsban_core::{Amount, PrivateKey, WalletId, DEV_GENESIS_KEY};
+use rsban_ledger::DEV_GENESIS_ACCOUNT;
+use rsban_node::wallets::WalletsExt;
+use rsban_rpc_messages::ChainArgs;
 use std::{time::Duration, u64};
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 

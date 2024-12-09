@@ -1,6 +1,6 @@
-use rsnano_core::{Account, Amount, UnsavedBlockLatticeBuilder};
-use rsnano_node::Node;
-use rsnano_rpc_messages::UnopenedArgs;
+use rsban_core::{Account, Amount, UnsavedBlockLatticeBuilder};
+use rsban_node::Node;
+use rsban_rpc_messages::UnopenedArgs;
 use std::sync::Arc;
 use std::time::Duration;
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};

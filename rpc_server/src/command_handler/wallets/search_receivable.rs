@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_node::wallets::{WalletsError, WalletsExt};
-use rsnano_rpc_messages::{StartedResponse, WalletRpcMessage};
+use rsban_node::wallets::{WalletsError, WalletsExt};
+use rsban_rpc_messages::{StartedResponse, WalletRpcMessage};
 
 impl RpcCommandHandler {
     pub(crate) fn search_receivable(

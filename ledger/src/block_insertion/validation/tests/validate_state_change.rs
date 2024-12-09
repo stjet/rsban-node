@@ -1,5 +1,5 @@
 use crate::block_insertion::validation::tests::BlockValidationTest;
-use rsnano_core::{AccountInfo, BlockDetails, BlockHash, BlockSideband, Epoch};
+use rsban_core::{AccountInfo, BlockDetails, BlockHash, BlockSideband, Epoch};
 
 #[test]
 fn valid_change_block() {

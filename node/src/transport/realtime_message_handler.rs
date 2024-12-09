@@ -8,9 +8,9 @@ use crate::{
     wallets::Wallets,
     Telemetry,
 };
-use rsnano_core::VoteSource;
-use rsnano_messages::Message;
-use rsnano_network::{ChannelInfo, NetworkInfo};
+use rsban_core::VoteSource;
+use rsban_messages::Message;
+use rsban_network::{ChannelInfo, NetworkInfo};
 use std::{
     net::SocketAddrV6,
     sync::{Arc, RwLock},

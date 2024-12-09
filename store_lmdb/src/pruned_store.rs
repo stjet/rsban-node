@@ -4,8 +4,8 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use rand::{thread_rng, Rng};
-use rsnano_core::{BlockHash, NoValue};
-use rsnano_nullable_lmdb::ConfiguredDatabase;
+use rsban_core::{BlockHash, NoValue};
+use rsban_nullable_lmdb::ConfiguredDatabase;
 use std::sync::Arc;
 
 pub type PrunedIterator<'txn> = BinaryDbIterator<'txn, BlockHash, NoValue>;

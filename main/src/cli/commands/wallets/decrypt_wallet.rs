@@ -1,9 +1,9 @@
 use crate::cli::get_path;
 use anyhow::{anyhow, Result};
 use clap::Parser;
-use rsnano_core::WalletId;
-use rsnano_node::wallets::{Wallets, WalletsExt};
-use rsnano_store_lmdb::LmdbEnv;
+use rsban_core::WalletId;
+use rsban_node::wallets::{Wallets, WalletsExt};
+use rsban_store_lmdb::LmdbEnv;
 use std::sync::Arc;
 
 #[derive(Parser)]

@@ -39,22 +39,22 @@ use crate::{
     NetworkParams, NodeCallbacks, OnlineWeightSampler, TelementryConfig, TelementryExt, Telemetry,
     BUILD_INFO, VERSION_STRING,
 };
-use rsnano_core::{
+use rsban_core::{
     utils::{system_time_as_nanoseconds, ContainerInfo},
     work::{WorkPool, WorkPoolImpl},
     Account, Amount, Block, BlockHash, BlockType, Networks, NodeId, PrivateKey, Root, SavedBlock,
     VoteCode, VoteSource,
 };
-use rsnano_ledger::{BlockStatus, Ledger, RepWeightCache};
-use rsnano_messages::{ConfirmAck, Message, Publish};
-use rsnano_network::{
+use rsban_ledger::{BlockStatus, Ledger, RepWeightCache};
+use rsban_messages::{ConfirmAck, Message, Publish};
+use rsban_network::{
     ChannelId, DeadChannelCleanup, DropPolicy, Network, NetworkCleanup, NetworkInfo, PeerConnector,
     TcpListener, TcpListenerExt, TrafficType,
 };
-use rsnano_nullable_clock::{SteadyClock, SystemTimeFactory};
-use rsnano_nullable_http_client::{HttpClient, Url};
-use rsnano_output_tracker::OutputListenerMt;
-use rsnano_store_lmdb::{
+use rsban_nullable_clock::{SteadyClock, SystemTimeFactory};
+use rsban_nullable_http_client::{HttpClient, Url};
+use rsban_output_tracker::OutputListenerMt;
+use rsban_store_lmdb::{
     EnvOptions, LmdbConfig, LmdbEnv, LmdbStore, NullTransactionTracker, SyncStrategy,
     TransactionTracker,
 };
@@ -1642,7 +1642,7 @@ struct RpcCallbackMessage {
 mod tests {
     use super::*;
     use crate::{utils::TimerStartEvent, NodeBuilder};
-    use rsnano_core::Networks;
+    use rsban_core::Networks;
     use std::ops::Deref;
     use uuid::Uuid;
 

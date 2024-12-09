@@ -1,6 +1,6 @@
 use crate::RepWeightCache;
-use rsnano_core::{Amount, PublicKey};
-use rsnano_store_lmdb::{LmdbRepWeightStore, LmdbWriteTransaction};
+use rsban_core::{Amount, PublicKey};
+use rsban_store_lmdb::{LmdbRepWeightStore, LmdbWriteTransaction};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -108,7 +108,7 @@ impl RepWeightsUpdater {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_store_lmdb::{ConfiguredRepWeightDatabaseBuilder, LmdbEnv};
+    use rsban_store_lmdb::{ConfiguredRepWeightDatabaseBuilder, LmdbEnv};
 
     #[test]
     fn representation_changes() {

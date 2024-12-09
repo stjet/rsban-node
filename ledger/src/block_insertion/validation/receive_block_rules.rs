@@ -1,6 +1,6 @@
 use super::BlockValidator;
 use crate::BlockStatus;
-use rsnano_core::{Block, Epoch};
+use rsban_core::{Block, Epoch};
 
 impl<'a> BlockValidator<'a> {
     pub fn ensure_pending_receive_is_correct(&self) -> Result<(), BlockStatus> {

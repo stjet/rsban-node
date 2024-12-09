@@ -2,7 +2,7 @@ use crate::{
     BinaryDbIterator, LmdbDatabase, LmdbEnv, LmdbIteratorImpl, LmdbWriteTransaction, Transaction,
 };
 use lmdb::{DatabaseFlags, WriteFlags};
-use rsnano_core::Amount;
+use rsban_core::Amount;
 use std::sync::Arc;
 
 pub type OnlineWeightIterator<'txn> = BinaryDbIterator<'txn, u64, Amount>;

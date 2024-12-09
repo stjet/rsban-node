@@ -1,5 +1,5 @@
 use once_cell::sync::Lazy;
-use rsnano_core::Networks;
+use rsban_core::Networks;
 use std::{path::PathBuf, sync::Mutex};
 use uuid::Uuid;
 

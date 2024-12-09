@@ -1,7 +1,7 @@
-use rsnano_core::{utils::ContainerInfo, PrivateKey, Signature};
-use rsnano_ledger::Ledger;
-use rsnano_messages::{Message, TelemetryAck, TelemetryData, TelemetryMaker};
-use rsnano_nullable_clock::SteadyClock;
+use rsban_core::{utils::ContainerInfo, PrivateKey, Signature};
+use rsban_ledger::Ledger;
+use rsban_messages::{Message, TelemetryAck, TelemetryData, TelemetryMaker};
+use rsban_nullable_clock::SteadyClock;
 use std::{
     cmp::min,
     collections::{HashMap, VecDeque},
@@ -19,7 +19,7 @@ use crate::{
     transport::MessagePublisher,
     NetworkParams,
 };
-use rsnano_network::{
+use rsban_network::{
     ChannelId, ChannelInfo, ChannelMode, DeadChannelCleanupStep, DropPolicy, NetworkInfo,
     TrafficType,
 };

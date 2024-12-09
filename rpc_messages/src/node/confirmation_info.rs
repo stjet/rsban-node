@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
-use rsnano_core::QualifiedRoot;
-use rsnano_core::{Account, Amount, BlockHash, JsonBlock};
+use rsban_core::QualifiedRoot;
+use rsban_core::{Account, Amount, BlockHash, JsonBlock};
 use serde::{Deserialize, Serialize};
 
 use crate::{RpcBool, RpcU32, RpcUsize};

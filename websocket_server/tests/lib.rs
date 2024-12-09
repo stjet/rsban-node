@@ -1,18 +1,18 @@
 use core::panic;
 use futures_util::{SinkExt, StreamExt};
-use rsnano_core::{
+use rsban_core::{
     Account, Amount, Block, JsonBlock, Networks, PrivateKey, SendBlockArgs,
     UnsavedBlockLatticeBuilder, Vote, VoteCode, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-use rsnano_messages::{Message, Publish};
-use rsnano_node::{
+use rsban_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsban_messages::{Message, Publish};
+use rsban_node::{
     bootstrap::{BootstrapInitiatorExt, BootstrapStarted},
     config::{NetworkConstants, NodeConfig, WebsocketConfig},
     Node,
 };
-use rsnano_websocket_messages::{OutgoingMessageEnvelope, Topic};
-use rsnano_websocket_server::{
+use rsban_websocket_messages::{OutgoingMessageEnvelope, Topic};
+use rsban_websocket_server::{
     create_websocket_server, vote_received, BlockConfirmed, TelemetryReceived, VoteReceived,
     WebsocketListener, WebsocketListenerExt,
 };

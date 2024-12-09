@@ -1,5 +1,5 @@
-use rsnano_core::Amount;
-use rsnano_ledger::DEV_GENESIS_ACCOUNT;
+use rsban_core::Amount;
+use rsban_ledger::DEV_GENESIS_ACCOUNT;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]

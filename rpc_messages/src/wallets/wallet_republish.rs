@@ -1,5 +1,5 @@
 use crate::{RpcCommand, WalletWithCountArgs};
-use rsnano_core::WalletId;
+use rsban_core::WalletId;
 
 impl RpcCommand {
     pub fn wallet_republish(wallet: WalletId, count: u64) -> Self {

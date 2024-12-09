@@ -1,4 +1,4 @@
-use rsnano_rpc_messages::{TelemetryArgs, TelemetryDto};
+use rsban_rpc_messages::{TelemetryArgs, TelemetryDto};
 use std::{
     net::{Ipv6Addr, SocketAddrV6},
     time::Duration,

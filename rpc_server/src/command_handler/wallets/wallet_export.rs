@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{JsonResponse, WalletRpcMessage};
+use rsban_rpc_messages::{JsonResponse, WalletRpcMessage};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_export(&self, args: WalletRpcMessage) -> anyhow::Result<JsonResponse> {

@@ -1,5 +1,5 @@
 use crate::config::NodeConfig;
-use rsnano_core::utils::Peer;
+use rsban_core::utils::Peer;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 

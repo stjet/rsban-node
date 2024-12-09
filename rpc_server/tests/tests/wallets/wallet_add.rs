@@ -1,6 +1,6 @@
-use rsnano_core::{PublicKey, RawKey, WalletId};
-use rsnano_node::wallets::WalletsExt;
-use rsnano_rpc_messages::WalletAddArgs;
+use rsban_core::{PublicKey, RawKey, WalletId};
+use rsban_node::wallets::WalletsExt;
+use rsban_rpc_messages::WalletAddArgs;
 use std::time::Duration;
 use test_helpers::{assert_timely, setup_rpc_client_and_server, System};
 

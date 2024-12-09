@@ -1,5 +1,5 @@
 use crate::{RpcCommand, RpcU32};
-use rsnano_core::{Account, RawKey, WalletId};
+use rsban_core::{Account, RawKey, WalletId};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -95,7 +95,7 @@ impl WalletChangeSeedResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{RawKey, WalletId};
+    use rsban_core::{RawKey, WalletId};
 
     #[test]
     fn serialize_wallet_change_seed_command() {
@@ -223,14 +223,14 @@ mod tests {
 
     #[test]
     fn deserialize_wallet_change_seed_dto() {
-        let json = r#"{"success":"","last_restored_account":"nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3","restored_count":"15"}"#;
+        let json = r#"{"success":"","last_restored_account":"ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3","restored_count":"15"}"#;
         let deserialized: WalletChangeSeedResponse = serde_json::from_str(json).unwrap();
 
         assert_eq!(deserialized.success, "");
         assert_eq!(
             deserialized.last_restored_account,
             Account::decode_account(
-                "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+                "ban_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
             )
             .unwrap()
         );

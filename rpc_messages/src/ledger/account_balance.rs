@@ -1,5 +1,5 @@
 use crate::RpcBool;
-use rsnano_core::{Account, Amount};
+use rsban_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -77,7 +77,7 @@ mod tests {
             to_string_pretty(&RpcCommand::AccountBalance(account_balance_args)).unwrap(),
             r#"{
   "action": "account_balance",
-  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+  "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
   "include_only_confirmed": "false"
 }"#
         )
@@ -87,7 +87,7 @@ mod tests {
     fn deserialize_account_balance_command_include_unconfirmed_blocks() {
         let json = r#"{
             "action": "account_balance",
-            "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549",
+            "account": "ban_111111111111111111111111111111111111111111111111115uwdgas549",
             "include_only_confirmed": "true"
         }"#;
 
@@ -108,7 +108,7 @@ mod tests {
             to_string_pretty(&RpcCommand::AccountBalance(account_balance_args)).unwrap(),
             r#"{
   "action": "account_balance",
-  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+  "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
 }"#
         )
     }

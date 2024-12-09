@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use rsnano_core::Account;
+use rsban_core::Account;
 
 #[derive(Parser)]
 pub(crate) struct PublicKeyToAccountArgs {

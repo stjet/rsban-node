@@ -1,5 +1,5 @@
 use crate::RpcU64;
-use rsnano_core::{Account, Amount};
+use rsban_core::{Account, Amount};
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -85,13 +85,13 @@ mod tests {
     fn serialize_delegators_command() {
         let command = RpcCommand::Delegators(Account::zero().into());
         let serialized = serde_json::to_value(command).unwrap();
-        let expected = json!({"action": "delegators", "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"});
+        let expected = json!({"action": "delegators", "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"});
         assert_eq!(serialized, expected);
     }
 
     #[test]
     fn deserialize_delegators_command() {
-        let json = r#"{"action": "delegators","account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"}"#;
+        let json = r#"{"action": "delegators","account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"}"#;
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();
         let expected = RpcCommand::Delegators(Account::zero().into());
         assert_eq!(deserialized, expected);
@@ -101,7 +101,7 @@ mod tests {
     fn serialize_delegators_args() {
         let args = DelegatorsArgs {
             account: Account::decode_account(
-                "nano_1111111111111111111111111111111111111111111111111117353trpda",
+                "ban_1111111111111111111111111111111111111111111111111117353trpda",
             )
             .unwrap(),
             threshold: Some(Amount::raw(1)),
@@ -110,10 +110,10 @@ mod tests {
         };
         let serialized = serde_json::to_value(args).unwrap();
         let expected = json!({
-            "account": "nano_1111111111111111111111111111111111111111111111111117353trpda",
+            "account": "ban_1111111111111111111111111111111111111111111111111117353trpda",
             "threshold": "1",
             "count": "0",
-            "start": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+            "start": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
         });
         assert_eq!(serialized, expected);
     }
@@ -121,16 +121,16 @@ mod tests {
     #[test]
     fn deserialize_delegators_args() {
         let json = r#"{
-            "account": "nano_1111111111111111111111111111111111111111111111111117353trpda",
+            "account": "ban_1111111111111111111111111111111111111111111111111117353trpda",
             "threshold": "1",
             "count": "0",
-            "start": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+            "start": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
         }"#;
         let deserialized: DelegatorsArgs = serde_json::from_str(json).unwrap();
         assert_eq!(
             deserialized.account,
             Account::decode_account(
-                "nano_1111111111111111111111111111111111111111111111111117353trpda"
+                "ban_1111111111111111111111111111111111111111111111111117353trpda"
             )
             .unwrap()
         );

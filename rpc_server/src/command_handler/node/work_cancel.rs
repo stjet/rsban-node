@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{HashRpcMessage, SuccessResponse};
+use rsban_rpc_messages::{HashRpcMessage, SuccessResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn work_cancel(&self, args: HashRpcMessage) -> SuccessResponse {

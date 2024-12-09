@@ -1,8 +1,8 @@
 use super::{MessageViewModel, PaletteColor};
 use crate::message_collection::{MessageCollection, RecordedMessage};
-use rsnano_core::{Account, BlockHash};
-use rsnano_messages::{Message, MessageType};
-use rsnano_network::ChannelDirection;
+use rsban_core::{Account, BlockHash};
+use rsban_messages::{Message, MessageType};
+use rsban_network::ChannelDirection;
 use std::sync::{Arc, RwLock};
 
 pub(crate) struct RowViewModel {

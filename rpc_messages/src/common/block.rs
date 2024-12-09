@@ -1,4 +1,4 @@
-use rsnano_core::BlockHash;
+use rsban_core::BlockHash;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]

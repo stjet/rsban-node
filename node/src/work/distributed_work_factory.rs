@@ -1,4 +1,4 @@
-use rsnano_core::{
+use rsban_core::{
     to_hex_string,
     work::{WorkPool, WorkPoolImpl},
     Account, Block, Root,
@@ -133,7 +133,7 @@ impl DistributedWorkFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::work::WorkPoolImpl;
+    use rsban_core::work::WorkPoolImpl;
     use std::sync::Arc;
 
     #[tokio::test]

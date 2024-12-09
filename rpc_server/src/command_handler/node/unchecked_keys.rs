@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{UncheckedKeyDto, UncheckedKeysArgs, UncheckedKeysResponse};
+use rsban_rpc_messages::{UncheckedKeyDto, UncheckedKeysArgs, UncheckedKeysResponse};
 use std::cell::RefCell;
 
 impl RpcCommandHandler {

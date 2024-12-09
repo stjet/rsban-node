@@ -1,4 +1,4 @@
-use rsnano_core::{BlockHash, PrivateKey, TestStateBlockBuilder};
+use rsban_core::{BlockHash, PrivateKey, TestStateBlockBuilder};
 use test_helpers::{assert_timely_msg, setup_rpc_client_and_server, System};
 use tokio::time::Duration;
 

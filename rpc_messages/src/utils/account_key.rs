@@ -1,5 +1,5 @@
 use crate::{common::AccountArg, RpcCommand};
-use rsnano_core::Account;
+use rsban_core::Account;
 
 impl RpcCommand {
     pub fn account_key(account: Account) -> Self {
@@ -10,7 +10,7 @@ impl RpcCommand {
 #[cfg(test)]
 mod tests {
     use crate::RpcCommand;
-    use rsnano_core::Account;
+    use rsban_core::Account;
     use serde_json::to_string_pretty;
 
     #[test]
@@ -19,7 +19,7 @@ mod tests {
             to_string_pretty(&RpcCommand::account_key(Account::zero())).unwrap(),
             r#"{
   "action": "account_key",
-  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+  "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
 }"#
         )
     }

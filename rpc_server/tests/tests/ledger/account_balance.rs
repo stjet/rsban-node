@@ -1,5 +1,5 @@
-use rsnano_core::{Amount, DEV_GENESIS_KEY};
-use rsnano_rpc_messages::AccountBalanceArgs;
+use rsban_core::{Amount, DEV_GENESIS_KEY};
+use rsban_rpc_messages::AccountBalanceArgs;
 use test_helpers::{send_block, setup_rpc_client_and_server, System};
 
 #[test]

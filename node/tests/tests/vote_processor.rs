@@ -1,10 +1,10 @@
-use rsnano_core::{
+use rsban_core::{
     utils::milliseconds_since_epoch, Amount, PrivateKey, Signature, UnsavedBlockLatticeBuilder,
     Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-use rsnano_network::ChannelId;
-use rsnano_node::{
+use rsban_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsban_network::ChannelId;
+use rsban_node::{
     config::{NodeConfig, NodeFlags},
     consensus::RepTier,
     stats::{DetailType, Direction, StatType},

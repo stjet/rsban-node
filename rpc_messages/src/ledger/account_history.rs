@@ -1,5 +1,5 @@
 use crate::{BlockSubTypeDto, BlockTypeDto, RpcBool, RpcCommand, RpcU64};
-use rsnano_core::{Account, Amount, BlockHash, Link, Signature, WorkNonce};
+use rsban_core::{Account, Amount, BlockHash, Link, Signature, WorkNonce};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -167,7 +167,7 @@ mod tests {
   "offset": "5",
   "reverse": "true",
   "account_filter": [
-    "nano_111111111111111111111111111111111111111111111111115uwdgas549"
+    "ban_111111111111111111111111111111111111111111111111115uwdgas549"
   ]
 }"#
         )
@@ -177,13 +177,13 @@ mod tests {
     fn deserialize_account_history_command() {
         let json = r#"{
             "action": "account_history",
-            "account": "nano_111111111111111111111111111111111111111111111111115uwdgas549",
+            "account": "ban_111111111111111111111111111111111111111111111111115uwdgas549",
             "count": "5",
             "raw": "true",
             "head": "0000000000000000000000000000000000000000000000000000000000000000",
             "offset": "10",
             "reverse": "false",
-            "account_filter": ["nano_1111111111111111111111111111111111111111111111111111hifc8npp"]
+            "account_filter": ["ban_1111111111111111111111111111111111111111111111111111hifc8npp"]
         }"#;
 
         let deserialized: RpcCommand = serde_json::from_str(json).unwrap();

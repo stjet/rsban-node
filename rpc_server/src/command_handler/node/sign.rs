@@ -1,7 +1,7 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::{Block, PrivateKey};
-use rsnano_rpc_messages::{SignArgs, SignResponse};
+use rsban_core::{Block, PrivateKey};
+use rsban_rpc_messages::{SignArgs, SignResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn sign(&self, args: SignArgs) -> anyhow::Result<SignResponse> {

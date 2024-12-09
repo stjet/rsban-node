@@ -2,7 +2,7 @@ use crate::cli::get_path;
 use anyhow::Context;
 use anyhow::Result;
 use clap::Parser;
-use rsnano_store_lmdb::LmdbStore;
+use rsban_store_lmdb::LmdbStore;
 use std::fs;
 
 #[derive(Parser)]

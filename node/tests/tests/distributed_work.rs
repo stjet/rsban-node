@@ -1,4 +1,4 @@
-use rsnano_core::BlockHash;
+use rsban_core::BlockHash;
 use test_helpers::System;
 
 async fn no_peers() {

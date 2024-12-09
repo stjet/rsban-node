@@ -1,5 +1,5 @@
-use rsnano_core::BlockHash;
-use rsnano_node::config::NodeFlags;
+use rsban_core::BlockHash;
+use rsban_node::config::NodeFlags;
 use test_helpers::{send_block, setup_rpc_client_and_server, System};
 
 #[test]

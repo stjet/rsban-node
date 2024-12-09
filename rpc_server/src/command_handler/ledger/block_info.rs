@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_core::BlockType;
-use rsnano_rpc_messages::{BlockInfoResponse, BlockSubTypeDto, HashRpcMessage};
+use rsban_core::BlockType;
+use rsban_rpc_messages::{BlockInfoResponse, BlockSubTypeDto, HashRpcMessage};
 
 impl RpcCommandHandler {
     pub(crate) fn block_info(&self, args: HashRpcMessage) -> anyhow::Result<BlockInfoResponse> {

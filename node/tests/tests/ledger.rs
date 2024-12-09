@@ -1,17 +1,17 @@
-use rsnano_core::{
+use rsban_core::{
     Account, Amount, Block, BlockHash, Epoch, PrivateKey, SendBlock, Signature, StateBlockArgs,
     UnsavedBlockLatticeBuilder, Vote, VoteCode, VoteSource, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{BlockStatus, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
-use rsnano_network::ChannelId;
-use rsnano_node::{block_processing::BlockSource, config::NodeConfig};
+use rsban_ledger::{BlockStatus, DEV_GENESIS_HASH, DEV_GENESIS_PUB_KEY};
+use rsban_network::ChannelId;
+use rsban_node::{block_processing::BlockSource, config::NodeConfig};
 use std::{sync::Arc, time::Duration};
 use test_helpers::{assert_timely, assert_timely_eq, start_elections, System};
 
 mod votes {
     use super::*;
-    use rsnano_core::UnsavedBlockLatticeBuilder;
-    use rsnano_node::consensus::ActiveElectionsExt;
+    use rsban_core::UnsavedBlockLatticeBuilder;
+    use rsban_node::consensus::ActiveElectionsExt;
     use std::time::SystemTime;
     use test_helpers::start_election;
 

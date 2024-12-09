@@ -1,5 +1,5 @@
 use crate::{RpcCommand, WalletWithAccountArgs};
-use rsnano_core::{Account, WalletId, WorkNonce};
+use rsban_core::{Account, WalletId, WorkNonce};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -22,7 +22,7 @@ impl WorkResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{Account, WalletId};
+    use rsban_core::{Account, WalletId};
     use serde_json::to_string_pretty;
 
     #[test]
@@ -32,7 +32,7 @@ mod tests {
             r#"{
   "action": "work_get",
   "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
-  "account": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+  "account": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
 }"#
         )
     }

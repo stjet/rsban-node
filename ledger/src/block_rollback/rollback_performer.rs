@@ -1,5 +1,5 @@
-use rsnano_core::{AccountInfo, BlockHash, SavedBlock};
-use rsnano_store_lmdb::LmdbWriteTransaction;
+use rsban_core::{AccountInfo, BlockHash, SavedBlock};
+use rsban_store_lmdb::LmdbWriteTransaction;
 
 use crate::Ledger;
 

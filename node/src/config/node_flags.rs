@@ -1,5 +1,5 @@
 use crate::block_processing::BlockProcessorConfig;
-use rsnano_ledger::GenerateCacheFlags;
+use rsban_ledger::GenerateCacheFlags;
 
 #[derive(Clone)]
 pub struct NodeFlags {

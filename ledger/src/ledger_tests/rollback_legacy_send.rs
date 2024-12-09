@@ -1,5 +1,5 @@
-use rsnano_core::PendingKey;
-use rsnano_store_lmdb::LmdbWriteTransaction;
+use rsban_core::PendingKey;
+use rsban_store_lmdb::LmdbWriteTransaction;
 
 use crate::{
     ledger_constants::{DEV_GENESIS_PUB_KEY, LEDGER_CONSTANTS_STUB},

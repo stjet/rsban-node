@@ -63,7 +63,7 @@ impl From<&DaemonConfig> for OpenclToml {
 #[cfg(test)]
 mod tests {
     use crate::config::{DaemonConfig, DaemonToml};
-    use rsnano_core::Networks;
+    use rsban_core::Networks;
     use std::path::PathBuf;
 
     static CUSTOM_TOML_STR: &str = r#"[node]
@@ -95,7 +95,7 @@ mod tests {
         peering_port = 999
         pow_sleep_interval = 999
         preconfigured_peers = ["dev.org"]
-        preconfigured_representatives = ["nano_3arg3asgtigae3xckabaaewkx3bzsh7nwz7jkmjos79ihyaxwphhm6qgjps4"]
+        preconfigured_representatives = ["ban_3arg3asgtigae3xckabaaewkx3bzsh7nwz7jkmjos79ihyaxwphhm6qgjps4"]
         receive_minimum = "999"
         signature_checker_threads = 999
         tcp_incoming_connections_max = 999

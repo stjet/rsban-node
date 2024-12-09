@@ -1,4 +1,4 @@
-use rsnano_core::{Amount, WalletId};
+use rsban_core::{Amount, WalletId};
 use serde::{Deserialize, Serialize};
 
 use crate::{RpcBool, RpcUsize};
@@ -22,7 +22,7 @@ pub struct WalletReceivableArgs {
 mod tests {
     use super::*;
     use crate::RpcCommand;
-    use rsnano_core::{Amount, WalletId};
+    use rsban_core::{Amount, WalletId};
     use serde_json::to_string_pretty;
 
     #[test]

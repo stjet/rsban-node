@@ -25,19 +25,19 @@ use num::clamp;
 use ordered_tags::QuerySource;
 use priority::Priority;
 use rand::{thread_rng, RngCore};
-use rsnano_core::{
+use rsban_core::{
     utils::ContainerInfo, Account, AccountInfo, Block, BlockHash, BlockType, HashOrAccount,
     SavedBlock,
 };
-use rsnano_ledger::{BlockStatus, Ledger};
-use rsnano_messages::{
+use rsban_ledger::{BlockStatus, Ledger};
+use rsban_messages::{
     AccountInfoAckPayload, AccountInfoReqPayload, AscPullAck, AscPullAckType, AscPullReq,
     AscPullReqType, BlocksAckPayload, BlocksReqPayload, HashType, Message,
 };
-use rsnano_network::{
+use rsban_network::{
     bandwidth_limiter::RateLimiter, ChannelId, DropPolicy, NetworkInfo, TrafficType,
 };
-use rsnano_nullable_clock::{SteadyClock, Timestamp};
+use rsban_nullable_clock::{SteadyClock, Timestamp};
 use std::{
     cmp::{max, min},
     sync::{Arc, Condvar, Mutex, RwLock},

@@ -14,8 +14,8 @@ use super::{
     election_schedulers::ElectionSchedulers, Election, ElectionData, LocalVoteHistory,
     RecentlyConfirmedCache, TallyKey, VoteGenerators,
 };
-use rsnano_core::{Amount, BlockHash, MaybeSavedBlock, PublicKey, VoteCode, VoteSource};
-use rsnano_ledger::Ledger;
+use rsban_core::{Amount, BlockHash, MaybeSavedBlock, PublicKey, VoteCode, VoteSource};
+use rsban_ledger::Ledger;
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{atomic::Ordering, Arc, Mutex, MutexGuard, RwLock, Weak},

@@ -1,5 +1,5 @@
-use rsnano_core::{utils::seconds_since_epoch, Account, Block, PendingKey, SavedBlock};
-use rsnano_store_lmdb::Transaction;
+use rsban_core::{utils::seconds_since_epoch, Account, Block, PendingKey, SavedBlock};
+use rsban_store_lmdb::Transaction;
 
 use crate::Ledger;
 
@@ -77,7 +77,7 @@ impl<'a> BlockValidatorFactory<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{AccountInfo, BlockHash, Link, PendingInfo, TestBlockBuilder};
+    use rsban_core::{AccountInfo, BlockHash, Link, PendingInfo, TestBlockBuilder};
 
     #[test]
     fn block_for_unknown_account() {

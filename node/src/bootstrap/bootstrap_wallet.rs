@@ -4,8 +4,8 @@ use super::{
     BulkPullAccountClientExt,
 };
 use crate::{block_processing::BlockProcessor, stats::Stats, utils::ThreadPool};
-use rsnano_core::{Account, Amount, Block};
-use rsnano_ledger::Ledger;
+use rsban_core::{Account, Amount, Block};
+use rsban_ledger::Ledger;
 use std::{
     collections::VecDeque,
     sync::{atomic::Ordering, Arc, Mutex, MutexGuard, Weak},

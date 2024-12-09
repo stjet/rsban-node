@@ -4,12 +4,12 @@ use crate::{
     transport::MessageCallback,
     working_path_for, NetworkParams, Node, NodeArgs,
 };
-use rsnano_core::{
+use rsban_core::{
     utils::get_cpu_count, work::WorkPoolImpl, Account, Amount, Networks, Vote, VoteCode,
     VoteSource, VoteWithWeightInfo,
 };
-use rsnano_messages::Message;
-use rsnano_network::ChannelId;
+use rsban_messages::Message;
+use rsban_network::ChannelId;
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
 #[derive(Default)]

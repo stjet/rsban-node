@@ -1,5 +1,5 @@
 use crate::{RpcBool, RpcCommand};
-use rsnano_core::{Account, WalletId};
+use rsban_core::{Account, WalletId};
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {
@@ -63,7 +63,7 @@ impl SetResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{Account, WalletId};
+    use rsban_core::{Account, WalletId};
     use serde_json::{from_str, to_string};
 
     #[test]
@@ -75,7 +75,7 @@ mod tests {
 
         let expected_json = serde_json::json!({
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
-            "representative": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+            "representative": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
         });
 
         let actual_json: serde_json::Value = from_str(&serialized).unwrap();
@@ -93,7 +93,7 @@ mod tests {
 
         let expected_json = serde_json::json!({
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
-            "representative": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+            "representative": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
             "update_existing_accounts": "true"
         });
 
@@ -105,7 +105,7 @@ mod tests {
     fn deserialize_wallet_representative_set_args_update_existing_accounts_none() {
         let json_str = r#"{
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
-            "representative": "nano_1111111111111111111111111111111111111111111111111111hifc8npp"
+            "representative": "ban_1111111111111111111111111111111111111111111111111111hifc8npp"
         }"#;
 
         let deserialized: WalletRepresentativeSetArgs = from_str(json_str).unwrap();
@@ -119,7 +119,7 @@ mod tests {
     fn deserialize_wallet_representative_set_args_update_existing_accounts_some() {
         let json_str = r#"{
             "wallet": "0000000000000000000000000000000000000000000000000000000000000000",
-            "representative": "nano_1111111111111111111111111111111111111111111111111111hifc8npp",
+            "representative": "ban_1111111111111111111111111111111111111111111111111111hifc8npp",
             "update_existing_accounts": "true"
         }"#;
 

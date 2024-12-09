@@ -4,13 +4,13 @@ use crate::{
 };
 use lmdb::{DatabaseFlags, WriteFlags};
 use num_traits::FromPrimitive;
-use rsnano_core::{
+use rsban_core::{
     utils::{BufferReader, Deserialize, FixedSizeSerialize},
     Block, BlockHash, BlockSideband, BlockType, SavedBlock,
 };
-use rsnano_nullable_lmdb::ConfiguredDatabase;
+use rsban_nullable_lmdb::ConfiguredDatabase;
 #[cfg(feature = "output_tracking")]
-use rsnano_output_tracker::{OutputListenerMt, OutputTrackerMt};
+use rsban_output_tracker::{OutputListenerMt, OutputTrackerMt};
 use std::sync::Arc;
 
 pub type BlockIterator<'txn> = BinaryDbIterator<'txn, BlockHash, SavedBlock>;
@@ -208,7 +208,7 @@ fn block_successor_offset(entry_size: usize, block_type: BlockType) -> usize {
 #[cfg(test)]
 mod tests {
     use crate::PutEvent;
-    use rsnano_core::TestBlockBuilder;
+    use rsban_core::TestBlockBuilder;
 
     use super::*;
 

@@ -1,7 +1,7 @@
 use std::u64;
 
-use rsnano_core::BlockHash;
-use rsnano_rpc_messages::SuccessResponse;
+use rsban_core::BlockHash;
+use rsban_rpc_messages::SuccessResponse;
 use test_helpers::{assert_timely, setup_rpc_client_and_server, System};
 
 #[test]

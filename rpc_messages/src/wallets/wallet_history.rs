@@ -1,5 +1,5 @@
 use crate::{HistoryEntry, RpcCommand, RpcU64};
-use rsnano_core::WalletId;
+use rsban_core::WalletId;
 use serde::{Deserialize, Serialize};
 
 impl RpcCommand {

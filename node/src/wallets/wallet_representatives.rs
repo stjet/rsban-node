@@ -1,7 +1,7 @@
 use std::{collections::HashSet, sync::Arc};
 
-use rsnano_core::{Account, Amount, PublicKey};
-use rsnano_ledger::Ledger;
+use rsban_core::{Account, Amount, PublicKey};
+use rsban_ledger::Ledger;
 
 pub struct WalletRepresentatives {
     /// has representatives with at least 50% of principal representative requirements

@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::{SuccessResponse, WalletAddWatchArgs};
+use rsban_rpc_messages::{SuccessResponse, WalletAddWatchArgs};
 
 impl RpcCommandHandler {
     pub(crate) fn wallet_add_watch(

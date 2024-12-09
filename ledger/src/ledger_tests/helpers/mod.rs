@@ -2,8 +2,8 @@ mod account_block_factory;
 
 use crate::LedgerContext;
 pub(crate) use account_block_factory::AccountBlockFactory;
-use rsnano_core::{Amount, Block, SavedBlock};
-use rsnano_store_lmdb::LmdbWriteTransaction;
+use rsban_core::{Amount, Block, SavedBlock};
+use rsban_store_lmdb::LmdbWriteTransaction;
 
 pub(crate) fn upgrade_genesis_to_epoch_v1(
     ctx: &LedgerContext,

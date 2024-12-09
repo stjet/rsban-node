@@ -1,5 +1,5 @@
-use rsnano_core::{Account, PublicKey};
-use rsnano_nullable_clock::Timestamp;
+use rsban_core::{Account, PublicKey};
+use rsban_nullable_clock::Timestamp;
 use std::{
     collections::{BTreeMap, HashMap},
     mem::size_of,

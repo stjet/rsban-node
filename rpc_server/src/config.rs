@@ -1,5 +1,5 @@
-use rsnano_core::Networks;
-use rsnano_node::config::{get_rpc_toml_config_path, read_toml_file, NetworkConstants};
+use rsban_core::Networks;
+use rsban_node::config::{get_rpc_toml_config_path, read_toml_file, NetworkConstants};
 use std::{
     net::{AddrParseError, IpAddr, Ipv6Addr, SocketAddr},
     path::Path,
@@ -120,7 +120,7 @@ impl RpcServerProcessConfig {
 
 #[cfg(test)]
 mod tests {
-    use rsnano_node::config::get_default_rpc_filepath_from;
+    use rsban_node::config::get_default_rpc_filepath_from;
     use std::path::Path;
 
     #[test]

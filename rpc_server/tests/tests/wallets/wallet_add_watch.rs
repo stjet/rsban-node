@@ -1,6 +1,6 @@
-use rsnano_core::{Account, WalletId};
-use rsnano_ledger::DEV_GENESIS_ACCOUNT;
-use rsnano_node::wallets::WalletsExt;
+use rsban_core::{Account, WalletId};
+use rsban_ledger::DEV_GENESIS_ACCOUNT;
+use rsban_node::wallets::WalletsExt;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]

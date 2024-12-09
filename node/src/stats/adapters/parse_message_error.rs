@@ -1,5 +1,5 @@
 use super::DetailType;
-use rsnano_messages::{MessageType, ParseMessageError};
+use rsban_messages::{MessageType, ParseMessageError};
 
 impl From<&ParseMessageError> for DetailType {
     fn from(status: &ParseMessageError) -> Self {

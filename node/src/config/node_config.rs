@@ -15,11 +15,11 @@ use crate::{
 };
 use once_cell::sync::Lazy;
 use rand::{thread_rng, Rng};
-use rsnano_core::{
+use rsban_core::{
     utils::{get_env_or_default_string, is_sanitizer_build, Peer},
     Account, Amount, PublicKey,
 };
-use rsnano_store_lmdb::LmdbConfig;
+use rsban_store_lmdb::LmdbConfig;
 use std::{cmp::max, net::Ipv6Addr, time::Duration};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -153,7 +153,7 @@ impl NodeConfig {
                     .push(Peer::new(DEFAULT_BETA_PEER_NETWORK.clone(), default_port));
                 preconfigured_representatives.push(
                     Account::decode_account(
-                        "nano_1defau1t9off1ine9rep99999999999999999999999999999999wgmuzxxy",
+                        "ban_1defau1t9off1ine9rep99999999999999999999999999999999wgmuzxxy",
                     )
                     .unwrap()
                     .into(),

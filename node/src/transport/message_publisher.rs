@@ -2,8 +2,8 @@ use crate::{
     representatives::OnlineReps,
     stats::{Direction, StatType, Stats},
 };
-use rsnano_messages::{Message, MessageSerializer, ProtocolInfo};
-use rsnano_network::{ChannelId, ChannelInfo, DropPolicy, Network, TrafficType};
+use rsban_messages::{Message, MessageSerializer, ProtocolInfo};
+use rsban_network::{ChannelId, ChannelInfo, DropPolicy, Network, TrafficType};
 use std::sync::{Arc, Mutex};
 use tracing::trace;
 

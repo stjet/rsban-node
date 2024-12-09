@@ -1,6 +1,6 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_node::consensus::{ElectionStatus, ElectionStatusType};
-use rsnano_rpc_messages::{HashRpcMessage, StartedResponse};
+use rsban_node::consensus::{ElectionStatus, ElectionStatusType};
+use rsban_rpc_messages::{HashRpcMessage, StartedResponse};
 
 impl RpcCommandHandler {
     pub(crate) fn block_confirm(&self, args: HashRpcMessage) -> anyhow::Result<StartedResponse> {
@@ -19,7 +19,7 @@ impl RpcCommandHandler {
         } else {
             // Add record in confirmation history for confirmed block
             let mut status = ElectionStatus::default();
-            status.winner = Some(rsnano_core::MaybeSavedBlock::Saved(block));
+            status.winner = Some(rsban_core::MaybeSavedBlock::Saved(block));
             status.election_end = std::time::SystemTime::now();
             status.block_count = 1;
             status.election_status_type = ElectionStatusType::ActiveConfirmationHeight;

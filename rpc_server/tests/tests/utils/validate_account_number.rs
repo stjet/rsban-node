@@ -1,4 +1,4 @@
-use rsnano_core::Account;
+use rsban_core::Account;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]

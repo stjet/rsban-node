@@ -1,6 +1,6 @@
 use crate::channels::{Channels, RepState};
 use num_format::{Locale, ToFormattedString};
-use rsnano_network::ChannelDirection;
+use rsban_network::ChannelDirection;
 
 pub(crate) struct ChannelsViewModel<'a>(&'a mut Channels);
 

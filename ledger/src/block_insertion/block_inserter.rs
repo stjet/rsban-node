@@ -1,8 +1,8 @@
 use crate::Ledger;
-use rsnano_core::{
+use rsban_core::{
     Account, AccountInfo, Amount, Block, BlockSideband, PendingInfo, PendingKey, SavedBlock,
 };
-use rsnano_store_lmdb::LmdbWriteTransaction;
+use rsban_store_lmdb::LmdbWriteTransaction;
 use std::sync::atomic::Ordering;
 
 #[derive(Debug, PartialEq)]
@@ -104,7 +104,7 @@ impl<'a> BlockInserter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsnano_core::{BlockHash, PublicKey, TestBlockBuilder};
+    use rsban_core::{BlockHash, PublicKey, TestBlockBuilder};
 
     #[test]
     fn insert_open_state_block() {

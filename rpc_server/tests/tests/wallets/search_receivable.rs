@@ -1,6 +1,6 @@
-use rsnano_core::{Account, Amount, TestBlockBuilder, WalletId, DEV_GENESIS_KEY};
-use rsnano_ledger::DEV_GENESIS_PUB_KEY;
-use rsnano_node::wallets::WalletsExt;
+use rsban_core::{Account, Amount, TestBlockBuilder, WalletId, DEV_GENESIS_KEY};
+use rsban_ledger::DEV_GENESIS_PUB_KEY;
+use rsban_node::wallets::WalletsExt;
 use test_helpers::{setup_rpc_client_and_server, System};
 
 #[test]

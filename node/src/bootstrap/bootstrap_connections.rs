@@ -11,12 +11,12 @@ use crate::{
 };
 use async_trait::async_trait;
 use ordered_float::OrderedFloat;
-use rsnano_core::{Account, BlockHash, Networks};
-use rsnano_network::{
+use rsban_core::{Account, BlockHash, Networks};
+use rsban_network::{
     ChannelDirection, ChannelMode, Network, NetworkInfo, NetworkObserver, NullNetworkObserver,
 };
-use rsnano_nullable_clock::SteadyClock;
-use rsnano_nullable_tcp::TcpStreamFactory;
+use rsban_nullable_clock::SteadyClock;
+use rsban_nullable_tcp::TcpStreamFactory;
 use std::{
     cmp::{max, min},
     collections::{BinaryHeap, HashSet, VecDeque},

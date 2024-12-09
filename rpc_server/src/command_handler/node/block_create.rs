@@ -1,12 +1,12 @@
 use crate::command_handler::RpcCommandHandler;
 use anyhow::bail;
-use rsnano_core::{
+use rsban_core::{
     Account, Amount, Block, BlockDetails, BlockHash, ChangeBlockArgs, Epoch, OpenBlockArgs,
     PendingKey, PrivateKey, PublicKey, ReceiveBlockArgs, Root, SavedBlock, SendBlockArgs,
     StateBlockArgs,
 };
-use rsnano_node::Node;
-use rsnano_rpc_messages::{BlockCreateArgs, BlockCreateResponse, BlockTypeDto};
+use rsban_node::Node;
+use rsban_rpc_messages::{BlockCreateArgs, BlockCreateResponse, BlockTypeDto};
 use std::sync::Arc;
 
 impl RpcCommandHandler {

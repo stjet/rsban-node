@@ -2,7 +2,7 @@ use super::{PublicKey, RawKey, Signature};
 use crate::{Account, Link, Root};
 use anyhow::Context;
 use ed25519_dalek::ed25519::signature::SignerMut;
-use rsnano_nullable_random::NullableRng;
+use rsban_nullable_random::NullableRng;
 
 pub struct PrivateKeyFactory {
     rng: NullableRng,

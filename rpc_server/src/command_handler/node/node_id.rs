@@ -1,5 +1,5 @@
 use crate::command_handler::RpcCommandHandler;
-use rsnano_rpc_messages::NodeIdResponse;
+use rsban_rpc_messages::NodeIdResponse;
 
 impl RpcCommandHandler {
     pub(crate) fn node_id(&self) -> NodeIdResponse {

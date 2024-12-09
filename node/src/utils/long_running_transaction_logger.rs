@@ -1,5 +1,5 @@
 use backtrace::Backtrace;
-use rsnano_store_lmdb::TransactionTracker;
+use rsban_store_lmdb::TransactionTracker;
 use std::{
     collections::HashMap,
     sync::Mutex,

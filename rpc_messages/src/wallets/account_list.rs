@@ -1,6 +1,6 @@
 use crate::common::WalletRpcMessage;
 use crate::RpcCommand;
-use rsnano_core::WalletId;
+use rsban_core::WalletId;
 
 impl RpcCommand {
     pub fn account_list(wallet: WalletId) -> Self {

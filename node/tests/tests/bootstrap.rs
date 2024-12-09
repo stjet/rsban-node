@@ -1,13 +1,13 @@
-use rsnano_core::{
+use rsban_core::{
     Account, Amount, Block, BlockHash, PrivateKey, UncheckedKey, UnsavedBlockLatticeBuilder,
     WalletId, DEV_GENESIS_KEY,
 };
-use rsnano_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
-use rsnano_messages::BulkPull;
-use rsnano_network::{
+use rsban_ledger::{DEV_GENESIS_ACCOUNT, DEV_GENESIS_HASH};
+use rsban_messages::BulkPull;
+use rsban_network::{
     bandwidth_limiter::BandwidthLimiter, Channel, ChannelInfo, NullNetworkObserver,
 };
-use rsnano_node::{
+use rsban_node::{
     bootstrap::{BootstrapAttemptTrait, BootstrapInitiatorExt, BootstrapStrategy, BulkPullServer},
     config::{NodeConfig, NodeFlags},
     stats::{DetailType, Direction, StatType},
@@ -15,7 +15,7 @@ use rsnano_node::{
     wallets::WalletsExt,
     Node, NodeExt,
 };
-use rsnano_nullable_tcp::TcpStream;
+use rsban_nullable_tcp::TcpStream;
 use std::sync::{atomic::Ordering, Arc, Mutex};
 use std::time::Duration;
 use test_helpers::{
@@ -24,9 +24,9 @@ use test_helpers::{
 
 mod bootstrap_processor {
     use super::*;
-    use rsnano_core::{PublicKey, TestBlockBuilder, UnsavedBlockLatticeBuilder};
-    use rsnano_ledger::{BlockStatus, DEV_GENESIS_PUB_KEY};
-    use rsnano_network::ChannelMode;
+    use rsban_core::{PublicKey, TestBlockBuilder, UnsavedBlockLatticeBuilder};
+    use rsban_ledger::{BlockStatus, DEV_GENESIS_PUB_KEY};
+    use rsban_network::ChannelMode;
     use test_helpers::establish_tcp;
 
     #[test]
@@ -1276,7 +1276,7 @@ mod bootstrap_processor {
 
 mod bulk_pull {
     use super::*;
-    use rsnano_core::{StateBlockArgs, UnsavedBlockLatticeBuilder};
+    use rsban_core::{StateBlockArgs, UnsavedBlockLatticeBuilder};
 
     // If the account doesn't exist, current == end so there's no iteration
     #[test]
@@ -1551,9 +1551,9 @@ mod bulk_pull {
 
 mod frontier_req {
     use super::*;
-    use rsnano_core::UnsavedBlockLatticeBuilder;
-    use rsnano_messages::FrontierReq;
-    use rsnano_node::bootstrap::FrontierReqServer;
+    use rsban_core::UnsavedBlockLatticeBuilder;
+    use rsban_messages::FrontierReq;
+    use rsban_node::bootstrap::FrontierReqServer;
     use std::thread::sleep;
 
     #[test]
@@ -1784,8 +1784,8 @@ mod frontier_req {
 
 mod bulk_pull_account {
     use super::*;
-    use rsnano_messages::{BulkPullAccount, BulkPullAccountFlags};
-    use rsnano_node::bootstrap::BulkPullAccountServer;
+    use rsban_messages::{BulkPullAccount, BulkPullAccountFlags};
+    use rsban_node::bootstrap::BulkPullAccountServer;
 
     #[test]
     fn basic() {

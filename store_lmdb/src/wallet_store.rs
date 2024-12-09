@@ -3,7 +3,7 @@ use crate::{
 };
 use anyhow::bail;
 use lmdb::{DatabaseFlags, WriteFlags};
-use rsnano_core::{
+use rsban_core::{
     deterministic_key,
     utils::{
         BufferReader, BufferWriter, Deserialize, FixedSizeSerialize, MutStreamAdapter, Serialize,

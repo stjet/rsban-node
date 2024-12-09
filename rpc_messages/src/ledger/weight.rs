@@ -1,4 +1,4 @@
-use rsnano_core::Amount;
+use rsban_core::Amount;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]

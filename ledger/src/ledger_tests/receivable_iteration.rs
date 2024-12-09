@@ -1,5 +1,5 @@
 use crate::LedgerContext;
-use rsnano_core::{Account, BlockHash, PendingInfo, PendingKey};
+use rsban_core::{Account, BlockHash, PendingInfo, PendingKey};
 
 #[test]
 fn empty() {

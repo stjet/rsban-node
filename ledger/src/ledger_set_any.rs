@@ -1,8 +1,8 @@
-use rsnano_core::{
+use rsban_core::{
     utils::{BufferReader, Deserialize},
     Account, AccountInfo, Amount, BlockHash, PendingInfo, PendingKey, QualifiedRoot, SavedBlock,
 };
-use rsnano_store_lmdb::{LmdbIterator, LmdbPendingStore, LmdbStore, Transaction};
+use rsban_store_lmdb::{LmdbIterator, LmdbPendingStore, LmdbStore, Transaction};
 use std::ops::{Deref, RangeBounds};
 
 pub struct LedgerSetAny<'a> {

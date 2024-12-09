@@ -23,25 +23,25 @@ ARG SANITIZER
 # Build node
 ENV PATH="/root/.cargo/bin:${PATH}"
 RUN cd main && cargo build --release
-RUN echo ${NANO_NETWORK} >/etc/nano-network
+RUN echo ${NANO_NETWORK} >/etc/banano-network
 
 FROM ubuntu:22.04
 
-RUN groupadd --gid 1000 nanocurrency && \
-    useradd --uid 1000 --gid nanocurrency --shell /bin/bash --create-home nanocurrency
+RUN groupadd --gid 1000 bananode && \
+    useradd --uid 1000 --gid bananode --shell /bin/bash --create-home bananode
 
-COPY --from=builder /tmp/src/target/release/rsnano_node /usr/bin
-COPY --from=builder /etc/nano-network /etc
+COPY --from=builder /tmp/src/target/release/rsbanano_node /usr/bin
+COPY --from=builder /etc/banano-network /etc
 
-COPY scripts/docker/node/config /usr/share/nano/config
+COPY scripts/docker/node/config /usr/share/banano/config
 RUN ldconfig
 
 WORKDIR /root
 USER root
 
 ENV PATH="${PATH}:/usr/bin"
-ENTRYPOINT ["/usr/bin/rsnano_node"]
+ENTRYPOINT ["/usr/bin/rsbanano_node"]
 CMD ["node", "run"]
 
-ARG REPOSITORY=simpago/rsnano-node
+ARG REPOSITORY=banano/rsbanano-node
 LABEL org.opencontainers.image.source https://github.com/$REPOSITORY

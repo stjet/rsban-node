@@ -43,5 +43,5 @@ ENV PATH="${PATH}:/usr/bin"
 ENTRYPOINT ["/usr/bin/rsban_node"]
 CMD ["node", "run"]
 
-ARG REPOSITORY=banano/rsban-node
+ARG REPOSITORY=stjet/rsban-node
 LABEL org.opencontainers.image.source=https://github.com/$REPOSITORY

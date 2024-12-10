@@ -1117,7 +1117,7 @@ impl Default for BootstrapAscendingConfig {
             throttle_wait: Duration::from_millis(100),
             account_sets: Default::default(),
             block_processor_theshold: 1000,
-            min_protocol_version: 0x14, // TODO don't hard code
+            min_protocol_version: 0x12, // TODO don't hard code
             max_requests: 1024,
         }
     }

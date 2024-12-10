@@ -27,7 +27,7 @@ RsBan is a fork of RsNano, which is a Rust port of the original Nano node.
 
     docker build -f scripts/docker/node/Dockerfile -t rsban-node https://github.com/stjet/rsban-node.git#develop
 
-    docker run --restart=unless-stopped -d -p 7071:7071 -p [::1]:7072:7072 -p [::1]:7074:7074 -v ~/BananoData:/root/Banano rsban-node:latest node run --network=live
+    docker run --restart=unless-stopped -d -p 7071:7071 -p [::1]:7072:7072 -p [::1]:7074:7074  --name rsban_node -v ~/BananoData:/root/Banano rsban-node:latest node run --network=live
 
 ## Option 3: Build from source
 

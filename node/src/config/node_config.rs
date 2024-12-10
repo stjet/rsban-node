@@ -171,25 +171,25 @@ impl NodeConfig {
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "29126049B40D1755C0A1C02B71646EEAB9E1707C16E94B47100F3228D59B1EB2",
+                        "1ED5D232FA96BFA78D802F1F0EC2F487072B782A2E627B1CBCAFFFA640A0D2A9",
                     )
                     .unwrap(),
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "2514452A978F08D1CF76BB40B6AD064183CF275D3CC5D3E0515DC96E2112AD4E",
+                        "E90AAA91A67EBFCF29B3764F212E802D2A5EE32D7E6DB2E2547484E69B88548F",
                     )
                     .unwrap(),
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "2B0C65A063CEC23725E70DB2D39163C48020D66F7C8E0352C1DA8C853E14F8F5",
+                        "3D94D2217FA5E8CEFCE1E95E7E6A53CD01E6E0C96ACF4D22A64A0D9A39BDB978",
                     )
                     .unwrap(),
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "6A164D74E73321CE4D6CD49D6948ECFAF4490FBE2BAAF3EBBF4C85F96AD637C0",
+                        "55155530A47B3A52F484309CABC26071BAF38522A599B6C0798F8037D8439F0C",
                     )
                     .unwrap(),
                 );
@@ -201,13 +201,13 @@ impl NodeConfig {
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "2298FAB7C61058E77EA554CB93EDEEDA0692CBFCC540AB213B2836B29029E23A",
+                        "3EB5D6D3DF10CD7BF0AD46688232011B5F38359CB036B82CE9B58BCCC2ADA5F5",
                     )
                     .unwrap(),
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "3FE80B4BC842E82C1C18ABFEEC47EA989E63953BC82AC411F304D13833D52A56",
+                        "CD1182912CDE444D41A88BB5E7B144659E6F140CC0EE92D07B64CED59419D811",
                     )
                     .unwrap(),
                 );

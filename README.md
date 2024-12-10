@@ -5,9 +5,9 @@
 [![Discord](https://img.shields.io/badge/discord-join%20chat-orange.svg)](https://discord.gg/kBwvAyxEWE)
 
 
-### What is RsBanano?
+### What is RsBan?
 
-RsBanano is a fork of RsNano, which is a Rust port of the original Nano node.
+RsBan is a fork of RsNano, which is a Rust port of the original Nano node.
 
 ### Links & Resources
 
@@ -27,22 +27,22 @@ RsBanano is a fork of RsNano, which is a Rust port of the original Nano node.
 
     docker build -f scripts/docker/node/Dockerfile -t rsban-node https://github.com/stjet/rsban-node.git#develop
 
-    docker run --restart=unless-stopped -d -p 7071:7071 -p [::1]:7072:7072 -p [::1]:7074:7074 -v ~/BananoLive:/root/BananoLive rsban-node:latest node run --network=live
+    docker run --restart=unless-stopped -d -p 7071:7071 -p [::1]:7072:7072 -p [::1]:7074:7074 -v ~/BananoData:/root/Banano rsban-node:latest node run --network=live
 
 ## Option 3: Build from source
 
 Currently you can only build RsBanano on Linux and on Mac.
 
-To just build and run the rsbanano_node:
+To just build and run the rsban_node:
 
-    git clone https://github.com/stjet/rsbanano-node.git
+    git clone https://github.com/stjet/rsban-node.git
     cd rsban-node/main
     cargo build --release
     cargo run --release -- node run --network=beta
 
-To install and run the rsbanano_node executable:
+To install and run the rsban_node executable:
 
-    git clone https://github.com/stjet/rsbanano-node.git
+    git clone https://github.com/stjet/rsban-node.git
     cd rsban-node
     cargo install --path main
     rsban_node node run --network=beta
@@ -50,7 +50,7 @@ To install and run the rsbanano_node executable:
 ### Contact us
 
 We want to hear about any trouble, success, delight, or pain you experience when
-using RsBanano. Let us know by [filing an issue](https://github.com/stjet/rsbanano-node/issues), or joining the [RsNano Discord](https://discord.gg/kBwvAyxEWE) for issues common to both RsNano and RsBanano.
+using RsBan. Let us know by [filing an issue](https://github.com/stjet/rsban-node/issues), or joining the [RsNano Discord](https://discord.gg/kBwvAyxEWE) for issues common to both RsNano and RsBanano.
 
 # The codebase
 

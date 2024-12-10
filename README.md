@@ -31,7 +31,7 @@ RsBan is a fork of RsNano, which is a Rust port of the original Nano node.
 
 ## Option 3: Build from source
 
-Currently you can only build RsBanano on Linux and on Mac.
+Currently you can only build RsBan on Linux and on Mac.
 
 To just build and run the rsban_node:
 
@@ -50,7 +50,7 @@ To install and run the rsban_node executable:
 ### Contact us
 
 We want to hear about any trouble, success, delight, or pain you experience when
-using RsBan. Let us know by [filing an issue](https://github.com/stjet/rsban-node/issues), or joining the [RsNano Discord](https://discord.gg/kBwvAyxEWE) for issues common to both RsNano and RsBanano.
+using RsBan. Let us know by [filing an issue](https://github.com/stjet/rsban-node/issues), or joining the [RsNano Discord](https://discord.gg/kBwvAyxEWE) for issues common to both RsNano and RsBan.
 
 # The codebase
 

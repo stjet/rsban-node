@@ -159,54 +159,55 @@ impl NodeConfig {
                     .into(),
                 );
             }
+            // https://github.com/BananoCoin/banano/blob/c1f8405d1994f55bc47d63dfe0fe20728e8856cb/nano/node/nodeconfig.cpp#L61
             Networks::BananoLiveNetwork => {
                 preconfigured_peers
                     .push(Peer::new(DEFAULT_LIVE_PEER_NETWORK.clone(), default_port));
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "A30E0A32ED41C8607AA9212843392E853FCBCB4E7CB194E35C94F07F91DE59EF",
+                        "36B3AFC042CCB5099DC163FA2BFE42D6E486991B685EAAB0DF73714D91A59400",
                     )
                     .unwrap(),
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "67556D31DDFC2A440BF6147501449B4CB9572278D034EE686A6BEE29851681DF",
+                        "1ED5D232FA96BFA78D802F1F0EC2F487072B782A2E627B1CBCAFFFA640A0D2A9",
                     )
                     .unwrap(),
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "5C2FBB148E006A8E8BA7A75DD86C9FE00C83F5FFDBFD76EAA09531071436B6AF",
+                        "E90AAA91A67EBFCF29B3764F212E802D2A5EE32D7E6DB2E2547484E69B88548F",
                     )
                     .unwrap(),
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "AE7AC63990DAAAF2A69BF11C913B928844BF5012355456F2F164166464024B29",
+                        "3D94D2217FA5E8CEFCE1E95E7E6A53CD01E6E0C96ACF4D22A64A0D9A39BDB978",
                     )
                     .unwrap(),
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "BD6267D6ECD8038327D2BCC0850BDF8F56EC0414912207E81BCF90DFAC8A4AAA",
+                        "55155530A47B3A52F484309CABC26071BAF38522A599B6C0798F8037D8439F0C",
                     )
                     .unwrap(),
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "2399A083C600AA0572F5E36247D978FCFC840405F8D4B6D33161C0066A55F431",
+                        "490086E62B376C0EFBAA6AF9C41269EE7D723F98B4667416F075951E981E3F37",
                     )
                     .unwrap(),
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "2298FAB7C61058E77EA554CB93EDEEDA0692CBFCC540AB213B2836B29029E23A",
+                        "3EB5D6D3DF10CD7BF0AD46688232011B5F38359CB036B82CE9B58BCCC2ADA5F5",
                     )
                     .unwrap(),
                 );
                 preconfigured_representatives.push(
                     PublicKey::decode_hex(
-                        "3FE80B4BC842E82C1C18ABFEEC47EA989E63953BC82AC411F304D13833D52A56",
+                        "CD1182912CDE444D41A88BB5E7B144659E6F140CC0EE92D07B64CED59419D811",
                     )
                     .unwrap(),
                 );

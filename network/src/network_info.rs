@@ -51,7 +51,7 @@ impl NetworkConfig {
                 _ => 16,
             },
             max_attempts_per_ip: if is_dev { 128 } else { 1 },
-            min_protocol_version: 0x14, //TODO don't hard code
+            min_protocol_version: 0x12, //TODO don't hard code
             disable_max_peers_per_ip: false,
             disable_max_peers_per_subnetwork: false,
             disable_network: false,

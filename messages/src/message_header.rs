@@ -76,7 +76,7 @@ impl Default for ProtocolInfo {
         Self {
             version_using: 0x15,
             version_max: 0x15,
-            version_min: 0x14,
+            version_min: 0x12,
             network: Networks::BananoLiveNetwork,
         }
     }

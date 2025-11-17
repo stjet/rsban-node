@@ -74,7 +74,7 @@ impl Default for BootstrapConfig {
             throttle_coefficient: 8 * 1024,
             throttle_wait: Duration::from_millis(100),
             block_processor_theshold: 1000,
-            min_protocol_version: 0x14, // TODO don't hard code
+            min_protocol_version: 0x12, // TODO don't hard code
             max_requests: 1024,
             optimistic_request_percentage: 75,
             candidate_accounts: Default::default(),

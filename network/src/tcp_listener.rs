@@ -141,6 +141,8 @@ impl TcpListenerExt for Arc<TcpListener> {
                 let Ok((stream, _)) = listener.accept().await else {
                     warn!("Could not accept incoming connection");
                     self.network_adapter.accept_failure();
+                    // Sleep to prevent busy loop on persistent accept failures
+                    sleep(Duration::from_millis(100)).await;
                     continue;
                 };
 
@@ -149,14 +151,16 @@ impl TcpListenerExt for Arc<TcpListener> {
                     .network_adapter
                     .add(tcp_stream, ChannelDirection::Inbound)
                 {
-                    Ok(_) => {}
+                    Ok(_) => {
+                        // Small yield to allow other tasks to run, but don't throttle too much
+                        sleep(Duration::from_millis(1)).await;
+                    }
                     Err(e) => {
                         warn!("Could not accept incoming connection: {:?}", e);
+                        // Sleep briefly on channel add failures
+                        sleep(Duration::from_millis(10)).await;
                     }
                 };
-
-                // Sleep for a while to prevent busy loop
-                sleep(Duration::from_millis(10)).await;
             }
         };
 

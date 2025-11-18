@@ -70,6 +70,7 @@ build-info = "0.0.41"
 tokio-scoped = "0.2.0"
 num-format = "0.4.4"
 rustc-hash = "2.1.1"
+iprobe = "0.1"
 
 [dev-dependencies]
 mock_instant = "0"

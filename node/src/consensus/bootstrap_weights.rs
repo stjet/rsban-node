@@ -1,13 +1,45 @@
-use rsnano_core::{Account, Amount, Networks};
+use rsnano_core::{Account, Amount, Networks, PublicKey, utils::{BufferReader, Deserialize, StreamExt}};
 use rsnano_ledger::{BootstrapWeights, RepWeightCache, RepWeights};
 use tracing::info;
 
 pub(crate) fn get_bootstrap_weights(network: Networks) -> BootstrapWeights {
-    let buffer = get_bootstrap_weights_text(network);
+    let buffer = get_bootstrap_weights_bin(network);
     deserialize_bootstrap_weights(buffer)
 }
 
-fn get_bootstrap_weights_text(network: Networks) -> &'static str {
+fn get_bootstrap_weights_bin(network: Networks) -> &'static [u8] {
+    if network == Networks::BananoLiveNetwork {
+        include_bytes!("../../rep_weights_live.bin")
+    } else {
+        include_bytes!("../../rep_weights_beta.bin")
+    }
+}
+
+fn deserialize_bootstrap_weights(buffer: &[u8]) -> (u64, HashMap<PublicKey, Amount>) {
+    let mut reader = BufferReader::new(buffer);
+    let mut weights = RepWeights::new();
+    let mut max_blocks = 0;
+    if let Ok(count) = reader.read_u128_be() {
+        max_blocks = count as u64;
+        loop {
+            let Ok(account) = PublicKey::deserialize(&mut reader) else {
+                break;
+            };
+            let Ok(weight) = Amount::deserialize(&mut reader) else {
+                break;
+            };
+            weights.insert(account.into(), weight);
+        }
+    }
+
+    BootstrapWeights {
+        max_blocks,
+        weights,
+    }
+}
+
+/*
+ * fn get_bootstrap_weights_text(network: Networks) -> &'static str {
     if network == Networks::NanoLiveNetwork {
         include_str!("../../rep_weights_live.txt")
     } else {
@@ -37,6 +69,7 @@ fn deserialize_bootstrap_weights(buffer: &str) -> BootstrapWeights {
         weights,
     }
 }
+*/
 
 pub(crate) fn log_bootstrap_weights(weight_cache: &RepWeightCache) {
     let mut bootstrap_weights = weight_cache.bootstrap_weights();

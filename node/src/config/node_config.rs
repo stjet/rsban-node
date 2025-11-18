@@ -2,6 +2,7 @@ use std::{cmp::max, net::Ipv6Addr, time::Duration};
 
 use once_cell::sync::Lazy;
 use rand::Rng;
+use iprobe::ipv4;
 
 use rsnano_core::{
     utils::{get_env_or_default_string, Peer},
@@ -172,18 +173,34 @@ impl NodeConfig {
                 );
             }
             Networks::NanoLiveNetwork => {
-                for addr in [
-                    "[::ffff:37.27.80.228]",
-                    "[::ffff:51.15.5.35]",
-                    "[::ffff:51.15.19.228]",
-                    "[::ffff:129.151.163.96]",
-                    "[::ffff:103.77.242.225]",
-                    "[::ffff:167.86.102.138]",
-                    "[::ffff:188.251.33.45]",
-                    "[::ffff:72.86.43.83]",
-                    "[::ffff:204.13.115.218]",
-                    "[::ffff:23.88.62.227]",
-                ] {
+                let addrs = if !ipv4() {
+                    [
+                        "[::ffff:37.27.80.228]",
+                        "[::ffff:51.15.5.35]",
+                        "[::ffff:51.15.19.228]",
+                        "[::ffff:129.151.163.96]",
+                        "[::ffff:103.77.242.225]",
+                        "[::ffff:167.86.102.138]",
+                        "[::ffff:188.251.33.45]",
+                        "[::ffff:72.86.43.83]",
+                        "[::ffff:204.13.115.218]",
+                        "[::ffff:23.88.62.227]",
+                    ]
+                } else {
+                    [
+                        "37.27.80.228",
+                        "51.15.5.35",
+                        "51.15.19.228",
+                        "129.151.163.96",
+                        "103.77.242.225",
+                        "167.86.102.138",
+                        "188.251.33.45",
+                        "72.86.43.83",
+                        "204.13.115.218",
+                        "23.88.62.227",
+                    ]
+                };
+                for addr in addrs {
                     preconfigured_peers.push(Peer::new(addr.to_string(), default_port));
                 }
                 preconfigured_representatives.push(network_params.ledger.genesis_account.into());

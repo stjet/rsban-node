@@ -8,14 +8,14 @@ pub(crate) fn get_bootstrap_weights(network: Networks) -> BootstrapWeights {
 }
 
 fn get_bootstrap_weights_bin(network: Networks) -> &'static [u8] {
-    if network == Networks::BananoLiveNetwork {
+    if network == Networks::NanoLiveNetwork {
         include_bytes!("../../rep_weights_live.bin")
     } else {
-        include_bytes!("../../rep_weights_beta.bin")
+        include_bytes!("../../rep_weights_live.bin")
     }
 }
 
-fn deserialize_bootstrap_weights(buffer: &[u8]) -> (u64, HashMap<PublicKey, Amount>) {
+fn deserialize_bootstrap_weights(buffer: &[u8]) -> BootstrapWeights {
     let mut reader = BufferReader::new(buffer);
     let mut weights = RepWeights::new();
     let mut max_blocks = 0;

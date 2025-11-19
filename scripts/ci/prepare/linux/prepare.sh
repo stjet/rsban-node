@@ -1,21 +1,17 @@
-#!/bin/bash
+#!/bin/sh
 set -euox pipefail
 
 COMPILER=${COMPILER:-gcc}
-
 echo "Compiler: '${COMPILER}'"
 
-# Common dependencies needed for building & testing
-DEBIAN_FRONTEND=noninteractive apt-get update -qq
+apk update
+apk add --no-cache \
+    build-base \
+    curl \
+    wget \
+    python3 \
+    git \
+    openssl-dev \
+    pkgconfig
 
-DEBIAN_FRONTEND=noninteractive apt-get install -yqq \
-build-essential \
-curl \
-wget \
-python3 \
-git \
-libssl-dev \
-pkg-config
-
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
-
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y

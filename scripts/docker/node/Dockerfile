@@ -1,16 +1,22 @@
-FROM ubuntu:22.04 as builder
+FROM alpine:3.22 AS builder
 
 ARG COMPILER=gcc
 ARG NANO_NETWORK=live
 
-# Install build dependencies
+RUN apk add --no-cache \
+    bash \
+    musl-dev \
+    cmake \
+    clang \
+    llvm \
+    linux-headers
+
 COPY ./scripts/ci/prepare/linux /tmp/prepare
-RUN /tmp/prepare/prepare.sh
+RUN bash /tmp/prepare/prepare.sh
 
 COPY ./ /tmp/src
 WORKDIR /tmp/src
 
-#Define ARGs for ci/build-node.sh
 ARG BUILD_TYPE=RelWithDebInfo
 ARG NANO_TEST=OFF
 ARG NANO_TRACING=OFF
@@ -20,21 +26,24 @@ ARG CI_TAG=DEV_BUILD
 ARG CI_VERSION_PRE_RELEASE=OFF
 ARG SANITIZER
 
-# Build node
 ENV PATH="/root/.cargo/bin:${PATH}"
-RUN cd main && cargo build --release
+RUN apk add --no-cache bash musl-dev \
+    && apk add --no-cache --virtual .build-deps cmake clang llvm linux-headers \
+    && cd main && cargo build --release \
+    && strip /tmp/src/target/release/rsnano_node \
+    && apk del .build-deps
+
 RUN echo ${NANO_NETWORK} >/etc/nano-network
 
-FROM ubuntu:22.04
 
-RUN groupadd --gid 1000 nanocurrency && \
-    useradd --uid 1000 --gid nanocurrency --shell /bin/bash --create-home nanocurrency
+FROM alpine:3.22
+
+RUN addgroup -g 1000 nanocurrency && \
+    adduser -u 1000 -G nanocurrency -s /bin/sh -D nanocurrency
 
 COPY --from=builder /tmp/src/target/release/rsnano_node /usr/bin
 COPY --from=builder /etc/nano-network /etc
-
 COPY scripts/docker/node/config /usr/share/nano/config
-RUN ldconfig
 
 WORKDIR /root
 USER root
@@ -43,5 +52,5 @@ ENV PATH="${PATH}:/usr/bin"
 ENTRYPOINT ["/usr/bin/rsnano_node"]
 CMD ["node", "run"]
 
-ARG REPOSITORY=simpago/rsnano-node
-LABEL org.opencontainers.image.source https://github.com/$REPOSITORY
+ARG REPOSITORY=banano/rsban
+LABEL org.opencontainers.image.source="https://github.com/$REPOSITORY"

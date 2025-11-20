@@ -1,4 +1,7 @@
-use rsnano_core::{Account, Amount, Networks, PublicKey, utils::{BufferReader, Deserialize, StreamExt}};
+use rsnano_core::{
+    utils::{BufferReader, Deserialize, StreamExt},
+    Account, Amount, Networks, PublicKey,
+};
 use rsnano_ledger::{BootstrapWeights, RepWeightCache, RepWeights};
 use tracing::info;
 

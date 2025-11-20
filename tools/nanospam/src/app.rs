@@ -2,8 +2,8 @@ use std::{
     ffi::OsString,
     net::{Ipv6Addr, SocketAddrV6},
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Mutex,
+        atomic::{AtomicUsize, Ordering},
     },
     thread::yield_now,
     time::{Duration, Instant},

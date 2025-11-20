@@ -1,8 +1,8 @@
 use std::{cmp::max, net::Ipv6Addr, time::Duration};
 
+use iprobe::ipv4;
 use once_cell::sync::Lazy;
 use rand::Rng;
-use iprobe::ipv4;
 
 use rsnano_core::{
     utils::{get_env_or_default_string, Peer},

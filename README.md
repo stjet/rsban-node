@@ -2,33 +2,33 @@
 
 
 [![Unit Tests](https://github.com/simpago/rsnano-node/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/simpago/rsnano-node/actions/workflows/unit_tests.yml)
-[![codecov](https://codecov.io/gh/rsnano-node/rsnano-node/graph/badge.svg?token=LIATNV5NBP)](https://codecov.io/gh/rsnano-node/rsnano-node)
-[![Discord](https://img.shields.io/badge/discord-join%20chat-orange.svg)](https://discord.gg/kBwvAyxEWE)
+[![Discord](https://img.shields.io/badge/discord-join%20chat-orange.svg)](https://chat.banano.cc)
 
 
 ### What is RsNano?
 
-RsNano is a Rust port of the original Nano node. This fork targets the
+RsBan is a fork of RsNano, which is a Rust port of the original Nano node. This fork targets the
 Banano network, a Nano derivative where 1 BAN equals 10^29 raw, addresses
 use the `ban_` prefix and nodes listen on port 7071.
 
 ### Links & Resources
 
 * [RsNano Website](https://rsnano.com)
-* [Discord Chat](https://discord.gg/kBwvAyxEWE)
+* [RsNano Discord](https://discord.gg/kBwvAyxEWE)
+* [Banano Discord](https://chat.banano.cc)
 * [Twitter](https://twitter.com/gschauwecker)
 
 ### Installation
 
 ## Option 1: Run the official docker image
 
-    docker run -p 7071:7071 -v ~/Banano:/root/Banano simpago/rsnano:V2.0 --network=live node run
+    TBD
 
 ## Option 2: Build your own docker image
 
-    docker build -f scripts/docker/node/Dockerfile -t rsnano-node https://github.com/simpago/rsnano-node.git#releases/v2
+    docker build -f scripts/docker/node/Dockerfile -t rsban-node https://github.com/stjet/rsban-node.git#releases/v2
 
-    docker run -p 7071:7071 -v ~/Banano:/root/Banano rsnano-node:latest --network=live node run
+    docker run -p 7071:7071 -p 127.0.0.1:7072:7072 -p [::1]:7072:7072 -v ~/Banano:/root/Banano rsban-node:latest --network=live node run
 
 ## Option 3: Build from source
 
@@ -36,15 +36,15 @@ Currently you can only build RsNano on Linux and on Mac.
 
 To just build and run the rsnano_node:
 
-    git clone https://github.com/simpago/rsnano-node.git
+    git clone https://github.com/stjet/rsban-node.git
     git switch releases/v2
-    cd rsnano-node/main
+    cd rsban-node/main
     cargo build --release
     cargo run --release -- --network=live node run
 
 To install and run the rsnano_node executable:
 
-    git clone https://github.com/simpago/rsnano-node.git
+    git clone https://github.com/stjet/rsban-node.git
     git switch releases/v2
     cd rsnano-node
     cargo install --path main
@@ -64,6 +64,7 @@ Run these commands:
 
 We want to hear about any trouble, success, delight, or pain you experience when
 using RsNano. Let us know by [filing an issue](https://github.com/simpago/rsnano-node/issues), or joining us on [Discord](https://discord.gg/kBwvAyxEWE).
+
 
 # The codebase
 

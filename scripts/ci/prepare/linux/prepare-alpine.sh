@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -euox pipefail
 
 COMPILER=${COMPILER:-gcc}
@@ -12,6 +12,10 @@ apk add --no-cache \
     python3 \
     git \
     openssl-dev \
+    bash \
+    musl-dev \
+    cmake \
+    linux-headers \
     pkgconfig
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y

@@ -3,16 +3,8 @@ FROM alpine:3.22 AS builder
 ARG COMPILER=gcc
 ARG NANO_NETWORK=live
 
-RUN apk add --no-cache \
-    bash \
-    musl-dev \
-    cmake \
-    clang \
-    llvm \
-    linux-headers
-
 COPY ./scripts/ci/prepare/linux /tmp/prepare
-RUN bash /tmp/prepare/prepare-alpine.sh
+RUN sh /tmp/prepare/prepare-alpine.sh
 
 COPY ./ /tmp/src
 WORKDIR /tmp/src
@@ -26,24 +18,23 @@ ARG CI_TAG=DEV_BUILD
 ARG CI_VERSION_PRE_RELEASE=OFF
 ARG SANITIZER
 
+RUN /root/.cargo/bin/rustup target add x86_64-unknown-linux-musl
+
 ENV PATH="/root/.cargo/bin:${PATH}"
-RUN apk add --no-cache bash musl-dev \
-    && apk add --no-cache --virtual .build-deps cmake clang llvm linux-headers \
-    && cd main && cargo build --release \
-    && strip /tmp/src/target/release/rsnano_node \
-    && apk del .build-deps
+RUN cd main && cargo build --release --target x86_64-unknown-linux-musl \
+    && strip /tmp/src/target/x86_64-unknown-linux-musl/release/rsnano_node
 
 RUN echo ${NANO_NETWORK} >/etc/nano-network
 
-
 FROM alpine:3.22
 
-RUN addgroup -g 1000 nanocurrency && \
-    adduser -u 1000 -G nanocurrency -s /bin/sh -D nanocurrency
+RUN addgroup -g 1000 rsban && \
+    adduser -u 1000 -G rsban -s /bin/sh -D rsban
 
-COPY --from=builder /tmp/src/target/release/rsnano_node /usr/bin
-COPY --from=builder /etc/nano-network /etc
+COPY --from=builder /tmp/src/target/x86_64-unknown-linux-musl/release/rsnano_node /usr/bin/rsnano_node
+COPY --from=builder /etc/nano-network /etc/nano-network
 COPY scripts/docker/node/config /usr/share/nano/config
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 WORKDIR /root
 USER root
